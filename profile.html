@@ -7,12 +7,15 @@
 <style>
 :root{--bg:#0a1a0f;--card:#13261a;--text:#e4e6eb;--text2:#7a9e80;--brand:#4caf50;--border:#1f3d2a;}
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
-body{background:var(--bg); color:var(--text);}
-.header{display:flex; justify-content:space-between; padding:10px 15px; background:var(--card); position:sticky; top:0;}
-.cover{width:100%; height:200px; background:url('https://via.placeholder.com/600x200') center/cover;}
-.profile-pic{width:120px; height:120px; border-radius:50%; border:4px solid var(--bg); margin:-60px 0 0 15px; position:relative;}
+body{background:var(--bg); color:var(--text); padding-bottom:60px;}
+.header{display:flex; justify-content:space-between; padding:10px 15px; background:var(--card); position:sticky; top:0; z-index:10;}
+.header span{font-size:22px; cursor:pointer;}
+.cover{width:100%; height:200px; background:#1f3d2a; position:relative;}
+.cover img{width:100%; height:100%; object-fit:cover;}
+.profile-pic{width:120px; height:120px; border-radius:50%; border:4px solid var(--bg); margin:-60px 0 0 15px; position:relative; background:var(--card);}
 .profile-pic img{width:100%; height:100%; border-radius:50%;}
-.guard{position:absolute; bottom:5px; right:5px; background:var(--brand); border-radius:50%; padding:3px; font-size:12px;}
+.guard{position:absolute; bottom:5px; right:5px; background:var(--brand); border-radius:50%; padding:3px; font-size:12px; display:none;}
+.guard.show{display:block;}
 .name{padding:10px 15px;}
 .name h2{display:flex; align-items:center; gap:5px;}
 .verify{color:var(--brand); font-size:18px;}
@@ -22,20 +25,30 @@ body{background:var(--bg); color:var(--text);}
 .card{background:var(--card); margin:10px; padding:15px; border-radius:10px;}
 .card h3{margin-bottom:10px;}
 .info{display:flex; gap:10px; margin:8px 0; color:var(--text2);}
+.friends-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px;}
+.friends-grid div{text-align:center; font-size:12px;}
+.friends-grid img{width:100%; border-radius:8px; aspect-ratio:1/1; object-fit:cover;}
+.no-friends{text-align:center; color:var(--text2); padding:20px 0;}
 </style>
 </head>
 <body>
-<div class="header"><div>←</div><div>⋯</div></div>
+<div class="header">
+<div onclick="window.location.href='home.html'">←</div>
+<div onclick="window.location.href='main-settings.html'">⋯</div>
+</div>
 
-<div class="cover"></div>
+<div class="cover">
+<img id="coverImg" src="https://via.placeholder.com/600x200">
+</div>
+
 <div class="profile-pic">
-<img src="https://via.placeholder.com/120">
-<div class="guard">🛡️</div>
+<img id="profileImg" src="https://via.placeholder.com/120">
+<div class="guard" id="guardIcon">🛡️</div>
 </div>
 
 <div class="name">
-<h2>Abir Mazumder <span class="verify">✔️</span></h2>
-<p>@abir250</p>
+<h2 id="profileName">Abir Mazumder <span class="verify">✔️</span></h2>
+<p id="username">@abir250</p>
 </div>
 
 <div class="btns">
@@ -45,17 +58,66 @@ body{background:var(--bg); color:var(--text);}
 
 <div class="card">
 <h3>About</h3>
-<p>Digital Creator | Autrobook Founder</p>
-<div class="info">🎓 Studied at Dhaka University</div>
-<div class="info">🏫 Went to Govt. College</div>
-<div class="info">❤️ In a relationship</div>
-<div class="info">🎂 Born Jan 1, 2000</div>
+<p id="bio">Digital Creator | Autrobook Founder</p>
+<div class="info" id="university">🎓 Studied at Dhaka University</div>
+<div class="info" id="school">🏫 Went to Govt. College</div>
+<div class="info" id="relationship">❤️ In a relationship</div>
+<div class="info" id="birthday">🎂 Born Jan 1, 2000</div>
 <div class="info">📍 Tongi, Dhaka</div>
+</div>
+
+<div class="card">
+<h3>Friends <span id="friendCount"></span></h3>
+<div id="friendsList"></div>
 </div>
 
 <div class="card">
 <h3>Photos</h3>
 </div>
 
+<script>
+let profileData = JSON.parse(localStorage.getItem('profileData') || '{}');
+let friends = JSON.parse(localStorage.getItem('friends') || '[]'); // Demo friends
+
+// Load Profile Data
+window.onload = () => {
+  if(profileData.profilePic) document.getElementById('profileImg').src = profileData.profilePic;
+  if(profileData.coverPic) document.getElementById('coverImg').src = profileData.coverPic;
+  
+  if(profileData.bio) document.getElementById('bio').innerText = profileData.bio;
+  if(profileData.school) document.getElementById('school').innerText = '🏫 ' + profileData.school;
+  if(profileData.university) document.getElementById('university').innerText = '🎓 ' + profileData.university;
+  if(profileData.relationship) document.getElementById('relationship').innerText = '❤️ ' + profileData.relationship;
+  if(profileData.birthday) document.getElementById('birthday').innerText = '🎂 Born ' + profileData.birthday;
+  
+  if(profileData.guard) document.getElementById('guardIcon').classList.add('show');
+  
+  loadFriends();
+}
+
+// Demo Friends Data
+function loadFriends(){
+  const demoFriends = [
+    {name:"Rahim", img:1}, {name:"Sadia", img:2}, {name:"Nayeem", img:3},
+    {name:"Fatema", img:4}, {name:"Karim", img:5}
+  ];
+  
+  document.getElementById('friendCount').innerText = `(${demoFriends.length})`;
+  
+  if(demoFriends.length == 0){
+    document.getElementById('friendsList').innerHTML = `<div class="no-friends">No friends yet</div>`;
+  }else{
+    let html = `<div class="friends-grid">`;
+    demoFriends.forEach(f=>{
+      html += `<div onclick="window.location.href='demo-profile.html?id=${f.img}'">
+      <img src="https://i.pravatar.cc/100?img=${f.img}">
+      <p>${f.name}</p>
+      </div>`;
+    });
+    html += `</div>`;
+    document.getElementById('friendsList').innerHTML = html;
+  }
+}
+</script>
 </body>
 </html>
