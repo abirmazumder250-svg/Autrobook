@@ -5,48 +5,147 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login - Autrobook</title>
 <style>
-:root{--bg:#0a1a0f;--card:#13261a;--text:#e4e6eb;--brand:#4caf50;}
+:root{--bg:#0a1a0f;--card:#13261a;--text:#e4e6eb;--brand:#4caf50;--border:#1f3d2a;}
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
-body{background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:center; height:100vh;}
-.box{background:var(--card); padding:30px; border-radius:12px; width:90%; max-width:350px;}
-.box h1{text-align:center; color:var(--brand); margin-bottom:20px;}
-.box input{width:100%; padding:12px; margin:10px 0; background:var(--bg); border:1px solid #1f3d2a; border-radius:8px; color:var(--text);}
-.box button{width:100%; padding:12px; background:var(--brand); border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer;}
+body{background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px;}
+.box{background:var(--card); padding:25px; border-radius:12px; width:100%; max-width:380px;}
+.box h1{text-align:center; color:var(--brand); margin-bottom:15px; font-size:28px;}
+.tabs{display:flex; gap:10px; margin-bottom:20px;}
+.tabs button{flex:1; padding:10px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px; cursor:pointer;}
+.tabs button.active{background:var(--brand); border-color:var(--brand);}
+.box input{width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); outline:none;}
+.row{display:flex; gap:10px;}
+.row input{width:50%;}
+.box button{width:100%; padding:12px; background:var(--brand); border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:10px;}
+.otp-box{display:none;}
+.link{color:var(--brand); text-align:center; margin-top:15px; cursor:pointer; font-size:14px;}
+.small{font-size:12px; color:#7a9e80; margin-top:5px;}
+.otp-btns{display:flex; gap:10px;}
+.otp-btns button{flex:1; background:#2196f3;}
 </style>
 </head>
 <body>
 <div class="box">
 <h1>Autrobook</h1>
-<input type="email" id="email" placeholder="Email or Phone">
-<input type="password" id="password" placeholder="Password">
+
+<div class="tabs">
+<button id="loginTab" class="active" onclick="showTab('login')">Log In</button>
+<button id="signupTab" onclick="showTab('signup')">Sign Up</button>
+</div>
+
+<!-- LOGIN FORM -->
+<div id="loginForm">
+<input type="text" id="loginEmail" placeholder="Email or Phone">
+<input type="password" id="loginPassword" placeholder="Password">
 <button onclick="login()">Log In</button>
 </div>
 
+<!-- SIGNUP FORM -->
+<div id="signupForm" style="display:none;">
+<div class="row">
+<input type="text" id="firstName" placeholder="First Name">
+<input type="text" id="lastName" placeholder="Last Name">
+</div>
+<input type="text" id="signupEmail" placeholder="E-mail Address / Phone Number">
+<input type="password" id="signupPassword" placeholder="New Password">
+
+<div class="otp-box" id="otpBox">
+<input type="text" id="otpInput" placeholder="Enter 6 digit OTP" maxlength="6">
+<div class="small" id="otpInfo"></div>
+<div class="otp-btns">
+<button onclick="sendOTP('sms')">📱 Send SMS</button>
+<button onclick="sendOTP('call')">📞 Call Me</button>
+</div>
+<button onclick="verifyOTP()">Verify & Sign Up</button>
+</div>
+
+<button id="signupBtn" onclick="startSignup()">Create Account</button>
+</div>
+
+<div class="link" onclick="alert('Forgot Password')">Forgot Password?</div>
+</div>
+
 <script>
-function login(){
-  let email = document.getElementById('email').value;
-  let password = document.getElementById('password').value;
+let generatedOTP = '';
+let signupData = {};
+
+// TAB SWITCH
+function showTab(tab){
+  document.getElementById('loginTab').classList.remove('active');
+  document.getElementById('signupTab').classList.remove('active');
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('signupForm').style.display = 'none';
   
+  if(tab == 'login'){
+    document.getElementById('loginTab').classList.add('active');
+    document.getElementById('loginForm').style.display = 'block';
+  }else{
+    document.getElementById('signupTab').classList.add('active');
+    document.getElementById('signupForm').style.display = 'block';
+  }
+}
+
+// LOGIN
+function login(){
+  let email = document.getElementById('loginEmail').value;
+  let password = document.getElementById('loginPassword').value;
   if(email && password){
-    // After checking with Backend
-    let user = {
-      name: "Abir Mazumder",
-      email: email,
-      id: "12345",
-      token: "fake_token_123"
-    };
-    
-    // Save user data. It won't delete even if browser closes
+    let user = { name: "Abir Mazumder", email: email, id: "12345", token: "fake_token_123" };
     localStorage.setItem('autrobook_user', JSON.stringify(user));
-    
-    // Redirect to Home Page
     window.location.href = 'home.html';
   }else{
     alert('Please fill all fields');
   }
 }
 
-// If user is already logged in, redirect to Home directly
+// START SIGNUP
+function startSignup(){
+  let fn = document.getElementById('firstName').value;
+  let ln = document.getElementById('lastName').value;
+  let email = document.getElementById('signupEmail').value;
+  let pass = document.getElementById('signupPassword').value;
+  
+  if(!fn || !ln || !email || !pass){
+    alert('Please fill all fields');
+    return;
+  }
+  
+  signupData = {name: fn + ' ' + ln, email: email, password: pass};
+  document.getElementById('otpBox').style.display = 'block';
+  document.getElementById('signupBtn').style.display = 'none';
+  document.getElementById('otpInfo').innerText = 'OTP will be sent to: ' + email;
+}
+
+// SEND OTP - SMS or CALL
+function sendOTP(type){
+  generatedOTP = Math.floor(100000 + Math.random() * 900000); // 6 digit OTP
+  localStorage.setItem('autrobook_otp', generatedOTP);
+  
+  if(type == 'sms'){
+    alert(`Demo SMS Sent ✅\nYour OTP is: ${generatedOTP}\nIn real app this will go to phone: ${signupData.email}`);
+  }else{
+    alert(`Demo Phone Call 📞\nAutrobook is calling you now.\nYour OTP is: ${generatedOTP}\nIn real app Twilio/MSG91 will call`);
+  }
+}
+
+// VERIFY OTP
+function verifyOTP(){
+  let enteredOTP = document.getElementById('otpInput').value;
+  let savedOTP = localStorage.getItem('autrobook_otp');
+  
+  if(enteredOTP == savedOTP){
+    // Save user and login
+    let user = { name: signupData.name, email: signupData.email, id: Date.now(), token: "token_"+Date.now() };
+    localStorage.setItem('autrobook_user', JSON.stringify(user));
+    localStorage.removeItem('autrobook_otp');
+    alert('Account Created Successfully ✅');
+    window.location.href = 'home.html';
+  }else{
+    alert('Invalid OTP. Please try again.');
+  }
+}
+
+// If user is already logged in, redirect to Home
 if(localStorage.getItem('autrobook_user')){
   window.location.href = 'home.html';
 }
