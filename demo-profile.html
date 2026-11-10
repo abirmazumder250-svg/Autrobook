@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile - Autrobook</title>
+<style>
+:root{ --bg: #0a1a0f; --card-bg: #13261a; --header-bg: #13261a; --text: #e4e6eb; --text-secondary: #7a9e80; --border: #1f3d2a; --brand: #4caf50; --hover: #1f3d2a; }
+*{margin:0; padding:0; box-sizing:border-box; font-family:Arial;} 
+body{background:var(--bg); color:var(--text); padding-bottom:60px;} 
+.header{display:flex; justify-content:space-between; align-items:center; padding:10px 15px; background:var(--header-bg); position:sticky; top:0; z-index:10;}
+.header span{font-size:22px; cursor:pointer;}
+.cover{width:100%; height:200px; background:#1f3d2a; position:relative;}
+.cover img{width:100%; height:100%; object-fit:cover;}
+.profile-pic{width:130px; height:130px; border-radius:50%; border:4px solid var(--bg); position:absolute; bottom:-65px; left:15px;}
+.profile-info{padding:80px 15px 15px;}
+.profile-info h1{font-size:24px;}
+.profile-info p{color:var(--text-secondary); font-size:14px;}
+.profile-buttons{display:flex; gap:10px; margin:15px 0;}
+.btn{flex:1; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;}
+.btn-primary{background:var(--brand); color:white;}
+.btn-secondary{background:var(--card-bg); color:var(--text);}
+.tabs{display:flex; justify-content:space-around; border-bottom:1px solid var(--border);}
+.tabs div{padding:12px; flex:1; text-align:center; cursor:pointer;}
+.tabs div.active{border-bottom:3px solid var(--brand); color:var(--brand);}
+.post{background:var(--card-bg); margin:10px 0; padding:12px; border-radius:12px;}
+.post-header{display:flex; align-items:center; gap:10px;}
+.post-header img{width:40px; height:40px; border-radius:50%;}
+.post img.post-img{width:100%; border-radius:8px; margin:10px 0;}
+.post-actions{display:flex; justify-content:space-around; padding-top:8px;}
+.post-actions button{background:none; border:none; color:var(--text-secondary); padding:8px; flex:1; cursor:pointer; border-radius:8px;}
+.post-actions button:hover{background:var(--hover);}
+.comment-section{display:none; padding-top:10px; border-top:1px solid var(--border);}
+.comment-input{display:flex; gap:8px; margin-top:10px;}
+.comment-input input{flex:1; background:var(--bg); border:none; padding:10px; border-radius:20px; color:var(--text); outline:none;}
+.comment-input button{background:var(--brand); border:none; color:white; padding:8px 15px; border-radius:20px;}
+.friend-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:10px;}
+.friend-grid div{text-align:center; cursor:pointer;}
+.friend-grid img{width:100%; border-radius:8px; aspect-ratio:1/1; object-fit:cover;}
+</style>
+</head>
+<body>
+
+<div class="header">
+<span onclick="window.location.href='home.html'">←</span>
+<span>Autrobook</span>
+<span onclick="window.location.href='main-settings.html'">⚙️</span>
+</div>
+
+<div id="profileContent"></div>
+
+<script>
+const demoUsers = [
+{id:1, name:"Rahim Khan", username:"rahim.khan", bio:"Web Developer | Dhaka", cover:"https://via.placeholder.com/600x200/4caf50", img:1, friends:120},
+{id:2, name:"Sadia Afrin", username:"sadia.a", bio:"Student | UI Designer", cover:"https://via.placeholder.com/600x200/2196f3", img:2, friends:340},
+{id:3, name:"Nayeem Hasan", username:"nayeem.h", bio:"Travel Lover ✈️", cover:"https://via.placeholder.com/600x200/ff9800", img:3, friends:89},
+{id:4, name:"Fatema Begum", username:"fatema.b", bio:"Chef 🍛", cover:"https://via.placeholder.com/600x200/9c27b0", img:4, friends:560},
+{id:5, name:"Karim Uddin", username:"karim.u", bio:"Businessman", cover:"https://via.placeholder.com/600x200/f44336", img:5, friends:1024}
+];
+
+let currentUser = JSON.parse(localStorage.getItem('autrobook_user'));
+let userId = new URLSearchParams(window.location.search).get('id') || currentUser.id;
+let profileUser = demoUsers.find(u => u.id == userId) || currentUser;
+
+let following = JSON.parse(localStorage.getItem('following') || '[]');
+let isFollowing = following.includes(profileUser.id);
+
+function loadProfile(){
+let html = `
+<div class="cover">
+<img src="${profileUser.cover}">
+<img src="https://i.pravatar.cc/130?img=${profileUser.img}" class="profile-pic">
+</div>
+<div class="profile-info">
+<h1>${profileUser.name}</h1>
+<p>@${profileUser.username}</p>
+<p>${profileUser.bio}</p>
+<p><b>${profileUser.friends}</b> Friends</p>
+<div class="profile-buttons">
+<button class="btn btn-primary" onclick="toggleFollow()">${isFollowing ? 'Following' : 'Follow'}</button>
+<button class="btn btn-secondary">Message</button>
+</div>
+</div>
+
+<div class="tabs">
+<div class="active" onclick="showProfileTab('posts')">Posts</div>
+<div onclick="showProfileTab('about')">About</div>
+<div onclick="showProfileTab('friends')">Friends</div>
+</div>
+
+<div id="postsTab">
+${loadUserPosts()}
+</div>
+<div id="aboutTab" style="display:none; padding:15px;">
+<b>About ${profileUser.name}</b><br>
+<p>${profileUser.bio}</p>
+</div>
+<div id="friendsTab" style="display:none;">
+<div class="friend-grid">
+${[1,2,3,4,5,6].map(i=>`<div onclick="window.location.href='demo-profile.html?id=${i}'"><img src="https://i.pravatar.cc/100?img=${i}"><p>Friend ${i}</p></div>`).join('')}
+</div>
+</div>
+`;
+document.getElementById('profileContent').innerHTML = html;
+}
+
+function loadUserPosts(){
+let posts = [
+{text:"Today is a beautiful day ☀️", img:"600x400/4caf50"},
+{text:"Working on new project", img:"600x400/2196f3"},
+{text:"Weekend vibes", img:"600x400/ff9800"}
+];
+return posts.map((p,i)=>`
+<div class="post">
+<div class="post-header">
+<img src="https://i.pravatar.cc/40?img=${profileUser.img}">
+<div><b>${profileUser.name}</b><div style="font-size:12px; color:var(--text-secondary)">${i+1}h ago</div></div>
+</div>
+<p>${p.text}</p>
+<img src="https://via.placeholder.com/${p.img}" class="post-img">
+<div class="post-actions">
+<button onclick="likePost('p${i}')">👍 Like</button>
+<button onclick="toggleComment('c${i}')">💬 Comment</button>
+<button>↗️ Share</button>
+</div>
+<div class="comment-section" id="c${i}">
+<div class="comment-input">
+<input type="text" placeholder="Write a comment..." id="input${i}">
+<button onclick="addComment(${i})">Send</button>
+</div>
+<div id="comments${i}"></div>
+</div>
+</div>
+`).join('');
+}
+
+function showProfileTab(tab){
+document.querySelectorAll('.tabs div').forEach(t=>t.classList.remove('active'));
+if(tab=='posts'){document.getElementById('postsTab').style.display='block'; document.getElementById('aboutTab').style.display='none'; document.getElementById('friendsTab').style.display='none'; document.querySelectorAll('.tabs div')[0].classList.add('active');}
+if(tab=='about'){document.getElementById('postsTab').style.display='none'; document.getElementById('aboutTab').style.display='block'; document.getElementById('friendsTab').style.display='none'; document.querySelectorAll('.tabs div')[1].classList.add('active');}
+if(tab=='friends'){document.getElementById('postsTab').style.display='none'; document.getElementById('aboutTab').style.display='none'; document.getElementById('friendsTab').style.display='block'; document.querySelectorAll('.tabs div')[2].classList.add('active');}
+}
+
+function toggleFollow(){
+if(isFollowing){following = following.filter(id => id != profileUser.id);} 
+else{following.push(profileUser.id);}
+localStorage.setItem('following', JSON.stringify(following));
+isFollowing = !isFollowing;
+loadProfile();
+}
+
+function likePost(id){
+alert('Liked ✅');
+}
+
+function toggleComment(id){
+document.getElementById(id).style.display = document.getElementById(id).style.display=='block'?'none':'block';
+}
+
+function addComment(i){
+let val = document.getElementById(`input${i}`).value;
+if(val){
+document.getElementById(`comments${i}`).innerHTML += `<p><b>You:</b> ${val}</p>`;
+document.getElementById(`input${i}`).value='';
+}
+}
+
+loadProfile();
+</script>
+</body>
+</html>
