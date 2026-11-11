@@ -1,7 +1,7 @@
 const rateLimitMap = new Map();
 
 export default async function handler(req, res) {
-  // ডোমেইন সিকিউরিটি (CORS)
+  // ১. ডোমেইন সিকিউরিটি (শুধুমাত্র আপনার অ্যাপ থেকেই API কল করা যাবে)
   const allowedOrigins = ['https://vercel.app', 'http://localhost:3000'];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ reply: 'Method not allowed' });
 
-  // Rate Limiting (প্রতি মিনিটে সর্বোচ্চ ২০টি মেসেজ)
+  // ২. Rate Limiting চেক (প্রতি মিনিটে সর্বোচ্চ ২০টি মেসেজ)
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
   const windowMs = 60 * 1000;
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   rateLimitMap.set(ip, userRecord);
 
   if (userRecord.count > 20) {
-    return res.status(200).json({ reply: "Too many requests. Please wait a moment." });
+    return res.status(200).json({ reply: "Too many requests. Please wait a moment and try again." });
   }
 
   try {
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ reply: "Error: Invalid message history format." });
     }
 
-    // দ্রুত উত্তরের জন্য সর্বশেষ ১০টি মেসেজ নেওয়া হচ্ছে
+    // দ্রুত রেসপন্সের জন্য সর্বশেষ ১০টি মেসেজ নেওয়া হচ্ছে
     const recentHistory = history.slice(-10);
 
     const contents = recentHistory
@@ -58,7 +58,6 @@ export default async function handler(req, res) {
 
     const protocol = "https://";
     const host = "generativelanguage." + "googleapis.com";
-    // কোনো টাইমআউট বা লুপ ছাড়াই সবচেয়ে দ্রুতগতির মডেল সরাসরি কল করা হচ্ছে
     const fullUrl = protocol + host + "/v1beta/models/gemini-3.5-flash-lite:generateContent";
 
     const geminiResponse = await fetch(fullUrl, {
@@ -71,7 +70,7 @@ export default async function handler(req, res) {
         contents,
         systemInstruction: { 
           parts: [{ 
-            text: "You are Autro AI, the official assistant for Autrobook. Your primary and default language is English. However, you can understand and speak every language across all countries worldwide (including Bengali, Hindi, Arabic, Spanish, French, Urdu, Russian, Chinese, Japanese, Korean, German, Portuguese, Turkish, etc.). Always detect the exact language the user writes in and reply strictly in that same language. If a message is short or ambiguous, always reply in English. Be friendly, helpful, and brief." 
+            text: "You are Autro AI, the official assistant for Autrobook. The founder and admin of Autrobook is Abir Mazumder. Your primary and default language is English, and you can fluently speak and understand all languages across all countries worldwide (including Bengali, Hindi, Arabic, Spanish, French, Urdu, Russian, Chinese, Japanese, Korean, German, Portuguese, Turkish, etc.). Always detect the exact language the user writes in and reply strictly in that same language. If a message is short or ambiguous, default to English. Give complete, helpful, and friendly answers without cutting sentences short." 
           }] 
         }
       })
