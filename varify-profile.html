@@ -1,0 +1,104 @@
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Request Verification - Autrobook</title> <style> 
+:root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; --blue:#1877f2; --brand:#4caf50; } 
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;} 
+body{background:var(--bg);color:var(--text);} 
+.header{display:flex;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;} 
+.header b{flex:1;text-align:center;font-size:18px;} 
+.section{padding:16px;} 
+.section h2{font-size:20px;margin-bottom:8px;} 
+.section p{color:#aaa;font-size:14px;margin-bottom:20px;} 
+.upload-box{background:var(--card);padding:16px;border-radius:12px;margin-bottom:12px;border:1px dashed var(--border);cursor:pointer;} 
+.upload-box:hover{background:#2e2f30;} 
+.upload-box b{display:flex;align-items:center;gap:8px;font-size:16px;} 
+.upload-box p{font-size:12px;color:#aaa;margin:8px 0 0;} 
+.preview{width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin-top:10px;display:none;} 
+.btn{background:var(--blue);color:white;padding:14px;text-align:center;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:20px;border:none;width:100%;}
+.btn:disabled{background:#555;color:#777;}
+input[type="file"]{display:none;}
+.success{background:var(--brand);padding:20px;border-radius:12px;text-align:center;margin-top:20px;display:none;}
+</style> </head> <body> 
+
+<div class="header">
+<span onclick="history.back()">←</span>
+<b>Request Verification</b>
+</div>
+
+<div class="section">
+<h2>Verify your profile</h2>
+<p>We use your ID to confirm your name and photo. Your ID won't be visible on your profile.</p>
+
+<div class="upload-box" onclick="document.getElementById('nidFront').click()">
+<b>🪪 NID Front Side</b>
+<p>Take a clear photo of the front of your NID card</p>
+<img id="previewFront" class="preview">
+<input type="file" id="nidFront" accept="image/*" onchange="previewFile(event, 'previewFront')">
+</div>
+
+<div class="upload-box" onclick="document.getElementById('nidBack').click()">
+<b>🪪 NID Back Side</b>
+<p>Take a clear photo of the back of your NID card</p>
+<img id="previewBack" class="preview">
+<input type="file" id="nidBack" accept="image/*" onchange="previewFile(event, 'previewBack')">
+</div>
+
+<div class="upload-box" onclick="document.getElementById('selfie').click()">
+<b>🤳 Selfie with NID</b>
+<p>Take a selfie holding your NID next to your face</p>
+<img id="previewSelfie" class="preview">
+<input type="file" id="selfie" accept="image/*" onchange="previewFile(event, 'previewSelfie')">
+</div>
+
+<button class="btn" id="submitBtn" onclick="submitVerification()" disabled>Submit for Review</button>
+
+<div class="success" id="successMsg">
+<b>✅ Submitted!</b>
+<p style="margin-top:8px">Your request is under review. We’ll notify you within 48 hours.</p>
+</div>
+
+</div>
+
+<script>
+let files = {front: null, back: null, selfie: null};
+let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {};
+
+function previewFile(e, previewId){
+let file = e.target.files[0];
+if(!file) return;
+let reader = new FileReader();
+reader.onload = function(){
+document.getElementById(previewId).src = reader.result;
+document.getElementById(previewId).style.display = 'block';
+}
+reader.readAsDataURL(file);
+
+if(previewId === 'previewFront') files.front = file;
+if(previewId === 'previewBack') files.back = file;
+if(previewId === 'previewSelfie') files.selfie = file;
+
+checkSubmit();
+}
+
+function checkSubmit(){
+if(files.front && files.back && files.selfie){
+document.getElementById('submitBtn').disabled = false;
+}
+}
+
+function submitVerification(){
+document.getElementById('submitBtn').style.display = 'none';
+document.getElementById('successMsg').style.display = 'block';
+
+// Save to localStorage as "pending"
+currentUser.verificationStatus = 'pending';
+currentUser.verificationDate = Date.now();
+localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
+
+// Demo: 5 second por auto verified kore dibe
+setTimeout(()=>{
+currentUser.verified = true;
+currentUser.verificationStatus = 'verified';
+localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
+}, 5000);
+}
+</script>
+</body> </html>
