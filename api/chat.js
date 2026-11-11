@@ -1,80 +1,98 @@
-export default async function handler(req, res) {
-  // Enable CORS for all mobile browsers and in-app webviews
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+export const config = {
+  runtime: 'edge', // Runs globally with zero cold-start delay
+};
 
-  // Handle preflight request
+export default async function handler(req) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS, POST',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  // Allow only POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Only POST is supported.' });
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed. Use POST.' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
-    // Safely parse body for older mobile browsers
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const body = await req.json();
     const { prompt, history = [] } = body || {};
 
     if (!prompt || prompt.trim() === '') {
-      return res.status(400).json({ error: 'Prompt cannot be empty.' });
+      return new Response(
+        JSON.stringify({ error: 'Prompt cannot be empty.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Load your AQ. API key securely from Vercel Environment Variables
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'Server error: GEMINI_API_KEY is missing in Vercel.' });
+      return new Response(
+        JSON.stringify({ error: 'Server error: GEMINI_API_KEY is missing in Vercel.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Format conversation history and current user message
+    // Keep only the last 6 messages so slow mobile networks upload less data
+    const recentHistory = history.slice(-6);
     const formattedContents = [
-      ...history,
-      { role: 'user', parts: [{ text: prompt }] }
+      ...recentHistory,
+      { role: 'user', parts: [{ text: prompt }] },
     ];
 
-    // Official Google Gemini 2.5 Flash API Endpoint
+    // Full official Gemini 2.5 Flash endpoint
     const apiUrl = 'https://googleapis.com';
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey // Required header for AQ. API keys
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
         contents: formattedContents,
         systemInstruction: {
           parts: [
             {
-              text: 'You are Autro AI, the helpful assistant for Autrobook. Your primary language is English, and you must always respond in the exact same language the user writes in.'
-            }
-          ]
+              text: 'You are Autro AI, the helpful assistant for Autrobook. Your primary language is English, and you must always respond in the exact same language the user writes in. Keep answers clear and concise.',
+            },
+          ],
         },
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 1024
-        }
-      })
+          maxOutputTokens: 600,
+          thinkingConfig: {
+            thinkingBudget: 0, // Disables internal reasoning delay for instant replies
+          },
+        },
+      }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(response.status).json({
-        error: data.error?.message || 'Google API returned an error.'
-      });
+      return new Response(
+        JSON.stringify({ error: data.error?.message || 'Google API returned an error.' }),
+        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
-    return res.status(200).json({ reply });
 
+    return new Response(
+      JSON.stringify({ reply }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    return res.status(500).json({
-      error: 'Network timeout or server error: ' + error.message
-    });
+    return new Response(
+      JSON.stringify({ error: 'Server error: ' + error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 }
