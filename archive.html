@@ -1,30 +1,227 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Archive - Autrobook</title> <style> 
-:root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; } 
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;} 
-body{background:var(--bg);color:var(--text);} 
-.header{display:flex;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);} 
-.header b{flex:1;text-align:center;font-size:18px;} 
-.btn-group{display:flex;gap:8px;padding:16px;} 
-.btn{background:#3a3b3c;padding:8px 16px;border-radius:20px;border:none;color:var(--text);} 
-.empty{text-align:center;padding:60px 20px;color:#aaa;} 
-.card{background:var(--card);margin:16px;padding:16px;border-radius:8px;} 
-</style> </head> <body> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archive - Autrobook</title>
+<script>
+  // Auth Guard: Redirect immediately if user is not logged in
+  if (!localStorage.getItem('autrobook_user')) {
+    window.location.replace('login.html');
+  }
+  if (window.top !== window.self) {
+    window.top.location = window.self.location;
+  }
+</script>
+<style>
+  :root { --bg: #18191a; --card: #242526; --hover: #3a3b3c; --text: #e4e6eb; --sub: #b0b3b8; --border: #3a3b3c; --blue: #1877f2; }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding-bottom: 30px; }
+
+  .header { display: flex; align-items: center; padding: 14px 16px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .header span { cursor: pointer; font-size: 20px; padding: 2px 8px; border-radius: 50%; }
+  .header span:hover { background: var(--hover); }
+  .header b { flex: 1; text-align: center; font-size: 18px; margin-right: 24px; }
+
+  .container { max-width: 600px; margin: 0 auto; }
+  .btn-group { display: flex; gap: 8px; padding: 16px; overflow-x: auto; }
+  .btn { background: var(--card); padding: 9px 16px; border-radius: 20px; border: 1px solid var(--border); color: var(--text); font-size: 14px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: 0.2s; }
+  .btn:hover { background: var(--hover); }
+  .btn.active { background: rgba(24, 119, 242, 0.2); border-color: var(--blue); color: #4599ff; }
+
+  .card { background: var(--card); margin: 0 16px 16px; padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
+  .card b { font-size: 17px; }
+  .card p { color: var(--sub); font-size: 14px; margin-top: 6px; line-height: 1.4; }
+
+  /* Archived Item Card */
+  .archive-list { padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+  .item-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .item-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+  .item-body { font-size: 15px; line-height: 1.45; margin-bottom: 12px; white-space: pre-wrap; }
+  .item-actions { display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .act-btn { flex: 1; padding: 8px; border-radius: 6px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; }
+  .restore-btn { background: var(--blue); color: #fff; }
+  .trash-btn { background: var(--hover); color: #ff5252; }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--sub); font-size: 15px; }
+</style>
+</head>
+<body>
 
 <div class="header">
-<span onclick="history.back()">←</span>
-<b>Archive</b>
+  <span onclick="goBack()" title="Back">←</span>
+  <b>Archive</b>
 </div>
 
-<div class="btn-group">
-<button class="btn">📖 Story archive</button>
-<button class="btn" onclick="alert('Trash')">🗑️ Trash</button>
+<div class="container">
+  <div class="btn-group">
+    <button class="btn active" id="tabPosts" onclick="switchArchiveTab('posts')">📁 Post archive</button>
+    <button class="btn" id="tabStories" onclick="switchArchiveTab('stories')">📖 Story archive</button>
+    <button class="btn" onclick="openTrash()">🗑️ Trash (<span id="trashBadge">0</span>)</button>
+  </div>
+
+  <div class="card" id="infoCard">
+    <b id="infoTitle">Welcome to Post Archive</b>
+    <p id="infoDesc">Moving posts to archive is a way for you to save things you no longer want to show on your profile. Only you can see them.</p>
+  </div>
+
+  <div class="archive-list" id="archiveContainer"></div>
 </div>
 
-<div class="card">
-<b>Welcome to Archive</b>
-<p style="color:#aaa;margin-top:8px">Moving posts to archive is a way for you to save things you no longer want to show on your profile. Only you can see them.</p>
-</div>
+<script>
+  let currentTab = 'posts';
 
-<div class="empty">No items</div>
+  // Load or initialize archived items
+  let archivedPosts = JSON.parse(localStorage.getItem('autrobook_archived_posts') || 'null');
+  if (!archivedPosts) {
+    archivedPosts = [
+      { id: 101, content: "Welcome to my Autrobook profile! Excited to connect with everyone.", date: "Archived recently" }
+    ];
+    localStorage.setItem('autrobook_archived_posts', JSON.stringify(archivedPosts));
+  }
 
-</body> </html>
+  let archivedStories = JSON.parse(localStorage.getItem('autrobook_archived_stories') || '[]');
+  let trashLogs = JSON.parse(localStorage.getItem('autrobook_trash_logs') || '[]');
+
+  function updateTrashBadge() {
+    document.getElementById('trashBadge').textContent = trashLogs.length;
+  }
+
+  function switchArchiveTab(tab) {
+    currentTab = tab;
+    document.getElementById('tabPosts').classList.toggle('active', tab === 'posts');
+    document.getElementById('tabStories').classList.toggle('active', tab === 'stories');
+
+    if (tab === 'posts') {
+      document.getElementById('infoTitle').textContent = 'Welcome to Post Archive';
+      document.getElementById('infoDesc').textContent = 'Moving posts to archive is a way for you to save things you no longer want to show on your profile. Only you can see them.';
+    } else {
+      document.getElementById('infoTitle').textContent = 'Welcome to Story Archive';
+      document.getElementById('infoDesc').textContent = 'Your expired stories are saved here automatically so you can view or share them again anytime.';
+    }
+    renderArchiveList();
+  }
+
+  function renderArchiveList() {
+    updateTrashBadge();
+    const container = document.getElementById('archiveContainer');
+    container.innerHTML = '';
+
+    const items = currentTab === 'posts' ? archivedPosts : archivedStories;
+
+    if (items.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'empty';
+      emptyDiv.textContent = currentTab === 'posts' ? 'No archived posts found.' : 'No archived stories found.';
+      container.appendChild(emptyDiv);
+      return;
+    }
+
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+
+      const header = document.createElement('div');
+      header.className = 'item-header';
+      header.textContent = (currentTab === 'posts' ? '🔒 Archived Post • ' : '⏳ Archived Story • ') + (item.date || 'Saved');
+
+      const body = document.createElement('div');
+      body.className = 'item-body';
+      body.textContent = item.content; // XSS Safe
+
+      const actions = document.createElement('div');
+      actions.className = 'item-actions';
+
+      const restoreBtn = document.createElement('button');
+      restoreBtn.className = 'act-btn restore-btn';
+      restoreBtn.textContent = currentTab === 'posts' ? 'Restore to Profile' : 'Share Again';
+      restoreBtn.onclick = () => restoreItem(item.id);
+
+      const trashBtn = document.createElement('button');
+      trashBtn.className = 'act-btn trash-btn';
+      trashBtn.textContent = 'Move to Trash';
+      trashBtn.onclick = () => moveToTrash(item.id);
+
+      actions.appendChild(restoreBtn);
+      actions.appendChild(trashBtn);
+
+      card.appendChild(header);
+      card.appendChild(body);
+      card.appendChild(actions);
+      container.appendChild(card);
+    });
+  }
+
+  function restoreItem(id) {
+    if (currentTab === 'posts') {
+      const idx = archivedPosts.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        const [restored] = archivedPosts.splice(idx, 1);
+        localStorage.setItem('autrobook_archived_posts', JSON.stringify(archivedPosts));
+
+        // Save restored post back to active user posts if list exists
+        let userPosts = JSON.parse(localStorage.getItem('autrobook_user_posts') || '[]');
+        userPosts.unshift(restored);
+        localStorage.setItem('autrobook_user_posts', JSON.stringify(userPosts));
+
+        logActivity('Restored a post from Archive to Profile');
+        alert('Post restored to your profile!');
+      }
+    } else {
+      alert('Story ready to share again!');
+    }
+    renderArchiveList();
+  }
+
+  function moveToTrash(id) {
+    const list = currentTab === 'posts' ? archivedPosts : archivedStories;
+    const idx = list.findIndex(i => i.id === id);
+    if (idx !== -1) {
+      const [removed] = list.splice(idx, 1);
+      if (currentTab === 'posts') {
+        localStorage.setItem('autrobook_archived_posts', JSON.stringify(archivedPosts));
+      } else {
+        localStorage.setItem('autrobook_archived_stories', JSON.stringify(archivedStories));
+      }
+
+      trashLogs.push({ id: Date.now(), text: 'Archived ' + currentTab.slice(0, -1) + ': ' + removed.content.slice(0, 40) + '...' });
+      localStorage.setItem('autrobook_trash_logs', JSON.stringify(trashLogs));
+      logActivity('Moved an archived item to Trash');
+      renderArchiveList();
+    }
+  }
+
+  function openTrash() {
+    if (trashLogs.length === 0) {
+      alert('Your Trash is empty.');
+      return;
+    }
+    if (confirm(`You have ${trashLogs.length} item(s) in Trash.\nEmpty Trash permanently?`)) {
+      trashLogs = [];
+      localStorage.setItem('autrobook_trash_logs', JSON.stringify(trashLogs));
+      updateTrashBadge();
+      alert('Trash emptied!');
+    }
+  }
+
+  function logActivity(actionText) {
+    try {
+      let logs = JSON.parse(localStorage.getItem('autrobook_activity_logs') || '[]');
+      logs.unshift({ id: Date.now(), category: 'activity', text: actionText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      localStorage.setItem('autrobook_activity_logs', JSON.stringify(logs));
+    } catch (e) {}
+  }
+
+  function goBack() {
+    if (window.history.length > 1) {
+      history.back();
+    } else {
+      window.location.href = 'home.html';
+    }
+  }
+
+  // Initial load
+  renderArchiveList();
+</script>
+</body>
+</html>
