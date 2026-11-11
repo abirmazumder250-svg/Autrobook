@@ -25,33 +25,48 @@ export default async function handler(req, res) {
         parts: [{ text: String(msg.content) }]
       }));
 
-    const protocol = "https://";
-    const host = "generativelanguage." + "googleapis.com";
-    const endpoint = "/v1beta/models/gemini-3.8-flash:generateContent?key=";
-    const fullUrl = protocol + host + endpoint + API_KEY;
+    // একাধিক লেটেস্ট মডেল (একটিতে চাপ থাকলে স্বয়ংক্রিয়ভাবে পরেরটি কাজ করবে)
+    const models = [
+      "gemini-3.8-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.7-flash"
+    ];
 
-    const geminiResponse = await fetch(fullUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        systemInstruction: { 
-          parts: [{ text: "You are Autro AI, assistant for Autrobook. Always detect the user's language and reply strictly in the exact same language the user writes in. If a single short word is ambiguous (like 'Gi' or 'Hi'), default to English unless the user clearly writes in Bengali or another language. Be friendly, helpful and brief." }] 
+    let reply = null;
+    let lastError = "Unknown Error";
+
+    for (const modelName of models) {
+      const fullUrl = `https://googleapis.com{modelName}:generateContent?key=${API_KEY}`;
+
+      const geminiResponse = await fetch(fullUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: { 
+            parts: [{ 
+              text: "You are Autro AI, a multilingual personal assistant for Autrobook. You understand and speak all languages around the world (including English, Bengali, Hindi, Arabic, Spanish, French, Russian, Chinese, Japanese, Korean, German, Portuguese, Urdu, etc.). Always detect the exact language or script the user writes in and reply strictly in that same language. If a single short greeting is ambiguous (like 'Hi' or 'Gi'), default to English. Be friendly, helpful, and brief." 
+            }] 
+          }
+        })
+      });
+
+      const data = await geminiResponse.json();
+
+      if (geminiResponse.ok) {
+        const firstCandidate = data.candidates && data.candidates.at(0);
+        const firstPart = firstCandidate && firstCandidate.content && firstCandidate.content.parts && firstCandidate.content.parts.at(0);
+        if (firstPart && firstPart.text) {
+          reply = firstPart.text;
+          break;
         }
-      })
-    });
-
-    const data = await geminiResponse.json();
-    if (!geminiResponse.ok) {
-      return res.status(200).json({ reply: "Gemini API Error: " + (data.error?.message || "Unknown Error") });
+      } else {
+        lastError = data.error?.message || "Server busy";
+      }
     }
 
-    const firstCandidate = data.candidates && data.candidates.at(0);
-    const firstPart = firstCandidate && firstCandidate.content && firstCandidate.content.parts && firstCandidate.content.parts.at(0);
-    const reply = firstPart && firstPart.text;
-
     if (!reply) {
-      return res.status(200).json({ reply: "Error: AI could not generate a response. Please try again." });
+      return res.status(200).json({ reply: "Gemini API Error: " + lastError });
     }
     return res.status(200).json({ reply });
 
