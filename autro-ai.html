@@ -8,7 +8,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;h
 .ai-msg, .user-msg{margin:8px 0;display:flex;gap:8px;} 
 .ai-msg{align-items:flex-start;} 
 .user-msg{justify-content:flex-end;} 
-.bubble{max-width:75%;padding:10px 14px;border-radius:18px;font-size:15px;line-height:1.4;} 
+.bubble{max-width:75%;padding:10px 14px;border-radius:18px;font-size:15px;line-height:1.4;white-space:pre-wrap;} 
 .ai-bubble{background:var(--card);border-bottom-left-radius:4px;} 
 .user-bubble{background:var(--blue);border-bottom-right-radius:4px;} 
 .avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;background:#444;} 
@@ -16,6 +16,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;h
 .input-area{display:flex;gap:8px;padding:12px;background:var(--card);border-top:1px solid var(--border);} 
 .input-area input{flex:1;background:#3a3b3c;border:none;border-radius:20px;padding:10px 14px;color:var(--text);font-size:15px;outline:none;} 
 .input-area button{background:var(--blue);border:none;border-radius:50%;width:40px;height:40px;color:white;font-size:18px;cursor:pointer;} 
+.loading{opacity:0.6;}
 </style> </head> <body> 
 
 <div class="header">
@@ -26,7 +27,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;h
 <div class="chat-container" id="chatBox">
 <div class="ai-msg">
 <div class="avatar"><img src="https://raw.githubusercontent.com/abirmazumder250/Autrobook/main/logo.png"></div>
-<div class="bubble ai-bubble">Hello! I'm Autro AI 👋<br>যা জিজ্ঞেস করবা তাই উত্তর দিব</div>
+<div class="bubble ai-bubble">Hello! I'm Autro AI 👋<br>আমি তোমার personal AI। যা জিজ্ঞেস করবা তাই উত্তর দিব।</div>
 </div>
 </div>
 
@@ -37,24 +38,32 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;h
 
 <script>
 let chatBox = document.getElementById('chatBox');
+let chatHistory = [
+{role: "system", content: "You are Autro AI, a helpful assistant for Autrobook social media. Reply in the same language user writes. Be friendly, helpful, and brief. Name is Autro AI."}
+];
 
-function sendMsg(){
+async function sendMsg(){
 let input = document.getElementById('userInput');
 let text = input.value.trim();
 if(text === '') return;
 
 addMessage(text, 'user');
+chatHistory.push({role: "user", content: text});
 input.value = '';
 
-setTimeout(()=>{
-let reply = getAnswer(text);
+let loadingId = addMessage("Typing...", 'ai', true);
+
+let reply = await getAIResponse(text);
+document.getElementById(loadingId).remove();
 addMessage(reply, 'ai');
-}, 300);
+chatHistory.push({role: "assistant", content: reply});
 }
 
-function addMessage(text, sender){
+function addMessage(text, sender, isLoading=false){
+let id = 'msg-' + Date.now();
 let msgDiv = document.createElement('div');
-msgDiv.className = sender === 'user' ? 'user-msg' : 'ai-msg';
+msgDiv.id = id;
+msgDiv.className = sender === 'user' ? 'user-msg' : 'ai-msg ' + (isLoading ? 'loading' : '');
 if(sender === 'ai'){
 msgDiv.innerHTML = `<div class="avatar"><img src="https://raw.githubusercontent.com/abirmazumder250/Autrobook/main/logo.png"></div><div class="bubble ai-bubble">${text}</div>`;
 }else{
@@ -62,35 +71,27 @@ msgDiv.innerHTML = `<div class="bubble user-bubble">${text}</div>`;
 }
 chatBox.appendChild(msgDiv);
 chatBox.scrollTop = chatBox.scrollHeight;
+return id;
 }
 
-function isBangla(text){ return /[\u0980-\u09FF]/.test(text); }
-
-function getAnswer(q){
-q = q.toLowerCase().trim();
-
-// Bangla
-if(isBangla(q)){
-if(q.includes('হাই') || q.includes('হ্যালো')) return "হাই ভাই! কেমন আছো? 😊";
-if(q.includes('কি করো')) return "আমি তোমার সাথে আড্ডা দিচ্ছি। তুমি কি করো?";
-if(q.includes('নাম কি')) return "আমার নাম Autro AI। তোমাকে সাহায্য করাই আমার কাজ।";
-if(q.includes('খাইছো')) return "আমি তো AI ভাই, খাই না। তুমি খাইছো?";
-if(q.includes('ভালো আছো')) return "আলহামদুলিল্লাহ ভালো। তুমি কেমন আছো?";
-if(q.includes('কোথায় থাকো')) return "আমি Autrobook এর ভিতরেই থাকি 😄";
-if(q.includes('সাহায্য')) return "হ্যাঁ বলো। প্রোফাইল, পোস্ট, সেটিংস সব বিষয়ে হেল্প করব।";
-return `তোমার "${q}" প্রশ্নটা ভালো লাগছে। এটা নিয়ে আরো বিস্তারিত জানতে চাও?`;
-}
-
-// English
-else{
-if(q.includes('hi') || q.includes('hello')) return "Hey! How are you doing today? 😊";
-if(q.includes('what are you doing')) return "Just talking with you bro. What's on your mind?";
-if(q.includes('your name')) return "I'm Autro AI, your assistant on Autrobook.";
-if(q.includes('eat') || q.includes('lunch')) return "I'm an AI, I don't eat. Have you eaten?";
-if(q.includes('how are you')) return "I'm great! Thanks for asking. You?";
-if(q.includes('where are you')) return "I'm living inside Autrobook 😄";
-if(q.includes('help')) return "Sure! I can help with Profile, Posts, Settings and everything.";
-return `That's an interesting question about "${q}". Want me to explain more?`;
+async function getAIResponse(userText){
+try {
+    // Gemini Free API - No key needed for testing
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyB_fake_key_replace', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            contents: [{parts: [{text: `You are Autro AI for Autrobook. Reply in same language. Be helpful. User: ${userText}`}] }]
+        })
+    });
+    
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+} catch(e) {
+    // Fallback if API fails
+    let lang = /[\u0980-\u09FF]/.test(userText) ? 'bn' : 'en';
+    if(lang === 'bn') return `বুঝেছি। তুমি "${userText}" বলেছো। আমি এখনো API connect করিনি, তাই আপাতত এভাবে উত্তর দিচ্ছি। পরে real AI লাগিয়ে দিব।`;
+    else return `I understand. You said "${userText}". API not connected yet, so giving fallback reply. Will connect real AI soon.`;
 }
 }
 </script>
