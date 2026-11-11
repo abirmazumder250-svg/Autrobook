@@ -1,5 +1,5 @@
 <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Autrobook</title> <style> 
-:root{ --bg: #000; --card-bg: #18191a; --header-bg: #18191a; --text: #e4e6eb; --text-secondary: #b0b3b8; --border: #2f2f2f; --brand: #4caf50; --blue: #1877f2; --input-bg: #3a3b3c; } 
+:root{ --bg: #000; --card-bg: #18191a; --header-bg: #18191a; --text: #e4e6eb; --text-secondary: #b0b3b8; --border: #2f2f2f; --brand: #4caf50; --blue: #1877f2; --input-bg: #3a3b3c; --danger:#f44336; } 
 *{margin:0; padding:0; box-sizing:border-box; font-family:Arial;} 
 body{background:var(--bg); color:var(--text); padding-bottom:60px;} 
 .header{display:flex; justify-content:space-between; align-items:center; padding:8px 15px; background:var(--header-bg); position:sticky; top:0; z-index:10;} 
@@ -21,16 +21,19 @@ body{background:var(--bg); color:var(--text); padding-bottom:60px;}
 .post-user{display:flex; align-items:center; gap:10px; cursor:pointer;} 
 .post-user img{width:40px; height:40px; border-radius:50%;} 
 .post-stats{display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-secondary); padding:5px 0; border-bottom:1px solid var(--border);} 
-.reaction-summary{display:flex; gap:3px; align-items:center;}
+.reaction-summary{display:flex; gap:3px; align-items:center;} 
 .post-actions{display:flex; justify-content:space-around; padding-top:8px; position:relative;} 
-.post-actions button{background:none; border:none; color:var(--text-secondary); padding:8px; flex:1; cursor:pointer; border-radius:8px; position:relative;}
-.react-box{display:none; position:absolute; bottom:45px; left:5px; background:var(--card-bg); padding:8px; border-radius:30px; box-shadow:0 4px 12px black; gap:8px; border:1px solid var(--border);} 
+.post-actions button{background:none; border:none; color:var(--text-secondary); padding:8px; flex:1; cursor:pointer; border-radius:8px; position:relative;} 
+.post-actions button.active{color:var(--brand);}
+.react-box{display:none; position:absolute; bottom:45px; left:5px; background:var(--card-bg); padding:8px; border-radius:30px; box-shadow:0 4px 12px black; gap:8px; border:1px solid var(--border); z-index:10;} 
 .react-box span{font-size:28px; cursor:pointer; transition:0.2s;} 
-.react-box span:hover{transform:scale(1.4);}
+.react-box span:hover{transform:scale(1.4);} 
 .comment-section{display:none; padding-top:10px; border-top:1px solid var(--border);} 
-.comment{display:flex; gap:8px; margin:10px 0;} 
+.comment{display:flex; gap:8px; margin:10px 0; position:relative; align-items:flex-start;} 
 .comment img{width:32px; height:32px; border-radius:50%;} 
 .comment-box{flex:1; background:var(--input-bg); padding:8px 12px; border-radius:18px; font-size:14px;} 
+.comment-del{margin-left:5px; font-size:14px; color:var(--text-secondary); cursor:pointer; padding:5px;}
+.comment-del:hover{color:var(--danger);}
 .comment-input{display:flex; gap:8px; margin-top:10px;} 
 .comment-input input{flex:1; background:var(--input-bg); border:none; padding:10px; border-radius:20px; color:var(--text); outline:none;} 
 .comment-input button{background:var(--brand); border:none; color:white; padding:8px 15px; border-radius:20px; cursor:pointer;} 
@@ -50,9 +53,15 @@ body{background:var(--bg); color:var(--text); padding-bottom:60px;}
 .badge{position:absolute; top:0px; right:30%; background:#ff3b30; color:white; font-size:11px; font-weight:700; border-radius:12px; padding:1px 5px; min-width:18px; text-align:center; border:2px solid #18191a;} 
 .badge.blue{background:#1877f2;} 
 .badge.small{font-size:9px; padding:0px 4px; min-width:15px;} 
+
+/* Story Viewer */
+.story-viewer{display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1000; justify-content:center; align-items:center; flex-direction:column;}
+.story-viewer img{max-width:100%; max-height:90%; border-radius:12px;}
+.story-close{position:absolute; top:20px; right:20px; font-size:40px; color:white; cursor:pointer; z-index:1001;}
+.story-name{color:white; font-size:16px; margin-top:10px; font-weight:bold;}
 </style> </head> <body> 
 <script> 
-const REACTIONS = {like:'👍', love:'❤️', haha:'😆', wow:'😮', sad:'😢', angry:'😠'};
+const REACTIONS = {like:'👍', love:'❤️', haha:'😆', wow:'😮', sad:'😢', angry:'😠'}; 
 if(!localStorage.getItem('autrobook_user')){ window.location.href = 'login.html'; } 
 let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {name:"You", img:99, id:99}; 
 let posts = JSON.parse(localStorage.getItem('posts') || '[]'); 
@@ -70,6 +79,14 @@ let notifications = JSON.parse(localStorage.getItem('notifications') || JSON.str
 </div> 
 <!-- Reels --> 
 <div class="reels-container" id="reels"></div> 
+
+<!-- Story Viewer -->
+<div class="story-viewer" id="storyViewer">
+<span class="story-close" onclick="closeStory()">×</span>
+<img id="storyImg" src="">
+<div class="story-name" id="storyName"></div>
+</div>
+
 <!-- Bottom Nav --> 
 <div class="bottom-nav"> <div class="nav-item active" onclick="showTab('feed')">🏠</div> <div class="nav-item" onclick="showTab('reels')">🎬<span class="badge" id="reelBadge">3</span></div> <div class="nav-item" onclick="alert('Groups')">👥</div> <div class="nav-item" onclick="alert('Watch')">⭕</div> <div class="nav-item" onclick="showNotifications()">🔔<span class="badge blue" id="notiBadge"></span></div> <div class="nav-item" onclick="goProfile(currentUser.id)"><img src="https://i.pravatar.cc/28?img=99" class="profile-pic"></div> </div> 
 <script> 
@@ -96,11 +113,11 @@ return num;
 } 
 // PROFILE CLICK FIXED 
 function goProfile(id){ window.location.href = `profile.html?id=${id}`; } 
-// LOAD STORIES - BANGLA FIXED TO ENGLISH
+// LOAD STORIES - FIX 3: STORY CLICK WORKS
 function loadStories(){ 
 let html = `<div class="story" onclick="document.getElementById('storyInput').click()"><img src="https://i.pravatar.cc/110?img=99"><div class="plus">+</div><div class="story-name">Add Story</div></div>`; 
 storyData.slice(1).forEach(s=>{ 
-html += `<div class="story" onclick="alert('${s.name}'s Story will be shown')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`; 
+html += `<div class="story" onclick="openStory('https://i.pravatar.cc/400?img=${s.img}', '${s.name}')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`; 
 }); 
 document.getElementById('storiesList').innerHTML = html; 
 } 
@@ -129,9 +146,9 @@ function loadPosts(){
 let allPosts = posts.concat(demoUsers); 
 let postsHTML = ''; 
 allPosts.forEach((u,i)=>{ 
-let postId = u.id || 'p'+i;
-let reactionIcons = Object.values(u.reactions || {}).slice(0,3).map(r=>REACTIONS[r]).join('');
-let userReact = (u.reactions || {})[currentUser.name];
+let postId = u.id || 'p'+i; 
+let reactionIcons = Object.values(u.reactions || {}).slice(0,3).map(r=>REACTIONS[r]).join(''); 
+let userReact = (u.reactions || {})[currentUser.name]; 
 postsHTML += ` 
 <div class="post"> 
 <div class="post-user" onclick="goProfile('${u.id||99}')"> 
@@ -139,22 +156,28 @@ postsHTML += `
 <div><b>${u.name}</b><div style="font-size:12px; color:var(--text-secondary)">1h ago</div></div> 
 </div> 
 <p style="margin:10px 0;">${u.text}</p> 
-<div class="post-stats">
-<div class="reaction-summary">${reactionIcons} <span>${Object.keys(u.reactions || {}).length}</span></div>
-<span>${(u.comments || []).length} Comments</span>
+<div class="post-stats"> 
+<div class="reaction-summary">${reactionIcons} <span>${Object.keys(u.reactions || {}).length}</span></div> 
+<span>${(u.comments || []).length} Comments</span> 
 </div> 
 <div class="post-actions"> 
-<button onmouseenter="showReact('reactH${postId}')" onmouseleave="hideReact('reactH${postId}')">
+<button class="${userReact ? 'active' : ''}" onmouseenter="showReact('reactH${postId}')" onmouseleave="hideReact('reactH${postId}')"> 
 ${userReact ? REACTIONS[userReact] : '👍'} Like 
 <div class="react-box" id="reactH${postId}"> 
-${Object.keys(REACTIONS).map(k=>`<span onclick="likePost('${postId}','${k}')">${REACTIONS[k]}</span>`).join('')}
+${Object.keys(REACTIONS).map(k=>`<span onclick="likePost('${postId}','${k}')">${REACTIONS[k]}</span>`).join('')} 
 </div> 
 </button> 
 <button onclick="toggleComment('cH${postId}')">💬 Comment</button> 
 <button>↗️ Share</button> 
 </div> 
 <div class="comment-section" id="cH${postId}"> 
-${(u.comments || []).map(c=>`<div class="comment"><img src="https://i.pravatar.cc/32?img=${c.img}"><div class="comment-box"><b>${c.name}</b><br>${c.text}</div></div>`).join('')} 
+${(u.comments || []).map((c,j)=>`
+<div class="comment">
+<img src="https://i.pravatar.cc/32?img=${c.img}">
+<div class="comment-box"><b>${c.name}</b><br>${c.text}</div>
+${c.name == currentUser.name ? `<span class="comment-del" onclick="deleteComment('${postId}',${j})">✕</span>` : ''}
+</div>
+`).join('')} 
 <div class="comment-input"> 
 <input type="text" placeholder="Write a comment..." id="inputH${postId}" onkeypress="if(event.key=='Enter') addComment('${postId}')"> 
 <button onclick="addComment('${postId}')">Send</button> 
@@ -174,31 +197,58 @@ document.getElementById('caption').value='';
 loadPosts(); 
 } 
 } 
+
+// FIX 1: REACTION ADD/CHANGE/REMOVE WORKING
 function likePost(id,reaction){ 
-let allPosts = posts.concat(demoUsers);
-let post = allPosts.find(p=>p.id==id);
-if(!post) return;
-let prev = (post.reactions || {})[currentUser.name];
-if(prev == reaction){ delete post.reactions[currentUser.name]; } 
-else{ post.reactions[currentUser.name] = reaction; }
+let post = posts.find(p=>p.id==id); 
+if(!post) return; 
+let prev = (post.reactions || {})[currentUser.name]; 
+if(prev == reaction){ 
+delete post.reactions[currentUser.name]; // Remove
+} else{ 
+post.reactions[currentUser.name] = reaction; // Add or Change
+} 
 localStorage.setItem('posts', JSON.stringify(posts)); 
 loadPosts(); 
 } 
+
 function toggleComment(id){document.getElementById('cH'+id).style.display = document.getElementById('cH'+id).style.display=='block'?'none':'block';} 
 function showReact(id){document.getElementById(id).style.display='flex';} 
 function hideReact(id){setTimeout(()=>{if(!document.getElementById(id).matches(':hover')) document.getElementById(id).style.display='none';},300);} 
+
+// FIX 2: COMMENT ADD + DELETE
 function addComment(id){ 
 let val = document.getElementById(`inputH${id}`).value; 
 if(val){ 
-let allPosts = posts.concat(demoUsers);
-let post = allPosts.find(p=>p.id==id);
-if(!post) return;
+let post = posts.find(p=>p.id==id); 
+if(!post) return; 
 post.comments.push({name:currentUser.name, text:val, img:currentUser.img}); 
 localStorage.setItem('posts', JSON.stringify(posts)); 
-document.getElementById(`inputH${id}`).value = '';
+document.getElementById(`inputH${id}`).value = ''; 
 loadPosts(); 
 } 
 } 
+
+function deleteComment(postId, commentIndex){
+if(confirm('Delete this comment?')){
+let post = posts.find(p=>p.id==postId);
+if(!post) return;
+post.comments.splice(commentIndex, 1);
+localStorage.setItem('posts', JSON.stringify(posts));
+loadPosts();
+}
+}
+
+// FIX 3: STORY VIEWER
+function openStory(img, name){
+document.getElementById('storyImg').src = img;
+document.getElementById('storyName').innerText = name + "'s Story";
+document.getElementById('storyViewer').style.display = 'flex';
+}
+function closeStory(){
+document.getElementById('storyViewer').style.display = 'none';
+}
+
 // Notification Badge 
 function updateBadge(){ 
 let count = notifications.length; 
