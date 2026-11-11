@@ -11,11 +11,10 @@ body{background:var(--bg); color:var(--text); padding-bottom:60px;}
 .stories{display:flex; gap:10px; padding:10px; overflow-x:auto; background:var(--card-bg);} 
 .story{width:110px; height:180px; background:#333; border-radius:12px; position:relative; flex-shrink:0; border:2px solid var(--brand); cursor:pointer; overflow:hidden;} 
 .story img{width:100%; height:100%; object-fit:cover;} 
-.story .plus{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:var(--brand); border-radius:50%; width:30px; height:30px; text-align:center; line-height:30px; font-size:20px; border:3px solid var(--card-bg);} 
-.story-name{position:absolute; bottom:5px; left:5px; font-size:12px; font-weight:bold; color:white; text-shadow:0 0 5px black;} 
 #storyInput{display:none;}
 .story-add{width:110px; height:180px; background:var(--card-bg); border-radius:12px; position:relative; flex-shrink:0; border:2px dashed var(--border); cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;}
 .story-add .plus{width:40px; height:40px; background:var(--brand); border-radius:50%; text-align:center; line-height:40px; font-size:24px; margin-bottom:8px;}
+.story-name{position:absolute; bottom:5px; left:5px; font-size:12px; font-weight:bold; color:white; text-shadow:0 0 5px black;}
 
 .post-create{display:flex; gap:10px; padding:12px; background:var(--card-bg); margin:10px; border-radius:12px; align-items:center;} 
 .post-create img{width:40px; height:40px; border-radius:50%; cursor:pointer;} 
@@ -39,13 +38,22 @@ body{background:var(--bg); color:var(--text); padding-bottom:60px;}
 .comment-input{display:flex; gap:8px; margin-top:10px;} 
 .comment-input input{flex:1; background:var(--input-bg); border:none; padding:10px; border-radius:20px; color:var(--text); outline:none;} 
 .comment-input button{background:var(--brand); border:none; color:white; padding:8px 15px; border-radius:20px; cursor:pointer;} 
+
 .reels-container{height:100vh; background:black; overflow-y:scroll; scroll-snap-type:y mandatory;}
 .feed-container{display:none;}
-.reel{height:100vh; position:relative; scroll-snap-align:start;} 
+.reel{height:100vh; width:100%; position:relative; scroll-snap-align:start; background:black;} 
 .reel-video{width:100%; height:100%; object-fit:cover;} 
-.reel-user{position:absolute; bottom:80px; left:10px; display:flex; align-items:center; gap:10px; cursor:pointer;} 
-.reel-user img{width:40px; height:40px; border-radius:50%; border:2px solid var(--brand);} 
-.reel-views{position:absolute; bottom:25px; left:10px; font-size:13px;} 
+.reel-user{position:absolute; bottom:120px; left:15px; display:flex; align-items:center; gap:10px;} 
+.reel-user img{width:40px; height:40px; border-radius:50%; border:2px solid white;} 
+.reel-user b{font-size:15px; color:white;}
+.reel-desc{position:absolute; bottom:90px; left:15px; color:white; font-size:14px;}
+.reel-views{position:absolute; bottom:60px; left:15px; font-size:13px; color:white;}
+.reel-actions{position:absolute; right:15px; bottom:120px; display:flex; flex-direction:column; gap:20px; align-items:center;}
+.reel-btn{display:flex; flex-direction:column; align-items:center; color:white; font-size:12px; cursor:pointer;}
+.reel-btn span{font-size:32px;}
+.reel-react-box{display:none; position:absolute; bottom:80px; right:10px; background:var(--card-bg); padding:8px; border-radius:30px; gap:8px; z-index:10;}
+.reel-upload-btn{position:fixed; bottom:80px; right:20px; width:55px; height:55px; background:var(--brand); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:30px; cursor:pointer; z-index:50;}
+
 .bottom-nav{position:fixed; bottom:0; width:100%; background:#18191a; display:flex; justify-content:space-around; padding:6px 0 10px; border-top:1px solid #2f2f2f; z-index:99;} 
 .nav-item{position:relative; text-align:center; font-size:26px; color:#b0b3b8; cursor:pointer; flex:1;} 
 .nav-item.active{color:#ffffff;} 
@@ -53,56 +61,34 @@ body{background:var(--bg); color:var(--text); padding-bottom:60px;}
 .nav-item.active img.profile-pic{border:2px solid #fff;} 
 .badge{position:absolute; top:0px; right:30%; background:#ff3b30; color:white; font-size:11px; font-weight:700; border-radius:12px; padding:1px 5px; min-width:18px; text-align:center; border:2px solid #18191a;} 
 .badge.blue{background:#1877f2;} 
-.badge.small{font-size:9px; padding:0px 4px; min-width:15px;} 
 
 .story-viewer{display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1000; justify-content:center; align-items:center; flex-direction:column;}
 .story-viewer img{max-width:100%; max-height:90%; border-radius:12px;}
 .story-close{position:absolute; top:20px; right:20px; font-size:40px; color:white; cursor:pointer; z-index:1001;}
-.story-name{color:white; font-size:16px; margin-top:10px; font-weight:bold;}
 </style> </head> <body> 
 <audio id="reactSound" src="https://cdn.freesound.org/previews/456/456588_9498993-lq.mp3"></audio>
+<input type="file" id="reelInput" accept="video/*" style="display:none" onchange="uploadReel(event)">
 <script> 
 const REACTIONS = {like:'👍', love:'❤️', haha:'😆', wow:'😮', sad:'😢', angry:'😠'}; 
 if(!localStorage.getItem('autrobook_user')){ window.location.href = 'login.html'; } 
 let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {name:"You", img:99, id:99}; 
 let posts = JSON.parse(localStorage.getItem('posts') || '[]'); 
 let stories = JSON.parse(localStorage.getItem('stories') || '[]');
+let reels = JSON.parse(localStorage.getItem('reels') || '[]');
 let notifications = JSON.parse(localStorage.getItem('notifications') || JSON.stringify(["Rahim liked your post"])); 
-</script> 
-<div class="header"> <div class="logo">Autrobook</div> <div class="header-icons"> <span onclick="document.getElementById('storyInput').click()">+</span> <span>🔍</span> <span onclick="window.location.href='main-settings.html'">⚙️</span> </div> </div> 
-<input type="file" id="storyInput" accept="image/*" onchange="uploadStory(event)"> 
-<!-- Tabs - REELS FIRST -->
-<div class="tabs"> <div class="active" onclick="showTab('reels')">🎬 Reels</div> <div onclick="showTab('feed')">Home</div> </div> 
 
-<!-- REELS FIRST -->
-<div class="reels-container" id="reels"></div>
-
-<div class="feed-container" id="feed"> 
-<div class="stories" id="storiesList"></div> 
-<div class="post-create"> <img src="https://i.pravatar.cc/40?img=99" onclick="goProfile(currentUser.id)"> <input type="text" id="caption" placeholder="What's on your mind?" onkeypress="if(event.key=='Enter') createPost()"> <button onclick="createPost()">✈️</button> </div> 
-<div id="posts"></div> 
-</div> 
-
-<!-- Story Viewer -->
-<div class="story-viewer" id="storyViewer">
-<span class="story-close" onclick="closeStory()">×</span>
-<img id="storyImg" src="">
-<div class="story-name" id="storyName"></div>
-</div>
-
-<!-- Bottom Nav --> 
-<div class="bottom-nav"> <div class="nav-item active" onclick="showTab('reels')">🎬<span class="badge" id="reelBadge">3</span></div> <div class="nav-item" onclick="showTab('feed')">🏠</div> <div class="nav-item" onclick="alert('Groups')">👥</div> <div class="nav-item" onclick="alert('Watch')">⭕</div> <div class="nav-item" onclick="showNotifications()">🔔<span class="badge blue" id="notiBadge"></span></div> <div class="nav-item" onclick="goProfile(currentUser.id)"><img src="https://i.pravatar.cc/28?img=99" class="profile-pic"></div> </div> 
-<script> 
-const reelData = [ 
-{id:'r1', name:"Rahim Khan", userId:1, img:1, video:"https://www.w3schools.com/html/mov_bbb.mp4", views:32100}, 
-{id:'r2', name:"Sadia Afrin", userId:2, img:2, video:"https://www.w3schools.com/html/movie.mp4", views:98500}, 
-{id:'r3', name:"Nayeem Hasan", userId:3, img:3, video:"https://www.w3schools.com/html/mov_bbb.mp4", views:1200000} 
-]; 
 const demoUsers = [ 
 {id:1, name:"Rahim Khan", img:1, text:"Today is a beautiful day ☀️", reactions:{}, comments:[]}, 
 {id:2, name:"Sadia Afrin", img:2, text:"Love this new feature of Autrobook!", reactions:{}, comments:[]}, 
 {id:3, name:"Nayeem Hasan", img:3, text:"Who wants to go for a trip?", reactions:{}, comments:[]} 
 ]; 
+
+const defaultReels = [
+{id:'r1', name:"Rahim Khan", userId:1, img:1, video:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", desc:"4K Nature Video 🌿", reactions:{}, comments:[]},
+{id:'r2', name:"Sadia Afrin", userId:2, img:2, video:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", desc:"Travel Vlog ✈️", reactions:{}, comments:[]},
+{id:'r3', name:"Nayeem Hasan", userId:3, img:3, video:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", desc:"Dance Challenge 🔥", reactions:{}, comments:[]}
+];
+reels = reels.length > 0 ? reels : defaultReels;
 
 function formatNum(num){ 
 if(num >= 1000000) return (num/1000000).toFixed(1)+'M'; 
@@ -112,68 +98,13 @@ return num;
 function goProfile(id){ window.location.href = `profile.html?id=${id}`; } 
 function playSound(){ document.getElementById('reactSound').currentTime = 0; document.getElementById('reactSound').play().catch(()=>{}); }
 
-// STORY UPLOAD WORKING
-function loadStories(){ 
-let html = `<div class="story-add" onclick="document.getElementById('storyInput').click()"><div class="plus">+</div><div>Add Story</div></div>`; 
-stories.forEach((s,i)=>{ 
-html += `<div class="story" onclick="openStory('${s.img}', '${s.name}')"><img src="${s.img}"><div class="story-name">${s.name}</div></div>`; 
-}); 
-demoUsers.forEach(s=>{ 
-html += `<div class="story" onclick="openStory('https://i.pravatar.cc/400?img=${s.img}', '${s.name}')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`; 
-});
-document.getElementById('storiesList').innerHTML = html; 
-} 
-loadStories(); 
-
-function uploadStory(event){
-let file = event.target.files[0];
-if(file){
-let reader = new FileReader();
-reader.onload = function(e){
-stories.unshift({img: e.target.result, name: "Your Story"});
-localStorage.setItem('stories', JSON.stringify(stories));
-loadStories();
-alert('Story Uploaded ✅');
-}
-reader.readAsDataURL(file);
-}
-}
-
-function openStory(img, name){
-document.getElementById('storyImg').src = img;
-document.getElementById('storyName').innerText = name + "'s Story";
-document.getElementById('storyViewer').style.display = 'flex';
-}
-function closeStory(){
-document.getElementById('storyViewer').style.display = 'none';
-}
-
-function loadReels(){ 
-let html = ''; 
-reelData.forEach((r)=>{ 
-html += ` 
-<div class="reel"> 
-<video class="reel-video" id="video${r.id}" src="${r.video}" autoplay loop playsinline onclick="addView('${r.id}')"></video> 
-<div class="reel-user" onclick="goProfile('${r.userId}')"><img src="https://i.pravatar.cc/40?img=${r.img}"><b>${r.name}</b></div> 
-<div class="reel-views" id="view${r.id}">${formatNum(r.views)} views</div> 
-</div>`; 
-}); 
-document.getElementById('reels').innerHTML = html; 
-setTimeout(()=>{ document.querySelectorAll('.reel-video').forEach(v=>{v.volume=1.0; v.muted=false; v.play();}); }, 500) 
-} 
-loadReels(); 
-
-function addView(id){ 
-let reel = reelData.find(r=>r.id==id); 
-reel.views++; 
-document.getElementById('view'+id).innerText = formatNum(reel.views) + ' views'; 
-} 
-
+// FIXED: LOAD POSTS WITH DEMO REACT
 function loadPosts(){ 
-let allPosts = posts.concat(demoUsers); 
+let savedPosts = JSON.parse(localStorage.getItem('posts') || '[]');
+let allPosts = [...savedPosts, ...demoUsers]; 
 let postsHTML = ''; 
 allPosts.forEach((u,i)=>{ 
-let postId = u.id || 'p'+i; 
+let postId = u.id || 'demo'+i; 
 let reactionIcons = Object.values(u.reactions || {}).slice(0,3).map(r=>REACTIONS[r]).join(''); 
 let userReact = (u.reactions || {})[currentUser.name]; 
 postsHTML += ` 
@@ -208,7 +139,145 @@ ${(u.comments || []).map(c=>`<div class="comment"><img src="https://i.pravatar.c
 }); 
 document.getElementById('posts').innerHTML = postsHTML; 
 } 
+
+// FIXED: LIKE POST FOR DEMO + USER
+function likePost(id,reaction){ 
+playSound(); 
+let savedPosts = JSON.parse(localStorage.getItem('posts') || '[]');
+
+if(id.toString().startsWith('demo')){
+let demoReacts = JSON.parse(localStorage.getItem('demo_reacts') || '{}');
+demoReacts[id] = demoReacts[id] || {};
+let prev = demoReacts[id][currentUser.name];
+if(prev == reaction){ 
+delete demoReacts[id][currentUser.name]; 
+} else{ 
+demoReacts[id][currentUser.name] = reaction; 
+} 
+localStorage.setItem('demo_reacts', JSON.stringify(demoReacts));
+let demoIndex = parseInt(id.replace('demo',''));
+if(demoUsers[demoIndex]){
+demoUsers[demoIndex].reactions = demoReacts[id];
+}
+}else{
+let post = savedPosts.find(p=>p.id==id); 
+if(!post) return; 
+post.reactions = post.reactions || {};
+let prev = post.reactions[currentUser.name]; 
+if(prev == reaction){ 
+delete post.reactions[currentUser.name]; 
+} else{ 
+post.reactions[currentUser.name] = reaction; 
+} 
+localStorage.setItem('posts', JSON.stringify(savedPosts)); 
+}
 loadPosts(); 
+}
+
+function loadReels(){ 
+let html = ''; 
+reels.forEach((r,i)=>{ 
+let userReact = (r.reactions || {})[currentUser.name];
+let reactionIcons = Object.values(r.reactions || {}).slice(0,3).map(r=>REACTIONS[r]).join('');
+html += ` 
+<div class="reel"> 
+<video class="reel-video" id="video${r.id}" src="${r.video}" autoplay loop playsinline muted></video> 
+<div class="reel-user" onclick="goProfile('${r.userId}')"><img src="https://i.pravatar.cc/40?img=${r.img}"><b>${r.name}</b></div> 
+<div class="reel-desc">${r.desc}</div>
+<div class="reel-views">${reactionIcons} ${Object.keys(r.reactions || {}).length} · ${formatNum(r.comments?.length || 0)} Comments</div>
+<div class="reel-actions">
+<div class="reel-btn" onclick="toggleReelReact('reelReact${i}')"><span>${userReact || '❤️'}</span><div>Like</div></div>
+<div class="reel-btn" onclick="alert('Comment feature')"><span>💬</span><div>${r.comments?.length || 0}</div></div>
+<div class="reel-btn" onclick="downloadVideo('${r.video}')"><span>⬇️</span><div>4K</div></div>
+<div class="reel-btn" onclick="alert('Shared')"><span>↗️</span><div>Share</div></div>
+</div>
+<div class="reel-react-box" id="reelReact${i}">
+${Object.keys(REACTIONS).map(k=>`<span onclick="likeReel('${r.id}','${k}')">${REACTIONS[k]}</span>`).join('')}
+</div>
+</div>`; 
+}); 
+document.getElementById('reels').innerHTML = html; 
+autoPlayReels();
+} 
+
+function autoPlayReels(){
+let videos = document.querySelectorAll('.reel-video');
+let observer = new IntersectionObserver((entries)=>{
+entries.forEach(entry=>{
+if(entry.isIntersecting){
+entry.target.play();
+entry.target.muted = false;
+}else{
+entry.target.pause();
+}
+})
+},{threshold:0.6});
+videos.forEach(v=>observer.observe(v));
+}
+
+function downloadVideo(url){
+let a = document.createElement('a');
+a.href = url;
+a.download = 'Autrobook_4K_Reel.mp4';
+a.click();
+alert('4K Download Started ✅');
+}
+
+function uploadReel(event){
+let file = event.target.files[0];
+if(file){
+let url = URL.createObjectURL(file);
+reels.unshift({id:Date.now(), name:currentUser.name, userId:currentUser.id, img:currentUser.img, video:url, desc:"My 4K Reel 🎥", reactions:{}, comments:[]});
+localStorage.setItem('reels', JSON.stringify(reels));
+loadReels();
+alert('4K Reel Uploaded ✅');
+}
+}
+
+function toggleReelReact(id){
+let box = document.getElementById(id);
+box.style.display = box.style.display == 'flex' ? 'none' : 'flex';
+}
+
+function likeReel(id,reaction){ 
+playSound();
+let reel = reels.find(r=>r.id==id); 
+reel.reactions = reel.reactions || {};
+let prev = reel.reactions[currentUser.name]; 
+if(prev == reaction){ 
+delete reel.reactions[currentUser.name]; 
+} else{ 
+reel.reactions[currentUser.name] = reaction; 
+} 
+localStorage.setItem('reels', JSON.stringify(reels)); 
+loadReels(); 
+}
+
+function loadStories(){ 
+let html = `<div class="story-add" onclick="document.getElementById('storyInput').click()"><div class="plus">+</div><div>Add Story</div></div>`; 
+stories.forEach(s=>{ 
+html += `<div class="story" onclick="openStory('${s.img}')"><img src="${s.img}"><div class="story-name">${s.name}</div></div>`; 
+}); 
+demoUsers.forEach(s=>{ 
+html += `<div class="story" onclick="openStory('https://i.pravatar.cc/400?img=${s.img}')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`; 
+});
+document.getElementById('storiesList').innerHTML = html; 
+} 
+
+function uploadStory(event){
+let file = event.target.files[0];
+if(file){
+let reader = new FileReader();
+reader.onload = function(e){
+stories.unshift({img: e.target.result, name: "Your Story"});
+localStorage.setItem('stories', JSON.stringify(stories));
+loadStories();
+}
+reader.readAsDataURL(file);
+}
+}
+function openStory(img){document.getElementById('storyImg').src = img; document.getElementById('storyViewer').style.display = 'flex';}
+function closeStory(){document.getElementById('storyViewer').style.display = 'none';}
 
 function createPost(){ 
 let txt = document.getElementById('caption').value; 
@@ -220,65 +289,17 @@ loadPosts();
 } 
 } 
 
-// FACEBOOK STYLE REACT
 let reactTimeout;
-function showReact(id){
-clearTimeout(reactTimeout);
-document.getElementById(id).style.display='flex';
-}
-function hideReactDelay(id){
-reactTimeout = setTimeout(()=>{document.getElementById(id).style.display='none';},300);
-}
-
-function likePost(id,reaction){ 
-playSound(); // SOUND
-let post = posts.find(p=>p.id==id); 
-if(!post) return; 
-post.reactions = post.reactions || {};
-let prev = post.reactions[currentUser.name]; 
-if(prev == reaction){ 
-delete post.reactions[currentUser.name]; // Remove
-} else{ 
-post.reactions[currentUser.name] = reaction; // Add or Change
-} 
-localStorage.setItem('posts', JSON.stringify(posts)); 
-loadPosts(); 
-} 
+function showReact(id){clearTimeout(reactTimeout); document.getElementById(id).style.display='flex';}
+function hideReactDelay(id){reactTimeout = setTimeout(()=>{document.getElementById(id).style.display='none';},300);}
 
 function toggleComment(id){document.getElementById('cH'+id).style.display = document.getElementById('cH'+id).style.display=='block'?'none':'block';} 
+function addComment(id){ let val = document.getElementById(`inputH${id}`).value; if(val){ let post = posts.find(p=>p.id==id); if(post){ post.comments = post.comments || []; post.comments.push({name:currentUser.name, text:val, img:currentUser.img}); localStorage.setItem('posts', JSON.stringify(posts)); } document.getElementById(`inputH${id}`).value = ''; loadPosts(); } } 
 
-function addComment(id){ 
-let val = document.getElementById(`inputH${id}`).value; 
-if(val){ 
-let post = posts.find(p=>p.id==id); 
-if(!post) return; 
-post.comments = post.comments || [];
-post.comments.push({name:currentUser.name, text:val, img:currentUser.img}); 
-localStorage.setItem('posts', JSON.stringify(posts)); 
-document.getElementById(`inputH${id}`).value = ''; 
-loadPosts(); 
-} 
-} 
+function updateBadge(){ let count = notifications.length; let badge = document.getElementById('notiBadge'); if(count > 0){ badge.innerText = count > 9 ? '9+' : count; badge.style.display = 'block'; }else{ badge.style.display = 'none'; } } 
 
-// Notification Badge 
-function updateBadge(){ 
-let count = notifications.length; 
-let badge = document.getElementById('notiBadge'); 
-if(count > 0){ 
-badge.innerText = count > 9 ? '9+' : count; 
-badge.style.display = 'block'; 
-if(count >= 10) badge.classList.add('small'); else badge.classList.remove('small'); 
-}else{ badge.style.display = 'none'; } 
-} 
-updateBadge(); 
-function showNotifications(){ 
-alert('Notifications:\n' + notifications.join('\n')); 
-notifications = []; 
-localStorage.setItem('notifications', '[]'); 
-updateBadge(); 
-} 
+function showNotifications(){ alert('Notifications:\n' + notifications.join('\n')); notifications = []; localStorage.setItem('notifications', '[]'); updateBadge(); } 
 
-// DEFAULT REELS TAB
 function showTab(tab){ 
 document.querySelectorAll('.tabs div').forEach(t=>t.classList.remove('active')); 
 document.querySelectorAll('.nav-item').forEach(t=>t.classList.remove('active')); 
@@ -293,8 +314,23 @@ document.getElementById('feed').style.display='block';
 document.querySelectorAll('.tabs div')[1].classList.add('active'); 
 document.querySelectorAll('.nav-item')[1].classList.add('active'); 
 } 
-} 
-showTab('reels'); // Start with reels
+}
+
+// PAGE LOAD
+window.onload = function(){
+let demoReacts = JSON.parse(localStorage.getItem('demo_reacts') || '{}');
+Object.keys(demoReacts).forEach(id=>{
+let demoIndex = parseInt(id.replace('demo',''));
+if(demoUsers[demoIndex]){
+demoUsers[demoIndex].reactions = demoReacts[id];
+}
+})
+loadPosts();
+loadReels();
+loadStories();
+updateBadge();
+showTab('reels');
+}
 </script> 
 </body> 
 </html>
