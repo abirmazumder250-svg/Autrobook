@@ -1,13 +1,13 @@
 const rateLimitMap = new Map();
 
 export default async function handler(req, res) {
-  // ১. ডোমেইন সিকিউরিটি (CORS)
-  const allowedOrigins = ['https://vercel.app', 'http://localhost:3000'];
+  // ১. ডোমেইন সিকিউরিটি (আপনার আসল ডোমেইন যুক্ত করা হয়েছে)
+  const allowedOrigins = ['https://autrobook.vercel.app', 'http://localhost:3000'];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://autrobook.vercel.app');
   }
   
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -16,22 +16,26 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ reply: 'Method not allowed' });
 
-  // ২. Rate Limiting (প্রতি মিনিটে সর্বোচ্চ ২০টি মেসেজ)
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const windowMs = 60 * 1000;
-  const userRecord = rateLimitMap.get(ip) || { count: 0, startTime: now };
+  // ২. নিরাপদ Rate Limiting (প্রতি মিনিটে সর্বোচ্চ ২০টি মেসেজ)
+  try {
+    const ip = (req.headers && req.headers['x-forwarded-for']) || 'user-ip';
+    const now = Date.now();
+    const windowMs = 60 * 1000;
+    const userRecord = rateLimitMap.get(ip) || { count: 0, startTime: now };
 
-  if (now - userRecord.startTime > windowMs) {
-    userRecord.count = 1;
-    userRecord.startTime = now;
-  } else {
-    userRecord.count++;
-  }
-  rateLimitMap.set(ip, userRecord);
+    if (now - userRecord.startTime > windowMs) {
+      userRecord.count = 1;
+      userRecord.startTime = now;
+    } else {
+      userRecord.count++;
+    }
+    rateLimitMap.set(ip, userRecord);
 
-  if (userRecord.count > 20) {
-    return res.status(200).json({ reply: "Too many requests. Please wait a moment and try again." });
+    if (userRecord.count > 20) {
+      return res.status(200).json({ reply: "Too many requests. Please wait a moment and try again." });
+    }
+  } catch (rateErr) {
+    // Rate limit চেক ফেইল হলেও চ্যাট বন্ধ হবে না
   }
 
   try {
@@ -40,21 +44,33 @@ export default async function handler(req, res) {
       return res.status(200).json({ reply: "Error: GEMINI_API_KEY is not set in Vercel." });
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (parseErr) {
+        return res.status(200).json({ reply: "Error: Invalid JSON format." });
+      }
+    }
+
     const history = body && body.history;
     if (!history || !Array.isArray(history)) {
       return res.status(200).json({ reply: "Error: Invalid message history format." });
     }
 
-    // সর্বশেষ ১০টি মেসেজ নেওয়া হচ্ছে যাতে চ্যাট দ্রুত ও নির্ভুল থাকে
+    // সর্বশেষ ১০টি মেসেজ নেওয়া হচ্ছে
     const recentHistory = history.slice(-10);
 
     const contents = recentHistory
-      .filter(msg => msg.role !== 'system' && msg.content)
+      .filter(msg => msg && msg.role !== 'system' && msg.content)
       .map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: String(msg.content) }]
       }));
+
+    if (contents.length === 0) {
+      return res.status(200).json({ reply: "Hello! How can I help you today?" });
+    }
 
     const protocol = "https://";
     const host = "generativelanguage." + "googleapis.com";
@@ -76,20 +92,25 @@ export default async function handler(req, res) {
       })
     });
 
-    const data = await geminiResponse.json();
+    const rawText = await geminiResponse.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (jsonErr) {
+      return res.status(200).json({ reply: "Google server returned an invalid response. Please try again." });
+    }
 
     if (!geminiResponse.ok) {
       const errMsg = (data.error && data.error.message) ? data.error.message : "API Error";
       return res.status(200).json({ reply: "Error: " + errMsg });
     }
 
-    // সঠিক ইনডেক্স ব্যবহার করে রেসপন্স বের করা হচ্ছে (এখানেই আগে 500 error হচ্ছিল)
-    const candidate = data.candidates && data.candidates.at(0);
-    const part = candidate && candidate.content && candidate.content.parts && candidate.content.parts.at(0);
+    const candidate = data.candidates && data.candidates[0];
+    const part = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0];
     const reply = part && part.text;
 
     if (!reply) {
-      return res.status(200).json({ reply: "Could not generate a response. Please try again." });
+      return res.status(200).json({ reply: "Hello! How can I assist you today?" });
     }
 
     return res.status(200).json({ reply });
