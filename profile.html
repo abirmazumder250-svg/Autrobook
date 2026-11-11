@@ -16,7 +16,6 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .btn{flex:1; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;} 
 .btn-primary{background:var(--brand); color:white;} 
 .btn-secondary{background:var(--card-bg); color:var(--text);} 
-.btn-danger{background:#f44336; color:white;} 
 .tabs{display:flex; justify-content:space-around; border-bottom:1px solid var(--border);} 
 .tabs div{padding:12px; flex:1; text-align:center; cursor:pointer;} 
 .tabs div.active{border-bottom:3px solid var(--brand); color:var(--brand);} 
@@ -36,11 +35,9 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .react-box span{font-size:28px; cursor:pointer; transition:0.2s;} 
 .react-box span:hover{transform:scale(1.4);} 
 .comment-section{display:none; padding-top:10px; border-top:1px solid var(--border);} 
-.comment{display:flex; gap:8px; margin:10px 0; position:relative; align-items:flex-start;} 
+.comment{display:flex; gap:8px; margin:10px 0;} 
 .comment img{width:32px; height:32px; border-radius:50%;} 
 .comment-box{flex:1; background:var(--bg); padding:8px 12px; border-radius:18px;} 
-.comment-del{margin-left:5px; font-size:14px; color:var(--text-secondary); cursor:pointer; padding:5px;}
-.comment-del:hover{color:#f44336;}
 .comment-input{display:flex; gap:8px; margin-top:10px;} 
 .comment-input input{flex:1; background:var(--bg); border:none; padding:10px; border-radius:20px; color:var(--text); outline:none;} 
 .comment-input button{background:var(--brand); border:none; color:white; padding:8px 15px; border-radius:20px; cursor:pointer;} 
@@ -50,6 +47,7 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .menu-list{display:none; position:absolute; right:0; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:5px 0; z-index:5; width:200px;} 
 .menu-list div{padding:10px; cursor:pointer;} 
 .menu-list div:hover{background:var(--hover);} 
+.error-box{padding:20px; text-align:center; color:var(--danger);}
 </style> </head> <body> 
 <div class="header"> <span onclick="window.location.href='home.html'">←</span> <span>Autrobook</span> <span onclick="window.location.href='main-settings.html'">⚙️</span> </div> 
 <div id="profileContent"></div> 
@@ -64,12 +62,23 @@ const demoUsers = [
 ]; 
 
 let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {id:0, name:"You", img:99, username:"you", email:"you@mail.com"}; 
-let userId = new URLSearchParams(window.location.search).get('id') || currentUser.id; 
-let profileUser = demoUsers.find(u => u.id == userId) || currentUser; 
+let userId = new URLSearchParams(window.location.search).get('id'); 
+
+// FIX: ERROR HANDLING ADDED
+let profileUser;
+if(userId && demoUsers.find(u => u.id == userId)){
+    profileUser = demoUsers.find(u => u.id == userId);
+}else if(!userId){
+    profileUser = currentUser; // নিজের প্রোফাইল
+}else{
+    profileUser = currentUser; // না পেলে নিজেরটা দেখাও
+}
+
+let profileId = profileUser.id || 0; // id না থাকলে 0
 let following = JSON.parse(localStorage.getItem('following') || '[]'); 
 let blocked = JSON.parse(localStorage.getItem('blocked') || '[]'); 
-let isFollowing = following.includes(profileUser.id); 
-let isBlocked = blocked.includes(profileUser.id); 
+let isFollowing = following.includes(profileId); 
+let isBlocked = blocked.includes(profileId); 
 
 if(profileUser.locked){ 
 document.body.classList.add('locked'); 
@@ -83,38 +92,35 @@ return fa.filter(x => fb.includes(x)).length;
 } 
 
 function loadProfile(){ 
+try{
 if(isBlocked){ 
 document.getElementById('profileContent').innerHTML = ` 
 <div style="text-align:center; padding:50px;"> 
 <h2>🚫 You blocked ${profileUser.name}</h2> 
-<p>You won't see each other's posts or profile</p> 
 <button class="btn btn-secondary" onclick="unblockUser()">Unblock</button> 
 </div>`; 
 return; 
 } 
-let mutual = getMutual(currentUser.id, profileUser.id); 
-let isMyProfile = currentUser.id == profileUser.id; 
-
-// FIX 1: SHOW LOGIN NAME FOR MY PROFILE
+let mutual = getMutual(currentUser.id, profileId); 
+let isMyProfile = currentUser.id == profileId; 
 let displayName = isMyProfile ? currentUser.name : profileUser.name;
 let loginInfo = isMyProfile ? `@${currentUser.username}` : `${profileUser.email || '@'+profileUser.username}`;
 
 let html = ` 
 <div class="cover ${profileUser.locked ? 'blur' : ''}"> 
-<img src="${profileUser.cover}"> 
-<img src="https://i.pravatar.cc/130?img=${profileUser.img}" class="profile-pic"> 
+<img src="${profileUser.cover || 'https://via.placeholder.com/600x200/333'}"> 
+<img src="https://i.pravatar.cc/130?img=${profileUser.img || 99}" class="profile-pic"> 
 </div> 
 <div class="profile-info"> 
-<h1>${displayName}</h1>  <!-- CHANGED -->
+<h1>${displayName}</h1> 
 <p>${loginInfo}</p> 
-<p>${profileUser.bio}</p> 
+<p>${profileUser.bio || ''}</p> 
 ${profileUser.dobPublic ? `<p>🎂 Born: ${profileUser.dob}</p>` : ''} 
-<p><b>${profileUser.friends.length}</b> Friends · <b>${mutual}</b> Mutual</p> 
+<p><b>${profileUser.friends?.length || 0}</b> Friends · <b>${mutual}</b> Mutual</p> 
 <div class="profile-buttons"> 
 ${!isMyProfile ? `<button class="btn ${isFollowing ? 'btn-secondary' : 'btn-primary'}" onclick="toggleFollow()">${isFollowing ? 'Unfriend' : 'Follow'}</button>` : '<button class="btn btn-primary" onclick="window.location.href=\'edit-profile.html\'">Edit Profile</button>'} 
 ${!isMyProfile ? '<button class="btn btn-secondary">Message</button>' : ''} 
 <div style="position:relative"><button class="btn btn-secondary" onclick="toggleMenu('profileMenu')">⋯</button> 
-<!-- FIX 2: COPY LINK ADDED -->
 <div class="menu-list" id="profileMenu"> 
 <div onclick="copyProfileLink()">🔗 Copy Profile Link</div>
 ${!isMyProfile ? `<div onclick="blockUser()">🚫 Block ${profileUser.name}</div>` : ''}
@@ -135,46 +141,48 @@ ${isMyProfile ? `
 </div> 
 <div id="postsTab">${loadUserPosts()}</div> 
 <div id="aboutTab" style="display:none; padding:15px;"> 
-<b>About ${displayName}</b><br>  <!-- CHANGED -->
-<p>${profileUser.bio}</p> 
+<b>About ${displayName}</b><br> 
+<p>${profileUser.bio || ''}</p> 
 <p>📧 Email: ${profileUser.email || 'Not set'}</p> 
 ${profileUser.dobPublic ? `<p>🎂 Birthday: ${profileUser.dob}</p>` : '<p>Birthday: Only Me</p>'} 
 </div> 
 <div id="friendsTab" style="display:none;"><div class="friend-grid"> 
-${profileUser.friends.map(fid=>{let f=demoUsers.find(u=>u.id==fid); return `<div onclick="window.location.href='profile.html?id=${f.id}'"><img src="https://i.pravatar.cc/100?img=${f.img}"><p>${f.name}</p></div>`}).join('')} 
+${(profileUser.friends || []).map(fid=>{let f=demoUsers.find(u=>u.id==fid); return f ? `<div onclick="window.location.href='profile.html?id=${f.id}'"><img src="https://i.pravatar.cc/100?img=${f.img}"><p>${f.name}</p></div>` : ''}).join('')} 
 </div></div> 
 `; 
 document.getElementById('profileContent').innerHTML = html; 
+}catch(e){
+document.getElementById('profileContent').innerHTML = `<div class="error-box"><h2>Error Loading Profile</h2><p>${e.message}</p></div>`;
+}
 } 
 
 function loadUserPosts(){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+profileUser.id) || '[]'); 
+let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
 if(posts.length==0){ 
 posts = [ 
-{text:"Today is a beautiful day ☀️", reactions:{}, comments:[]}, 
-{text:"Working on new project", reactions:{}, comments:[]} 
+{text:"No posts yet", reactions:{}, comments:[]} 
 ]; 
 } 
 return posts.map((p,i)=>{ 
-let reactionIcons = Object.values(p.reactions).slice(0,3).map(r=>REACTIONS[r]).join(''); 
-let userReact = p.reactions[currentUser.name]; 
+let reactionIcons = Object.values(p.reactions || {}).slice(0,3).map(r=>REACTIONS[r]).join(''); 
+let userReact = (p.reactions || {})[currentUser.name]; 
 return` 
 <div class="post"> 
 <div class="post-header"> 
 <div class="post-user"> 
-<img src="https://i.pravatar.cc/40?img=${profileUser.img}"> 
+<img src="https://i.pravatar.cc/40?img=${profileUser.img || 99}"> 
 <div><b>${profileUser.name}</b><div style="font-size:12px; color:var(--text-secondary)">2h ago</div></div> 
 </div> 
 </div> 
 <p>${p.text}</p> 
 <div class="post-stats"> 
-<div class="reaction-summary">${reactionIcons} <span>${Object.keys(p.reactions).length}</span></div> 
-<span>${p.comments.length} Comments</span> 
+<div class="reaction-summary">${reactionIcons} <span>${Object.keys(p.reactions || {}).length}</span></div> 
+<span>${(p.comments || []).length} Comments</span> 
 </div> 
 <div class="post-actions"> 
-<button class="${userReact ? 'active' : ''}" onmouseenter="showReact('reactP${i}')" onmouseleave="hideReact('reactP${i}')"> 
+<button class="${userReact ? 'active' : ''}" onclick="toggleReactMenu('reactP${i}')"> 
 ${userReact ? REACTIONS[userReact] : '👍'} Like 
-<div class="react-box" id="reactP${i}"> 
+<div class="react-box" id="reactP${i}" onmouseleave="hideReact('reactP${i}')"> 
 ${Object.keys(REACTIONS).map(k=>`<span onclick="likePost(${i},'${k}')">${REACTIONS[k]}</span>`).join('')} 
 </div> 
 </button> 
@@ -182,13 +190,7 @@ ${Object.keys(REACTIONS).map(k=>`<span onclick="likePost(${i},'${k}')">${REACTIO
 <button>↗️ Share</button> 
 </div> 
 <div class="comment-section" id="cP${i}"> 
-${p.comments.map((c,j)=>`
-<div class="comment">
-<img src="https://i.pravatar.cc/32?img=${c.img}">
-<div class="comment-box"><b>${c.name}</b><br>${c.text}</div>
-${c.name == currentUser.name ? `<span class="comment-del" onclick="deleteComment(${i},${j})">✕</span>` : ''}
-</div>
-`).join('')} 
+${(p.comments || []).map(c=>`<div class="comment"><img src="https://i.pravatar.cc/32?img=${c.img}"><div class="comment-box"><b>${c.name}</b><br>${c.text}</div></div>`).join('')} 
 <div class="comment-input"> 
 <input type="text" placeholder="Write a comment..." id="inputP${i}" onkeypress="if(event.key=='Enter') addComment(${i})"> 
 <button onclick="addComment(${i})">Send</button> 
@@ -220,7 +222,7 @@ if(tab=='friends'){document.getElementById('friendsTab').style.display='block'; 
 function toggleFollow(){ 
 if(isFollowing){ 
 if(confirm('Unfriend '+profileUser.name+'?')){ 
-following = following.filter(id => id != profileUser.id); 
+following = following.filter(id => id != profileId); 
 localStorage.setItem('following', JSON.stringify(following)); 
 isFollowing = false; 
 alert('Unfriended ✅'); 
@@ -228,7 +230,7 @@ loadProfile();
 } 
 } 
 else{ 
-following.push(profileUser.id); 
+following.push(profileId); 
 localStorage.setItem('following', JSON.stringify(following)); 
 isFollowing = true; 
 alert('Followed ✅'); 
@@ -238,7 +240,7 @@ loadProfile();
 
 function blockUser(){ 
 if(confirm('Block '+profileUser.name+'?')){ 
-blocked.push(profileUser.id); 
+blocked.push(profileId); 
 localStorage.setItem('blocked', JSON.stringify(blocked)); 
 isBlocked = true; 
 alert('Blocked ✅'); 
@@ -247,15 +249,21 @@ loadProfile();
 } 
 
 function unblockUser(){ 
-blocked = blocked.filter(id => id != profileUser.id); 
+blocked = blocked.filter(id => id != profileId); 
 localStorage.setItem('blocked', JSON.stringify(blocked)); 
 isBlocked = false; 
 alert('Unblocked ✅'); 
 loadProfile(); 
 } 
 
+function toggleReactMenu(id){
+let box = document.getElementById(id);
+box.style.display = box.style.display == 'flex' ? 'none' : 'flex';
+}
+
 function likePost(i,reaction){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+profileUser.id)); 
+let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
+posts[i].reactions = posts[i].reactions || {};
 let prev = posts[i].reactions[currentUser.name]; 
 if(prev == reaction){ 
 delete posts[i].reactions[currentUser.name]; 
@@ -263,35 +271,25 @@ delete posts[i].reactions[currentUser.name];
 else{ 
 posts[i].reactions[currentUser.name] = reaction; 
 } 
-localStorage.setItem('posts_'+profileUser.id, JSON.stringify(posts)); 
+localStorage.setItem('posts_'+profileId, JSON.stringify(posts)); 
 loadProfile(); 
 } 
 
 function toggleComment(id){document.getElementById(id).style.display = document.getElementById(id).style.display=='block'?'none':'block';} 
-function showReact(id){document.getElementById(id).style.display='flex';} 
-function hideReact(id){setTimeout(()=>{if(!document.getElementById(id).matches(':hover')) document.getElementById(id).style.display='none';},300);} 
+function hideReact(id){setTimeout(()=>{document.getElementById(id).style.display='none';},200);} 
 
 function addComment(i){ 
 let val = document.getElementById(`inputP${i}`).value; 
 if(val){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+profileUser.id)); 
+let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
+posts[i].comments = posts[i].comments || [];
 posts[i].comments.push({name:currentUser.name, text:val, img:currentUser.img}); 
-localStorage.setItem('posts_'+profileUser.id, JSON.stringify(posts)); 
+localStorage.setItem('posts_'+profileId, JSON.stringify(posts)); 
 document.getElementById(`inputP${i}`).value = ''; 
 loadProfile(); 
 } 
 } 
 
-function deleteComment(postIndex, commentIndex){
-if(confirm('Delete this comment?')){
-let posts = JSON.parse(localStorage.getItem('posts_'+profileUser.id));
-posts[postIndex].comments.splice(commentIndex, 1);
-localStorage.setItem('posts_'+profileUser.id, JSON.stringify(posts));
-loadProfile();
-}
-}
-
-// FIX 2: COPY PROFILE LINK FUNCTION
 function copyProfileLink(){
 navigator.clipboard.writeText(window.location.href);
 alert('Profile Link Copied ✅');
