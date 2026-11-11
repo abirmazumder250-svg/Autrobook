@@ -2,7 +2,7 @@
 :root{ --bg: #0a1a0f; --card-bg: #13261a; --header-bg: #13261a; --text: #e4e6eb; --text-secondary: #7a9e80; --border: #1f3d2a; --brand: #4caf50; --hover: #1f3d2a; } 
 *{margin:0; padding:0; box-sizing:border-box; font-family:Arial;} 
 body{background:var(--bg); color:var(--text); padding-bottom:60px; -webkit-user-select: none; user-select: none;} 
-body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9999;} 
+body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:9998; pointer-events:none;} 
 .header{display:flex; justify-content:space-between; align-items:center; padding:10px 15px; background:var(--header-bg); position:sticky; top:0; z-index:10;} 
 .header span{font-size:22px; cursor:pointer;} 
 .cover{width:100%; height:200px; background:#1f3d2a; position:relative;} 
@@ -47,11 +47,11 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .friend-grid div{text-align:center; cursor:pointer;} 
 .friend-grid img{width:100%; border-radius:8px; aspect-ratio:1/1; object-fit:cover;} 
 .menu-list{display:none; position:absolute; right:0; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:5px 0; z-index:5; width:220px;} 
-.menu-list div{padding:10px; cursor:pointer;} 
+.menu-list div{padding:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;} 
 .menu-list div:hover{background:var(--hover);} 
-.switch{position:relative; display:inline-block; width:40px; height:22px; float:right;} 
+.switch{position:relative; display:inline-block; width:40px; height:22px;} 
 .switch input{opacity:0; width:0; height:0;} 
-.slider{position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:22px;} 
+.slider{position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#555; transition:.4s; border-radius:22px;} 
 .slider:before{position:absolute; content:""; height:16px; width:16px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;} 
 input:checked + .slider{background-color:var(--brand);} 
 input:checked + .slider:before{transform:translateX(18px);} 
@@ -70,27 +70,33 @@ const demoUsers = [
 
 let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {id:0, name:"You", img:99, username:"you", email:"you@mail.com", bio:"", cover:"", profilePic:"", profileGuard:false, professional:false}; 
 let userId = new URLSearchParams(window.location.search).get('id'); 
-
 let profileUser;
+
+function initProfile(){
 if(userId && demoUsers.find(u => u.id == userId)){
-    profileUser = demoUsers.find(u => u.id == userId);
+    profileUser = {...demoUsers.find(u => u.id == userId)};
 }else{
-    profileUser = currentUser; // নিজের প্রোফাইল
+    profileUser = {...currentUser}; // copy so we can modify
 }
+applyGuardLock();
+}
+
+function applyGuardLock(){
+if(profileUser.locked || profileUser.profileGuard){ 
+document.body.classList.add('locked'); 
+document.addEventListener('contextmenu', e=>e.preventDefault()); 
+} else { 
+document.body.classList.remove('locked');
+document.removeEventListener('contextmenu', e=>e.preventDefault());
+} 
+}
+
 let profileId = profileUser.id || 0; 
 let following = JSON.parse(localStorage.getItem('following') || '[]'); 
 let blocked = JSON.parse(localStorage.getItem('blocked') || '[]'); 
 let isFollowing = following.includes(profileId); 
 let isBlocked = blocked.includes(profileId); 
-let isMyProfile = currentUser.id == profileId;
-
-// FIX: USE UPDATED profileUser for guard check
-if(profileUser.locked || profileUser.profileGuard){ 
-document.body.classList.add('locked'); 
-document.addEventListener('contextmenu', e=>e.preventDefault()); 
-} else {
-document.body.classList.remove('locked');
-} 
+let isMyProfile = currentUser.id == profileId; 
 
 function getMutual(a,b){ 
 let fa = demoUsers.find(u=>u.id==a)?.friends || []; 
@@ -110,10 +116,9 @@ return;
 } 
 let mutual = getMutual(currentUser.id, profileId); 
 let displayName = isMyProfile ? currentUser.name : profileUser.name;
-let loginInfo = isMyProfile ? `@${currentUser.username}` : `${profileUser.email || '@'+profileUser.username}`;
+let loginInfo = isMyProfile ? `@${currentUser.username || 'you'}` : `${profileUser.email || '@'+profileUser.username}`;
 let bio = isMyProfile ? currentUser.bio : profileUser.bio;
 let cover = isMyProfile ? currentUser.cover : profileUser.cover;
-// FIX: USE profilePic FIRST
 let profileImgSrc = isMyProfile ? (currentUser.profilePic || `https://i.pravatar.cc/130?img=${currentUser.img}`) : (profileUser.profilePic || `https://i.pravatar.cc/130?img=${profileUser.img}`);
 
 let html = ` 
@@ -135,8 +140,8 @@ ${!isMyProfile ? '<button class="btn btn-secondary">Message</button>' : ''}
 <div class="menu-list" id="profileMenu"> 
 <div onclick="copyProfileLink()">🔗 Copy Profile Link</div>
 ${isMyProfile ? `
-<div onclick="toggleProfileGuard()">🛡️ Profile Guard <label class="switch"><input type="checkbox" ${profileUser.profileGuard ? 'checked' : ''} onchange="toggleProfileGuard()"><span class="slider"></span></label></div>
-<div onclick="toggleProfessional()">💼 Turn ${profileUser.professional ? 'Off' : 'On'} Professional Mode <label class="switch"><input type="checkbox" ${profileUser.professional ? 'checked' : ''} onchange="toggleProfessional()"><span class="slider"></span></label></div>
+<div onclick="event.stopPropagation()">🛡️ Profile Guard <label class="switch"><input type="checkbox" ${profileUser.profileGuard ? 'checked' : ''} onchange="toggleProfileGuard(this.checked)"><span class="slider"></span></label></div>
+<div onclick="event.stopPropagation()">💼 Professional Mode <label class="switch"><input type="checkbox" ${profileUser.professional ? 'checked' : ''} onchange="toggleProfessional(this.checked)"><span class="slider"></span></label></div>
 ` : `<div onclick="blockUser()">🚫 Block ${profileUser.name}</div>
 <div onclick="alert('Report Sent ✅')">🚩 Report Profile</div>`}
 </div> </div> 
@@ -248,85 +253,4 @@ localStorage.setItem('following', JSON.stringify(following));
 isFollowing = true; 
 alert('Followed ✅'); 
 loadProfile(); 
-} 
-} 
-
-function blockUser(){ 
-if(confirm('Block '+profileUser.name+'?')){ 
-blocked.push(profileId); 
-localStorage.setItem('blocked', JSON.stringify(blocked)); 
-isBlocked = true; 
-alert('Blocked ✅'); 
-loadProfile(); 
-} 
-} 
-
-function unblockUser(){ 
-blocked = blocked.filter(id => id != profileId); 
-localStorage.setItem('blocked', JSON.stringify(blocked)); 
-isBlocked = false; 
-alert('Unblocked ✅'); 
-loadProfile(); 
-} 
-
-// FIX: UPDATE BOTH currentUser AND profileUser
-function toggleProfileGuard(){
-currentUser.profileGuard = !currentUser.profileGuard;
-profileUser.profileGuard = currentUser.profileGuard; // sync
-localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
-alert(currentUser.profileGuard ? 'Profile Guard ON 🛡️' : 'Profile Guard OFF');
-loadProfile();
 }
-
-function toggleProfessional(){
-currentUser.professional = !currentUser.professional;
-profileUser.professional = currentUser.professional; // sync
-localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
-alert(currentUser.professional ? 'Professional Mode ON 💼' : 'Professional Mode OFF');
-loadProfile();
-}
-
-function toggleReactMenu(id){
-let box = document.getElementById(id);
-box.style.display = box.style.display == 'flex' ? 'none' : 'flex';
-}
-
-function likePost(i,reaction){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
-posts[i].reactions = posts[i].reactions || {};
-let prev = posts[i].reactions[currentUser.name]; 
-if(prev == reaction){ 
-delete posts[i].reactions[currentUser.name]; 
-} 
-else{ 
-posts[i].reactions[currentUser.name] = reaction; 
-} 
-localStorage.setItem('posts_'+profileId, JSON.stringify(posts)); 
-loadProfile(); 
-} 
-
-function toggleComment(id){document.getElementById(id).style.display = document.getElementById(id).style.display=='block'?'none':'block';} 
-function hideReact(id){setTimeout(()=>{document.getElementById(id).style.display='none';},200);} 
-
-function addComment(i){ 
-let val = document.getElementById(`inputP${i}`).value; 
-if(val){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
-posts[i].comments = posts[i].comments || [];
-posts[i].comments.push({name:currentUser.name, text:val, img:currentUser.img, profilePic: currentUser.profilePic}); 
-localStorage.setItem('posts_'+profileId, JSON.stringify(posts)); 
-document.getElementById(`inputP${i}`).value = ''; 
-loadProfile(); 
-} 
-} 
-
-function copyProfileLink(){
-navigator.clipboard.writeText(window.location.href);
-alert('Profile Link Copied ✅');
-}
-
-function toggleMenu(id){document.getElementById(id).style.display = document.getElementById(id).style.display=='block'?'none':'block';} 
-loadProfile(); 
-</script> 
-</body> 
-</html>
