@@ -35,12 +35,18 @@ export default async function handler(req, res) {
     let reply = null;
     let lastError = "Unknown Error";
 
+    const protocol = "https://";
+    const host = "generativelanguage." + "googleapis.com";
+
     for (const modelName of models) {
-      const fullUrl = `https://googleapis.com{modelName}:generateContent?key=${API_KEY}`;
+      const fullUrl = protocol + host + "/v1beta/models/" + modelName + ":generateContent";
 
       const geminiResponse = await fetch(fullUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-goog-api-key": API_KEY
+        },
         body: JSON.stringify({
           contents,
           systemInstruction: { 
