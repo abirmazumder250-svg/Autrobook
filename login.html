@@ -6,22 +6,24 @@
 <title>Login - Autrobook</title>
 <style>
 :root{--bg:#0a1a0f;--card:#13261a;--text:#e4e6eb;--brand:#4caf50;--border:#1f3d2a;}
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;}
 body{background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px;}
-.box{background:var(--card); padding:25px; border-radius:12px; width:100%; max-width:380px;}
+.box{background:var(--card); padding:25px; border-radius:12px; width:100%; max-width:380px; border:1px solid var(--border); box-shadow:0 8px 24px rgba(0,0,0,0.4);}
 .box h1{text-align:center; color:var(--brand); margin-bottom:15px; font-size:28px;}
 .tabs{display:flex; gap:10px; margin-bottom:20px;}
-.tabs button{flex:1; padding:10px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px; cursor:pointer;}
-.tabs button.active{background:var(--brand); border-color:var(--brand);}
+.tabs button{flex:1; padding:10px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px; cursor:pointer; font-weight:bold;}
+.tabs button.active{background:var(--brand); border-color:var(--brand); color:#fff;}
 .box input{width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); outline:none;}
+.box input:focus{border-color:var(--brand);}
 .row{display:flex; gap:10px;}
 .row input{width:50%;}
-.box button{width:100%; padding:12px; background:var(--brand); border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:10px;}
-.otp-box{display:none;}
+.box button.main-btn{width:100%; padding:12px; background:var(--brand); border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:10px; font-size:15px;}
+.otp-box{display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--border);}
 .link{color:var(--brand); text-align:center; margin-top:15px; cursor:pointer; font-size:14px;}
 .small{font-size:12px; color:#7a9e80; margin-top:5px;}
-.otp-btns{display:flex; gap:10px;}
-.otp-btns button{flex:1; background:#2196f3;}
+.otp-btns{display:flex; gap:10px; margin-top:8px;}
+.otp-btns button{flex:1; padding:10px; background:#2196f3; border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold;}
+.msg-box{margin-top:10px; font-size:13px; text-align:center; color:#ff5252;}
 </style>
 </head>
 <body>
@@ -35,9 +37,9 @@ body{background:var(--bg); color:var(--text); display:flex; justify-content:cent
 
 <!-- LOGIN FORM -->
 <div id="loginForm">
-<input type="text" id="loginEmail" placeholder="Email or Phone">
-<input type="password" id="loginPassword" placeholder="Password">
-<button onclick="login()">Log In</button>
+<input type="text" id="loginEmail" placeholder="Email or Phone" autocomplete="username">
+<input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+<button class="main-btn" onclick="login()">Log In</button>
 </div>
 
 <!-- SIGNUP FORM -->
@@ -46,108 +48,198 @@ body{background:var(--bg); color:var(--text); display:flex; justify-content:cent
 <input type="text" id="firstName" placeholder="First Name">
 <input type="text" id="lastName" placeholder="Last Name">
 </div>
-<input type="text" id="signupEmail" placeholder="E-mail Address / Phone Number">
-<input type="password" id="signupPassword" placeholder="New Password">
+<input type="text" id="signupEmail" placeholder="Email Address or Phone Number">
+<input type="password" id="signupPassword" placeholder="New Password (Min 6 chars)">
 
 <div class="otp-box" id="otpBox">
-<input type="text" id="otpInput" placeholder="Enter 6 digit OTP" maxlength="6">
+<input type="text" id="otpInput" placeholder="Enter 6-digit OTP" maxlength="6" inputmode="numeric">
 <div class="small" id="otpInfo"></div>
 <div class="otp-btns">
-<button onclick="sendOTP('sms')">📱 Send SMS</button>
-<button onclick="sendOTP('call')">📞 Call Me</button>
+<button type="button" onclick="sendOTP('sms')">Send SMS</button>
+<button type="button" onclick="sendOTP('call')">Call Me</button>
 </div>
-<button onclick="verifyOTP()">Verify & Sign Up</button>
-</div>
-
-<button id="signupBtn" onclick="startSignup()">Create Account</button>
+<button class="main-btn" onclick="verifyOTP()">Verify & Sign Up</button>
 </div>
 
-<div class="link" onclick="alert('Forgot Password')">Forgot Password?</div>
+<button class="main-btn" id="signupBtn" onclick="startSignup()">Create Account</button>
+</div>
+
+<div id="errorMsg" class="msg-box"></div>
+<div class="link" onclick="resetPasswordDemo()">Forgot Password?</div>
 </div>
 
 <script>
-let generatedOTP = '';
-let signupData = {};
+// Redirect immediately if user is already logged in
+if (localStorage.getItem('autrobook_user')) {
+  window.location.href = 'home.html';
+}
 
-// TAB SWITCH
-function showTab(tab){
+// Clickjacking protection: prevent loading inside an external iframe
+if (window.top !== window.self) {
+  window.top.location = window.self.location;
+}
+
+let currentOTP = null;
+let otpExpiry = 0;
+let signupData = {};
+let loginAttempts = 0;
+
+// XSS protection: sanitize user input strings
+function sanitize(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML.trim();
+}
+
+// Display status or error messages
+function showError(msg, isSuccess = false) {
+  const el = document.getElementById('errorMsg');
+  el.style.color = isSuccess ? '#4caf50' : '#ff5252';
+  el.innerText = msg;
+}
+
+// Switch between Login and Signup tabs
+function showTab(tab) {
+  showError('');
   document.getElementById('loginTab').classList.remove('active');
   document.getElementById('signupTab').classList.remove('active');
   document.getElementById('loginForm').style.display = 'none';
   document.getElementById('signupForm').style.display = 'none';
   
-  if(tab == 'login'){
+  if (tab === 'login') {
     document.getElementById('loginTab').classList.add('active');
     document.getElementById('loginForm').style.display = 'block';
-  }else{
+  } else {
     document.getElementById('signupTab').classList.add('active');
     document.getElementById('signupForm').style.display = 'block';
   }
 }
 
-// LOGIN
-function login(){
-  let email = document.getElementById('loginEmail').value;
+// Login validation against saved users
+function login() {
+  if (loginAttempts >= 5) {
+    showError('Too many failed attempts. Please wait a moment.');
+    return;
+  }
+
+  let email = sanitize(document.getElementById('loginEmail').value);
   let password = document.getElementById('loginPassword').value;
-  if(email && password){
-    let user = { name: "Abir Mazumder", email: email, id: "12345", token: "fake_token_123" };
-    localStorage.setItem('autrobook_user', JSON.stringify(user));
+
+  if (!email || !password) {
+    showError('Please fill in both Email/Phone and Password.');
+    return;
+  }
+
+  let users = JSON.parse(localStorage.getItem('autrobook_all_users') || '[]');
+  let matchedUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === btoa(password));
+
+  if (matchedUser) {
+    let sessionUser = { 
+      name: matchedUser.name, 
+      email: matchedUser.email, 
+      id: matchedUser.id, 
+      token: "auth_" + Date.now() 
+    };
+    localStorage.setItem('autrobook_user', JSON.stringify(sessionUser));
     window.location.href = 'home.html';
-  }else{
-    alert('Please fill all fields');
+  } else {
+    loginAttempts++;
+    showError('Invalid Email/Phone or Password. Please Sign Up first if you are new.');
   }
 }
 
-// START SIGNUP
-function startSignup(){
-  let fn = document.getElementById('firstName').value;
-  let ln = document.getElementById('lastName').value;
-  let email = document.getElementById('signupEmail').value;
+// Start Signup process and validate inputs
+function startSignup() {
+  showError('');
+  let fn = sanitize(document.getElementById('firstName').value);
+  let ln = sanitize(document.getElementById('lastName').value);
+  let email = sanitize(document.getElementById('signupEmail').value);
   let pass = document.getElementById('signupPassword').value;
   
-  if(!fn || !ln || !email || !pass){
-    alert('Please fill all fields');
+  if (!fn || !ln || !email || !pass) {
+    showError('Please fill in all fields.');
+    return;
+  }
+
+  if (pass.length < 6) {
+    showError('Password must be at least 6 characters long.');
+    return;
+  }
+
+  let users = JSON.parse(localStorage.getItem('autrobook_all_users') || '[]');
+  if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    showError('An account with this Email or Phone already exists. Please Log In.');
     return;
   }
   
-  signupData = {name: fn + ' ' + ln, email: email, password: pass};
+  signupData = {
+    name: fn + ' ' + ln, 
+    email: email, 
+    password: btoa(pass)
+  };
+
   document.getElementById('otpBox').style.display = 'block';
   document.getElementById('signupBtn').style.display = 'none';
-  document.getElementById('otpInfo').innerText = 'OTP will be sent to: ' + email;
+  document.getElementById('otpInfo').innerText = 'Click Send SMS or Call Me to receive an OTP for: ' + email;
 }
 
-// SEND OTP - SMS or CALL
-function sendOTP(type){
-  generatedOTP = Math.floor(100000 + Math.random() * 900000); // 6 digit OTP
-  localStorage.setItem('autrobook_otp', generatedOTP);
+// Generate 6-digit OTP in memory with a 2-minute expiration
+function sendOTP(type) {
+  currentOTP = String(Math.floor(100000 + Math.random() * 900000));
+  otpExpiry = Date.now() + (2 * 60 * 1000);
   
-  if(type == 'sms'){
-    alert(`Demo SMS Sent ✅\nYour OTP is: ${generatedOTP}\nIn real app this will go to phone: ${signupData.email}`);
-  }else{
-    alert(`Demo Phone Call 📞\nAutrobook is calling you now.\nYour OTP is: ${generatedOTP}\nIn real app Twilio/MSG91 will call`);
+  if (type === 'sms') {
+    alert(`Demo SMS Sent\nYour OTP is: ${currentOTP}\n(Valid for 2 minutes)`);
+  } else {
+    alert(`Demo Phone Call\nAutrobook is calling ${signupData.email}.\nYour OTP is: ${currentOTP}`);
   }
+  showError('OTP sent! Please enter the 6-digit code.', true);
 }
 
-// VERIFY OTP
-function verifyOTP(){
-  let enteredOTP = document.getElementById('otpInput').value;
-  let savedOTP = localStorage.getItem('autrobook_otp');
+// Verify OTP and save new user account
+function verifyOTP() {
+  let enteredOTP = sanitize(document.getElementById('otpInput').value);
   
-  if(enteredOTP == savedOTP){
-    // Save user and login
-    let user = { name: signupData.name, email: signupData.email, id: Date.now(), token: "token_"+Date.now() };
-    localStorage.setItem('autrobook_user', JSON.stringify(user));
-    localStorage.removeItem('autrobook_otp');
-    alert('Account Created Successfully ✅');
+  if (!currentOTP) {
+    showError('Please click "Send SMS" or "Call Me" first to get an OTP.');
+    return;
+  }
+
+  if (Date.now() > otpExpiry) {
+    currentOTP = null;
+    showError('OTP has expired. Please request a new one.');
+    return;
+  }
+  
+  if (enteredOTP === currentOTP) {
+    let newUser = { 
+      name: signupData.name, 
+      email: signupData.email, 
+      password: signupData.password,
+      id: Date.now() 
+    };
+
+    let users = JSON.parse(localStorage.getItem('autrobook_all_users') || '[]');
+    users.push(newUser);
+    localStorage.setItem('autrobook_all_users', JSON.stringify(users));
+
+    let sessionUser = { name: newUser.name, email: newUser.email, id: newUser.id, token: "auth_" + Date.now() };
+    localStorage.setItem('autrobook_user', JSON.stringify(sessionUser));
+    
+    currentOTP = null;
+    alert('Account Created Successfully');
     window.location.href = 'home.html';
-  }else{
-    alert('Invalid OTP. Please try again.');
+  } else {
+    showError('Invalid OTP. Please check and try again.');
   }
 }
 
-// If user is already logged in, redirect to Home
-if(localStorage.getItem('autrobook_user')){
-  window.location.href = 'home.html';
+// Password reset prompt
+function resetPasswordDemo() {
+  let email = prompt('Enter your registered Email or Phone to reset password:');
+  if (email) {
+    alert('If an account exists for ' + sanitize(email) + ', a password reset OTP will be sent.');
+  }
 }
 </script>
 </body>
