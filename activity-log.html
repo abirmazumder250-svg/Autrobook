@@ -1,35 +1,221 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Activity Log - Autrobook</title> <style> 
-:root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; --blue:#1877f2; } 
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;} 
-body{background:var(--bg);color:var(--text);} 
-.header{display:flex;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);} 
-.header b{flex:1;text-align:center;font-size:18px;} 
-.card{background:var(--card);margin:16px;padding:16px;border-radius:8px;} 
-.card b{font-size:18px;} 
-.btn-group{display:flex;gap:8px;margin:16px;} 
-.btn{background:#3a3b3c;padding:8px 16px;border-radius:20px;border:none;color:var(--text);} 
-.accordion{padding:16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;} 
-</style> </head> <body> 
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Log - Autrobook</title>
+<script>
+// Auth Guard: Redirect immediately if user is not logged in
+if (!localStorage.getItem('autrobook_user')) { window.location.replace('login.html'); }
+if (window.top !== window.self) { window.top.location = window.self.location; }
+</script>
+<style>
+:root { --bg: #18191a; --card: #242526; --hover: #3a3b3c; --text: #e4e6eb; --sub: #b0b3b8; --border: #3a3b3c; --blue: #1877f2; }
+*{ margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+body { background: var(--bg); color: var(--text); padding-bottom: 30px; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+.header span { cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 50%; }
+.header span:hover { background: var(--hover); }
+.header b { font-size: 18px; }
+.search-bar { display: none; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--border); }
+.search-bar input { width: 100%; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; color: var(--text); font-size: 14px; outline: none; }
+.search-bar input:focus { border-color: var(--blue); }
+.container { max-width: 600px; margin: 0 auto; }
+.card { background: var(--card); margin: 16px; padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
+.card b { font-size: 18px; }
+.card p { color: var(--sub); font-size: 14px; margin-top: 8px; line-height: 1.4; }
+.btn-group { display: flex; gap: 10px; margin: 0 16px 16px; }
+.btn { background: var(--card); padding: 9px 16px; border-radius: 20px; border: 1px solid var(--border); color: var(--text); font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.btn:hover { background: var(--hover); }
+.acc-wrapper { border-bottom: 1px solid var(--border); }
+.accordion { padding: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; transition: 0.2s; }
+.accordion:hover { background: var(--card); }
+.arrow { transition: transform 0.25s ease; font-size: 18px; color: var(--sub); }
+.accordion.open .arrow { transform: rotate(180deg); color: var(--blue); }
+.panel { display: none; background: #1c1e21; padding: 12px 16px; border-top: 1px solid var(--border); }
+.log-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2c2e33; font-size: 14px; }
+.log-item:last-child { border-bottom: none; }
+.log-meta { font-size: 12px; color: var(--sub); margin-top: 3px; }
+.del-btn { background: none; border: none; color: #ff5252; cursor: pointer; font-size: 12px; padding: 4px 8px; border-radius: 4px; }
+.del-btn:hover { background: rgba(255, 82, 82, 0.15); }
+.empty-msg { color: var(--sub); font-size: 13px; padding: 8px 0; }
+</style>
+</head>
+<body>
 <div class="header">
-<span onclick="history.back()">←</span>
+<span onclick="goBack()" title="Back">←</span>
 <b>Activity log</b>
-<span>🔍</span>
+<span onclick="toggleSearch()" title="Search">🔍</span>
 </div>
-
+<div class="search-bar" id="searchBar">
+<input type="text" id="searchInput" placeholder="Search your activity log..." oninput="filterLogs()">
+</div>
+<div class="container">
 <div class="card">
 <b>Welcome to activity log</b>
-<p style="color:#aaa;margin-top:8px">Activity log is where you can view and manage your Autrobook activity, such as posts, tags, comments and likes.</p>
+<p>Activity log is where you can view and manage your Autrobook activity, such as posts, profile updates, and login security.</p>
 </div>
-
 <div class="btn-group">
 <button class="btn" onclick="window.location.href='archive.html'">📦 Archive</button>
-<button class="btn" onclick="alert('Trash')">🗑️ Trash</button>
+<button class="btn" onclick="openTrashModal()">🗑️ Trash (<span id="trashCount">0</span>)</button>
+</div>
+<div class="acc-wrapper">
+<div class="accordion" onclick="togglePanel(this, 'panel-activity')">
+<span>📝 Your Autrobook activity</span>
+<span class="arrow">⌄</span>
+</div>
+<div class="panel" id="panel-activity"></div>
+</div>
+<div class="acc-wrapper">
+<div class="accordion" onclick="togglePanel(this, 'panel-personal')">
+<span>👤 Personal information</span>
+<span class="arrow">⌄</span>
+</div>
+<div class="panel" id="panel-personal"></div>
+</div>
+<div class="acc-wrapper">
+<div class="accordion" onclick="togglePanel(this, 'panel-connections')">
+<span>🤝 Connections</span>
+<span class="arrow">⌄</span>
+</div>
+<div class="panel" id="panel-connections"></div>
+</div>
+<div class="acc-wrapper">
+<div class="accordion" onclick="togglePanel(this, 'panel-security')">
+<span>🛡️ Security and login information</span>
+<span class="arrow">⌄</span>
+</div>
+<div class="panel" id="panel-security"></div>
+</div>
 </div>
 
-<div class="accordion">Your Autrobook activity <span>⌄</span></div>
-<div class="accordion">Personal information <span>⌄</span></div>
-<div class="accordion">Connections <span>⌄</span></div>
-<div class="accordion">Security and login information <span>⌄</span></div>
+<script> 
+let currentUser = {};
+try { currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {}; } catch (e) {}
 
-</body> </html>
+let activityLogs = JSON.parse(localStorage.getItem('autrobook_activity_logs') || 'null');
+if (!activityLogs) {
+activityLogs = [
+{ id: 1, category: 'activity', text: 'Joined Autrobook Social Platform', time: new Date().toLocaleDateString() },
+{ id: 2, category: 'activity', text: 'Chatted with Autro AI Assistant', time: 'Today' }
+];
+localStorage.setItem('autrobook_activity_logs', JSON.stringify(activityLogs));
+}
+let trashLogs = JSON.parse(localStorage.getItem('autrobook_trash_logs') || '[]');
+
+function renderAllPanels() {
+document.getElementById('trashCount').textContent = trashLogs.length;
+const actPanel = document.getElementById('panel-activity');
+actPanel.innerHTML = '';
+if (activityLogs.length === 0) {
+actPanel.innerHTML = '<div class="empty-msg">No recent activity found.</div>';
+} else {
+activityLogs.forEach(item => {
+const row = createLogRow(item.text, item.time, () => moveToTrash(item.id));
+actPanel.appendChild(row);
+});
+}
+const persPanel = document.getElementById('panel-personal');
+persPanel.innerHTML = '';
+persPanel.appendChild(createLogRow('Account Name: ' + (currentUser.name || 'User'), 'Verified Profile'));
+persPanel.appendChild(createLogRow('Email / Phone: ' + (currentUser.email || 'Not set'), 'Primary Contact'));
+if (currentUser.actionButtonLabel) {
+persPanel.appendChild(createLogRow('Profile Action Button: ' + currentUser.actionButtonLabel, currentUser.actionButtonValue || 'Active'));
+}
+const connPanel = document.getElementById('panel-connections');
+connPanel.innerHTML = '';
+connPanel.appendChild(createLogRow('Following & Friends list', 'Synced with your Autrobook profile'));
+const secPanel = document.getElementById('panel-security');
+secPanel.innerHTML = '';
+const deviceInfo = navigator.platform || 'Mobile/Web Browser';
+secPanel.appendChild(createLogRow('Active Login Session', 'Device: ' + deviceInfo + ' • Status: Protected'));
+secPanel.appendChild(createLogRow('Session Token ID', (currentUser.token ? currentUser.token.slice(0, 12) + '...' : 'Active')));
+}
+
+function createLogRow(title, meta, onDelete = null) {
+const div = document.createElement('div');
+div.className = 'log-item';
+const left = document.createElement('div');
+const titleEl = document.createElement('div');
+titleEl.textContent = title;
+const metaEl = document.createElement('div');
+metaEl.className = 'log-meta';
+metaEl.textContent = meta;
+left.appendChild(titleEl);
+left.appendChild(metaEl);
+div.appendChild(left);
+if (onDelete) {
+const delBtn = document.createElement('button');
+delBtn.className = 'del-btn';
+delBtn.textContent = 'Move to Trash';
+delBtn.onclick = onDelete;
+div.appendChild(delBtn);
+}
+return div;
+}
+
+function togglePanel(headerEl, panelId) {
+const panel = document.getElementById(panelId);
+const isOpen = panel.style.display === 'block';
+panel.style.display = isOpen ? 'none' : 'block';
+headerEl.classList.toggle('open', !isOpen);
+}
+
+function toggleSearch() {
+const bar = document.getElementById('searchBar');
+const isVisible = bar.style.display === 'block';
+bar.style.display = isVisible ? 'none' : 'block';
+if (!isVisible) {
+document.getElementById('searchInput').focus();
+} else {
+document.getElementById('searchInput').value = '';
+filterLogs();
+}
+}
+
+function filterLogs() {
+const query = document.getElementById('searchInput').value.toLowerCase();
+document.querySelectorAll('.panel').forEach(p => p.style.display = 'block');
+document.querySelectorAll('.log-item').forEach(item => {
+const match = item.textContent.toLowerCase().includes(query);
+item.style.display = match ? 'flex' : 'none';
+});
+}
+
+function moveToTrash(id) {
+const index = activityLogs.findIndex(item => item.id === id);
+if (index !== -1) {
+const [removed] = activityLogs.splice(index, 1);
+trashLogs.push(removed);
+localStorage.setItem('autrobook_activity_logs', JSON.stringify(activityLogs));
+localStorage.setItem('autrobook_trash_logs', JSON.stringify(trashLogs));
+renderAllPanels();
+}
+}
+
+function openTrashModal() {
+if (trashLogs.length === 0) {
+alert('Your Trash is currently empty.');
+return;
+}
+const confirmEmpty = confirm(`You have ${trashLogs.length} item(s) in Trash.\nDo you want to permanently delete all items in Trash?`); // <-- এখানে backtick দিলাম
+if (confirmEmpty) {
+trashLogs = [];
+localStorage.setItem('autrobook_trash_logs', JSON.stringify(trashLogs));
+renderAllPanels();
+alert('Trash emptied permanently.');
+}
+}
+
+function goBack() {
+if (window.history.length > 1) {
+history.back();
+} else {
+window.location.href = 'home.html';
+}
+}
+// Initial render
+renderAllPanels();
+</script> 
+</body>
+</html>
