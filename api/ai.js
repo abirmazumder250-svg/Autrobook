@@ -1,10 +1,38 @@
+const rateLimitMap = new Map();
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // ডোমেইন সিকিউরিটি (CORS)
+  const allowedOrigins = ['https://vercel.app', 'http://localhost:3000'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ reply: 'Method not allowed' });
+
+  // Rate Limiting (প্রতি মিনিটে সর্বোচ্চ ২০টি মেসেজ)
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const userRecord = rateLimitMap.get(ip) || { count: 0, startTime: now };
+
+  if (now - userRecord.startTime > windowMs) {
+    userRecord.count = 1;
+    userRecord.startTime = now;
+  } else {
+    userRecord.count++;
+  }
+  rateLimitMap.set(ip, userRecord);
+
+  if (userRecord.count > 20) {
+    return res.status(200).json({ reply: "Too many requests. Please wait a moment." });
+  }
 
   try {
     const API_KEY = process.env.GEMINI_API_KEY;
@@ -18,62 +46,52 @@ export default async function handler(req, res) {
       return res.status(200).json({ reply: "Error: Invalid message history format." });
     }
 
-    const contents = history
+    // দ্রুত উত্তরের জন্য সর্বশেষ ১০টি মেসেজ নেওয়া হচ্ছে
+    const recentHistory = history.slice(-10);
+
+    const contents = recentHistory
       .filter(msg => msg.role !== 'system' && msg.content)
       .map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: String(msg.content) }]
       }));
 
-    // একাধিক লেটেস্ট মডেল (একটিতে চাপ থাকলে স্বয়ংক্রিয়ভাবে পরেরটি কাজ করবে)
-    const models = [
-      "gemini-3.8-flash",
-      "gemini-3.5-flash-lite",
-      "gemini-3.7-flash"
-    ];
-
-    let reply = null;
-    let lastError = "Unknown Error";
-
     const protocol = "https://";
     const host = "generativelanguage." + "googleapis.com";
+    // কোনো টাইমআউট বা লুপ ছাড়াই সবচেয়ে দ্রুতগতির মডেল সরাসরি কল করা হচ্ছে
+    const fullUrl = protocol + host + "/v1beta/models/gemini-3.5-flash-lite:generateContent";
 
-    for (const modelName of models) {
-      const fullUrl = protocol + host + "/v1beta/models/" + modelName + ":generateContent";
-
-      const geminiResponse = await fetch(fullUrl, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-goog-api-key": API_KEY
-        },
-        body: JSON.stringify({
-          contents,
-          systemInstruction: { 
-            parts: [{ 
-              text: "You are Autro AI, a multilingual personal assistant for Autrobook. You understand and speak all languages around the world. Always detect the exact language the user writes in and reply strictly in that same language. If a single short greeting is ambiguous, default to English. Be friendly, helpful, and brief." 
-            }] 
-          }
-        })
-      });
-
-      const data = await geminiResponse.json();
-
-      if (geminiResponse.ok) {
-        const candidate = data.candidates && data.candidates[0];
-        const part = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0];
-        if (part && part.text) {
-          reply = part.text;
-          break;
+    const geminiResponse = await fetch(fullUrl, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "x-goog-api-key": API_KEY
+      },
+      body: JSON.stringify({
+        contents,
+        systemInstruction: { 
+          parts: [{ 
+            text: "You are Autro AI, the official assistant for Autrobook. Your primary and default language is English. However, you can understand and speak every language across all countries worldwide (including Bengali, Hindi, Arabic, Spanish, French, Urdu, Russian, Chinese, Japanese, Korean, German, Portuguese, Turkish, etc.). Always detect the exact language the user writes in and reply strictly in that same language. If a message is short or ambiguous, always reply in English. Be friendly, helpful, and brief." 
+          }] 
         }
-      } else {
-        lastError = (data.error && data.error.message) ? data.error.message : "Server busy";
-      }
+      })
+    });
+
+    const data = await geminiResponse.json();
+
+    if (!geminiResponse.ok) {
+      const errMsg = (data.error && data.error.message) ? data.error.message : "API Error";
+      return res.status(200).json({ reply: "Error: " + errMsg });
     }
+
+    const candidate = data.candidates && data.candidates[0];
+    const part = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0];
+    const reply = part && part.text;
 
     if (!reply) {
-      return res.status(200).json({ reply: "Gemini API Error: " + lastError });
+      return res.status(200).json({ reply: "Could not generate a response. Please try again." });
     }
+
     return res.status(200).json({ reply });
 
   } catch (e) {
