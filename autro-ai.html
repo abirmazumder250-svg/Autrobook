@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Autro AI - Autrobook</title>
-<script src="https://www.google.com/recaptcha/api.js?render=6LdCzRsuAAAAAO_hrnS7t-D5-k2tP57eoIRzkIM-" async defer></script> 
+<script src="https://google.com" async defer></script> 
 <style>
 :root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; --blue:#1877f2; --brand:#4caf50; }
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;}
@@ -35,37 +35,45 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;h
 </div>
 <div class="chat-container" id="chatBox">
 <div class="ai-msg">
-<div class="avatar"><img src="https://raw.githubusercontent.com/abirmazumder250/Autrobook/main/logo.png" onerror="this.style.display='none';this.parentElement.innerText='AI';"></div>
-<div class="bubble ai-bubble">Hello! I'm Autro AI 👋<br>আমি তোমার personal AI। যা জিজ্ঞেস করবা তাই উত্তর দিব।</div>
+<div class="avatar"><img src="https://githubusercontent.com" onerror="this.style.display='none';this.parentElement.innerText='AI';"></div>
+<div class="bubble ai-bubble">Hello! I'm Autro AI 👋<br>I am your personal AI assistant. Ask me anything!</div>
 </div>
 </div>
 <div class="input-area">
-<input type="text" id="userInput" placeholder="Autro AI কে কিছু জিজ্ঞাসা করুন..." onkeypress="if(event.key==='Enter') sendMsg()">
+<input type="text" id="userInput" placeholder="Ask Autro AI anything..." onkeypress="if(event.key==='Enter') sendMsg()">
 <button onclick="sendMsg()">➤</button>
 </div>
 
 <script> 
 let chatBox = document.getElementById('chatBox');
 let chatHistory = [
-  {role: "system", content: "You are Autro AI, a helpful assistant for Autrobook social media. Reply in the same language user writes. Be friendly, helpful, and brief. Name is Autro AI."}
+  {role: "system", content: "You are Autro AI, a helpful assistant for Autrobook social media. Always detect the user's language and reply strictly in the exact same language the user writes in. Be friendly, helpful, and brief. Your name is Autro AI."}
 ];
 
-// নিরাপদভাবে টোকেন নেওয়ার ফাংশন (যাতে ফেইল হলেও চ্যাট আটকে না যায়)
+// ৩ সেকেন্ডের মধ্যে reCAPTCHA টোকেন না এলে অটোমেটিক স্কিপ করবে, ফলে লোডিং আটকাবে না
 async function getRecaptchaToken() {
-  try {
-    if (typeof grecaptcha !== 'undefined' && grecaptcha.execute) {
-      return await new Promise((resolve) => {
-        grecaptcha.ready(() => {
-          grecaptcha.execute('6LdCzRsuAAAAAO_hrnS7t-D5-k2tP57eoIRzkIM-', {action: 'sendMessage'})
-            .then(resolve)
-            .catch(() => resolve("bypass-token"));
-        });
-      });
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve("timeout-bypass"), 3000);
+    try {
+      if (window.grecaptcha && window.grecaptcha.execute) {
+        window.grecaptcha.execute('6LdCzRsuAAAAAO_hrnS7t-D5-k2tP57eoIRzkIM-', {action: 'sendMessage'})
+          .then((token) => {
+            clearTimeout(timer);
+            resolve(token);
+          })
+          .catch(() => {
+            clearTimeout(timer);
+            resolve("error-bypass");
+          });
+      } else {
+        clearTimeout(timer);
+        resolve("not-loaded-bypass");
+      }
+    } catch (e) {
+      clearTimeout(timer);
+      resolve("exception-bypass");
     }
-  } catch (e) {
-    console.warn("reCAPTCHA skipped:", e);
-  }
-  return "bypass-token";
+  });
 }
 
 async function sendMsg(){
@@ -79,9 +87,7 @@ async function sendMsg(){
   
   let loadingId = addMessage("Typing...", 'ai', true);
 
-  // টোকেন নেওয়া (আটকে যাওয়ার ভয় নেই)
   const token = await getRecaptchaToken();
-
   let reply = await getAIResponse(token);
   
   const loadingEl = document.getElementById(loadingId);
@@ -99,13 +105,12 @@ function addMessage(text, sender, isLoading=false){
 
   const bubbleDiv = document.createElement('div');
   bubbleDiv.className = sender === 'ai' ? 'bubble ai-bubble' : 'bubble user-bubble';
-  // XSS সিকিউরিটি: innerHTML এর বদলে textContent ব্যবহার করা হয়েছে
   bubbleDiv.textContent = text;
 
   if(sender === 'ai'){
     const avatarDiv = document.createElement('div');
     avatarDiv.className = 'avatar';
-    avatarDiv.innerHTML = `<img src="https://raw.githubusercontent.com/abirmazumder250/Autrobook/main/logo.png" onerror="this.style.display='none';this.parentElement.innerText='AI';">`;
+    avatarDiv.innerHTML = `<img src="https://githubusercontent.com" onerror="this.style.display='none';this.parentElement.innerText='AI';">`;
     msgDiv.appendChild(avatarDiv);
   }
   
