@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
     const protocol = "https://";
     const host = "generativelanguage." + "googleapis.com";
-    const endpoint = "/v1beta/models/gemini-2.5-flash:generateContent?key=";
+    const endpoint = "/v1beta/models/gemini-3.8-flash:generateContent?key=";
     const fullUrl = protocol + host + endpoint + API_KEY;
 
     const geminiResponse = await fetch(fullUrl, {
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents,
         systemInstruction: { 
-          parts: [{ text: "You are Autro AI, assistant for Autrobook. Always detect the user's language and reply strictly in the exact same language the user writes in. Be friendly, helpful and brief." }] 
+          parts: [{ text: "You are Autro AI, assistant for Autrobook. Always detect the user's language and reply strictly in the exact same language the user writes in. If a single short word is ambiguous (like 'Gi' or 'Hi'), default to English unless the user clearly writes in Bengali or another language. Be friendly, helpful and brief." }] 
         }
       })
     });
