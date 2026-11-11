@@ -8,7 +8,8 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .cover{width:100%; height:200px; background:#1f3d2a; position:relative;} 
 .cover img{width:100%; height:100%; object-fit:cover;} 
 .cover.blur img{filter:blur(20px);} 
-.profile-pic{width:130px; height:130px; border-radius:50%; border:4px solid var(--bg); position:absolute; bottom:-65px; left:15px;} 
+.profile-pic{width:130px; height:130px; border-radius:50%; border:4px solid var(--bg); position:absolute; bottom:-65px; left:15px;}
+.profile-guard{position:absolute; bottom:-70px; right:20px; background:var(--brand); color:white; padding:5px 10px; border-radius:20px; font-size:12px; font-weight:bold;}
 .profile-info{padding:80px 15px 15px;} 
 .profile-info h1{font-size:24px;} 
 .profile-info p{color:var(--text-secondary); font-size:14px;} 
@@ -16,6 +17,7 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .btn{flex:1; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;} 
 .btn-primary{background:var(--brand); color:white;} 
 .btn-secondary{background:var(--card-bg); color:var(--text);} 
+.professional-badge{background:#1877f2; color:white; padding:3px 8px; border-radius:5px; font-size:11px; margin-left:5px;}
 .tabs{display:flex; justify-content:space-around; border-bottom:1px solid var(--border);} 
 .tabs div{padding:12px; flex:1; text-align:center; cursor:pointer;} 
 .tabs div.active{border-bottom:3px solid var(--brand); color:var(--brand);} 
@@ -30,7 +32,7 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .reaction-summary{display:flex; gap:3px; align-items:center;} 
 .post-actions{display:flex; justify-content:space-around; padding-top:8px; position:relative;} 
 .post-actions button{background:none; border:none; color:var(--text-secondary); padding:8px; flex:1; cursor:pointer; border-radius:8px; position:relative;} 
-.post-actions button.active{color:var(--brand);}
+.post-actions button.active{color:var(--brand);} 
 .react-box{display:none; position:absolute; bottom:45px; left:5px; background:var(--card-bg); padding:8px; border-radius:30px; box-shadow:0 4px 12px black; gap:8px; border:1px solid var(--border); z-index:10;} 
 .react-box span{font-size:28px; cursor:pointer; transition:0.2s;} 
 .react-box span:hover{transform:scale(1.4);} 
@@ -44,10 +46,15 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .friend-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:10px;} 
 .friend-grid div{text-align:center; cursor:pointer;} 
 .friend-grid img{width:100%; border-radius:8px; aspect-ratio:1/1; object-fit:cover;} 
-.menu-list{display:none; position:absolute; right:0; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:5px 0; z-index:5; width:200px;} 
+.menu-list{display:none; position:absolute; right:0; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:5px 0; z-index:5; width:220px;} 
 .menu-list div{padding:10px; cursor:pointer;} 
 .menu-list div:hover{background:var(--hover);} 
-.error-box{padding:20px; text-align:center; color:var(--danger);}
+.switch{position:relative; display:inline-block; width:40px; height:22px; float:right;} 
+.switch input{opacity:0; width:0; height:0;} 
+.slider{position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:22px;} 
+.slider:before{position:absolute; content:""; height:16px; width:16px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;} 
+input:checked + .slider{background-color:var(--brand);} 
+input:checked + .slider:before{transform:translateX(18px);} 
 </style> </head> <body> 
 <div class="header"> <span onclick="window.location.href='home.html'">←</span> <span>Autrobook</span> <span onclick="window.location.href='main-settings.html'">⚙️</span> </div> 
 <div id="profileContent"></div> 
@@ -61,26 +68,23 @@ const demoUsers = [
 {id:5, name:"Karim Uddin", username:"karim.u", email:"karim@proton.com", bio:"Businessman", cover:"https://via.placeholder.com/600x200/f44336", img:5, friends:[3,4], dob:"30 Apr 1998", dobPublic:true, locked:true} 
 ]; 
 
-let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {id:0, name:"You", img:99, username:"you", email:"you@mail.com"}; 
+let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {id:0, name:"You", img:99, username:"you", email:"you@mail.com", bio:"", cover:"", profileGuard:false, professional:false}; 
 let userId = new URLSearchParams(window.location.search).get('id'); 
 
-// FIX: ERROR HANDLING ADDED
 let profileUser;
 if(userId && demoUsers.find(u => u.id == userId)){
     profileUser = demoUsers.find(u => u.id == userId);
-}else if(!userId){
-    profileUser = currentUser; // নিজের প্রোফাইল
 }else{
-    profileUser = currentUser; // না পেলে নিজেরটা দেখাও
+    profileUser = currentUser; // নিজের প্রোফাইল = localStorage থেকে
 }
-
-let profileId = profileUser.id || 0; // id না থাকলে 0
+let profileId = profileUser.id || 0; 
 let following = JSON.parse(localStorage.getItem('following') || '[]'); 
 let blocked = JSON.parse(localStorage.getItem('blocked') || '[]'); 
 let isFollowing = following.includes(profileId); 
 let isBlocked = blocked.includes(profileId); 
+let isMyProfile = currentUser.id == profileId;
 
-if(profileUser.locked){ 
+if(profileUser.locked || profileUser.profileGuard){ 
 document.body.classList.add('locked'); 
 document.addEventListener('contextmenu', e=>e.preventDefault()); 
 } 
@@ -102,19 +106,22 @@ document.getElementById('profileContent').innerHTML = `
 return; 
 } 
 let mutual = getMutual(currentUser.id, profileId); 
-let isMyProfile = currentUser.id == profileId; 
 let displayName = isMyProfile ? currentUser.name : profileUser.name;
 let loginInfo = isMyProfile ? `@${currentUser.username}` : `${profileUser.email || '@'+profileUser.username}`;
+let bio = isMyProfile ? currentUser.bio : profileUser.bio;
+let cover = isMyProfile ? currentUser.cover : profileUser.cover;
+let profileImg = isMyProfile ? currentUser.img : profileUser.img;
 
 let html = ` 
-<div class="cover ${profileUser.locked ? 'blur' : ''}"> 
-<img src="${profileUser.cover || 'https://via.placeholder.com/600x200/333'}"> 
-<img src="https://i.pravatar.cc/130?img=${profileUser.img || 99}" class="profile-pic"> 
+<div class="cover ${profileUser.locked || profileUser.profileGuard ? 'blur' : ''}"> 
+<img src="${cover || 'https://via.placeholder.com/600x200/333'}"> 
+<img src="https://i.pravatar.cc/130?img=${profileImg || 99}" class="profile-pic"> 
+${profileUser.profileGuard ? '<div class="profile-guard">🛡️ Guard On</div>' : ''}
 </div> 
 <div class="profile-info"> 
-<h1>${displayName}</h1> 
+<h1>${displayName} ${currentUser.professional ? '<span class="professional-badge">PRO</span>' : ''}</h1> 
 <p>${loginInfo}</p> 
-<p>${profileUser.bio || ''}</p> 
+<p>${bio || 'No bio yet'}</p> 
 ${profileUser.dobPublic ? `<p>🎂 Born: ${profileUser.dob}</p>` : ''} 
 <p><b>${profileUser.friends?.length || 0}</b> Friends · <b>${mutual}</b> Mutual</p> 
 <div class="profile-buttons"> 
@@ -123,8 +130,11 @@ ${!isMyProfile ? '<button class="btn btn-secondary">Message</button>' : ''}
 <div style="position:relative"><button class="btn btn-secondary" onclick="toggleMenu('profileMenu')">⋯</button> 
 <div class="menu-list" id="profileMenu"> 
 <div onclick="copyProfileLink()">🔗 Copy Profile Link</div>
-${!isMyProfile ? `<div onclick="blockUser()">🚫 Block ${profileUser.name}</div>` : ''}
-<div onclick="alert('Report Sent ✅')">🚩 Report Profile</div> 
+${isMyProfile ? `
+<div onclick="toggleProfileGuard()">🛡️ Profile Guard <label class="switch"><input type="checkbox" ${currentUser.profileGuard ? 'checked' : ''} onchange="toggleProfileGuard()"><span class="slider"></span></label></div>
+<div onclick="toggleProfessional()">💼 Turn ${currentUser.professional ? 'Off' : 'On'} Professional Mode <label class="switch"><input type="checkbox" ${currentUser.professional ? 'checked' : ''} onchange="toggleProfessional()"><span class="slider"></span></label></div>
+` : `<div onclick="blockUser()">🚫 Block ${profileUser.name}</div>
+<div onclick="alert('Report Sent ✅')">🚩 Report Profile</div>`}
 </div> </div> 
 </div> 
 </div> 
@@ -142,7 +152,7 @@ ${isMyProfile ? `
 <div id="postsTab">${loadUserPosts()}</div> 
 <div id="aboutTab" style="display:none; padding:15px;"> 
 <b>About ${displayName}</b><br> 
-<p>${profileUser.bio || ''}</p> 
+<p>${bio || 'No bio yet'}</p> 
 <p>📧 Email: ${profileUser.email || 'Not set'}</p> 
 ${profileUser.dobPublic ? `<p>🎂 Birthday: ${profileUser.dob}</p>` : '<p>Birthday: Only Me</p>'} 
 </div> 
@@ -152,16 +162,14 @@ ${(profileUser.friends || []).map(fid=>{let f=demoUsers.find(u=>u.id==fid); retu
 `; 
 document.getElementById('profileContent').innerHTML = html; 
 }catch(e){
-document.getElementById('profileContent').innerHTML = `<div class="error-box"><h2>Error Loading Profile</h2><p>${e.message}</p></div>`;
+document.getElementById('profileContent').innerHTML = `<div style="padding:20px; text-align:center;"><h2>Error Loading Profile</h2><p>${e.message}</p></div>`;
 }
 } 
 
 function loadUserPosts(){ 
 let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
 if(posts.length==0){ 
-posts = [ 
-{text:"No posts yet", reactions:{}, comments:[]} 
-]; 
+posts = [ {text:"No posts yet", reactions:{}, comments:[]} ]; 
 } 
 return posts.map((p,i)=>{ 
 let reactionIcons = Object.values(p.reactions || {}).slice(0,3).map(r=>REACTIONS[r]).join(''); 
@@ -255,6 +263,22 @@ isBlocked = false;
 alert('Unblocked ✅'); 
 loadProfile(); 
 } 
+
+// FIX: PROFILE GUARD TOGGLE
+function toggleProfileGuard(){
+currentUser.profileGuard = !currentUser.profileGuard;
+localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
+alert(currentUser.profileGuard ? 'Profile Guard ON 🛡️' : 'Profile Guard OFF');
+loadProfile();
+}
+
+// FIX: PROFESSIONAL MODE TOGGLE
+function toggleProfessional(){
+currentUser.professional = !currentUser.professional;
+localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
+alert(currentUser.professional ? 'Professional Mode ON 💼' : 'Professional Mode OFF');
+loadProfile();
+}
 
 function toggleReactMenu(id){
 let box = document.getElementById(id);
