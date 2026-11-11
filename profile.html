@@ -8,16 +8,41 @@ body.locked::after{content:""; position:fixed; top:0; left:0; width:100%; height
 .cover{width:100%; height:200px; background:#1f3d2a; position:relative;} 
 .cover img{width:100%; height:100%; object-fit:cover;} 
 .cover.blur img{filter:blur(20px);} 
-.profile-pic{width:130px; height:130px; border-radius:50%; border:4px solid var(--bg); position:absolute; bottom:-65px; left:15px; object-fit:cover; background:#333;}
-.profile-guard{position:absolute; bottom:-70px; right:20px; background:var(--brand); color:white; padding:5px 10px; border-radius:20px; font-size:12px; font-weight:bold;}
-.profile-info{padding:80px 15px 15px;} 
+
+/* FIXED: SMALL ROUND PROFILE PIC LIKE 2ND IMAGE */
+.profile-pic{
+width:90px; /* ছোট করলাম */
+height:90px; /* ছোট করলাম */
+border-radius:50%; 
+border:4px solid var(--card-bg); /* FB style border */
+position:absolute; 
+bottom:-45px; /* উপরে তুললাম */
+left:15px; 
+object-fit:cover; 
+background:#333;
+box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.profile-guard{
+position:absolute; 
+bottom:-50px; /* Guard ও উপরে */
+right:20px; 
+background:var(--brand); 
+color:white; 
+padding:5px 10px; 
+border-radius:20px; 
+font-size:12px; 
+font-weight:bold;
+} 
+
+.profile-info{padding:60px 15px 15px;} /* padding কমালাম */
 .profile-info h1{font-size:24px;} 
 .profile-info p{color:var(--text-secondary); font-size:14px;} 
 .profile-buttons{display:flex; gap:10px; margin:15px 0;} 
 .btn{flex:1; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;} 
 .btn-primary{background:var(--brand); color:white;} 
 .btn-secondary{background:var(--card-bg); color:var(--text);} 
-.professional-badge{background:#1877f2; color:white; padding:3px 8px; border-radius:5px; font-size:11px; margin-left:5px;}
+.professional-badge{background:#1877f2; color:white; padding:3px 8px; border-radius:5px; font-size:11px; margin-left:5px;} 
 .tabs{display:flex; justify-content:space-around; border-bottom:1px solid var(--border);} 
 .tabs div{padding:12px; flex:1; text-align:center; cursor:pointer;} 
 .tabs div.active{border-bottom:3px solid var(--brand); color:var(--brand);} 
@@ -71,13 +96,20 @@ const demoUsers = [
 let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {id:0, name:"You", img:99, username:"you", email:"you@mail.com", bio:"", cover:"", profilePic:"", profileGuard:false, professional:false}; 
 let userId = new URLSearchParams(window.location.search).get('id'); 
 let profileUser;
+let profileId, following, blocked, isFollowing, isBlocked, isMyProfile;
 
 function initProfile(){
 if(userId && demoUsers.find(u => u.id == userId)){
     profileUser = {...demoUsers.find(u => u.id == userId)};
 }else{
-    profileUser = {...currentUser}; // copy so we can modify
+    profileUser = {...currentUser};
 }
+profileId = profileUser.id || 0; 
+following = JSON.parse(localStorage.getItem('following') || '[]'); 
+blocked = JSON.parse(localStorage.getItem('blocked') || '[]'); 
+isFollowing = following.includes(profileId); 
+isBlocked = blocked.includes(profileId); 
+isMyProfile = currentUser.id == profileId; 
 applyGuardLock();
 }
 
@@ -90,13 +122,6 @@ document.body.classList.remove('locked');
 document.removeEventListener('contextmenu', e=>e.preventDefault());
 } 
 }
-
-let profileId = profileUser.id || 0; 
-let following = JSON.parse(localStorage.getItem('following') || '[]'); 
-let blocked = JSON.parse(localStorage.getItem('blocked') || '[]'); 
-let isFollowing = following.includes(profileId); 
-let isBlocked = blocked.includes(profileId); 
-let isMyProfile = currentUser.id == profileId; 
 
 function getMutual(a,b){ 
 let fa = demoUsers.find(u=>u.id==a)?.friends || []; 
@@ -140,8 +165,8 @@ ${!isMyProfile ? '<button class="btn btn-secondary">Message</button>' : ''}
 <div class="menu-list" id="profileMenu"> 
 <div onclick="copyProfileLink()">🔗 Copy Profile Link</div>
 ${isMyProfile ? `
-<div onclick="event.stopPropagation()">🛡️ Profile Guard <label class="switch"><input type="checkbox" ${profileUser.profileGuard ? 'checked' : ''} onchange="toggleProfileGuard(this.checked)"><span class="slider"></span></label></div>
-<div onclick="event.stopPropagation()">💼 Professional Mode <label class="switch"><input type="checkbox" ${profileUser.professional ? 'checked' : ''} onchange="toggleProfessional(this.checked)"><span class="slider"></span></label></div>
+<div>🛡️ Profile Guard <label class="switch"><input type="checkbox" ${profileUser.profileGuard ? 'checked' : ''} onchange="toggleProfileGuard(this.checked)"><span class="slider"></span></label></div>
+<div>💼 Professional Mode <label class="switch"><input type="checkbox" ${profileUser.professional ? 'checked' : ''} onchange="toggleProfessional(this.checked)"><span class="slider"></span></label></div>
 ` : `<div onclick="blockUser()">🚫 Block ${profileUser.name}</div>
 <div onclick="alert('Report Sent ✅')">🚩 Report Profile</div>`}
 </div> </div> 
@@ -208,135 +233,4 @@ ${Object.keys(REACTIONS).map(k=>`<span onclick="likePost(${i},'${k}')">${REACTIO
 <button>↗️ Share</button> 
 </div> 
 <div class="comment-section" id="cP${i}"> 
-${(p.comments || []).map(c=>`<div class="comment"><img src="${c.profilePic || `https://i.pravatar.cc/32?img=${c.img}`}"><div class="comment-box"><b>${c.name}</b><br>${c.text}</div></div>`).join('')} 
-<div class="comment-input"> 
-<input type="text" placeholder="Write a comment..." id="inputP${i}" onkeypress="if(event.key=='Enter') addComment(${i})"> 
-<button onclick="addComment(${i})">Send</button> 
-</div> 
-</div> 
-</div> 
-`}).join(''); 
-} 
-
-function createPost(){ 
-let txt = document.getElementById('newPostText').value; 
-if(txt){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+currentUser.id) || '[]'); 
-posts.unshift({text:txt, reactions:{}, comments:[]}); 
-localStorage.setItem('posts_'+currentUser.id, JSON.stringify(posts)); 
-document.getElementById('newPostText').value=''; 
-loadProfile(); 
-} 
-} 
-
-function showProfileTab(tab){ 
-document.querySelectorAll('.tabs div').forEach(t=>t.classList.remove('active')); 
-['postsTab','aboutTab','friendsTab'].forEach(id=>document.getElementById(id).style.display='none'); 
-if(tab=='posts'){document.getElementById('postsTab').style.display='block'; document.querySelectorAll('.tabs div')[0].classList.add('active');} 
-if(tab=='about'){document.getElementById('aboutTab').style.display='block'; document.querySelectorAll('.tabs div')[1].classList.add('active');} 
-if(tab=='friends'){document.getElementById('friendsTab').style.display='block'; document.querySelectorAll('.tabs div')[2].classList.add('active');} 
-} 
-
-function toggleFollow(){ 
-if(isFollowing){ 
-if(confirm('Unfriend '+profileUser.name+'?')){ 
-following = following.filter(id => id != profileId); 
-localStorage.setItem('following', JSON.stringify(following)); 
-isFollowing = false; 
-alert('Unfriended ✅'); 
-loadProfile(); 
-} 
-} 
-else{ 
-following.push(profileId); 
-localStorage.setItem('following', JSON.stringify(following)); 
-isFollowing = true; 
-alert('Followed ✅'); 
-loadProfile(); 
-} 
-} 
-
-function blockUser(){ 
-if(confirm('Block '+profileUser.name+'?')){ 
-blocked.push(profileId); 
-localStorage.setItem('blocked', JSON.stringify(blocked)); 
-isBlocked = true; 
-alert('Blocked ✅'); 
-loadProfile(); 
-} 
-} 
-
-function unblockUser(){ 
-blocked = blocked.filter(id => id != profileId); 
-localStorage.setItem('blocked', JSON.stringify(blocked)); 
-isBlocked = false; 
-alert('Unblocked ✅'); 
-loadProfile(); 
-} 
-
-// FIXED: TOGGLE FUNCTIONS
-function toggleProfileGuard(checked){
-currentUser.profileGuard = checked;
-profileUser.profileGuard = checked;
-localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
-applyGuardLock();
-alert(checked ? 'Profile Guard ON 🛡️' : 'Profile Guard OFF');
-}
-
-function toggleProfessional(checked){
-currentUser.professional = checked;
-profileUser.professional = checked;
-localStorage.setItem('autrobook_user', JSON.stringify(currentUser));
-alert(checked ? 'Professional Mode ON 💼' : 'Professional Mode OFF');
-loadProfile();
-}
-
-function toggleReactMenu(id){
-let box = document.getElementById(id);
-box.style.display = box.style.display == 'flex' ? 'none' : 'flex';
-}
-
-function likePost(i,reaction){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
-posts[i].reactions = posts[i].reactions || {};
-let prev = posts[i].reactions[currentUser.name]; 
-if(prev == reaction){ 
-delete posts[i].reactions[currentUser.name]; 
-} 
-else{ 
-posts[i].reactions[currentUser.name] = reaction; 
-} 
-localStorage.setItem('posts_'+profileId, JSON.stringify(posts)); 
-loadProfile(); 
-} 
-
-function toggleComment(id){document.getElementById(id).style.display = document.getElementById(id).style.display=='block'?'none':'block';} 
-function hideReact(id){setTimeout(()=>{document.getElementById(id).style.display='none';},200);} 
-
-function addComment(i){ 
-let val = document.getElementById(`inputP${i}`).value; 
-if(val){ 
-let posts = JSON.parse(localStorage.getItem('posts_'+profileId) || '[]'); 
-posts[i].comments = posts[i].comments || [];
-posts[i].comments.push({name:currentUser.name, text:val, img:currentUser.img, profilePic: currentUser.profilePic}); 
-localStorage.setItem('posts_'+profileId, JSON.stringify(posts)); 
-document.getElementById(`inputP${i}`).value = ''; 
-loadProfile(); 
-} 
-} 
-
-function copyProfileLink(){
-navigator.clipboard.writeText(window.location.href);
-alert('Profile Link Copied ✅');
-}
-
-function toggleMenu(id){
-let menu = document.getElementById(id);
-menu.style.display = menu.style.display=='block'?'none':'block';
-}
-
-initProfile();
-loadProfile(); 
-</script> 
-</body> 
-</html>
+${(p.comments || []).map(c=>`<div class="comment"><img src="${c.profilePic || `https://i.pravatar.cc/32?img=${c.img}`}"><div class="comment-box"><b>${
