@@ -1,5 +1,5 @@
 <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Autrobook</title> <style> 
-:root{ --bg: #000; --card-bg: #18191a; --header-bg: #18191a; --text: #e4e6eb; --text-secondary: #b0b3b8; --border: #2f2f2f; --brand: #4caf50; --blue: #1877f2; --input-bg: #3a3b3c; --danger:#f44336; } 
+:root{ --bg: #000; --card-bg: #18191a; --header-bg: #18191a; --text: #e4e6eb; --text-secondary: #b0b3b8; --border: #2f2f2f; --brand: #4caf50; --blue: #1877f2; --input-bg: #3a3b3c; } 
 *{margin:0; padding:0; box-sizing:border-box; font-family:Arial;} 
 body{background:var(--bg); color:var(--text); padding-bottom:60px;} 
 .header{display:flex; justify-content:space-between; align-items:center; padding:8px 15px; background:var(--header-bg); position:sticky; top:0; z-index:10;} 
@@ -13,6 +13,12 @@ body{background:var(--bg); color:var(--text); padding-bottom:60px;}
 .story img{width:100%; height:100%; object-fit:cover;} 
 .story .plus{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:var(--brand); border-radius:50%; width:30px; height:30px; text-align:center; line-height:30px; font-size:20px; border:3px solid var(--card-bg);} 
 .story-name{position:absolute; bottom:5px; left:5px; font-size:12px; font-weight:bold; color:white; text-shadow:0 0 5px black;} 
+
+/* FIX 2: HIDE CHOOSE FILE BUTTON */
+#storyInput{display:none;}
+.story-add{width:110px; height:180px; background:var(--card-bg); border-radius:12px; position:relative; flex-shrink:0; border:2px dashed var(--border); cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+.story-add .plus{width:40px; height:40px; background:var(--brand); border-radius:50%; text-align:center; line-height:40px; font-size:24px; margin-bottom:8px;}
+
 .post-create{display:flex; gap:10px; padding:12px; background:var(--card-bg); margin:10px; border-radius:12px; align-items:center;} 
 .post-create img{width:40px; height:40px; border-radius:50%; cursor:pointer;} 
 .post-create input{flex:1; background:var(--input-bg); border:none; padding:10px; border-radius:20px; color:var(--text);} 
@@ -29,11 +35,9 @@ body{background:var(--bg); color:var(--text); padding-bottom:60px;}
 .react-box span{font-size:28px; cursor:pointer; transition:0.2s;} 
 .react-box span:hover{transform:scale(1.4);} 
 .comment-section{display:none; padding-top:10px; border-top:1px solid var(--border);} 
-.comment{display:flex; gap:8px; margin:10px 0; position:relative; align-items:flex-start;} 
+.comment{display:flex; gap:8px; margin:10px 0;} 
 .comment img{width:32px; height:32px; border-radius:50%;} 
 .comment-box{flex:1; background:var(--input-bg); padding:8px 12px; border-radius:18px; font-size:14px;} 
-.comment-del{margin-left:5px; font-size:14px; color:var(--text-secondary); cursor:pointer; padding:5px;}
-.comment-del:hover{color:var(--danger);}
 .comment-input{display:flex; gap:8px; margin-top:10px;} 
 .comment-input input{flex:1; background:var(--input-bg); border:none; padding:10px; border-radius:20px; color:var(--text); outline:none;} 
 .comment-input button{background:var(--brand); border:none; color:white; padding:8px 15px; border-radius:20px; cursor:pointer;} 
@@ -65,14 +69,15 @@ const REACTIONS = {like:'👍', love:'❤️', haha:'😆', wow:'😮', sad:'�
 if(!localStorage.getItem('autrobook_user')){ window.location.href = 'login.html'; } 
 let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {name:"You", img:99, id:99}; 
 let posts = JSON.parse(localStorage.getItem('posts') || '[]'); 
-let notifications = JSON.parse(localStorage.getItem('notifications') || JSON.stringify(["Rahim liked your post","Sadia commented","Nayeem sent friend request","New Reel from Abir","Birthday today","Group invite","Live video","Page update","Memory 2 years ago","New follower"])); 
+let stories = JSON.parse(localStorage.getItem('stories') || '[]');
+let notifications = JSON.parse(localStorage.getItem('notifications') || JSON.stringify(["Rahim liked your post","Sadia commented","Nayeem sent friend request"])); 
 </script> 
 <div class="header"> <div class="logo">Autrobook</div> <div class="header-icons"> <span onclick="document.getElementById('storyInput').click()">+</span> <span>🔍</span> <span onclick="window.location.href='main-settings.html'">⚙️</span> </div> </div> 
-<input type="file" id="storyInput" accept="image/*"> 
+<input type="file" id="storyInput" accept="image/*" onchange="uploadStory(event)"> 
 <!-- Tabs --> 
 <div class="tabs"> <div class="active" onclick="showTab('feed')">Home</div> <div onclick="showTab('reels')">🎬 Reels</div> </div> 
 <div id="feed"> 
-<!-- STORIES RESTORED --> 
+<!-- STORIES --> 
 <div class="stories" id="storiesList"></div> 
 <div class="post-create"> <img src="https://i.pravatar.cc/40?img=99" onclick="goProfile(currentUser.id)"> <input type="text" id="caption" placeholder="What's on your mind?" onkeypress="if(event.key=='Enter') createPost()"> <button onclick="createPost()">✈️</button> </div> 
 <div id="posts"></div> 
@@ -100,29 +105,50 @@ const demoUsers = [
 {id:2, name:"Sadia Afrin", img:2, text:"Love this new feature of Autrobook!", reactions:{}, comments:[]}, 
 {id:3, name:"Nayeem Hasan", img:3, text:"Who wants to go for a trip?", reactions:{}, comments:[]} 
 ]; 
-const storyData = [ 
-{id:99, name:"Your Story", img:99}, 
-{id:1, name:"Rahim", img:1}, 
-{id:2, name:"Sadia", img:2}, 
-{id:3, name:"Nayeem", img:3} 
-]; 
+
 function formatNum(num){ 
 if(num >= 1000000) return (num/1000000).toFixed(1)+'M'; 
 if(num >= 1000) return (num/1000).toFixed(1)+'K'; 
 return num; 
 } 
-// PROFILE CLICK FIXED 
 function goProfile(id){ window.location.href = `profile.html?id=${id}`; } 
-// LOAD STORIES - FIX 3: STORY CLICK WORKS
+
+// FIX 2: STORY GALLERY + HIDE CHOOSE FILE
 function loadStories(){ 
-let html = `<div class="story" onclick="document.getElementById('storyInput').click()"><img src="https://i.pravatar.cc/110?img=99"><div class="plus">+</div><div class="story-name">Add Story</div></div>`; 
-storyData.slice(1).forEach(s=>{ 
-html += `<div class="story" onclick="openStory('https://i.pravatar.cc/400?img=${s.img}', '${s.name}')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`; 
+let html = `<div class="story-add" onclick="document.getElementById('storyInput').click()"><div class="plus">+</div><div>Add Story</div></div>`; 
+stories.forEach(s=>{ 
+html += `<div class="story" onclick="openStory('${s.img}', '${s.name}')"><img src="${s.img}"><div class="story-name">${s.name}</div></div>`; 
 }); 
+demoUsers.forEach(s=>{ 
+html += `<div class="story" onclick="openStory('https://i.pravatar.cc/400?img=${s.img}', '${s.name}')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`; 
+});
 document.getElementById('storiesList').innerHTML = html; 
 } 
 loadStories(); 
-// Load Reels 
+
+function uploadStory(event){
+let file = event.target.files[0];
+if(file){
+let reader = new FileReader();
+reader.onload = function(e){
+stories.unshift({img: e.target.result, name: "Your Story"});
+localStorage.setItem('stories', JSON.stringify(stories));
+loadStories();
+}
+reader.readAsDataURL(file);
+}
+}
+
+// FIX 3: STORY VIEWER WORKS
+function openStory(img, name){
+document.getElementById('storyImg').src = img;
+document.getElementById('storyName').innerText = name + "'s Story";
+document.getElementById('storyViewer').style.display = 'flex';
+}
+function closeStory(){
+document.getElementById('storyViewer').style.display = 'none';
+}
+
 function loadReels(){ 
 let html = ''; 
 reelData.forEach((r)=>{ 
@@ -137,11 +163,13 @@ document.getElementById('reels').innerHTML = html;
 setTimeout(()=>{ document.querySelectorAll('.reel-video').forEach(v=>{v.volume=1.0; v.muted=false; v.play();}); }, 500) 
 } 
 loadReels(); 
+
 function addView(id){ 
 let reel = reelData.find(r=>r.id==id); 
 reel.views++; 
 document.getElementById('view'+id).innerText = formatNum(reel.views) + ' views'; 
 } 
+
 function loadPosts(){ 
 let allPosts = posts.concat(demoUsers); 
 let postsHTML = ''; 
@@ -161,9 +189,10 @@ postsHTML += `
 <span>${(u.comments || []).length} Comments</span> 
 </div> 
 <div class="post-actions"> 
-<button class="${userReact ? 'active' : ''}" onmouseenter="showReact('reactH${postId}')" onmouseleave="hideReact('reactH${postId}')"> 
+<!-- FIX 1: REACT TOGGLE FIXED -->
+<button class="${userReact ? 'active' : ''}" onclick="toggleReactMenu('reactH${postId}')"> 
 ${userReact ? REACTIONS[userReact] : '👍'} Like 
-<div class="react-box" id="reactH${postId}"> 
+<div class="react-box" id="reactH${postId}" onmouseleave="hideReact('reactH${postId}')"> 
 ${Object.keys(REACTIONS).map(k=>`<span onclick="likePost('${postId}','${k}')">${REACTIONS[k]}</span>`).join('')} 
 </div> 
 </button> 
@@ -171,13 +200,7 @@ ${Object.keys(REACTIONS).map(k=>`<span onclick="likePost('${postId}','${k}')">${
 <button>↗️ Share</button> 
 </div> 
 <div class="comment-section" id="cH${postId}"> 
-${(u.comments || []).map((c,j)=>`
-<div class="comment">
-<img src="https://i.pravatar.cc/32?img=${c.img}">
-<div class="comment-box"><b>${c.name}</b><br>${c.text}</div>
-${c.name == currentUser.name ? `<span class="comment-del" onclick="deleteComment('${postId}',${j})">✕</span>` : ''}
-</div>
-`).join('')} 
+${(u.comments || []).map(c=>`<div class="comment"><img src="https://i.pravatar.cc/32?img=${c.img}"><div class="comment-box"><b>${c.name}</b><br>${c.text}</div></div>`).join('')} 
 <div class="comment-input"> 
 <input type="text" placeholder="Write a comment..." id="inputH${postId}" onkeypress="if(event.key=='Enter') addComment('${postId}')"> 
 <button onclick="addComment('${postId}')">Send</button> 
@@ -188,6 +211,7 @@ ${c.name == currentUser.name ? `<span class="comment-del" onclick="deleteComment
 document.getElementById('posts').innerHTML = postsHTML; 
 } 
 loadPosts(); 
+
 function createPost(){ 
 let txt = document.getElementById('caption').value; 
 if(txt){ 
@@ -198,11 +222,17 @@ loadPosts();
 } 
 } 
 
-// FIX 1: REACTION ADD/CHANGE/REMOVE WORKING
+// FIX 1: REACTION TOGGLE WORKING
+function toggleReactMenu(id){
+let box = document.getElementById(id);
+box.style.display = box.style.display == 'flex' ? 'none' : 'flex';
+}
+
 function likePost(id,reaction){ 
 let post = posts.find(p=>p.id==id); 
 if(!post) return; 
-let prev = (post.reactions || {})[currentUser.name]; 
+post.reactions = post.reactions || {};
+let prev = post.reactions[currentUser.name]; 
 if(prev == reaction){ 
 delete post.reactions[currentUser.name]; // Remove
 } else{ 
@@ -213,41 +243,20 @@ loadPosts();
 } 
 
 function toggleComment(id){document.getElementById('cH'+id).style.display = document.getElementById('cH'+id).style.display=='block'?'none':'block';} 
-function showReact(id){document.getElementById(id).style.display='flex';} 
-function hideReact(id){setTimeout(()=>{if(!document.getElementById(id).matches(':hover')) document.getElementById(id).style.display='none';},300);} 
+function hideReact(id){setTimeout(()=>{document.getElementById(id).style.display='none';},200);} 
 
-// FIX 2: COMMENT ADD + DELETE
 function addComment(id){ 
 let val = document.getElementById(`inputH${id}`).value; 
 if(val){ 
 let post = posts.find(p=>p.id==id); 
 if(!post) return; 
+post.comments = post.comments || [];
 post.comments.push({name:currentUser.name, text:val, img:currentUser.img}); 
 localStorage.setItem('posts', JSON.stringify(posts)); 
 document.getElementById(`inputH${id}`).value = ''; 
 loadPosts(); 
 } 
 } 
-
-function deleteComment(postId, commentIndex){
-if(confirm('Delete this comment?')){
-let post = posts.find(p=>p.id==postId);
-if(!post) return;
-post.comments.splice(commentIndex, 1);
-localStorage.setItem('posts', JSON.stringify(posts));
-loadPosts();
-}
-}
-
-// FIX 3: STORY VIEWER
-function openStory(img, name){
-document.getElementById('storyImg').src = img;
-document.getElementById('storyName').innerText = name + "'s Story";
-document.getElementById('storyViewer').style.display = 'flex';
-}
-function closeStory(){
-document.getElementById('storyViewer').style.display = 'none';
-}
 
 // Notification Badge 
 function updateBadge(){ 
