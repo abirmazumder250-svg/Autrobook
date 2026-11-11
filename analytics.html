@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics - Autrobook</title>
+<style>
+:root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; --brand:#4caf50; --blue:#1877f2; --red:#f3425f; }
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;}
+body{background:var(--bg);color:var(--text);padding-bottom:30px;}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--card);position:sticky;top:0;z-index:99;border-bottom:1px solid var(--border);}
+.header span{cursor:pointer;padding:4px 8px;border-radius:6px;}
+.header span:active{background:var(--border);}
+.header-center{text-align:center;}
+.header-center h2{font-size:18px;}
+.header-center p{font-size:12px;color:#aaa;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;}
+.stat-card{background:var(--card);padding:14px;border-radius:12px;border:1px solid var(--border);transition:0.2s;}
+.stat-card:hover{border-color:var(--blue);}
+.stat-card .icon{font-size:20px;margin-bottom:8px;}
+.stat-card b{font-size:15px;color:#b0b3b8;}
+.stat-card p{color:var(--text);font-size:18px;font-weight:bold;margin-top:4px;}
+.stat-card .green{color:var(--brand);font-size:12px;font-weight:normal;}
+.stat-card .red{color:var(--red);font-size:12px;font-weight:normal;}
+.section{padding:16px;}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.section h2{font-size:18px;}
+.filter-select{background:var(--card);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:12px;outline:none;}
+.period-stats{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.period-card{background:var(--card);padding:10px 6px;border-radius:8px;text-align:center;border:1px solid var(--border);}
+.period-card b{font-size:15px;display:block;margin-bottom:4px;color:var(--text);}
+.period-card span{font-size:11px;color:#aaa;}
+.breakdown-card{background:var(--card);padding:14px;border-radius:8px;border:1px solid var(--border);}
+.progress-bar{background:#3a3b3c;height:8px;border-radius:4px;margin:6px 0;overflow:hidden;}
+.progress-fill{background:var(--blue);height:8px;border-radius:4px;width:0;transition:width 0.5s ease;}
+.top-content{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;}
+.top-card{min-width:165px;max-width:165px;background:var(--card);border-radius:8px;cursor:pointer;border:1px solid var(--border);overflow:hidden;transition:transform 0.2s;}
+.top-card:hover{transform:translateY(-3px);border-color:var(--blue);}
+.top-card img{width:100%;height:170px;object-fit:cover;background:#3a3b3c;}
+.top-card div{padding:10px;font-size:13px;}
+.top-card b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top-card .views{font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px;margin-top:6px;padding:0;}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000b;z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+.modal-content{background:var(--card);padding:20px;border-radius:12px;width:90%;max-width:400px;border:1px solid var(--border);}
+.modal-row{display:flex;justify-content:space-between;margin:14px 0;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
+.reaction-badge{background:#3a3b3c;padding:4px 10px;border-radius:20px;font-size:12px;margin-right:6px;display:inline-block;}
+.viral-bar{background:#3a3b3c;height:8px;border-radius:4px;margin-top:8px;overflow:hidden;}
+.viral-fill{height:8px;border-radius:4px;background:linear-gradient(90deg,#4caf50,#1877f2);transition:width 0.4s ease;}
+.empty{text-align:center;padding:30px;color:#aaa;background:var(--card);border-radius:8px;border:1px dashed var(--border);}
+.btn-demo{background:var(--blue);color:white;border:none;padding:8px 14px;border-radius:6px;margin-top:10px;cursor:pointer;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="header">
+<span onclick="history.back()" title="Go Back">←</span>
+<div class="header-center">
+<h2>Analytics</h2>
+<p id="dateRangeText">Last 30 days</p>
+</div>
+<span style="font-size:20px" onclick="generateDemoData()" title="Load Demo Data">⊞</span>
+</div>
+
+<div class="stat-grid">
+<div class="stat-card">
+<div class="icon">👁️</div>
+<b>Views</b>
+<p id="viewsCount">0 <span class="green"></span></p>
+</div>
+<div class="stat-card">
+<div class="icon">💰</div>
+<b>Earnings</b>
+<p id="earningsCount">$0.00 <span class="green"></span></p>
+</div>
+<div class="stat-card">
+<div class="icon">❤️</div>
+<b>Engagement</b>
+<p id="engagementCount">0 <span class="green"></span></p>
+</div>
+<div class="stat-card">
+<div class="icon">👥</div>
+<b>Audience</b>
+<p id="audienceCount">0 <span class="green"></span></p>
+</div>
+</div>
+
+<div class="section">
+<div class="section-header"><h2>Performance Overview</h2></div>
+<div class="period-stats">
+<div class="period-card"><b id="todayViews">0</b><span>Today Views</span></div>
+<div class="period-card"><b id="days7Views">0</b><span>7 Days Views</span></div>
+<div class="period-card"><b id="days14Views">0</b><span>14 Days Views</span></div>
+<div class="period-card"><b id="days30Views">0</b><span>30 Days Views</span></div>
+</div>
+<div class="period-stats">
+<div class="period-card"><b id="todayEarn">$0</b><span>Today Earn</span></div>
+<div class="period-card"><b id="days7Earn">$0</b><span>7 Days Earn</span></div>
+<div class="period-card"><b id="days14Earn">$0</b><span>14 Days Earn</span></div>
+<div class="period-card"><b id="days30Earn">$0</b><span>30 Days Earn</span></div>
+</div>
+<div class="period-stats">
+<div class="period-card"><b id="todayEng">0</b><span>Today Eng.</span></div>
+<div class="period-card"><b id="days7Eng">0</b><span>7 Days Eng.</span></div>
+<div class="period-card"><b id="days14Eng">0</b><span>14 Days Eng.</span></div>
+<div class="period-card"><b id="days30Eng">0</b><span>30 Days Eng.</span></div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-header"><h2>Views breakdown</h2></div>
+<div class="breakdown-card">
+<div style="display:flex;justify-content:space-between;font-size:13px;">
+<span>Total Views</span> <b id="viewsTotal">0</b>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="viewsBar"></div></div>
+<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:14px;">
+<span>3-second views (Retention)</span> <b id="threeTotal">0</b>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="threeBar" style="background:var(--brand);"></div></div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-header">
+<h2>Top content</h2>
+<select class="filter-select" id="sortContent" onchange="renderTopContent()">
+<option value="views">By Views</option>
+<option value="engagement">By Engagement</option>
+</select>
+</div>
+<div class="top-content" id="topContent">
+<div class="empty" style="width:100%">
+<p>No content data found</p>
+<button class="btn-demo" onclick="generateDemoData()">Load Demo Data</button>
+</div>
+</div>
+</div>
+
+<!-- Post Analytics Modal -->
+<div class="modal" id="postAnalyticsModal" onclick="if(event.target===this) closePostModal()">
+<div class="modal-content">
+<h3 id="modalPostTitle" style="margin-bottom:10px;color:var(--blue);">Post Analytics</h3>
+<div class="modal-row"><b>Total Views:</b> <span id="modalViews">0</span></div>
+<div class="modal-row"><b>Estimated Earnings:</b> <span id="modalEarnings" style="color:var(--brand);font-weight:bold;">$0.00</span></div>
+<div class="modal-row"><b>Total Engagement:</b> <span id="modalEngagement">0</span></div>
+<div style="margin:14px 0;font-size:14px;">
+<div style="display:flex;justify-content:space-between;">
+<b>Viral Score:</b> <span id="modalViral">0%</span>
+</div>
+<div class="viral-bar"><div class="viral-fill" id="viralFill" style="width:0%"></div></div>
+</div>
+<div style="margin:14px 0;font-size:14px;">
+<b>Reactions:</b>
+<div id="modalReactions" style="margin-top:8px"></div>
+</div>
+<button onclick="closePostModal()" style="background:var(--blue);border:none;padding:10px 20px;border-radius:6px;color:white;width:100%;margin-top:10px;cursor:pointer;font-weight:bold;">Close</button>
+</div>
+</div>
+
+<script> 
+let posts = JSON.parse(localStorage.getItem('posts')) || [];
+let myReactions = JSON.parse(localStorage.getItem('my_reactions')) || {};
+
+window.onload = loadAnalytics;
+
+function formatNumber(num) {
+if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+return num;
+}
+
+function generateDemoData() {
+let now = Date.now();
+let day = 24 * 60 * 60 * 1000;
+posts = [
+{ id: 'p1', text: 'Welcome to Autrobook! Exploring new features.', time: now - (0.5 * day), views: 1250, image: 'https://picsum.photos/300/400?1', comments: ['Nice!', 'Awesome'] },
+{ id: 'p2', text: 'How to secure API keys in Vercel deployment.', time: now - (4 * day), views: 3400, image: 'https://picsum.photos/300/400?2', comments: ['Very helpful', 'Thanks', 'Great guide'] },
+{ id: 'p3', text: 'My first week as a Creator on Autrobook', time: now - (12 * day), views: 8900, image: 'https://picsum.photos/300/400?3', comments: ['Congrats!'] },
+{ id: 'p4', text: 'UI/UX Design tips for 2026', time: now - (25 * day), views: 15200, image: 'https://picsum.photos/300/400?4', comments: [] }
+];
+myReactions = { p1: '👍', p2: '❤️', p3: '🔥' };
+localStorage.setItem('posts', JSON.stringify(posts));
+localStorage.setItem('my_reactions', JSON.stringify(myReactions));
+alert('Demo Data Loaded Successfully!');
+loadAnalytics();
+}
+
+function loadAnalytics() {
+if(posts.length === 0){
+document.getElementById('topContent').innerHTML = `<div class="empty" style="width:100%"><p>No content data found</p><button class="btn-demo" onclick="generateDemoData()">Load Demo Data</button></div>`;
+return;
+}
+
+let totalViews = posts.reduce((sum, p) => sum + (p.views || 0), 0);
+let totalEng = posts.reduce((sum, p) => sum + (p.comments ? p.comments.length : 0), 0);
+let totalEarn = (totalViews / 1000) * 0.15;
+
+document.getElementById('viewsCount').innerHTML = `${formatNumber(totalViews)} <span class="green">+12%</span>`;
+document.getElementById('earningsCount').innerHTML = `$${totalEarn.toFixed(2)} <span class="green">+8%</span>`;
+document.getElementById('engagementCount').innerHTML = `${formatNumber(totalEng)} <span class="green">+5%</span>`;
+document.getElementById('audienceCount').innerHTML = `${formatNumber(totalViews/10)} <span class="green">+3%</span>`;
+
+calcPeriodStats();
+calcBreakdown(totalViews);
+renderTopContent();
+}
+
+function calcPeriodStats(){
+let now = Date.now();
+let day = 24 * 60 * 60 * 1000;
+let periods = [1,7,14,30];
+
+periods.forEach(d => {
+let filtered = posts.filter(p => p.time > now - (d * day));
+let views = filtered.reduce((s,p)=>s+(p.views||0),0);
+let earn = (views/1000)*0.15;
+let eng = filtered.reduce((s,p)=>s+(p.comments?p.comments.length:0),0);
+document.getElementById(`days${d}Views`).innerText = formatNumber(views);
+document.getElementById(`days${d}Earn`).innerText = `$${earn.toFixed(0)}`;
+document.getElementById(`days${d}Eng`).innerText = formatNumber(eng);
+});
+
+let today = posts.filter(p => p.time > now - day);
+document.getElementById('todayViews').innerText = formatNumber(today.reduce((s,p)=>s+(p.views||0),0));
+document.getElementById('todayEarn').innerText = `$${((today.reduce((s,p)=>s+(p.views||0),0))/1000*0.15).toFixed(0)}`;
+document.getElementById('todayEng').innerText = formatNumber(today.reduce((s,p)=>s+(p.comments?p.comments.length:0),0));
+}
+
+function calcBreakdown(totalViews){
+let retention = Math.floor(totalViews * 0.65);
+document.getElementById('viewsTotal').innerText = formatNumber(totalViews);
+document.getElementById('threeTotal').innerText = formatNumber(retention);
+document.getElementById('viewsBar').style.width = '100%';
+document.getElementById('threeBar').style.width = '65%';
+}
+
+function renderTopContent(){
+let sortBy = document.getElementById('sortContent').value;
+let sorted = [...posts];
+if(sortBy === 'engagement'){
+sorted.sort((a,b) => (b.comments?.length || 0) - (a.comments?.length || 0));
+} else {
+sorted.sort((a,b) => (b.views||0) - (a.views||0));
+}
+
+const box = document.getElementById('topContent');
+box.innerHTML = '';
+sorted.slice(0,6).forEach(p => {
+let engagement = (p.comments?.length || 0);
+box.innerHTML += `
+<div class="top-card" onclick="showPostAnalytics('${p.id}')">
+<img src="${p.image || 'https://picsum.photos/300/400'}">
+<div>
+<b>${p.text.substring(0,40)}...</b>
+<div class="views">👁️ ${formatNumber(p.views)} · ❤️ ${engagement}</div>
+</div>
+</div>`;
+});
+}
+
+function showPostAnalytics(postId) {
+let post = posts.find(p => p.id === postId);
+if(!post) return;
+let views = post.views || 0;
+let likes = Math.floor(views * 0.05);
+let comments = post.comments ? post.comments.length : 0;
+let engagement = likes + comments;
+let earnings = (views / 1000) * 0.15;
+let viralChance = Math.min(100, (engagement * 12) + Math.floor(views / 100));
+
+document.getElementById('modalPostTitle').innerText = post.text ? post.text.substring(0, 30) + '...' : 'Post Analytics';
+document.getElementById('modalViews').innerText = formatNumber(views);
+document.getElementById('modalViral').innerText = viralChance + '%';
+document.getElementById('viralFill').style.width = viralChance + '%';
+document.getElementById('modalEarnings').innerText = '$' + earnings.toFixed(3);
+document.getElementById('modalEngagement').innerText = engagement;
+
+let reactionDiv = document.getElementById('modalReactions');
+if (myReactions[post.id]) {
+reactionDiv.innerHTML = `<span class="reaction-badge">${myReactions[post.id]} 1</span>`;
+} else {
+reactionDiv.innerHTML = `<span style="color:#aaa;font-size:12px;">No reactions yet</span>`;
+}
+document.getElementById('postAnalyticsModal').style.display = 'flex';
+}
+
+function closePostModal() {
+document.getElementById('postAnalyticsModal').style.display = 'none';
+}
+</script> 
+</body>
+</html>
