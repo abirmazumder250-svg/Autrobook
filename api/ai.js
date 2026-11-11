@@ -2,6 +2,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ reply: 'Method not allowed' });
 
@@ -24,10 +25,9 @@ export default async function handler(req, res) {
         parts: [{ text: String(msg.content) }]
       }));
 
-    // নিরাপদভাবে পূর্ণ URL তৈরি (যাতে কোনো অংশ কেটে না যায়)
     const protocol = "https://";
     const host = "generativelanguage." + "googleapis.com";
-    const endpoint = "/v1beta/models/gemini-3.5-flash-lite:generateContent?key=";
+    const endpoint = "/v1beta/models/gemini-2.5-flash:generateContent?key=";
     const fullUrl = protocol + host + endpoint + API_KEY;
 
     const geminiResponse = await fetch(fullUrl, {
@@ -35,7 +35,9 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents,
-        systemInstruction: { parts: [{ text: "You are Autro AI, assistant for Autrobook. Reply in the same language as user. Be friendly, helpful and brief." }] }
+        systemInstruction: { 
+          parts: [{ text: "You are Autro AI, assistant for Autrobook. Always detect the user's language and reply strictly in the exact same language the user writes in. Be friendly, helpful and brief." }] 
+        }
       })
     });
 
