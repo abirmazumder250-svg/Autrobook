@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const history = body?.history;
+    const history = body && body.history;
 
     if (!history || !Array.isArray(history)) {
       return res.status(200).json({ reply: "Error: Invalid message history format from frontend." });
@@ -26,9 +26,8 @@ export default async function handler(req, res) {
         parts: [{ text: String(msg.content) }]
       }));
 
-    const apiUrl = "https://googleapis.com" + API_KEY;
-
-    const geminiResponse = await fetch(apiUrl, {
+    const baseUrl = "https://googleapis.com";
+    const geminiResponse = await fetch(baseUrl + API_KEY, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
@@ -45,7 +44,9 @@ export default async function handler(req, res) {
       });
     }
     
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const firstCandidate = data.candidates && data.candidates.at(0);
+    const firstPart = firstCandidate && firstCandidate.content && firstCandidate.content.parts && firstCandidate.content.parts.at(0);
+    const reply = firstPart && firstPart.text;
     
     if (!reply) {
       return res.status(200).json({ reply: "Error: AI could not generate a response. Please try again." });
