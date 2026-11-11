@@ -1,229 +1,236 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autrobook</title>
-<style>
-:root{ --bg: #000; --card-bg: #18191a; --header-bg: #18191a; --text: #e4e6eb; --text-secondary: #b0b3b8; --border: #2f2f2f; --brand: #4caf50; --blue: #1877f2; --input-bg: #3a3b3c; }
-*{margin:0; padding:0; box-sizing:border-box; font-family:Arial;}
-body{background:var(--bg); color:var(--text); padding-bottom:60px;}
-.header{display:flex; justify-content:space-between; align-items:center; padding:8px 15px; background:var(--header-bg); position:sticky; top:0; z-index:10;}
-.logo{font-size:26px; font-weight:bold; color:var(--brand);}
-.header-icons{display:flex; gap:15px; font-size:22px;}
-.tabs{display:flex; justify-content:space-around; background:var(--header-bg); border-bottom:1px solid var(--border);}
-.tabs div{padding:12px; flex:1; text-align:center; cursor:pointer; font-size:15px;}
-.tabs div.active{border-bottom:3px solid var(--brand); color:var(--brand);}
-
-.stories{display:flex; gap:10px; padding:10px; overflow-x:auto; background:var(--card-bg);}
-.story{width:110px; height:180px; background:#333; border-radius:12px; position:relative; flex-shrink:0; border:2px solid var(--brand); cursor:pointer; overflow:hidden;}
-.story img{width:100%; height:100%; object-fit:cover;}
-.story .plus{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:var(--brand); border-radius:50%; width:30px; height:30px; text-align:center; line-height:30px; font-size:20px; border:3px solid var(--card-bg);}
-.story-name{position:absolute; bottom:5px; left:5px; font-size:12px; font-weight:bold; color:white; text-shadow:0 0 5px black;}
-
-.post-create{display:flex; gap:10px; padding:12px; background:var(--card-bg); margin:10px; border-radius:12px; align-items:center;}
-.post-create img{width:40px; height:40px; border-radius:50%; cursor:pointer;}
-.post-create input{flex:1; background:var(--input-bg); border:none; padding:10px; border-radius:20px; color:var(--text);}
-.post-create button{background:var(--brand); border:none; color:white; width:35px; height:35px; border-radius:50%; cursor:pointer; font-size:18px;}
-.post{background:var(--card-bg); margin:10px 0; padding:12px;}
-.post-user{display:flex; align-items:center; gap:10px; cursor:pointer;}
-.post-user img{width:40px; height:40px; border-radius:50%;}
-.post-stats{display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); padding:5px 0; border-bottom:1px solid var(--border);}
-
-/* Reels Full */
-.reels-container{display:none; height:100vh; background:black; overflow-y:scroll; scroll-snap-type:y mandatory;}
-.reel{height:100vh; position:relative; scroll-snap-align:start;}
-.reel-video{width:100%; height:100%; object-fit:cover;}
-.reel-user{position:absolute; bottom:80px; left:10px; display:flex; align-items:center; gap:10px; cursor:pointer;}
-.reel-user img{width:40px; height:40px; border-radius:50%; border:2px solid var(--brand);}
-.reel-views{position:absolute; bottom:25px; left:10px; font-size:13px;}
-
-/* Bottom Nav */
-.bottom-nav{position:fixed; bottom:0; width:100%; background:#18191a; display:flex; justify-content:space-around; padding:6px 0 10px; border-top:1px solid #2f2f2f; z-index:99;}
-.nav-item{position:relative; text-align:center; font-size:26px; color:#b0b3b8; cursor:pointer; flex:1;}
-.nav-item.active{color:#ffffff;}
-.nav-item img.profile-pic{width:28px; height:28px; border-radius:50%; border:2px solid #b0b3b8;}
-.nav-item.active img.profile-pic{border:2px solid #fff;}
-.badge{position:absolute; top:0px; right:30%; background:#ff3b30; color:white; font-size:11px; font-weight:700; border-radius:12px; padding:1px 5px; min-width:18px; text-align:center; border:2px solid #18191a;}
-.badge.blue{background:#1877f2;}
-.badge.small{font-size:9px; padding:0px 4px; min-width:15px;}
-</style>
-</head>
-<body>
-<script>
-if(!localStorage.getItem('autrobook_user')){ window.location.href = 'login.html'; }
-let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {name:"You", img:99, id:99};
-let posts = JSON.parse(localStorage.getItem('posts') || '[]');
-let notifications = JSON.parse(localStorage.getItem('notifications') || JSON.stringify(["Rahim liked your post","Sadia commented","Nayeem sent friend request","New Reel from Abir","Birthday today","Group invite","Live video","Page update","Memory 2 years ago","New follower"]));
-</script>
-
-<div class="header">
-<div class="logo">Autrobook</div>
-<div class="header-icons">
-<span onclick="document.getElementById('storyInput').click()">+</span>
-<span>🔍</span>
-<span onclick="window.location.href='main-settings.html'">⚙️</span>
-</div>
-</div>
-
-<input type="file" id="storyInput" accept="image/*">
-
-<!-- Tabs -->
-<div class="tabs">
-<div class="active" onclick="showTab('feed')">Home</div>
-<div onclick="showTab('reels')">🎬 Reels</div>
-</div>
-
-<div id="feed">
-<!-- STORIES RESTORED -->
-<div class="stories" id="storiesList"></div>
-
-<div class="post-create">
-<img src="https://i.pravatar.cc/40?img=99" onclick="goProfile(currentUser.id)">
-<input type="text" id="caption" placeholder="What's on your mind?" onkeypress="if(event.key=='Enter') createPost()">
-<button onclick="createPost()">✈️</button>
-</div>
-<div id="posts"></div>
-</div>
-
-<!-- Reels -->
-<div class="reels-container" id="reels"></div>
-
-<!-- Bottom Nav -->
-<div class="bottom-nav">
-<div class="nav-item active" onclick="showTab('feed')">🏠</div>
-<div class="nav-item" onclick="showTab('reels')">🎬<span class="badge" id="reelBadge">3</span></div>
-<div class="nav-item" onclick="alert('Groups')">👥</div>
-<div class="nav-item" onclick="alert('Watch')">⭕</div>
-<div class="nav-item" onclick="showNotifications()">🔔<span class="badge blue" id="notiBadge"></span></div>
-<div class="nav-item" onclick="goProfile(currentUser.id)"><img src="https://i.pravatar.cc/28?img=99" class="profile-pic"></div>
-</div>
-
-<script>
-const reelData = [
-{id:'r1', name:"Rahim Khan", userId:1, img:1, video:"https://www.w3schools.com/html/mov_bbb.mp4", views:32100},
-{id:'r2', name:"Sadia Afrin", userId:2, img:2, video:"https://www.w3schools.com/html/movie.mp4", views:98500},
-{id:'r3', name:"Nayeem Hasan", userId:3, img:3, video:"https://www.w3schools.com/html/mov_bbb.mp4", views:1200000}
-];
-
-const demoUsers = [
-{id:1, name:"Rahim Khan", img:1, text:"Today is a beautiful day ☀️"},
-{id:2, name:"Sadia Afrin", img:2, text:"Love this new feature of Autrobook!"},
-{id:3, name:"Nayeem Hasan", img:3, text:"Who wants to go for a trip?"}
-];
-
-const storyData = [
-{id:99, name:"Your Story", img:99},
-{id:1, name:"Rahim", img:1},
-{id:2, name:"Sadia", img:2},
-{id:3, name:"Nayeem", img:3}
-];
-
-function formatNum(num){
-if(num >= 1000000) return (num/1000000).toFixed(1)+'M';
-if(num >= 1000) return (num/1000).toFixed(1)+'K';
-return num;
-}
-
-// PROFILE CLICK FIXED
-function goProfile(id){ 
-window.location.href = `profile.html?id=${id}`; 
-}
-
-// LOAD STORIES
-function loadStories(){
-let html = `<div class="story" onclick="document.getElementById('storyInput').click()"><img src="https://i.pravatar.cc/110?img=99"><div class="plus">+</div><div class="story-name">Add Story</div></div>`;
-storyData.slice(1).forEach(s=>{
-html += `<div class="story" onclick="alert('${s.name} এর Story দেখা হবে')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`;
-});
-document.getElementById('storiesList').innerHTML = html;
-}
-loadStories();
-
-// Load Reels
-function loadReels(){
-let html = '';
-reelData.forEach((r)=>{
-html += `
-<div class="reel">
-<video class="reel-video" id="video${r.id}" src="${r.video}" autoplay loop playsinline onclick="addView('${r.id}')"></video>
-<div class="reel-user" onclick="goProfile('${r.userId}')"><img src="https://i.pravatar.cc/40?img=${r.img}"><b>${r.name}</b></div>
-<div class="reel-views" id="view${r.id}">${formatNum(r.views)} views</div>
-</div>`;
-});
-document.getElementById('reels').innerHTML = html;
-setTimeout(()=>{ document.querySelectorAll('.reel-video').forEach(v=>{v.volume=1.0; v.muted=false; v.play();}); }, 500)
-}
-loadReels();
-
-function addView(id){
-let reel = reelData.find(r=>r.id==id);
-reel.views++;
-document.getElementById('view'+id).innerText = formatNum(reel.views) + ' views';
-}
-
-function loadPosts(){
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Autrobook</title> <style> 
+:root{ --bg: #000; --card-bg: #18191a; --header-bg: #18191a; --text: #e4e6eb; --text-secondary: #b0b3b8; --border: #2f2f2f; --brand: #4caf50; --blue: #1877f2; --input-bg: #3a3b3c; } 
+*{margin:0; padding:0; box-sizing:border-box; font-family:Arial;} 
+body{background:var(--bg); color:var(--text); padding-bottom:60px;} 
+.header{display:flex; justify-content:space-between; align-items:center; padding:8px 15px; background:var(--header-bg); position:sticky; top:0; z-index:10;} 
+.logo{font-size:26px; font-weight:bold; color:var(--brand);} 
+.header-icons{display:flex; gap:15px; font-size:22px;} 
+.tabs{display:flex; justify-content:space-around; background:var(--header-bg); border-bottom:1px solid var(--border);} 
+.tabs div{padding:12px; flex:1; text-align:center; cursor:pointer; font-size:15px;} 
+.tabs div.active{border-bottom:3px solid var(--brand); color:var(--brand);} 
+.stories{display:flex; gap:10px; padding:10px; overflow-x:auto; background:var(--card-bg);} 
+.story{width:110px; height:180px; background:#333; border-radius:12px; position:relative; flex-shrink:0; border:2px solid var(--brand); cursor:pointer; overflow:hidden;} 
+.story img{width:100%; height:100%; object-fit:cover;} 
+.story .plus{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:var(--brand); border-radius:50%; width:30px; height:30px; text-align:center; line-height:30px; font-size:20px; border:3px solid var(--card-bg);} 
+.story-name{position:absolute; bottom:5px; left:5px; font-size:12px; font-weight:bold; color:white; text-shadow:0 0 5px black;} 
+.post-create{display:flex; gap:10px; padding:12px; background:var(--card-bg); margin:10px; border-radius:12px; align-items:center;} 
+.post-create img{width:40px; height:40px; border-radius:50%; cursor:pointer;} 
+.post-create input{flex:1; background:var(--input-bg); border:none; padding:10px; border-radius:20px; color:var(--text);} 
+.post-create button{background:var(--brand); border:none; color:white; width:35px; height:35px; border-radius:50%; cursor:pointer; font-size:18px;} 
+.post{background:var(--card-bg); margin:10px 0; padding:12px;} 
+.post-user{display:flex; align-items:center; gap:10px; cursor:pointer;} 
+.post-user img{width:40px; height:40px; border-radius:50%;} 
+.post-stats{display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-secondary); padding:5px 0; border-bottom:1px solid var(--border);} 
+.reaction-summary{display:flex; gap:3px; align-items:center;}
+.post-actions{display:flex; justify-content:space-around; padding-top:8px; position:relative;} 
+.post-actions button{background:none; border:none; color:var(--text-secondary); padding:8px; flex:1; cursor:pointer; border-radius:8px; position:relative;}
+.react-box{display:none; position:absolute; bottom:45px; left:5px; background:var(--card-bg); padding:8px; border-radius:30px; box-shadow:0 4px 12px black; gap:8px; border:1px solid var(--border);} 
+.react-box span{font-size:28px; cursor:pointer; transition:0.2s;} 
+.react-box span:hover{transform:scale(1.4);}
+.comment-section{display:none; padding-top:10px; border-top:1px solid var(--border);} 
+.comment{display:flex; gap:8px; margin:10px 0;} 
+.comment img{width:32px; height:32px; border-radius:50%;} 
+.comment-box{flex:1; background:var(--input-bg); padding:8px 12px; border-radius:18px; font-size:14px;} 
+.comment-input{display:flex; gap:8px; margin-top:10px;} 
+.comment-input input{flex:1; background:var(--input-bg); border:none; padding:10px; border-radius:20px; color:var(--text); outline:none;} 
+.comment-input button{background:var(--brand); border:none; color:white; padding:8px 15px; border-radius:20px; cursor:pointer;} 
+/* Reels Full */ 
+.reels-container{display:none; height:100vh; background:black; overflow-y:scroll; scroll-snap-type:y mandatory;} 
+.reel{height:100vh; position:relative; scroll-snap-align:start;} 
+.reel-video{width:100%; height:100%; object-fit:cover;} 
+.reel-user{position:absolute; bottom:80px; left:10px; display:flex; align-items:center; gap:10px; cursor:pointer;} 
+.reel-user img{width:40px; height:40px; border-radius:50%; border:2px solid var(--brand);} 
+.reel-views{position:absolute; bottom:25px; left:10px; font-size:13px;} 
+/* Bottom Nav */ 
+.bottom-nav{position:fixed; bottom:0; width:100%; background:#18191a; display:flex; justify-content:space-around; padding:6px 0 10px; border-top:1px solid #2f2f2f; z-index:99;} 
+.nav-item{position:relative; text-align:center; font-size:26px; color:#b0b3b8; cursor:pointer; flex:1;} 
+.nav-item.active{color:#ffffff;} 
+.nav-item img.profile-pic{width:28px; height:28px; border-radius:50%; border:2px solid #b0b3b8;} 
+.nav-item.active img.profile-pic{border:2px solid #fff;} 
+.badge{position:absolute; top:0px; right:30%; background:#ff3b30; color:white; font-size:11px; font-weight:700; border-radius:12px; padding:1px 5px; min-width:18px; text-align:center; border:2px solid #18191a;} 
+.badge.blue{background:#1877f2;} 
+.badge.small{font-size:9px; padding:0px 4px; min-width:15px;} 
+</style> </head> <body> 
+<script> 
+const REACTIONS = {like:'👍', love:'❤️', haha:'😆', wow:'😮', sad:'😢', angry:'😠'};
+if(!localStorage.getItem('autrobook_user')){ window.location.href = 'login.html'; } 
+let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {name:"You", img:99, id:99}; 
+let posts = JSON.parse(localStorage.getItem('posts') || '[]'); 
+let notifications = JSON.parse(localStorage.getItem('notifications') || JSON.stringify(["Rahim liked your post","Sadia commented","Nayeem sent friend request","New Reel from Abir","Birthday today","Group invite","Live video","Page update","Memory 2 years ago","New follower"])); 
+</script> 
+<div class="header"> <div class="logo">Autrobook</div> <div class="header-icons"> <span onclick="document.getElementById('storyInput').click()">+</span> <span>🔍</span> <span onclick="window.location.href='main-settings.html'">⚙️</span> </div> </div> 
+<input type="file" id="storyInput" accept="image/*"> 
+<!-- Tabs --> 
+<div class="tabs"> <div class="active" onclick="showTab('feed')">Home</div> <div onclick="showTab('reels')">🎬 Reels</div> </div> 
+<div id="feed"> 
+<!-- STORIES RESTORED --> 
+<div class="stories" id="storiesList"></div> 
+<div class="post-create"> <img src="https://i.pravatar.cc/40?img=99" onclick="goProfile(currentUser.id)"> <input type="text" id="caption" placeholder="What's on your mind?" onkeypress="if(event.key=='Enter') createPost()"> <button onclick="createPost()">✈️</button> </div> 
+<div id="posts"></div> 
+</div> 
+<!-- Reels --> 
+<div class="reels-container" id="reels"></div> 
+<!-- Bottom Nav --> 
+<div class="bottom-nav"> <div class="nav-item active" onclick="showTab('feed')">🏠</div> <div class="nav-item" onclick="showTab('reels')">🎬<span class="badge" id="reelBadge">3</span></div> <div class="nav-item" onclick="alert('Groups')">👥</div> <div class="nav-item" onclick="alert('Watch')">⭕</div> <div class="nav-item" onclick="showNotifications()">🔔<span class="badge blue" id="notiBadge"></span></div> <div class="nav-item" onclick="goProfile(currentUser.id)"><img src="https://i.pravatar.cc/28?img=99" class="profile-pic"></div> </div> 
+<script> 
+const reelData = [ 
+{id:'r1', name:"Rahim Khan", userId:1, img:1, video:"https://www.w3schools.com/html/mov_bbb.mp4", views:32100}, 
+{id:'r2', name:"Sadia Afrin", userId:2, img:2, video:"https://www.w3schools.com/html/movie.mp4", views:98500}, 
+{id:'r3', name:"Nayeem Hasan", userId:3, img:3, video:"https://www.w3schools.com/html/mov_bbb.mp4", views:1200000} 
+]; 
+const demoUsers = [ 
+{id:1, name:"Rahim Khan", img:1, text:"Today is a beautiful day ☀️", reactions:{}, comments:[]}, 
+{id:2, name:"Sadia Afrin", img:2, text:"Love this new feature of Autrobook!", reactions:{}, comments:[]}, 
+{id:3, name:"Nayeem Hasan", img:3, text:"Who wants to go for a trip?", reactions:{}, comments:[]} 
+]; 
+const storyData = [ 
+{id:99, name:"Your Story", img:99}, 
+{id:1, name:"Rahim", img:1}, 
+{id:2, name:"Sadia", img:2}, 
+{id:3, name:"Nayeem", img:3} 
+]; 
+function formatNum(num){ 
+if(num >= 1000000) return (num/1000000).toFixed(1)+'M'; 
+if(num >= 1000) return (num/1000).toFixed(1)+'K'; 
+return num; 
+} 
+// PROFILE CLICK FIXED 
+function goProfile(id){ window.location.href = `profile.html?id=${id}`; } 
+// LOAD STORIES - BANGLA FIXED TO ENGLISH
+function loadStories(){ 
+let html = `<div class="story" onclick="document.getElementById('storyInput').click()"><img src="https://i.pravatar.cc/110?img=99"><div class="plus">+</div><div class="story-name">Add Story</div></div>`; 
+storyData.slice(1).forEach(s=>{ 
+html += `<div class="story" onclick="alert('${s.name}'s Story will be shown')"><img src="https://i.pravatar.cc/110?img=${s.img}"><div class="story-name">${s.name}</div></div>`; 
+}); 
+document.getElementById('storiesList').innerHTML = html; 
+} 
+loadStories(); 
+// Load Reels 
+function loadReels(){ 
+let html = ''; 
+reelData.forEach((r)=>{ 
+html += ` 
+<div class="reel"> 
+<video class="reel-video" id="video${r.id}" src="${r.video}" autoplay loop playsinline onclick="addView('${r.id}')"></video> 
+<div class="reel-user" onclick="goProfile('${r.userId}')"><img src="https://i.pravatar.cc/40?img=${r.img}"><b>${r.name}</b></div> 
+<div class="reel-views" id="view${r.id}">${formatNum(r.views)} views</div> 
+</div>`; 
+}); 
+document.getElementById('reels').innerHTML = html; 
+setTimeout(()=>{ document.querySelectorAll('.reel-video').forEach(v=>{v.volume=1.0; v.muted=false; v.play();}); }, 500) 
+} 
+loadReels(); 
+function addView(id){ 
+let reel = reelData.find(r=>r.id==id); 
+reel.views++; 
+document.getElementById('view'+id).innerText = formatNum(reel.views) + ' views'; 
+} 
+function loadPosts(){ 
+let allPosts = posts.concat(demoUsers); 
+let postsHTML = ''; 
+allPosts.forEach((u,i)=>{ 
+let postId = u.id || 'p'+i;
+let reactionIcons = Object.values(u.reactions || {}).slice(0,3).map(r=>REACTIONS[r]).join('');
+let userReact = (u.reactions || {})[currentUser.name];
+postsHTML += ` 
+<div class="post"> 
+<div class="post-user" onclick="goProfile('${u.id||99}')"> 
+<img src="https://i.pravatar.cc/40?img=${u.img||99}"> 
+<div><b>${u.name}</b><div style="font-size:12px; color:var(--text-secondary)">1h ago</div></div> 
+</div> 
+<p style="margin:10px 0;">${u.text}</p> 
+<div class="post-stats">
+<div class="reaction-summary">${reactionIcons} <span>${Object.keys(u.reactions || {}).length}</span></div>
+<span>${(u.comments || []).length} Comments</span>
+</div> 
+<div class="post-actions"> 
+<button onmouseenter="showReact('reactH${postId}')" onmouseleave="hideReact('reactH${postId}')">
+${userReact ? REACTIONS[userReact] : '👍'} Like 
+<div class="react-box" id="reactH${postId}"> 
+${Object.keys(REACTIONS).map(k=>`<span onclick="likePost('${postId}','${k}')">${REACTIONS[k]}</span>`).join('')}
+</div> 
+</button> 
+<button onclick="toggleComment('cH${postId}')">💬 Comment</button> 
+<button>↗️ Share</button> 
+</div> 
+<div class="comment-section" id="cH${postId}"> 
+${(u.comments || []).map(c=>`<div class="comment"><img src="https://i.pravatar.cc/32?img=${c.img}"><div class="comment-box"><b>${c.name}</b><br>${c.text}</div></div>`).join('')} 
+<div class="comment-input"> 
+<input type="text" placeholder="Write a comment..." id="inputH${postId}" onkeypress="if(event.key=='Enter') addComment('${postId}')"> 
+<button onclick="addComment('${postId}')">Send</button> 
+</div> 
+</div> 
+</div>` 
+}); 
+document.getElementById('posts').innerHTML = postsHTML; 
+} 
+loadPosts(); 
+function createPost(){ 
+let txt = document.getElementById('caption').value; 
+if(txt){ 
+posts.unshift({id:Date.now(), name:currentUser.name, userId:99, text:txt, reactions:{}, comments:[]}); 
+localStorage.setItem('posts', JSON.stringify(posts)); 
+document.getElementById('caption').value=''; 
+loadPosts(); 
+} 
+} 
+function likePost(id,reaction){ 
 let allPosts = posts.concat(demoUsers);
-let postsHTML = '';
-allPosts.forEach((u)=>{
-postsHTML += `
-<div class="post">
-<div class="post-user" onclick="goProfile('${u.id||99}')">
-<img src="https://i.pravatar.cc/40?img=${u.img||99}">
-<div><b>${u.name}</b><div style="font-size:12px; color:var(--text-secondary)">1h ago</div></div>
-</div>
-<p style="margin:10px 0;">${u.text}</p>
-<div class="post-stats"><span>0 Likes</span><span>0 Comments</span></div>
-</div>`
-});
-document.getElementById('posts').innerHTML = postsHTML;
-}
-loadPosts();
-
-function createPost(){
-let txt = document.getElementById('caption').value;
-if(txt){
-posts.unshift({id:Date.now(), name:currentUser.name, userId:99, text:txt});
-localStorage.setItem('posts', JSON.stringify(posts));
-document.getElementById('caption').value='';
-loadPosts();
-}
-}
-
-// Notification Badge
-function updateBadge(){
-let count = notifications.length;
-let badge = document.getElementById('notiBadge');
-if(count > 0){
-badge.innerText = count > 9 ? '9+' : count;
-badge.style.display = 'block';
-if(count >= 10) badge.classList.add('small'); else badge.classList.remove('small');
-}else{ badge.style.display = 'none'; }
-}
-updateBadge();
-
-function showNotifications(){
-alert('Notifications:\n' + notifications.join('\n'));
-notifications = [];
-localStorage.setItem('notifications', '[]');
-updateBadge();
-}
-
-function showTab(tab){
-document.querySelectorAll('.tabs div').forEach(t=>t.classList.remove('active'));
-document.querySelectorAll('.nav-item').forEach(t=>t.classList.remove('active'));
-if(tab=='feed'){
-document.getElementById('feed').style.display='block';
-document.getElementById('reels').style.display='none';
-document.querySelectorAll('.tabs div')[0].classList.add('active');
-document.querySelectorAll('.nav-item')[0].classList.add('active');
-}else{
-document.getElementById('feed').style.display='none';
-document.getElementById('reels').style.display='block';
-document.querySelectorAll('.tabs div')[1].classList.add('active');
-document.querySelectorAll('.nav-item')[1].classList.add('active');
-}
-}
-</script>
-</body>
+let post = allPosts.find(p=>p.id==id);
+if(!post) return;
+let prev = (post.reactions || {})[currentUser.name];
+if(prev == reaction){ delete post.reactions[currentUser.name]; } 
+else{ post.reactions[currentUser.name] = reaction; }
+localStorage.setItem('posts', JSON.stringify(posts)); 
+loadPosts(); 
+} 
+function toggleComment(id){document.getElementById('cH'+id).style.display = document.getElementById('cH'+id).style.display=='block'?'none':'block';} 
+function showReact(id){document.getElementById(id).style.display='flex';} 
+function hideReact(id){setTimeout(()=>{if(!document.getElementById(id).matches(':hover')) document.getElementById(id).style.display='none';},300);} 
+function addComment(id){ 
+let val = document.getElementById(`inputH${id}`).value; 
+if(val){ 
+let allPosts = posts.concat(demoUsers);
+let post = allPosts.find(p=>p.id==id);
+if(!post) return;
+post.comments.push({name:currentUser.name, text:val, img:currentUser.img}); 
+localStorage.setItem('posts', JSON.stringify(posts)); 
+document.getElementById(`inputH${id}`).value = '';
+loadPosts(); 
+} 
+} 
+// Notification Badge 
+function updateBadge(){ 
+let count = notifications.length; 
+let badge = document.getElementById('notiBadge'); 
+if(count > 0){ 
+badge.innerText = count > 9 ? '9+' : count; 
+badge.style.display = 'block'; 
+if(count >= 10) badge.classList.add('small'); else badge.classList.remove('small'); 
+}else{ badge.style.display = 'none'; } 
+} 
+updateBadge(); 
+function showNotifications(){ 
+alert('Notifications:\n' + notifications.join('\n')); 
+notifications = []; 
+localStorage.setItem('notifications', '[]'); 
+updateBadge(); 
+} 
+function showTab(tab){ 
+document.querySelectorAll('.tabs div').forEach(t=>t.classList.remove('active')); 
+document.querySelectorAll('.nav-item').forEach(t=>t.classList.remove('active')); 
+if(tab=='feed'){ 
+document.getElementById('feed').style.display='block'; 
+document.getElementById('reels').style.display='none'; 
+document.querySelectorAll('.tabs div')[0].classList.add('active'); 
+document.querySelectorAll('.nav-item')[0].classList.add('active'); 
+}else{ 
+document.getElementById('feed').style.display='none'; 
+document.getElementById('reels').style.display='block'; 
+document.querySelectorAll('.tabs div')[1].classList.add('active'); 
+document.querySelectorAll('.nav-item')[1].classList.add('active'); 
+} 
+} 
+</script> 
+</body> 
 </html>
