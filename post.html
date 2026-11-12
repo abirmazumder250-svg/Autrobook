@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Posts - Autrobook</title>
+<style>
+  :root{--bg:#18191a;--card:#242526;--text:#e4e6eb;--text2:#b0b3b8;--border:#3a3b3c;--brand:#1877f2;}
+  body.light{--bg:#f0f2f5;--card:#ffffff;--text:#050505;--text2:#65676b;--border:#ddd;}
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+  body{background:var(--bg);color:var(--text); padding:10px;}
+  .header{display:flex;align-items:center;gap:15px;padding:12px 0;position:sticky;top:0;background:var(--bg);z-index:10;}
+  .header b{font-size:20px; flex:1;}
+  .post-box{display:flex; gap:10px; padding:12px; background:var(--card); border-radius:8px; margin:10px 0;}
+  .post-box img{width:40px; height:40px; border-radius:50%;}
+  .post-box input{flex:1; background:var(--bg); border:none; border-radius:20px; padding:10px 15px; color:var(--text);}
+  .post{background:var(--card); margin:10px 0; border-radius:8px;}
+  .post-header{display:flex; align-items:center; gap:10px; padding:12px;}
+  .post-header img{width:40px; height:40px; border-radius:50%;}
+  .post-text{padding:0 12px 8px;}
+  .react-bar{display:flex; align-items:center; padding:8px 12px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); gap:10px; font-size:13px; color:var(--text2);}
+  .react-btns{display:flex; gap:20px; padding:4px 12px;}
+  .react-btn{cursor:pointer; padding:6px; display:flex; align-items:center; gap:5px;}
+  .react-picker{display:none; position:absolute; background:var(--card); padding:8px; border-radius:30px; box-shadow:0 0 10px #000; gap:8px;}
+  .react-picker span{font-size:24px; cursor:pointer;}
+  .no-data{text-align:center; padding:50px; color:var(--text2);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span onclick="history.back()" style="font-size:22px">←</span>
+  <b>Posts</b>
+  <span id="postTotal">0</span>
+</div>
+
+<!-- POST BOX -->
+<div class="post-box">
+  <img src="" id="myAvatar">
+  <input type="text" placeholder="What's on your mind?" onclick="addPost()">
+</div>
+
+<div id="postsContainer"></div>
+
+<audio id="reactSound" src="https://www.myinstants.com/media/sounds/facebook-pop.mp3"></audio>
+
+<script>
+const user = JSON.parse(localStorage.getItem('autrobook_user') || '{}');
+document.getElementById('myAvatar').src = localStorage.getItem('my_avatar') || 'https://via.placeholder.com/40';
+
+function loadPosts(){
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  document.getElementById('postTotal').innerText = posts.length + ' Posts';
+  const container = document.getElementById('postsContainer');
+  
+  if(posts.length == 0){
+    container.innerHTML = `<div class="no-data">No posts yet<br>Share something</div>`;
+    return;
+  }
+  
+  container.innerHTML = posts.map((p,i)=>`
+    <div class="post">
+      <div class="post-header">
+        <img src="${localStorage.getItem('my_avatar') || 'https://via.placeholder.com/40'}">
+        <div><b>${user.name || 'You'}</b><br><small style="color:var(--text2)">${timeAgo(p.time)}</small></div>
+      </div>
+      <div class="post-text">${p.text}</div>
+      
+      <div class="react-bar"><span>${getTotalReact(p.reacts)} reactions</span></div>
+      
+      <div class="react-btns" style="position:relative">
+        <div class="react-btn" onmouseenter="showPicker(${i})" onclick="addReact(${i},'like')">
+          <span id="reactIcon${i}">${p.myReact ? p.myReact : '👍'}</span> Like
+        </div>
+        <div class="react-picker" id="picker${i}" onmouseleave="hidePicker(${i})">
+          <span onclick="addReact(${i},'like')">👍</span><span onclick="addReact(${i},'love')">❤️</span>
+          <span onclick="addReact(${i},'care')">🥰</span><span onclick="addReact(${i},'haha')">😆</span>
+          <span onclick="addReact(${i},'wow')">😮</span><span onclick="addReact(${i},'sad')">😢</span>
+          <span onclick="addReact(${i},'angry')">😠</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getTotalReact(r){ return Object.values(r||{}).reduce((a,b)=>a+b,0) || 0; }
+function timeAgo(t){ return Math.floor((Date.now()-t)/1000/60)+'m ago'; }
+
+function showPicker(i){ document.getElementById('picker'+i).style.display='flex'; }
+function hidePicker(i){ document.getElementById('picker'+i).style.display='none'; }
+
+function addReact(i, type){
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  if(!posts[i].reacts) posts[i].reacts = {};
+  posts[i].reacts[type] = (posts[i].reacts[type]||0) + 1;
+  posts[i].myReact = type=='like'?'👍':type=='love'?'❤️':type=='care'?'🥰':type=='haha'?'😆':type=='wow'?'😮':type=='sad'?'😢':'😠';
+  localStorage.setItem('my_posts', JSON.stringify(posts));
+  document.getElementById('reactSound').play();
+  loadPosts();
+}
+
+function addPost(){
+  let text = prompt('What\'s on your mind?');
+  if(text){
+    let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+    posts.unshift({text, time:Date.now(), reacts:{}, img:null});
+    localStorage.setItem('my_posts', JSON.stringify(posts));
+    loadPosts();
+  }
+}
+
+loadPosts();
+if(localStorage.getItem('theme') == 'light'){document.body.classList.add('light');}
+</script>
+</body>
+</html>
