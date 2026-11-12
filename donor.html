@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blood Donor - Autrobook</title>
+<style>
+  :root{--bg:#0a1a0f;--card:#13261a;--text:#e4e6eb;--text2:#7a9e80;--brand:#e91e63;--border:#1f3d2a;}
+  body.light{--bg:#f0f2f5;--card:#ffffff;--text:#050505;--text2:#65676b;--border:#ddd;}
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+  body{background:var(--bg); color:var(--text); padding:15px;}
+  .header{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
+  .card{background:var(--card); padding:20px; border-radius:12px; margin-bottom:15px;}
+  h2{color:var(--brand); margin-bottom:15px;}
+  input,select{width:100%; padding:14px; margin:8px 0; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:15px;}
+  .btn{background:var(--brand); color:white; border:none; padding:14px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px;}
+  .preview{display:flex; gap:10px; margin:10px 0;}
+  .preview img{width:100px; height:70px; border:2px solid var(--border); border-radius:8px; object-fit:cover; display:none;}
+  input[type="file"]{display:none;}
+  .label-btn{background:#555; padding:10px; border-radius:8px; text-align:center; cursor:pointer; margin:5px 0;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div onclick="history.back()" style="font-size:22px">←</div>
+  <h1>🩸 Become a Donor</h1>
+</div>
+
+<div class="card">
+  <h2>Register with ID Verification</h2>
+  <input type="text" id="donorName" placeholder="Full Name as per NID">
+  <input type="text" id="donorAddress" placeholder="Full Address">
+  <input type="tel" id="donorPhone" placeholder="Contact Number">
+  <select id="donorBlood">
+    <option value="">Select Blood Group</option>
+    <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+    <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+  </select>
+
+  <p style="margin-top:15px; font-weight:bold">Upload Documents:</p>
+  <div class="preview">
+    <img id="nidFrontPreview"><img id="nidBackPreview"><img id="selfiePreview">
+  </div>
+  
+  <input type="file" id="nidFront" accept="image/*" onchange="preview(this,'nidFrontPreview')">
+  <label for="nidFront" class="label-btn">Upload NID Front</label>
+  
+  <input type="file" id="nidBack" accept="image/*" onchange="preview(this,'nidBackPreview')">
+  <label for="nidBack" class="label-btn">Upload NID Back</label>
+  
+  <input type="file" id="selfie" accept="image/*" onchange="preview(this,'selfiePreview')">
+  <label for="selfie" class="label-btn">Upload Selfie with NID</label>
+
+  <label style="display:flex; align-items:center; gap:8px; margin:10px 0;">
+    <input type="checkbox" id="donorAvailable"> I am available to donate now
+  </label>
+  <button class="btn" onclick="registerDonor()">Verify & Join as Donor</button>
+</div>
+
+<script>
+let files = {front:null, back:null, selfie:null};
+
+function preview(input, id){
+  let file = input.files[0];
+  if(file){
+    let reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById(id).src = e.target.result;
+      document.getElementById(id).style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    files[id.replace('Preview','')] = file;
+  }
+}
+
+function registerDonor(){
+  const name = document.getElementById('donorName').value;
+  const address = document.getElementById('donorAddress').value;
+  const blood = document.getElementById('donorBlood').value;
+  const phone = document.getElementById('donorPhone').value;
+  const available = document.getElementById('donorAvailable').checked;
+  
+  if(!name || !address || !blood || !phone) return alert('Fill all fields');
+  if(!files.front || !files.back || !files.selfie) return alert('Upload NID Front, Back and Selfie');
+  
+  let donors = JSON.parse(localStorage.getItem('autrobook_donors') || '[]');
+  donors = donors.filter(d => d.phone != phone); // remove old
+  
+  donors.push({
+    name, address, blood, phone, available, 
+    verified: true, // NID uploaded = verified
+    time: Date.now()
+  });
+  localStorage.setItem('autrobook_donors', JSON.stringify(donors));
+  
+  alert(`✅ Verified & Registered!\n${name} - ${blood}\nYour ID is verified. You can now save lives.`);
+  window.location.href = 'receiver.html';
+}
+if(localStorage.getItem('theme') == 'light'){document.body.classList.add('light');}
+</script>
+</body>
+</html>
