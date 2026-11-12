@@ -17,7 +17,7 @@ The following versions of Autrobook are currently supported with security update
 If you discover a security vulnerability in Autrobook, please do NOT open a public issue.
 
 **How to report:**
-1.  Email: `abirmazumder250@gmail.com`
+1.  Email: `autrobooksupport@gmail.com`
 2.  Subject: `[Autrobook Security] Vulnerability Report`
 3.  Include details: steps to reproduce, affected version, and impact
 
