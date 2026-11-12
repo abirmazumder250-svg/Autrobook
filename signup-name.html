@@ -1,100 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autrobook - Sign Up</title>
-<style>
-body { margin:0; background:#0a1a0f; color:#e4e6eb; font-family:Arial; padding:20px; min-height:100vh; position:relative; }
-.back { color:#81c784; text-decoration:none; font-size:24px; }
-h1 { font-size:24px; margin:20px 0 5px 0; }
-p { color:#b0b3b8; font-size:14px; margin-bottom:20px; }
-.input-group { display:flex; gap:10px; }
-input { width:100%; padding:14px; margin:8px 0; background:#13261a; border:1px solid #1f3d2a; border-radius:8px; color:#e4e6eb; font-size:15px; outline:none; }
-input:focus{ border-color:#4caf50; }
-.btn { width:100%; padding:14px; margin:15px 0; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; background:#2e7d32; color:white; }
-.btn:active{ background:#1b5e20; }
-.btn:disabled{ background:#555; cursor:not-allowed; }
-.footer-link { text-align:center; color:#4caf50; text-decoration:none; font-size:14px; position:absolute; bottom:30px; left:0; right:0; }
-.error { color:#ff5252; font-size:13px; margin-top:5px; text-align:center; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autrobook Signup</title>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f4f4;
+      --box: white;
+      --text: #333;
+      --border: #ddd;
+      --btn: #007bff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --box: #1e1e1e;
+        --text: #eee;
+        --border: #444;
+        --btn: #3390ff;
+      }
+    }
+    body { 
+      font-family: Arial, sans-serif; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      height: 100vh; 
+      background: var(--bg); 
+      margin: 0; 
+      color: var(--text);
+    }
+    .box { 
+      background: var(--box); 
+      padding: 30px; 
+      border-radius: 10px; 
+      box-shadow: 0 0 15px rgba(0,0,0,0.2); 
+      width: 320px; 
+      text-align: center; 
+    }
+    input, button { 
+      width: 90%; 
+      padding: 12px; 
+      margin: 10px 0; 
+      border-radius: 5px; 
+      border: 1px solid var(--border); 
+      font-size: 16px; 
+      background: var(--bg);
+      color: var(--text);
+    }
+    button { 
+      background: var(--btn); 
+      color: white; 
+      border: none; 
+      cursor: pointer; 
+      font-weight: bold;
+    }
+    button:disabled { background: #666; }
+    h2 { color: var(--text); }
+  </style>
 </head>
 <body>
-<a href="index.html" class="back">←</a>
-<h1>What's your name?</h1>
-<p>Enter the name you use in real life.</p>
-
-<div class="input-group">
-<input type="text" id="firstName" placeholder="First name" autocomplete="given-name">
-<input type="text" id="lastName" placeholder="Last name" autocomplete="family-name">
-</div>
-<div id="errorMsg" class="error"></div>
-
-<button class="btn" id="continueBtn" onclick="saveName()">Continue</button>
-<a href="index.html" class="footer-link">Find my account</a>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <div class="box">
+    <h2>Create Account</h2>
+    
+    <input type="text" id="name" placeholder="Your Name" required>
+    <input type="email" id="email" placeholder="Your Email" required>
+    <button id="sendBtn" onclick="sendOTP()">Send OTP</button>
+    
+    <div id="otpBox" style="display:none;">
+      <input type="text" id="otpInput" placeholder="Enter OTP">
+      <button onclick="verifyOTP()">Verify & Continue</button>
+    </div>
+    <p id="msg"></p>
+  </div>
 
 <script>
-// Firebase Config - Your config
-const firebaseConfig = {
-apiKey: "AIzaSyBkT_BYBUagMck5z0bLSVRsL_uJs9KUaJI",
-authDomain: "autrobook-ad3d5.firebaseapp.com",
-projectId: "autrobook-ad3d5",
-storageBucket: "autrobook-ad3d5.firebasestorage.app",
-messagingSenderId: "554222945815",
-appId: "1:554222945815:web:0ba445f3f6ee6de6f1fe52",
-measurementId: "G-Z8QM0NVR6W"
-};
-firebase.initializeApp(firebaseConfig);
+  // 1. EmailJS Init
+  (function(){
+    emailjs.init("PoawEFe-OI5d9DyLb"); // Public Key
+  })();
 
-function showError(msg) {
-document.getElementById('errorMsg').innerText = msg;
-}
+  let generatedOTP = "";
 
-function saveName(){
-let fn = document.getElementById('firstName').value.trim();
-let ln = document.getElementById('lastName').value.trim();
-let btn = document.getElementById('continueBtn');
+  // 2. Send OTP
+  function sendOTP() {
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const msg = document.getElementById("msg");
 
-showError('');
+    if(!name || !email){
+      msg.innerText = "Please enter Name and Email";
+      msg.style.color = "red";
+      return;
+    }
 
-if(!fn || !ln) {
-showError('Please enter both First and Last name');
-return;
-}
-if(fn.length < 2 || ln.length < 2) {
-showError('Name must be at least 2 characters');
-return;
-}
+    // Generate 4 digit OTP
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
+    
+    document.getElementById("sendBtn").disabled = true;
+    msg.innerText = "Sending OTP...";
+    msg.style.color = "var(--text)";
 
-// Save name temporarily
-let signupTemp = JSON.parse(localStorage.getItem('autrobook_signup_temp') || '{}');
-signupTemp.firstName = fn;
-signupTemp.lastName = ln;
-signupTemp.fullName = fn + ' ' + ln;
-localStorage.setItem('autrobook_signup_temp', JSON.stringify(signupTemp));
+    // 3. Send Email via EmailJS
+    emailjs.send("service_bk1amce", "template_lu3iasc", {
+      to_email: email,  
+      email: email,     
+      name: name,
+      otp: generatedOTP
+    })
+    .then(function(response) {
+       msg.innerText = "✅ OTP sent to " + email;
+       msg.style.color = "green";
+       document.getElementById("otpBox").style.display = "block";
+    }, function(error) {
+       msg.innerText = "❌ Error: " + JSON.stringify(error);
+       msg.style.color = "red";
+       document.getElementById("sendBtn").disabled = false;
+    });
+  }
 
-// Go to next page - Phone/Email page
-btn.disabled = true;
-btn.innerText = 'Saving...';
-
-setTimeout(() => {
-window.location.href = "signup-contact.html"; // This page will take Phone + Email + Password
-}, 500);
-}
-
-// Redirect if already logged in
-if(localStorage.getItem('autrobook_user')) {
-window.location.href = 'home.html';
-}
-
-// Clickjacking protection
-if (window.top !== window.self) { 
-window.top.location = window.self.location; 
-}
+  // 4. Verify OTP
+  function verifyOTP() {
+    const userOTP = document.getElementById("otpInput").value;
+    const msg = document.getElementById("msg");
+    if(userOTP == generatedOTP){
+      msg.innerText = "✅ Verified! Redirecting...";
+      msg.style.color = "green";
+      // Go to next page after verify
+      // window.location.href = "signup-contact.html";
+    } else {
+      msg.innerText = "❌ Wrong OTP";
+      msg.style.color = "red";
+    }
+  }
 </script>
 </body>
 </html>
