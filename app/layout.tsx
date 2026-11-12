@@ -1,16 +1,12 @@
 export const metadata = {
   title: "Autrobook",
-  description: "Your website description",
+  description: "Autrobook - Login",
   verification: {
-    google: "SLKwmSY4xlUNvJvyx87wSLqgwzUOKTKKKGid-I_rpYs",
+    google: "qYomtOrdZ2a54nbTI-FEj8DG4vhKdC166ObN77oycP0",
   },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>{children}</body>
