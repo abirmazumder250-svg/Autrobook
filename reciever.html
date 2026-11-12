@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Blood Donor - Autrobook</title>
+<style>
+  :root{--bg:#0a1a0f;--card:#13261a;--text:#e4e6eb;--text2:#7a9e80;--brand:#4caf50;--danger:#e91e63;--border:#1f3d2a;}
+  body.light{--bg:#f0f2f5;--card:#ffffff;--text:#050505;--text2:#65676b;--border:#ddd;}
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+  body{background:var(--bg); color:var(--text); padding:15px;}
+  .header{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
+  .card{background:var(--card); padding:20px; border-radius:12px; margin-bottom:15px;}
+  h2{color:var(--brand); margin-bottom:15px;}
+  input,select{width:100%; padding:14px; margin:8px 0; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:15px;}
+  .btn{background:var(--brand); color:white; border:none; padding:14px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px;}
+  .btn-danger{background:var(--danger);}
+  .donor-card{background:var(--bg); padding:15px; border-radius:8px; margin:10px 0; border-left:4px solid var(--brand);}
+  .blood-badge{background:var(--danger); color:white; padding:4px 10px; border-radius:20px; font-weight:bold; font-size:18px;}
+  .call-btn{background:var(--brand); color:white; padding:8px 15px; border-radius:6px; text-decoration:none; display:inline-block; margin-top:8px;}
+  .preview{display:flex; gap:10px; margin:10px 0;}
+  .preview img{width:100px; height:70px; border:2px solid var(--border); border-radius:8px; object-fit:cover; display:none;}
+  input[type="file"]{display:none;}
+  .label-btn{background:#555; padding:10px; border-radius:8px; text-align:center; cursor:pointer; margin:5px 0;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div onclick="history.back()" style="font-size:22px">←</div>
+  <h1>🩸 Find Blood Donor</h1>
+</div>
+
+<div class="card" id="registerCard">
+  <h2>Register to Request Blood</h2>
+  <input type="text" id="recName" placeholder="Full Name as per NID">
+  <input type="text" id="recAddress" placeholder="Full Address">
+  <input type="tel" id="recPhone" placeholder="Contact Number">
+  
+  <p style="margin-top:15px; font-weight:bold">Upload Documents for Verification:</p>
+  <div class="preview">
+    <img id="recFrontPreview"><img id="recBackPreview"><img id="recSelfiePreview">
+  </div>
+  
+  <input type="file" id="recFront" accept="image/*" onchange="previewRec(this,'recFrontPreview')">
+  <label for="recFront" class="label-btn">Upload NID Front</label>
+  
+  <input type="file" id="recBack" accept="image/*" onchange="previewRec(this,'recBackPreview')">
+  <label for="recBack" class="label-btn">Upload NID Back</label>
+  
+  <input type="file" id="recSelfie" accept="image/*" onchange="previewRec(this,'recSelfiePreview')">
+  <label for="recSelfie" class="label-btn">Upload Selfie with NID</label>
+  
+  <button class="btn" onclick="registerReceiver()">Verify & Continue</button>
+</div>
+
+<div class="card" id="searchCard" style="display:none">
+  <h2>Emergency Blood Request</h2>
+  <select id="searchBlood">
+    <option value="">Select Blood Group Needed</option>
+    <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+    <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+  </select>
+  <input type="text" id="searchArea" placeholder="Your Area: Tongi, Dhaka">
+  <button class="btn" onclick="searchDonors()">🔍 Search Donors</button>
+</div>
+
+<div class="card" id="resultCard" style="display:none">
+  <h2>Available Donors Near You</h2>
+  <div id="donorList"></div>
+</div>
+
+<script>
+let recFiles = {front:null, back:null, selfie:null};
+let isRegistered = false;
+
+function previewRec(input, id){
+  let file = input.files[0];
+  if(file){
+    let reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById(id).src = e.target.result;
+      document.getElementById(id).style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    recFiles[id.replace('Preview','')] = file;
+  }
+}
+
+function registerReceiver(){
+  const name = document.getElementById('recName').value;
+  const address = document.getElementById('recAddress').value;
+  const phone = document.getElementById('recPhone').value;
+  
+  if(!name || !address || !phone) return alert('Fill all fields');
+  if(!recFiles.front || !recFiles.back || !recFiles.selfie) return alert('Upload NID Front, Back and Selfie');
+  
+  localStorage.setItem('receiver_verified', JSON.stringify({name, address, phone}));
+  isRegistered = true;
+  document.getElementById('registerCard').style.display = 'none';
+  document.getElementById('searchCard').style.display = 'block';
+  alert('✅ Verified! Now you can search donors');
+}
+
+function searchDonors(){
+  if(!isRegistered && !localStorage.getItem('receiver_verified')) 
+    return alert('Please verify first');
+    
+  const blood = document.getElementById('searchBlood').value;
+  const area = document.getElementById('searchArea').value.toLowerCase();
+  
+  if(!blood || !area) return alert('Please select blood group and area');
+  
+  const donors = JSON.parse(localStorage.getItem('autrobook_donors') || '[]');
+  const results = donors.filter(d => 
+    d.blood == blood && 
+    d.address.toLowerCase().includes(area) && 
+    d.available == true &&
+    d.verified == true
+  );
+  
+  document.getElementById('resultCard').style.display = 'block';
+  const listDiv = document.getElementById('donorList');
+  
+  if(results.length == 0){
+    listDiv.innerHTML = `<p style="color:var(--text2)">No verified donors found for ${blood} in ${area}</p>`;
+    return;
+  }
+  
+  listDiv.innerHTML = results.map(d => `
+    <div class="donor-card">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <div>
+          <b>${d.name}</b> <span style="color:var(--brand)">✓ Verified</span><br>
+          <small>📍 ${d.address}</small>
+        </div>
+        <span class="blood-badge">${d.blood}</span>
+      </div>
+      <a href="tel:${d.phone}" class="call-btn">📞 Call ${d.phone}</a>
+    </div>
+  `).join('');
+}
+
+if(localStorage.getItem('theme') == 'light'){document.body.classList.add('light');}
+if(localStorage.getItem('receiver_verified')){
+  isRegistered = true;
+  document.getElementById('registerCard').style.display = 'none';
+  document.getElementById('searchCard').style.display = 'block';
+}
+</script>
+</body>
+</html>
