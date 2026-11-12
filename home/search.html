@@ -1,0 +1,244 @@
+<!-- ================= AUTROBOOK - search.html - FULL ================= -->
+<!-- Facebook Style Search - User + Post + Reels + Pages + Groups -->
+
+<!-- ===== SEARCH BAR ===== -->
+<div class="card" style="position:sticky;top:58px;z-index:18">
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="ava" onclick="showPage('feed')">A</div>
+    <input id="searchIn" placeholder="🔍 Search people, posts, reels, pages..." oninput="doSearch(this.value)" autocomplete="off" style="margin:0">
+    <button class="btn2" onclick="clearSearch()">✖</button>
+  </div>
+
+  <!-- Filter Chips -->
+  <div style="display:flex;gap:6px;overflow-x:auto;white-space:nowrap;margin-top:10px;padding-bottom:2px">
+    <span class="chip on" id="fAll" onclick="setSearchFilter('all',this)">All</span>
+    <span class="chip" onclick="setSearchFilter('people',this)">👤 People</span>
+    <span class="chip" onclick="setSearchFilter('post',this)">📝 Posts</span>
+    <span class="chip" onclick="setSearchFilter('reel',this)">🎬 Reels</span>
+    <span class="chip" onclick="setSearchFilter('page',this)">📄 Pages</span>
+    <span class="chip" onclick="setSearchFilter('group',this)">👥 Groups</span>
+    <span class="chip" onclick="setSearchFilter('live',this)">🔴 Live</span>
+    <span class="chip" onclick="setSearchFilter('dating',this)">❤️ Dating</span>
+    <span class="chip" onclick="setSearchFilter('jobs',this)">💼 Jobs</span>
+    <span class="chip" onclick="setSearchFilter('shop',this)">🛍️ Shop</span>
+  </div>
+</div>
+
+<!-- ===== RECENT SEARCHES ===== -->
+<div class="card" id="recentBox">
+  <b>🕰️ Recent Searches</b>
+  <div id="recentList" style="margin-top:8px"></div>
+  <button class="btn2" onclick="clearRecent()">Clear All</button>
+</div>
+
+<!-- ===== SEARCH RESULT ===== -->
+<div id="searchResult"></div>
+
+<!-- ===== SUGGESTED PEOPLE - Jodi kichu na lekho ===== -->
+<div class="card" id="suggestBox">
+  <b>👥 Suggested People</b>
+  <div id="suggestList" style="margin-top:8px"></div>
+</div>
+
+<!-- ===== TRENDING ===== -->
+<div class="card">
+  <b>🔥 Trending Now</b>
+  <div style="margin-top:8px">
+    <div class="menu-item" onclick="quickSearch('Autro AI')">✨ Autro AI <small>12K posts</small></div>
+    <div class="menu-item" onclick="quickSearch('Reels')">🎬 Reels <small>8K posts</small></div>
+    <div class="menu-item" onclick="quickSearch('Live')">🔴 Live <small>2K live</small></div>
+    <div class="menu-item" onclick="quickSearch('Jobs')">💼 Jobs <small>500 jobs</small></div>
+    <div class="menu-item" onclick="quickSearch('Dating')">❤️ Dating <small>1K people</small></div>
+    <div class="menu-item" onclick="quickSearch('Shop')">🛍️ Shop <small>3K products</small></div>
+  </div>
+</div>
+
+<script>
+/* ===== SEARCH LOGIC - search.html ===== */
+let searchFilter = 'all';
+let recentArr = JSON.parse(localStorage.getItem('autro_recent')||'[]');
+
+function setSearchFilter(f, el){
+  searchFilter = f;
+  document.querySelectorAll('#box-search .chip').forEach(c=>c.classList.remove('on'));
+  if(el) el.classList.add('on');
+  doSearch(document.getElementById('searchIn').value || '');
+}
+
+function clearSearch(){
+  document.getElementById('searchIn').value = '';
+  doSearch('');
+  document.getElementById('searchIn').focus();
+}
+
+function quickSearch(t){
+  document.getElementById('searchIn').value = t;
+  doSearch(t);
+  document.getElementById('searchIn').focus();
+}
+
+function saveRecent(t){
+  if(!t || t.length < 2) return;
+  recentArr = [t, ...recentArr.filter(x=>x.toLowerCase() !== t.toLowerCase())].slice(0, 8);
+  localStorage.setItem('autro_recent', JSON.stringify(recentArr));
+  renderRecent();
+}
+
+function clearRecent(){
+  recentArr = [];
+  localStorage.removeItem('autro_recent');
+  renderRecent();
+  toast('Recent cleared ✅');
+}
+
+function renderRecent(){
+  let box = document.getElementById('recentList');
+  if(!box) return;
+  if(!recentArr.length){
+    box.innerHTML = '<p style="color:var(--sub);font-size:13px">No recent searches yet</p>';
+    return;
+  }
+  box.innerHTML = recentArr.map(r=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--input);border-radius:10px;margin:5px 0">
+      <span onclick="quickSearch('${r}')" style="cursor:pointer;flex:1">🕰️ ${r}</span>
+      <span onclick="removeRecent('${r}')" style="cursor:pointer;padding:0 6px">✖</span>
+    </div>
+  `).join('');
+}
+
+function removeRecent(r){
+  recentArr = recentArr.filter(x=>x !== r);
+  localStorage.setItem('autro_recent', JSON.stringify(recentArr));
+  renderRecent();
+}
+
+function doSearch(q){
+  q = (q||'').trim().toLowerCase();
+  let resBox = document.getElementById('searchResult');
+  let sugg = document.getElementById('suggestBox');
+  let recent = document.getElementById('recentBox');
+  if(!resBox) return;
+
+  // Kichu na likhle - Suggest dekhao
+  if(!q){
+    resBox.innerHTML = '';
+    if(sugg) sugg.style.display = 'block';
+    if(recent) recent.style.display = 'block';
+    renderSuggest();
+    return;
+  }
+
+  if(sugg) sugg.style.display = 'none';
+  if(recent) recent.style.display = 'none';
+  saveRecent(q);
+
+  // Data - main.js theke ney, na thakle demo data
+  let allUsers = (typeof users !== 'undefined' && users.length) ? users : [
+    {name:'Sadia Afrin', bio:'Dhaka • Photographer', tick:'g'},
+    {name:'Rahim Uddin', bio:'Tongi • Student', tick:''},
+    {name:'Mim Akter', bio:'Dhaka • Singer', tick:'b'},
+    {name:'Arif Hossain', bio:'Chattogram • Gamer', tick:''},
+    {name:'Nusrat Jahan', bio:'Sylhet • Teacher', tick:'g'},
+    {name:'Tanvir Ahmed', bio:'Dhaka • Developer', tick:'b'}
+  ];
+
+  let allPosts = (typeof posts !== 'undefined' && posts.length) ? posts : [
+    {name:'Sadia Afrin', text:'Autro AI is amazing! ✨', type:'post'},
+    {name:'Rahim Uddin', text:'New Reels is out 🎬', type:'reel'},
+    {name:'Mim Akter', text:'Live now! Join 🔴', type:'live'},
+    {name:'Arif Hossain', text:'Gaming tournament 🎮', type:'post'}
+  ];
+
+  let allPages = [
+    {name:'Autrobook Official', bio:'Official Page • 120K followers', type:'page'},
+    {name:'Autro AI Fans', bio:'Page • 45K followers', type:'page'},
+    {name:'Tongi Gaming', bio:'Group • 12K members', type:'group'},
+    {name:'Dhaka Jobs', bio:'Group • 8K members', type:'group'}
+  ];
+
+  let uFilter = allUsers.filter(u => u.name.toLowerCase().includes(q) || (u.bio||'').toLowerCase().includes(q));
+  let pFilter = allPosts.filter(p => (p.text||'').toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q));
+  let pgFilter = allPages.filter(p => p.name.toLowerCase().includes(q));
+
+  let html = '';
+
+  // People
+  if((searchFilter==='all' || searchFilter==='people') && uFilter.length){
+    html += `<div class="card"><b>👤 People</b>`;
+    html += uFilter.map(u=>`
+      <div style="display:flex;gap:10px;align-items:center;margin:10px 0">
+        <div class="ava" onclick="openOther('${u.name}')">${u.name[0]}</div>
+        <div style="flex:1" onclick="openOther('${u.name}')">
+          <b>${u.name} ${u.tick==='g'?'<span class="gTick">✓</span>':u.tick==='b'?'<span class="blueTick">✓</span>':''}</b>
+          <div style="font-size:12px;color:var(--sub)">${u.bio}</div>
+        </div>
+        <button class="btn" onclick="toast('Followed ${u.name} ✅')">➕ Follow</button>
+        <button class="btn2" onclick="openOther('${u.name}')">View</button>
+      </div>
+    `).join('');
+    html += `</div>`;
+  }
+
+  // Posts / Reels
+  if((searchFilter==='all' || searchFilter==='post' || searchFilter==='reel' || searchFilter==='live') && pFilter.length){
+    html += `<div class="card"><b>📝 Posts & Reels</b>`;
+    html += pFilter.map(p=>`
+      <div class="cbox" onclick="showPage('feed')">
+        <b>${p.name}</b> • <span style="color:var(--sub)">${p.type}</span><br>${p.text}
+        <div style="margin-top:6px"><button class="btn2" onclick="event.stopPropagation();showPage('feed')">View Post</button></div>
+      </div>
+    `).join('');
+    html += `</div>`;
+  }
+
+  // Pages / Groups
+  if((searchFilter==='all' || searchFilter==='page' || searchFilter==='group') && pgFilter.length){
+    html += `<div class="card"><b>📄 Pages & Groups</b>`;
+    html += pgFilter.map(p=>`
+      <div style="display:flex;gap:10px;align-items:center;margin:10px 0">
+        <div class="ava" style="background:#1877F2">${p.name[0]}</div>
+        <div style="flex:1"><b>${p.name}</b><div style="font-size:12px;color:var(--sub)">${p.bio}</div></div>
+        <button class="btn" onclick="toast('Joined ${p.name} ✅')">Join</button>
+      </div>
+    `).join('');
+    html += `</div>`;
+  }
+
+  // Dating / Jobs / Shop - Filter onujayi
+  if(searchFilter==='dating'){
+    html += `<div class="card"><b>❤️ Dating - "${q}"</b><p style="font-size:13px;margin-top:6px">3 people found near Dhaka</p><button class="btn" onclick="showPage('dating')">Open Dating</button></div>`;
+  }
+  if(searchFilter==='jobs'){
+    html += `<div class="card"><b>💼 Jobs - "${q}"</b><p style="font-size:13px;margin-top:6px">5 jobs found</p><button class="btn" onclick="showPage('jobs')">Open Jobs</button></div>`;
+  }
+  if(searchFilter==='shop'){
+    html += `<div class="card"><b>🛍️ Shop - "${q}"</b><p style="font-size:13px;margin-top:6px">12 products found</p><button class="btn" onclick="showPage('shop')">Open Shop</button></div>`;
+  }
+
+  if(!html){
+    html = `<div class="card" style="text-align:center"><h3>No results for "${q}"</h3><p style="color:var(--sub);font-size:13px;margin-top:6px">Try another name, post or page</p><button class="btn" onclick="clearSearch()" style="margin-top:10px">Clear Search</button></div>`;
+  }
+
+  resBox.innerHTML = html;
+}
+
+function renderSuggest(){
+  let box = document.getElementById('suggestList');
+  if(!box) return;
+  let list = [
+    {name:'Sadia Afrin', bio:'Dhaka • Photographer'},
+    {name:'Rahim Uddin', bio:'Tongi • Student'},
+    {name:'Mim Akter', bio:'Dhaka • Singer'}
+  ];
+  box.innerHTML = list.map(u=>`
+    <div style="display:flex;gap:10px;align-items:center;margin:8px 0">
+      <div class="ava" onclick="openOther('${u.name}')">${u.name[0]}</div>
+      <div style="flex:1" onclick="openOther('${u.name}')"><b>${u.name}</b><div style="font-size:12px;color:var(--sub)">${u.bio}</div></div>
+      <button class="btn" onclick="toast('Followed ${u.name} ✅')">➕ Follow</button>
+    </div>
+  `).join('');
+}
+
+// Load hole Recent + Suggest dekhao
+setTimeout(()=>{ renderRecent(); renderSuggest(); }, 100);
+</script>
