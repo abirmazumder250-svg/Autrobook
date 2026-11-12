@@ -1,99 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autrobook Signup</title>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autrobook - What's your name?</title>
 <style>
-  :root{--bg:#f4f4f4;--box:white;--text:#333;--border:#ddd;--btn:#007bff;}
-  @media (prefers-color-scheme: dark){ :root{--bg:#121212;--box:#1e1e1e;--text:#eee;--border:#444;--btn:#3390ff;} }
-  body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:var(--bg);margin:0;color:var(--text);}
-  .box{background:var(--box);padding:30px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,0.2);width:320px;text-align:center;}
-  input,button{width:90%;padding:12px;margin:10px 0;border-radius:5px;border:1px solid var(--border);font-size:16px;background:var(--bg);color:var(--text);}
-  button{background:var(--btn);color:white;border:none;cursor:pointer;font-weight:bold;}
-  button:disabled{background:#666;cursor:not-allowed;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#1c1c1e;min-height:100vh;color:white}
+.top{padding:15px}
+.back{width:40px;height:40px;background:#2c2c2e;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer}
+.lang{text-align:center;color:#999;margin:5px 0 25px;font-size:15px}
+.logo{text-align:center;margin-bottom:30px}
+.logo img{width:80px;height:80px;border-radius:50%;object-fit:cover;background:#0f5132}
+.logo p{font-size:26px;font-weight:bold;margin-top:5px}
+.wrap{padding:0 20px 30px;max-width:450px;margin:0 auto}
+h2{font-size:22px;margin-bottom:6px}
+p.sub{color:#aaa;font-size:14px;margin-bottom:25px;line-height:1.5}
+.row{display:flex;gap:12px}
+input{width:100%;padding:18px 20px;border-radius:18px;border:1px solid #555;background:transparent;color:white;font-size:17px;margin-bottom:15px;outline:none}
+input::placeholder{color:#aaa}
+input:focus{border-color:#1877f2}
+.btn{width:100%;padding:16px;border:none;border-radius:30px;background:#1877f2;color:white;font-size:18px;font-weight:bold;cursor:pointer}
+.btn:disabled{opacity:.6}
+.btn-outline{width:100%;padding:15px;border:1px solid #1877f2;border-radius:30px;background:transparent;color:#4a9cff;font-size:17px;font-weight:bold;cursor:pointer;margin-top:80px}
+.msg{text-align:center;font-size:14px;min-height:20px;margin-top:10px}
+.msg.error{color:#ff8a8a}.msg.success{color:#8affa0}
+.footer{text-align:center;margin-top:20px;color:#ccc}
+.progress{display:flex;gap:6px;max-width:450px;margin:0 auto 25px;padding:0 20px}
+.progress div{flex:1;height:5px;border-radius:10px;background:#333}
+.progress div.active{background:#1877f2}
 </style>
 </head>
 <body>
-<div class="box">
-  <h2>Create Account</h2>
-  <input type="text" id="name" placeholder="Your Name">
-  <input type="email" id="email" placeholder="Your Email">
-  <button id="sendBtn" onclick="sendOTP()">Send OTP</button>
-  <div id="otpBox" style="display:none;">
-    <input type="text" id="otpInput" placeholder="Enter 6-Digit OTP" maxlength="6" inputmode="numeric">
-    <button id="verifyBtn" onclick="verifyOTP()">Verify & Continue</button>
-    <p id="timerText" style="font-size:13px;color:#888"></p>
-  </div>
-  <p id="msg"></p>
+
+<div class="top"><div class="back" onclick="location.href='/login.html'">←</div></div>
+<div class="lang">English (US) ∨</div>
+
+<div class="logo">
+  <img src="logo.png" alt="Autrobook" onerror="this.style.display='none';document.getElementById('fallbackLogo').style.display='inline-flex'">
+  <div id="fallbackLogo" style="display:none;width:80px;height:80px;background:#0f5132;border-radius:50%;align-items:center;justify-content:center;font-size:42px;font-weight:bold">A</div>
+  <p>Autrobook</p>
+</div>
+
+<div class="progress"><div class="active"></div><div></div><div></div></div>
+
+<div class="wrap">
+<h2>What's your name?</h2>
+<p class="sub">Enter the name you use in real life. This will be shown on your Autrobook profile.</p>
+
+<div class="row">
+  <input type="text" id="firstName" placeholder="First name" autocomplete="given-name">
+  <input type="text" id="surname" placeholder="Surname" autocomplete="family-name">
+</div>
+
+<div class="msg" id="msg"></div>
+
+<button class="btn" id="nextBtn" onclick="goNext()">Next</button>
+
+<button class="btn-outline" onclick="location.href='/login.html'">Already have an account?</button>
+<div class="footer">∞ Autrobook</div>
 </div>
 
 <script>
-  (function(){ emailjs.init("PoawEFe-OI5d9DyLb"); })();
+// If user came back, show old values
+const savedFN = localStorage.getItem('signup_firstName');
+const savedSN = localStorage.getItem('signup_surname');
+if(savedFN) document.getElementById('firstName').value = savedFN;
+if(savedSN) document.getElementById('surname').value = savedSN;
 
-  let generatedOTP = "";
-  let otpExpiry = 0;
-  let wrongAttempts = 0;
-  let timerInterval = null;
+function showMsg(t,type){const el=document.getElementById('msg');el.textContent=t;el.className='msg '+type;}
 
-  function isValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+function goNext(){
+  const firstName = document.getElementById('firstName').value.trim();
+  const surname = document.getElementById('surname').value.trim();
 
-  function startTimer(){
-    let sec = 60;
-    clearInterval(timerInterval);
-    const btn = document.getElementById("sendBtn");
-    timerInterval = setInterval(()=>{
-      sec--;
-      document.getElementById("timerText").innerText = "Resend in " + sec + "s";
-      if(sec <= 0){ clearInterval(timerInterval); btn.disabled = false; btn.innerText = "Resend OTP"; document.getElementById("timerText").innerText = ""; }
-    },1000);
-  }
+  if(!firstName) return showMsg('Please enter your first name','error');
+  if(firstName.length < 2) return showMsg('First name is too short','error');
+  if(!surname) return showMsg('Please enter your surname','error');
+  if(surname.length < 2) return showMsg('Surname is too short','error');
+  if(!/^[a-zA-Z ]+$/.test(firstName)) return showMsg('First name can only contain letters','error');
+  if(!/^[a-zA-Z ]+$/.test(surname)) return showMsg('Surname can only contain letters','error');
 
-  function sendOTP(){
-    const name = document.getElementById("name").value.trim();
-    const email = document.getElementById("email").value.trim().toLowerCase();
-    const msg = document.getElementById("msg");
-    if(!name){ msg.innerText="Please enter Name"; msg.style.color="red"; return; }
-    if(!isValidEmail(email)){ msg.innerText="Please enter valid Email"; msg.style.color="red"; return; }
+  const btn = document.getElementById('nextBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
 
-    // ✅ FIXED: 6-digit + 5 min expiry
-    generatedOTP = Math.floor(100000 + Math.random()*900000).toString();
-    otpExpiry = Date.now() + 5*60*1000;
-    wrongAttempts = 0;
+  localStorage.setItem('signup_firstName', firstName);
+  localStorage.setItem('signup_surname', surname);
+  // For old code compatibility
+  localStorage.setItem('signup_name', firstName + ' ' + surname);
 
-    const btn = document.getElementById("sendBtn");
-    btn.disabled = true; btn.innerText = "Sending...";
-    msg.innerText = "Sending OTP..."; msg.style.color = "var(--text)";
+  showMsg('Saved! Going to next step...','success');
+  setTimeout(()=>{ window.location.href = '/signup-contact.html'; }, 400);
+}
 
-    emailjs.send("service_bk1amce", "template_lu3iasc", { to_email: email, email: email, name: name, otp: generatedOTP })
-    .then(function(){
-       msg.innerText = "✅ OTP sent to " + email; msg.style.color="green";
-       document.getElementById("otpBox").style.display = "block";
-       btn.innerText = "OTP Sent";
-       startTimer();
-    }, function(error){
-       msg.innerText = "❌ Error: Check EmailJS Service / Template ID"; msg.style.color="red";
-       console.log(error);
-       btn.disabled = false; btn.innerText = "Send OTP";
-    });
-  }
-
-  function verifyOTP(){
-    const userOTP = document.getElementById("otpInput").value.trim();
-    const msg = document.getElementById("msg");
-    if(wrongAttempts >= 3){ msg.innerText="❌ Too many wrong attempts. Resend OTP."; msg.style.color="red"; return; }
-    if(Date.now() > otpExpiry){ msg.innerText="❌ OTP expired. Resend OTP."; msg.style.color="red"; return; }
-    if(userOTP === generatedOTP){
-      msg.innerText = "✅ Verified! Redirecting..."; msg.style.color="green";
-      // Save user like login.html does
-      const userData = { name: document.getElementById("name").value.trim(), email: document.getElementById("email").value.trim(), id: "email_"+Date.now(), img: 99, profilePic: "", verifiedEmail: true };
-      localStorage.setItem('autrobook_user', JSON.stringify(userData));
-      setTimeout(()=>{ window.location.href = "index.html"; }, 1000);
-    } else {
-      wrongAttempts++;
-      msg.innerText = "❌ Wrong OTP (" + wrongAttempts + "/3)"; msg.style.color="red";
-    }
-  }
+// Enter key = Next
+document.addEventListener('keydown', e => { if(e.key === 'Enter') goNext(); });
 </script>
 </body>
 </html>
