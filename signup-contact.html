@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autrobook - Sign Up</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f4f4;
+    --box: #ffffff;
+    --text: #333;
+    --muted: #666;
+    --border: #ddd;
+    --input: #fff;
+    --btn: #2e7d32;
+    --btn2: #2196f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a1a0f;
+      --box: #13261a;
+      --text: #e4e6eb;
+      --muted: #b0b3b8;
+      --border: #1f3d2a;
+      --input: #0f1f15;
+      --btn: #2e7d32;
+      --btn2: #2196f3;
+    }
+  }
+  body { 
+    margin:0; background:var(--bg); color:var(--text); 
+    font-family:Arial; padding:20px; min-height:100vh; position:relative; 
+  }
+  .back { color:var(--btn); text-decoration:none; font-size:24px; }
+  h1 { font-size:24px; margin:20px 0 5px 0; }
+  p { color:var(--muted); font-size:14px; margin-bottom:20px; }
+  input { 
+    width:100%; padding:14px; margin:8px 0; background:var(--input); 
+    border:1px solid var(--border); border-radius:8px; color:var(--text); 
+    font-size:15px; outline:none; box-sizing:border-box;
+  }
+  input:focus{ border-color:var(--btn); }
+  .btn { 
+    width:100%; padding:14px; margin:15px 0; border:none; border-radius:8px; 
+    font-size:16px; font-weight:bold; cursor:pointer; background:var(--btn); color:white; 
+  }
+  .btn:active{ opacity:0.8; }
+  .btn:disabled{ background:#555; cursor:not-allowed; }
+  .otp-section { display:none; border-top:1px solid var(--border); padding-top:15px; margin-top:15px; }
+  .otp-btns { display:flex; gap:10px; }
+  .otp-btns button { 
+    flex:1; padding:12px; background:var(--btn2); border:none; color:white; 
+    border-radius:8px; cursor:pointer; font-weight:bold; 
+  }
+  .footer-link { 
+    text-align:center; color:var(--btn); text-decoration:none; 
+    font-size:14px; position:absolute; bottom:30px; left:0; right:0; 
+  }
+  .error { color:#ff5252; font-size:13px; margin-top:5px; text-align:center; }
+  .success { color:var(--btn); font-size:13px; margin-top:5px; text-align:center; }
+  .small { font-size:12px; color:var(--muted); margin-top:5px; }
+</style>
+</head>
+<body>
+<a href="signup-name.html" class="back">←</a>
+<h1>Enter your contact info</h1>
+<p>We'll send a code to verify your email.</p>
+
+<input type="email" id="email" placeholder="Email Address" autocomplete="email">
+<input type="password" id="password" placeholder="Create Password (min 6 chars)" autocomplete="new-password">
+
+<div id="msgBox" class="error"></div>
+
+<div class="otp-section" id="otpSection">
+  <input type="text" id="otpInput" placeholder="Enter 6-digit OTP" maxlength="6" inputmode="numeric">
+  <div class="small" id="otpInfo"></div>
+  <div class="otp-btns">
+    <button type="button" id="resendBtn" onclick="sendOTP()">Resend Email</button>
+  </div>
+  <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify & Create Account</button>
+</div>
+
+<button class="btn" id="continueBtn" onclick="startSignup()">Continue</button>
+<a href="index.html" class="footer-link">Already have an account?</a>
+
+<script>
+// 1. EmailJS Init
+(function(){
+  emailjs.init("PoawEFe-OI5d9DyLb"); // Public Key
+})();
+
+let generatedOTP = "";
+let signupTemp = JSON.parse(localStorage.getItem('autrobook_signup_temp') || '{}');
+
+window.onload = () => {
+  if(!signupTemp.fullName) {
+    alert("Please enter your name first");
+    window.location.href = "signup-name.html";
+    return;
+  }
+  // Email আগের পেজ থেকে থাকলে বসিয়ে দাও
+  if(signupTemp.email) document.getElementById('email').value = signupTemp.email;
+}
+
+function showMsg(msg, type = 'error') {
+  const el = document.getElementById('msgBox');
+  el.className = type;
+  el.innerText = msg;
+}
+
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function startSignup(){
+  let email = document.getElementById('email').value.trim();
+  let password = document.getElementById('password').value;
+  
+  showMsg('');
+  if(!email || !password) {
+    showMsg('Please fill all fields');
+    return;
+  }
+  if(!validateEmail(email)) {
+    showMsg('Please enter a valid email');
+    return;
+  }
+  if(password.length < 6) {
+    showMsg('Password must be at least 6 characters');
+    return;
+  }
+
+  // Save to temp
+  signupTemp.email = email;
+  signupTemp.password = password;
+  localStorage.setItem('autrobook_signup_temp', JSON.stringify(signupTemp));
+
+  document.getElementById('continueBtn').style.display = 'none';
+  document.getElementById('otpSection').style.display = 'block';
+  sendOTP();
+}
+
+function sendOTP() {
+  let email = signupTemp.email;
+  let name = signupTemp.fullName;
+  
+  document.getElementById('resendBtn').disabled = true;
+  document.getElementById('resendBtn').innerText = 'Sending...';
+  
+  // 6 ডিজিটের OTP
+  generatedOTP = Math.floor(100000 + Math.random() * 900000);
+
+  emailjs.send("service_bk1amce", "template_lu3iasc", {
+    to_email: email,
+    email: email,
+    name: name,
+    otp: generatedOTP
+  })
+  .then(function(response) {
+     showMsg('OTP sent to ' + email, 'success');
+     document.getElementById('otpInfo').innerText = 'Code sent to ' + email;
+     document.getElementById('resendBtn').disabled = false;
+     document.getElementById('resendBtn').innerText = 'Resend Email';
+  }, function(error) {
+     showMsg('Error: ' + JSON.stringify(error));
+     document.getElementById('resendBtn').disabled = false;
+     document.getElementById('resendBtn').innerText = 'Resend Email';
+  });
+}
+
+function verifyOTP() {
+  let otp = document.getElementById('otpInput').value;
+  let btn = document.getElementById('verifyBtn');
+  
+  if(otp.length !== 6) {
+    showMsg('Enter 6 digit OTP');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerText = 'Verifying...';
+  
+  if(otp == generatedOTP){
+    showMsg('✅ Verified! Creating Account...', 'success');
+    
+    // এখানে তুমি Firebase createUser করতে পারবা
+    // আপাতত শুধু Local Save করে home এ পাঠালাম
+    let sessionUser = { 
+      name: signupTemp.fullName, 
+      email: signupTemp.email, 
+      id: Date.now(),
+      token: "local_" + Date.now()
+    };
+    localStorage.setItem('autrobook_user', JSON.stringify(sessionUser));
+    localStorage.removeItem('autrobook_signup_temp');
+    
+    setTimeout(() => {
+      alert('Account Created Successfully! ✅');
+      window.location.href = 'home.html';
+    }, 1000)
+    
+  } else {
+    showMsg('❌ Wrong OTP');
+    btn.disabled = false;
+    btn.innerText = 'Verify & Create Account';
+  }
+}
+
+// Redirect if already logged in
+if(localStorage.getItem('autrobook_user')) {
+  window.location.href = 'home.html';
+}
+</script>
+</body>
+</html>
