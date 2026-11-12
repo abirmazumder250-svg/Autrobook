@@ -5,330 +5,232 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profile - Autrobook</title>
 <script>
-// Auth Guard & Clickjacking Security
 if (!localStorage.getItem('autrobook_user')) { window.location.replace('login.html'); }
 if (window.top !== window.self) { window.top.location = window.self.location; }
 </script>
 <style>
-:root { --bg: #18191a; --card: #242526; --hover: #3a3b3c; --text: #e4e6eb; --sub: #b0b3b8; --border: #3a3b3c; --brand: #4caf50; --blue: #1877f2; }
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-body { background: var(--bg); color: var(--text); overflow-x: hidden; padding-bottom: 40px; }
-.header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
-.header span { cursor: pointer; font-size: 20px; padding: 2px 8px; }
-.header b { font-size: 18px; }
-.container { max-width: 600px; margin: 0 auto; position: relative; }
-
-/* Cover & Profile Picture Layering Fixed */
-.cover-wrap { position: relative; height: 200px; background: linear-gradient(135deg, #1e293b, #0f172a); background-size: cover; background-position: center; }
-.guard-badge { background: var(--brand); color: #fff; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; position: absolute; top: 14px; left: 14px; display: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
-.cover-cam { position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.75); padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; color: white; z-index: 10; border: 1px solid rgba(255,255,255,0.2); }
-.profile-pic-wrap { position: relative; width: 124px; height: 124px; margin: -62px 0 0 16px; z-index: 20; }
-.profile-pic { width: 124px; height: 124px; border-radius: 50%; border: 4px solid var(--bg); object-fit: cover; background: #3a3b3c; display: block; }
-.cam-btn { position: absolute; bottom: 4px; right: 4px; background: var(--hover); border: 2px solid var(--bg); border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; z-index: 25; }
-.pro-badge { position: absolute; top: 4px; left: 0; background: var(--blue); color: white; padding: 3px 8px; font-size: 10px; font-weight: bold; border-radius: 6px; display: none; z-index: 25; }
-
-/* Profile Details */
-.profile-info { padding: 12px 16px 16px; background: var(--bg); }
-.profile-info h2 { font-size: 24px; display: flex; align-items: center; gap: 6px; }
-.verified-icon { color: var(--blue); font-size: 19px; }
-.friend-count { color: var(--sub); font-size: 14px; margin: 4px 0; font-weight: bold; }
-.bio-text { margin: 8px 0; font-size: 15px; line-height: 1.4; }
-.location-info { color: var(--sub); font-size: 14px; margin-bottom: 14px; line-height: 1.5; }
-.profile-buttons { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.btn { padding: 10px 14px; border-radius: 8px; border: none; background: var(--hover); color: white; font-weight: bold; font-size: 14px; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 110px; }
-.btn-primary { background: var(--blue); color: white; }
-.btn-more { flex: 0 0 44px; padding: 10px; }
-
-/* Tabs */
-.tabs { display: flex; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 8px; background: var(--bg); }
-.tab { flex: 1; text-align: center; padding: 13px; cursor: pointer; font-weight: bold; font-size: 14px; color: var(--sub); }
-.tab.active { border-bottom: 3px solid var(--brand); color: var(--brand); }
-.tab-content { display: none; padding: 16px; }
-.tab-content.active { display: block; }
-
-/* Post Composer & Cards */
-.composer { background: var(--card); padding: 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
-.composer textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: var(--text); font-size: 14px; resize: none; outline: none; }
-.composer button { margin-top: 8px; width: 100%; padding: 9px; background: var(--blue); border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; }
-.empty-post { text-align: center; padding: 40px 20px; color: var(--sub); font-size: 15px; }
-.post-card { background: var(--card); margin-bottom: 12px; padding: 14px; border-radius: 10px; border: 1px solid var(--border); }
-.post-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--sub); }
-.post-header b { color: var(--text); font-size: 15px; }
-.post-body { font-size: 15px; line-height: 1.45; white-space: pre-wrap; margin-bottom: 12px; }
-.post-actions { display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
-.p-btn { flex: 1; padding: 7px; background: var(--hover); border: none; border-radius: 6px; color: var(--text); font-size: 13px; cursor: pointer; }
-
-/* Photo Grid & About Card */
-.photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.photo-grid img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
-.about-card { background: var(--card); padding: 16px; border-radius: 10px; border: 1px solid var(--border); line-height: 1.8; font-size: 14px; }
-input[type="file"] { display: none; }
+:root{--bg:#18191a;--card:#242526;--hover:#3a3b3c;--text:#e4e6eb;--sub:#b0b3b8;--border:#3a3b3c;--brand:#4caf50;--blue:#1877f2}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:var(--bg);color:var(--text);overflow-x:hidden;padding-bottom:40px}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1000}
+.header span{cursor:pointer;font-size:20px;padding:2px 8px}.header b{font-size:18px}
+.container{max-width:600px;margin:0 auto;position:relative}
+.cover-wrap{position:relative;height:200px;background:linear-gradient(135deg,#1e293b,#0f172a);background-size:cover;background-position:center}
+.guard-badge{background:var(--brand);color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:bold;position:absolute;top:14px;left:14px;display:none;z-index:10}
+.cover-cam{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.75);padding:7px 12px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;color:#fff;z-index:10}
+.profile-pic-wrap{position:relative;width:124px;height:124px;margin:-62px 0 0 16px;z-index:20}
+.profile-pic{width:124px;height:124px;border-radius:50%;border:4px solid var(--bg);object-fit:cover;background:#3a3b3c;display:block}
+.cam-btn{position:absolute;bottom:4px;right:4px;background:var(--hover);border:2px solid var(--bg);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;z-index:25}
+.pro-badge{position:absolute;top:4px;left:0;background:var(--blue);color:#fff;padding:3px 8px;font-size:10px;font-weight:bold;border-radius:6px;display:none;z-index:25}
+/* BLACK BADGE */
+.blackBadge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#000;border:2px solid #fff;border-radius:50%;color:#fff;font-size:14px;font-weight:900;line-height:1;vertical-align:middle}
+.profile-info{padding:12px 16px 16px;background:var(--bg)}
+.profile-info h2{font-size:24px;display:flex;align-items:center;gap:6px}
+.friend-count{color:var(--sub);font-size:14px;margin:4px 0;font-weight:bold}
+.bio-text{margin:8px 0;font-size:15px;line-height:1.4}
+.location-info{color:var(--sub);font-size:14px;margin-bottom:14px;line-height:1.5}
+.profile-buttons{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{padding:10px 14px;border-radius:8px;border:none;background:var(--hover);color:#fff;font-weight:bold;font-size:14px;cursor:pointer;flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-width:110px}
+.btn-primary{background:var(--blue);color:#fff}.btn-more{flex:0 0 44px;padding:10px}
+.verify-card{background:var(--card);padding:14px;border-radius:10px;border:1px solid var(--border);margin:0 16px 12px}
+.tabs{display:flex;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-top:8px;background:var(--bg)}
+.tab{flex:1;text-align:center;padding:13px;cursor:pointer;font-weight:bold;font-size:14px;color:var(--sub)}
+.tab.active{border-bottom:3px solid var(--brand);color:var(--brand)}
+.tab-content{display:none;padding:16px}.tab-content.active{display:block}
+.composer{background:var(--card);padding:12px;border-radius:10px;border:1px solid var(--border);margin-bottom:16px}
+.composer textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:14px;resize:none;outline:none}
+.composer button{margin-top:8px;width:100%;padding:9px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer}
+.empty-post{text-align:center;padding:40px 20px;color:var(--sub);font-size:15px}
+.post-card{background:var(--card);margin-bottom:12px;padding:14px;border-radius:10px;border:1px solid var(--border)}
+.post-header{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;color:var(--sub)}
+.post-header b{color:var(--text);font-size:15px}
+.post-body{font-size:15px;line-height:1.45;white-space:pre-wrap;margin-bottom:12px;word-break:break-word}
+.post-actions{display:flex;gap:8px;border-top:1px solid var(--border);padding-top:8px}
+.p-btn{flex:1;padding:7px;background:var(--hover);border:none;border-radius:6px;color:var(--text);font-size:13px;cursor:pointer}
+.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.photo-grid img{width:100%;height:150px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.about-card{background:var(--card);padding:16px;border-radius:10px;border:1px solid var(--border);line-height:1.8;font-size:14px}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:2000;justify-content:center;align-items:flex-start;padding-top:40px}
+.modalBox{background:var(--card);width:92%;max-width:430px;border-radius:14px;padding:16px;max-height:88vh;overflow-y:auto}
+.modalBox input,.modalBox textarea{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:8px;outline:none}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1B5E20;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;font-weight:bold;z-index:9999;display:none;max-width:90%;text-align:center}
+input[type=file]{display:none}
 </style>
 </head>
 <body>
-<div class="header">
-<span onclick="goBack()" title="Back">←</span>
-<b>Autrobook</b>
-<span onclick="window.location.href='profile-settings.html'" style="font-size:20px;" title="Settings">⚙️</span>
-</div>
-
+<div id="toast"></div>
+<div class="header"><span onclick="goBack()">←</span><b>Autrobook</b><span onclick="window.location.href='profile-settings.html'">⚙️</span></div>
 <div class="container">
-<!-- Cover Photo -->
-<div class="cover-wrap" id="coverBox">
-<div class="guard-badge" id="guardBadge">🛡️ Guard On</div>
-<div class="cover-cam" onclick="document.getElementById('coverUpload').click()">📷 Edit Cover</div>
-<input type="file" id="coverUpload" accept="image/*" onchange="uploadCover(event)">
-</div>
-
-<!-- Profile Picture -->
-<div class="profile-pic-wrap">
-<img id="profilePic" class="profile-pic" alt="Profile">
-<div class="pro-badge" id="proBadge">PRO</div>
-<div class="cam-btn" onclick="document.getElementById('profileUpload').click()" title="Update Photo">📷</div>
-<input type="file" id="profileUpload" accept="image/*" onchange="uploadProfile(event)">
-</div>
-
-<!-- Profile Info -->
+<div class="cover-wrap" id="coverBox"><div class="guard-badge" id="guardBadge">🛡️ Guard On</div><div class="cover-cam" onclick="document.getElementById('coverUpload').click()">📷 Edit Cover</div><input type="file" id="coverUpload" accept="image/*" onchange="uploadCover(event)"></div>
+<div class="profile-pic-wrap"><img id="profilePic" class="profile-pic" alt="Profile"><div class="pro-badge" id="proBadge">PRO</div><div class="cam-btn" onclick="document.getElementById('profileUpload').click()">📷</div><input type="file" id="profileUpload" accept="image/*" onchange="uploadProfile(event)"></div>
 <div class="profile-info">
-<h2>
-<span id="profileName">Abir Mazumder</span>
-<span class="verified-icon" id="verifiedIcon" style="display:none">✓</span>
-</h2>
+<h2><span id="profileName">Abir Mazumder</span><span id="badgeArea"></span></h2>
 <p class="friend-count" id="friendCount">26 friends</p>
 <p class="bio-text" id="bio">Unofficial account ✅</p>
 <p class="location-info" id="locationText">📍 Uttara · 🏠 Dhaka, Bangladesh · 🎓 Dhaka Central University</p>
 <div class="profile-buttons" id="profileButtons"></div>
 </div>
 
+<!-- BLACK BADGE VERIFICATION -->
+<div class="verify-card">
+<h3 style="margin-bottom:6px">⚫ Black Badge Verification</h3>
+<p style="font-size:13px;color:var(--sub)">Upload NID Front + Back + Live Selfie to get Black Badge ✓</p>
+<div id="verifyStatus" style="margin:10px 0;padding:10px;border-radius:10px;background:#3a3b3c;font-size:13px">Status: Not Verified ❌</div>
+<button class="btn btn-primary" onclick="openVerify()" style="width:100%">🪪 Verify Now - Upload NID + Selfie</button>
+<button class="btn" onclick="checkVerify()" style="width:100%;margin-top:8px">🔄 Check Status</button>
+</div>
+
 <input type="file" id="storyUpload" accept="image/*,video/*" onchange="uploadStory(event)">
-
-<!-- Navigation Tabs -->
-<div class="tabs">
-<div class="tab active" onclick="openTab('posts', this)">All</div>
-<div class="tab" onclick="openTab('photos', this)">Photos</div>
-<div class="tab" onclick="openTab('reels', this)">Reels</div>
-<div class="tab" onclick="openTab('about', this)">About</div>
+<div class="tabs"><div class="tab active" onclick="openTab('posts',this)">All</div><div class="tab" onclick="openTab('photos',this)">Photos</div><div class="tab" onclick="openTab('reels',this)">Reels</div><div class="tab" onclick="openTab('about',this)">About</div></div>
+<div id="posts" class="tab-content active"><div class="composer"><textarea id="newPostText" rows="2" placeholder="Write something on your profile..."></textarea><button onclick="createPost()">Post</button></div><div id="postsContainer"></div></div>
+<div id="photos" class="tab-content"><div class="photo-grid" id="photosGrid"></div></div>
+<div id="reels" class="tab-content"><div id="reelsContainer"></div></div>
+<div id="about" class="tab-content"><div class="about-card" id="aboutDetails"></div></div>
 </div>
 
-<!-- All Posts Tab -->
-<div id="posts" class="tab-content active">
-<div class="composer">
-<textarea id="newPostText" rows="2" placeholder="Write something on your profile..."></textarea>
-<button onclick="createPost()">Post</button>
-</div>
-<div id="postsContainer"></div>
-</div>
+<!-- EDIT PROFILE MODAL -->
+<div class="modal" id="editModal"><div class="modalBox"><span style="float:right;font-size:24px;cursor:pointer" onclick="closeModal('editModal')">×</span><h3>✏️ Edit Profile</h3><input id="editName" placeholder="Your Name"><textarea id="editBio" placeholder="Bio"></textarea><input id="editLoc" placeholder="Location"><button class="btn-primary btn" onclick="saveEdit()" style="width:100%">Save</button></div></div>
+<!-- MORE MODAL -->
+<div class="modal" id="moreModal"><div class="modalBox"><span style="float:right;font-size:24px;cursor:pointer" onclick="closeModal('moreModal')">×</span><h3>More Options</h3><button class="btn" onclick="copyProfileLink()" style="width:100%;margin:6px 0">🔗 Copy Profile Link</button><button class="btn" onclick="document.getElementById('storyUpload').click();closeModal('moreModal')" style="width:100%;margin:6px 0">📸 Add Story</button><button class="btn" onclick="window.location.href='activity-log.html'" style="width:100%;margin:6px 0">📋 Activity Log</button></div></div>
+<!-- VERIFY MODAL -->
+<div class="modal" id="verifyModal"><div class="modalBox"><span style="float:right;font-size:24px;cursor:pointer" onclick="closeModal('verifyModal')">×</span><h3>🪪 Black Badge Verification</h3><p style="font-size:13px;color:var(--sub);margin:8px 0">1. NID Front &nbsp; 2. NID Back &nbsp; 3. Live Selfie<br>Photos stay on your device only. Do NOT type NID Number.</p>
+<label style="font-size:13px;font-weight:bold">1. NID Front Side</label><button class="btn" onclick="document.getElementById('nidFront').click()" style="width:100%;margin:6px 0">📤 Upload NID Front</button><input type="file" id="nidFront" accept="image/*"><img id="prevFront" style="width:100%;border-radius:10px;display:none;margin-bottom:8px">
+<label style="font-size:13px;font-weight:bold">2. NID Back Side</label><button class="btn" onclick="document.getElementById('nidBack').click()" style="width:100%;margin:6px 0">📤 Upload NID Back</button><input type="file" id="nidBack" accept="image/*"><img id="prevBack" style="width:100%;border-radius:10px;display:none;margin-bottom:8px">
+<label style="font-size:13px;font-weight:bold">3. Live Selfie</label><button class="btn" onclick="document.getElementById('liveSelfie').click()" style="width:100%;margin:6px 0">📸 Open Camera for Selfie</button><input type="file" id="liveSelfie" accept="image/*" capture="user"><img id="prevSelfie" style="width:100%;border-radius:10px;display:none;margin-bottom:8px">
+<label style="font-size:13px;font-weight:bold">Full Name (as on NID)</label><input id="verifyName" placeholder="Example: Abir Mazumder">
+<button class="btn-primary btn" onclick="submitVerify()" style="width:100%;margin-top:10px">✅ Submit For Review</button>
+<p style="font-size:11px;color:#888;text-align:center;margin-top:8px">Never share NID number / OTP with anyone.</p>
+</div></div>
 
-<!-- Photos Tab -->
-<div id="photos" class="tab-content">
-<div class="photo-grid" id="photosGrid"></div>
-</div>
-
-<!-- Reels Tab -->
-<div id="reels" class="tab-content">
-<div id="reelsContainer"></div>
-</div>
-
-<!-- About Tab -->
-<div id="about" class="tab-content">
-<div class="about-card" id="aboutDetails"></div>
-</div>
-</div>
-
-<script> 
-let storedUser = {};
-try { storedUser = JSON.parse(localStorage.getItem('autrobook_user')) || {}; } catch (e) {}
-
-let currentUser = {
-name: storedUser.name || "Abir Mazumder",
-email: storedUser.email || "",
-profilePic: storedUser.profilePic || "",
-coverPic: storedUser.coverPic || "",
-bio: storedUser.bio || "Unofficial account ✅",
-location: storedUser.location || "📍 Uttara · 🏠 Dhaka, Bangladesh · 🎓 Dhaka Central University",
-professional: Boolean(storedUser.professional),
-profileGuard: Boolean(storedUser.profileGuard),
-verified: Boolean(storedUser.verified),
-actionButton: storedUser.actionButton || "",
-actionButtonLabel: storedUser.actionButtonLabel || "",
-actionButtonValue: storedUser.actionButtonValue || ""
-};
-
-let userPosts = JSON.parse(localStorage.getItem('autrobook_user_posts') || '[]');
-let userStories = JSON.parse(localStorage.getItem('autrobook_archived_stories') || '[]');
-
-// Default avatar
-const defaultAvatar = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%233a3b3c'/><circle cx='60' cy='45' r='22' fill='%23b0b3b8'/><path d='M25 105 C25 80, 95 80, 95 105' fill='%23b0b3b8'/></svg>";
-
-function loadProfile() {
-document.getElementById('profileName').textContent = currentUser.name;
-document.getElementById('bio').textContent = currentUser.bio;
-document.getElementById('locationText').textContent = currentUser.location;
-document.getElementById('profilePic').src = currentUser.profilePic || defaultAvatar;
-
-if(currentUser.coverPic){
-document.getElementById('coverBox').style.backgroundImage = `url(${currentUser.coverPic})`;
+<script>
+function toast(m){var t=document.getElementById('toast');t.innerText=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2500);}
+function openModal(id){document.getElementById(id).style.display='flex';}
+function closeModal(id){document.getElementById(id).style.display='none';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let storedUser={}; try{storedUser=JSON.parse(localStorage.getItem('autrobook_user'))||{};}catch(e){}
+let currentUser={name:storedUser.name||"Abir Mazumder",email:storedUser.email||"",profilePic:storedUser.profilePic||"",coverPic:storedUser.coverPic||"",bio:storedUser.bio||"Unofficial account ✅",location:storedUser.location||"📍 Uttara · 🏠 Dhaka, Bangladesh · 🎓 Dhaka Central University",professional:Boolean(storedUser.professional),profileGuard:Boolean(storedUser.profileGuard),verified:Boolean(storedUser.verified),actionButton:storedUser.actionButton||"",actionButtonLabel:storedUser.actionButtonLabel||""};
+let userPosts=[]; try{userPosts=JSON.parse(localStorage.getItem('autrobook_user_posts')||'[]');}catch(e){userPosts=[];}
+let userStories=[]; try{userStories=JSON.parse(localStorage.getItem('autrobook_archived_stories')||'[]');}catch(e){userStories=[];}
+const defaultAvatar="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%233a3b3c'/><circle cx='60' cy='45' r='22' fill='%23b0b3b8'/><path d='M25 105 C25 80, 95 80, 95 105' fill='%23b0b3b8'/></svg>";
+function getVerify(){try{return JSON.parse(localStorage.getItem('ab_verify')||'null');}catch(e){return null;}}
+function updateVerifyUI(){
+  var v=getVerify(); var el=document.getElementById('verifyStatus'); if(!el) return;
+  if(!v){el.innerText='Status: Not Verified ❌'; el.style.background='#3a3b3c';}
+  else if(v.status==='pending'){el.innerText='Status: Pending Review ⏳ - '+new Date(v.time).toLocaleString(); el.style.background='#1877f2';}
+  else if(v.status==='approved'){el.innerText='Status: Verified ✅ - Black Badge Active'; el.style.background='#1B5E20';}
+  else if(v.status==='rejected'){el.innerText='Status: Rejected ❌ - Re-upload clear photos'; el.style.background='#c62828';}
+  // Sync verified flag
+  if(v && v.status==='approved') currentUser.verified=true;
+  var badge=document.getElementById('badgeArea');
+  if(badge) badge.innerHTML=currentUser.verified?'<span class="blackBadge">✓</span>':'';
 }
-if(currentUser.profileGuard){
-document.getElementById('guardBadge').style.display = 'block';
+function checkVerify(){ updateVerifyUI(); toast('Status checked'); }
+function openVerify(){
+  var v=getVerify();
+  if(v && v.status==='approved') return toast('Already Verified ✅ - Black Badge Active');
+  if(v && v.status==='pending') return toast('Already Submitted - Pending Review ⏳');
+  openModal('verifyModal');
 }
-if(currentUser.professional){
-document.getElementById('proBadge').style.display = 'block';
+function bindPreview(inputId, imgId){
+  document.getElementById(inputId).onchange=function(e){ var f=e.target.files[0]; if(!f) return; var r=new FileReader(); r.onload=function(){ var im=document.getElementById(imgId); im.src=r.result; im.style.display='block'; }; r.readAsDataURL(f); };
 }
-if(currentUser.verified){
-document.getElementById('verifiedIcon').style.display = 'inline';
+function submitVerify(){
+  var name=document.getElementById('verifyName').value.trim();
+  var hasFront=document.getElementById('prevFront').style.display==='block';
+  var hasBack=document.getElementById('prevBack').style.display==='block';
+  var hasSelfie=document.getElementById('prevSelfie').style.display==='block';
+  if(!name) return toast('Write your Full Name as on NID');
+  if(!hasFront) return toast('Upload NID Front First');
+  if(!hasBack) return toast('Upload NID Back First');
+  if(!hasSelfie) return toast('Upload Live Selfie First');
+  localStorage.setItem('ab_verify', JSON.stringify({name:name, status:'pending', time:Date.now()}));
+  closeModal('verifyModal'); updateVerifyUI(); toast('Submitted ✅ - Pending Review');
+  setTimeout(function(){
+    var v=getVerify();
+    if(v && v.status==='pending'){
+      v.status='approved'; localStorage.setItem('ab_verify', JSON.stringify(v));
+      currentUser.verified=true; saveUser(); updateVerifyUI(); toast('🎉 Verified! Black Badge Activated ✓'); loadProfile();
+    }
+  },5000);
 }
-
-// Action Button
-const btnBox = document.getElementById('profileButtons');
-if(currentUser.actionButtonLabel){
-btnBox.innerHTML = `<button class="btn btn-primary">${currentUser.actionButtonLabel}</button><button class="btn btn-more">⋯</button>`;
-} else {
-btnBox.innerHTML = `<button class="btn">Edit Profile</button><button class="btn btn-more">⋯</button>`;
+function loadProfile(){
+  document.getElementById('profileName').textContent=currentUser.name;
+  document.getElementById('bio').textContent=currentUser.bio;
+  document.getElementById('locationText').textContent=currentUser.location;
+  document.getElementById('profilePic').src=currentUser.profilePic||defaultAvatar;
+  if(currentUser.coverPic) document.getElementById('coverBox').style.backgroundImage='url('+currentUser.coverPic+')';
+  if(currentUser.profileGuard) document.getElementById('guardBadge').style.display='block';
+  if(currentUser.professional) document.getElementById('proBadge').style.display='block';
+  var btnBox=document.getElementById('profileButtons');
+  if(currentUser.actionButtonLabel){ btnBox.innerHTML='<button class="btn btn-primary" onclick="toast(\''+esc(currentUser.actionButtonLabel)+'\')">'+esc(currentUser.actionButtonLabel)+'</button><button class="btn btn-more" onclick="openModal(\'moreModal\')">⋯</button>'; }
+  else { btnBox.innerHTML='<button class="btn" onclick="openEdit()">Edit Profile</button><button class="btn btn-more" onclick="openModal(\'moreModal\')">⋯</button>'; }
+  updateVerifyUI(); renderPosts(); renderPhotos(); renderReels(); renderAbout();
 }
-
-renderPosts();
-renderPhotos();
-renderReels();
-renderAbout();
+function openEdit(){ document.getElementById('editName').value=currentUser.name; document.getElementById('editBio').value=currentUser.bio; document.getElementById('editLoc').value=currentUser.location; openModal('editModal'); }
+function saveEdit(){
+  var n=document.getElementById('editName').value.trim(); var b=document.getElementById('editBio').value.trim(); var l=document.getElementById('editLoc').value.trim();
+  if(n) currentUser.name=n; if(b) currentUser.bio=b; if(l) currentUser.location=l;
+  saveUser(); closeModal('editModal'); loadProfile(); toast('Profile Saved ✅');
 }
-
-function openTab(tabId, el) {
-document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-el.classList.add('active');
-document.getElementById(tabId).classList.add('active');
-}
-
+function copyProfileLink(){ var url=location.href.split('?')[0]+'?user='+encodeURIComponent(currentUser.name); if(navigator.clipboard) navigator.clipboard.writeText(url); toast('Profile Link Copied'); closeModal('moreModal'); }
+function openTab(tabId,el){ document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');}); document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');}); el.classList.add('active'); document.getElementById(tabId).classList.add('active'); }
 function createPost(){
-const text = document.getElementById('newPostText').value.trim();
-if(!text) return;
-userPosts.unshift({id: Date.now(), text: text, likes: 0, time: 'Just now'});
-localStorage.setItem('autrobook_user_posts', JSON.stringify(userPosts));
-document.getElementById('newPostText').value = '';
-logActivity('Created a new post');
-renderPosts();
+  var text=document.getElementById('newPostText').value.trim(); if(!text) return;
+  userPosts.unshift({id:Date.now(), text:text, likes:0, time:'Just now', comments:[]});
+  localStorage.setItem('autrobook_user_posts', JSON.stringify(userPosts));
+  document.getElementById('newPostText').value=''; logActivity('Created a new post'); renderPosts();
 }
-
 function renderPosts(){
-const box = document.getElementById('postsContainer');
-box.innerHTML = '';
-if(userPosts.length === 0){
-box.innerHTML = '<div class="empty-post">No posts yet</div>';
-return;
+  var box=document.getElementById('postsContainer'); box.innerHTML='';
+  if(userPosts.length===0){ box.innerHTML='<div class="empty-post">No posts yet</div>'; return; }
+  userPosts.forEach(function(p){
+    var commentsHtml=(p.comments||[]).map(function(c){ return '<div style="background:var(--bg);padding:8px 10px;border-radius:10px;margin:6px 0;font-size:13px"><b>'+esc(c.name)+'</b>: '+esc(c.text)+'</div>'; }).join('');
+    box.innerHTML+='<div class="post-card"><div class="post-header"><b>'+esc(currentUser.name)+'</b><span>'+esc(p.time)+'</span></div><div class="post-body">'+esc(p.text)+'</div><div class="post-actions"><button class="p-btn" onclick="likePost('+p.id+')">👍 Like '+(p.likes>0?'('+p.likes+')':'')+'</button><button class="p-btn" onclick="toggleCommentBox('+p.id+')">💬 Comment</button><button class="p-btn" onclick="deletePost('+p.id+')">🗑️ Delete</button></div><div id="cbox-'+p.id+'" style="display:none;margin-top:10px"><input id="cinput-'+p.id+'" placeholder="Write comment..." style="width:100%;padding:8px;border-radius:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);outline:none"><button class="p-btn" onclick="addComment('+p.id+')" style="margin-top:6px;width:100%">Send Comment</button><div>'+commentsHtml+'</div></div></div>';
+  });
 }
-userPosts.forEach(p => {
-box.innerHTML += `
-<div class="post-card">
-<div class="post-header"><b>${currentUser.name}</b><span>${p.time}</span></div>
-<div class="post-body">${p.text}</div>
-<div class="post-actions">
-<button class="p-btn" onclick="likePost(${p.id})">👍 Like ${p.likes > 0 ? '('+p.likes+')' : ''}</button>
-<button class="p-btn">💬 Comment</button>
-</div>
-</div>`;
-});
+function toggleCommentBox(id){ var el=document.getElementById('cbox-'+id); el.style.display=el.style.display==='block'?'none':'block'; }
+function addComment(id){
+  var inp=document.getElementById('cinput-'+id); var v=inp.value.trim(); if(!v) return;
+  var p=userPosts.find(function(x){return x.id===id;}); if(!p.comments) p.comments=[];
+  p.comments.push({name:currentUser.name, text:v});
+  localStorage.setItem('autrobook_user_posts', JSON.stringify(userPosts)); renderPosts(); toast('Comment Added');
 }
-
-function likePost(id){
-const post = userPosts.find(p => p.id === id);
-if(post){ post.likes++; localStorage.setItem('autrobook_user_posts', JSON.stringify(userPosts)); renderPosts(); }
-}
-
+function deletePost(id){ if(!confirm('Delete this post?')) return; userPosts=userPosts.filter(function(p){return p.id!==id;}); localStorage.setItem('autrobook_user_posts', JSON.stringify(userPosts)); renderPosts(); }
+function likePost(id){ var post=userPosts.find(function(p){return p.id===id;}); if(post){ post.likes++; localStorage.setItem('autrobook_user_posts', JSON.stringify(userPosts)); renderPosts(); } }
 function renderPhotos(){
-const grid = document.getElementById('photosGrid');
-grid.innerHTML = '';
-let photos = [];
-if(currentUser.profilePic) photos.push(currentUser.profilePic);
-if(currentUser.coverPic) photos.push(currentUser.coverPic);
-userPosts.forEach(p => { if(p.image) photos.push(p.image); });
-if(photos.length === 0){
-grid.innerHTML = '<p style="text-align:center;color:var(--sub);">No photos yet</p>';
-} else {
-photos.forEach(src => {
-grid.innerHTML += `<img src="${src}">`;
-});
+  var grid=document.getElementById('photosGrid'); grid.innerHTML='';
+  var photos=[]; if(currentUser.profilePic) photos.push(currentUser.profilePic); if(currentUser.coverPic) photos.push(currentUser.coverPic);
+  userPosts.forEach(function(p){ if(p.image) photos.push(p.image); });
+  if(photos.length===0){ grid.innerHTML='<p style="text-align:center;color:var(--sub);">No photos yet</p>'; }
+  else { photos.forEach(function(src){ grid.innerHTML+='<img src="'+src+'">'; }); }
 }
-}
-
 function renderReels(){
-const box = document.getElementById('reelsContainer');
-box.innerHTML = '';
-if(userStories.length === 0){
-box.innerHTML = '<p style="text-align:center;color:var(--sub);padding:20px;">You have no Reels/Story yet</p>';
-} else {
-box.innerHTML = `<p style="text-align:center;color:var(--brand);padding:20px;">You have ${userStories.length} story/reel item(s) saved in Archive.</p>`;
+  var box=document.getElementById('reelsContainer'); box.innerHTML='';
+  if(userStories.length===0){ box.innerHTML='<p style="text-align:center;color:var(--sub);padding:20px;">You have no Reels/Story yet</p>'; }
+  else { box.innerHTML='<p style="text-align:center;color:var(--brand);padding:20px;">You have '+userStories.length+' story/reel item(s) saved in Archive.</p>'; }
 }
+function renderAbout(){
+  var aboutBox=document.getElementById('aboutDetails');
+  aboutBox.innerHTML='<div>🎓 <b>Education:</b> Honours student at Dhaka Central University</div><div>🏠 <b>Lives in:</b> Dhaka, Bangladesh</div><div>📍 <b>From:</b> Uttara, Dhaka</div><div>🛡️ <b>Profile Guard:</b> '+(currentUser.profileGuard?'Active':'Off')+'</div><div>⚫ <b>Black Badge:</b> '+(currentUser.verified?'Verified ✅':'Not Verified ❌')+'</div><div>📋 <b>Quick Links:</b> <a href="activity-log.html" style="color:#1877f2;">Activity Log</a> · <a href="archive.html" style="color:#1877f2;">Archive</a> · <a href="creator-dashboard.html" style="color:#1877f2;">Creator Dashboard</a></div>';
 }
-
-function renderAbout() {
-const aboutBox = document.getElementById('aboutDetails');
-aboutBox.innerHTML = `
-<div>🎓 <b>Education:</b> Honours student at Dhaka Central University</div>
-<div>🏠 <b>Lives in:</b> Dhaka, Bangladesh</div>
-<div>📍 <b>From:</b> Uttara, Dhaka</div>
-<div>🛡️ <b>Profile Guard:</b> ${currentUser.profileGuard ? 'Active' : 'Off'}</div>
-<div>📋 <b>Quick Links:</b> <a href="activity-log.html" style="color:#1877f2;">Activity Log</a> · <a href="archive.html" style="color:#1877f2;">Archive</a> · <a href="creator-dashboard.html" style="color:#1877f2;">Creator Dashboard</a></div>
-`;
+function uploadProfile(e){
+  var file=e.target.files[0]; if(!file) return;
+  var reader=new FileReader(); reader.onload=function(){ currentUser.profilePic=reader.result; saveUser(); document.getElementById('profilePic').src=reader.result; renderPhotos(); logActivity('Updated profile picture'); toast('Profile Photo Updated ✅'); }; reader.readAsDataURL(file);
 }
-
-function uploadProfile(e) {
-const file = e.target.files[0];
-if (!file) return;
-const reader = new FileReader();
-reader.onload = function() {
-currentUser.profilePic = reader.result;
-saveUser();
-document.getElementById('profilePic').src = reader.result;
-renderPhotos();
-logActivity('Updated profile picture');
-};
-reader.readAsDataURL(file);
+function uploadCover(e){
+  var file=e.target.files[0]; if(!file) return;
+  var reader=new FileReader(); reader.onload=function(){ currentUser.coverPic=reader.result; saveUser(); document.getElementById('coverBox').style.backgroundImage='url('+reader.result+')'; renderPhotos(); logActivity('Updated cover photo'); toast('Cover Updated ✅'); }; reader.readAsDataURL(file);
 }
-
-function uploadCover(e) {
-const file = e.target.files[0];
-if (!file) return;
-const reader = new FileReader();
-reader.onload = function() {
-currentUser.coverPic = reader.result;
-saveUser();
-document.getElementById('coverBox').style.backgroundImage = `url(${reader.result})`;
-renderPhotos();
-logActivity('Updated cover photo');
-};
-reader.readAsDataURL(file);
+function uploadStory(e){
+  var file=e.target.files[0]; if(!file) return;
+  userStories.unshift({id:Date.now(), content:'Story media: '+file.name, date:'Today'});
+  localStorage.setItem('autrobook_archived_stories', JSON.stringify(userStories)); logActivity('Added a new story'); renderReels(); toast('Story uploaded and saved to Archive!');
 }
-
-function uploadStory(e) {
-const file = e.target.files[0];
-if (!file) return;
-userStories.unshift({ id: Date.now(), content: 'Story media: ' + file.name, date: 'Today' });
-localStorage.setItem('autrobook_archived_stories', JSON.stringify(userStories));
-logActivity('Added a new story');
-renderReels();
-alert('Story uploaded and saved to Story Archive!');
-}
-
-function saveUser() {
-const merged = Object.assign({}, storedUser, currentUser);
-localStorage.setItem('autrobook_user', JSON.stringify(merged));
-}
-
-function logActivity(text) {
-try {
-let logs = JSON.parse(localStorage.getItem('autrobook_activity_logs') || '[]');
-logs.unshift({ id: Date.now(), category: 'activity', text: text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-localStorage.setItem('autrobook_activity_logs', JSON.stringify(logs));
-} catch (e) {}
-}
-
-function goBack() {
-if (window.history.length > 1) history.back();
-else window.location.href = 'home.html';
-}
-
-window.onload = loadProfile;
-</script> 
+function saveUser(){ var merged=Object.assign({}, storedUser, currentUser); localStorage.setItem('autrobook_user', JSON.stringify(merged)); }
+function logActivity(text){ try{ var logs=JSON.parse(localStorage.getItem('autrobook_activity_logs')||'[]'); logs.unshift({id:Date.now(), category:'activity', text:text, time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}); localStorage.setItem('autrobook_activity_logs', JSON.stringify(logs)); }catch(e){} }
+function goBack(){ if(window.history.length>1) history.back(); else window.location.href='home.html'; }
+bindPreview('nidFront','prevFront'); bindPreview('nidBack','prevBack'); bindPreview('liveSelfie','prevSelfie');
+window.onload=loadProfile;
+</script>
 </body>
 </html>
