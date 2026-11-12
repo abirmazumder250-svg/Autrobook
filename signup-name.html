@@ -1,138 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Autrobook Signup</title>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-  <style>
-    :root {
-      --bg: #f4f4f4;
-      --box: white;
-      --text: #333;
-      --border: #ddd;
-      --btn: #007bff;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #121212;
-        --box: #1e1e1e;
-        --text: #eee;
-        --border: #444;
-        --btn: #3390ff;
-      }
-    }
-    body { 
-      font-family: Arial, sans-serif; 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      height: 100vh; 
-      background: var(--bg); 
-      margin: 0; 
-      color: var(--text);
-    }
-    .box { 
-      background: var(--box); 
-      padding: 30px; 
-      border-radius: 10px; 
-      box-shadow: 0 0 15px rgba(0,0,0,0.2); 
-      width: 320px; 
-      text-align: center; 
-    }
-    input, button { 
-      width: 90%; 
-      padding: 12px; 
-      margin: 10px 0; 
-      border-radius: 5px; 
-      border: 1px solid var(--border); 
-      font-size: 16px; 
-      background: var(--bg);
-      color: var(--text);
-    }
-    button { 
-      background: var(--btn); 
-      color: white; 
-      border: none; 
-      cursor: pointer; 
-      font-weight: bold;
-    }
-    button:disabled { background: #666; }
-    h2 { color: var(--text); }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autrobook Signup</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<style>
+  :root{--bg:#f4f4f4;--box:white;--text:#333;--border:#ddd;--btn:#007bff;}
+  @media (prefers-color-scheme: dark){ :root{--bg:#121212;--box:#1e1e1e;--text:#eee;--border:#444;--btn:#3390ff;} }
+  body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:var(--bg);margin:0;color:var(--text);}
+  .box{background:var(--box);padding:30px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,0.2);width:320px;text-align:center;}
+  input,button{width:90%;padding:12px;margin:10px 0;border-radius:5px;border:1px solid var(--border);font-size:16px;background:var(--bg);color:var(--text);}
+  button{background:var(--btn);color:white;border:none;cursor:pointer;font-weight:bold;}
+  button:disabled{background:#666;cursor:not-allowed;}
+</style>
 </head>
 <body>
-  <div class="box">
-    <h2>Create Account</h2>
-    
-    <input type="text" id="name" placeholder="Your Name" required>
-    <input type="email" id="email" placeholder="Your Email" required>
-    <button id="sendBtn" onclick="sendOTP()">Send OTP</button>
-    
-    <div id="otpBox" style="display:none;">
-      <input type="text" id="otpInput" placeholder="Enter OTP">
-      <button onclick="verifyOTP()">Verify & Continue</button>
-    </div>
-    <p id="msg"></p>
+<div class="box">
+  <h2>Create Account</h2>
+  <input type="text" id="name" placeholder="Your Name">
+  <input type="email" id="email" placeholder="Your Email">
+  <button id="sendBtn" onclick="sendOTP()">Send OTP</button>
+  <div id="otpBox" style="display:none;">
+    <input type="text" id="otpInput" placeholder="Enter 6-Digit OTP" maxlength="6" inputmode="numeric">
+    <button id="verifyBtn" onclick="verifyOTP()">Verify & Continue</button>
+    <p id="timerText" style="font-size:13px;color:#888"></p>
   </div>
+  <p id="msg"></p>
+</div>
 
 <script>
-  // 1. EmailJS Init
-  (function(){
-    emailjs.init("PoawEFe-OI5d9DyLb"); // Public Key
-  })();
+  (function(){ emailjs.init("PoawEFe-OI5d9DyLb"); })();
 
   let generatedOTP = "";
+  let otpExpiry = 0;
+  let wrongAttempts = 0;
+  let timerInterval = null;
 
-  // 2. Send OTP
-  function sendOTP() {
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
+  function isValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+  function startTimer(){
+    let sec = 60;
+    clearInterval(timerInterval);
+    const btn = document.getElementById("sendBtn");
+    timerInterval = setInterval(()=>{
+      sec--;
+      document.getElementById("timerText").innerText = "Resend in " + sec + "s";
+      if(sec <= 0){ clearInterval(timerInterval); btn.disabled = false; btn.innerText = "Resend OTP"; document.getElementById("timerText").innerText = ""; }
+    },1000);
+  }
+
+  function sendOTP(){
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim().toLowerCase();
     const msg = document.getElementById("msg");
+    if(!name){ msg.innerText="Please enter Name"; msg.style.color="red"; return; }
+    if(!isValidEmail(email)){ msg.innerText="Please enter valid Email"; msg.style.color="red"; return; }
 
-    if(!name || !email){
-      msg.innerText = "Please enter Name and Email";
-      msg.style.color = "red";
-      return;
-    }
+    // ✅ FIXED: 6-digit + 5 min expiry
+    generatedOTP = Math.floor(100000 + Math.random()*900000).toString();
+    otpExpiry = Date.now() + 5*60*1000;
+    wrongAttempts = 0;
 
-    // Generate 4 digit OTP
-    generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    
-    document.getElementById("sendBtn").disabled = true;
-    msg.innerText = "Sending OTP...";
-    msg.style.color = "var(--text)";
+    const btn = document.getElementById("sendBtn");
+    btn.disabled = true; btn.innerText = "Sending...";
+    msg.innerText = "Sending OTP..."; msg.style.color = "var(--text)";
 
-    // 3. Send Email via EmailJS
-    emailjs.send("service_bk1amce", "template_lu3iasc", {
-      to_email: email,  
-      email: email,     
-      name: name,
-      otp: generatedOTP
-    })
-    .then(function(response) {
-       msg.innerText = "✅ OTP sent to " + email;
-       msg.style.color = "green";
+    emailjs.send("service_bk1amce", "template_lu3iasc", { to_email: email, email: email, name: name, otp: generatedOTP })
+    .then(function(){
+       msg.innerText = "✅ OTP sent to " + email; msg.style.color="green";
        document.getElementById("otpBox").style.display = "block";
-    }, function(error) {
-       msg.innerText = "❌ Error: " + JSON.stringify(error);
-       msg.style.color = "red";
-       document.getElementById("sendBtn").disabled = false;
+       btn.innerText = "OTP Sent";
+       startTimer();
+    }, function(error){
+       msg.innerText = "❌ Error: Check EmailJS Service / Template ID"; msg.style.color="red";
+       console.log(error);
+       btn.disabled = false; btn.innerText = "Send OTP";
     });
   }
 
-  // 4. Verify OTP
-  function verifyOTP() {
-    const userOTP = document.getElementById("otpInput").value;
+  function verifyOTP(){
+    const userOTP = document.getElementById("otpInput").value.trim();
     const msg = document.getElementById("msg");
-    if(userOTP == generatedOTP){
-      msg.innerText = "✅ Verified! Redirecting...";
-      msg.style.color = "green";
-      // Go to next page after verify
-      // window.location.href = "signup-contact.html";
+    if(wrongAttempts >= 3){ msg.innerText="❌ Too many wrong attempts. Resend OTP."; msg.style.color="red"; return; }
+    if(Date.now() > otpExpiry){ msg.innerText="❌ OTP expired. Resend OTP."; msg.style.color="red"; return; }
+    if(userOTP === generatedOTP){
+      msg.innerText = "✅ Verified! Redirecting..."; msg.style.color="green";
+      // Save user like login.html does
+      const userData = { name: document.getElementById("name").value.trim(), email: document.getElementById("email").value.trim(), id: "email_"+Date.now(), img: 99, profilePic: "", verifiedEmail: true };
+      localStorage.setItem('autrobook_user', JSON.stringify(userData));
+      setTimeout(()=>{ window.location.href = "index.html"; }, 1000);
     } else {
-      msg.innerText = "❌ Wrong OTP";
-      msg.style.color = "red";
+      wrongAttempts++;
+      msg.innerText = "❌ Wrong OTP (" + wrongAttempts + "/3)"; msg.style.color="red";
     }
   }
 </script>
