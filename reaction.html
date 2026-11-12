@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Reaction - Autrobook Reels</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
+body{background:#000;color:#fff;overflow:hidden}
+.top{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:12px 15px;background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent)}
+.logo{font-size:22px;font-weight:bold}.logo span{color:#2E7D32}
+.top button{background:rgba(255,255,255,.15);border:1px solid #fff;color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer}
+.reelsWrap{height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}
+.reelsWrap::-webkit-scrollbar{display:none}
+.reel{height:100vh;width:100%;position:relative;scroll-snap-align:start;background:#000;overflow:hidden}
+.reel video{width:100%;height:100%;object-fit:cover;transition:filter .3s}
+.reel.ai-on video{filter:contrast(1.25) brightness(1.15) saturate(1.35) sharpness(1.2)}
+.quality-badge{position:absolute;top:60px;left:12px;background:rgba(0,0,0,.7);padding:5px 10px;border-radius:12px;font-size:12px;z-index:20}
+.ai-badge{position:absolute;top:60px;right:12px;background:#2E7D32;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:bold;z-index:20}
+.reel-info{position:absolute;bottom:130px;left:14px;right:80px;z-index:20}
+.reel-info b{font-size:16px}
+.reel-info p{font-size:13px;color:#ddd;margin-top:4px}
+.counts{font-size:13px;margin-top:6px;background:rgba(0,0,0,.5);padding:6px 10px;border-radius:10px;display:inline-block}
+.counts b{color:#fff}
+.reel-actions{position:absolute;right:10px;bottom:130px;display:flex;flex-direction:column;gap:14px;z-index:20;text-align:center}
+.act{cursor:pointer}
+.act span{font-size:30px;display:block}
+.act small{font-size:11px;background:rgba(0,0,0,.6);padding:2px 6px;border-radius:10px}
+.act.active span{transform:scale(1.2)}
+.controls{position:absolute;bottom:0;left:0;right:0;z-index:30;background:linear-gradient(to top,rgba(0,0,0,.9),transparent);padding:10px 12px 18px}
+.progress{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:10px;background:rgba(255,255,255,.4);outline:none;cursor:pointer}
+.progress::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#2E7D32;border:2px solid #fff}
+.time{display:flex;justify-content:space-between;font-size:11px;margin-top:4px}
+.panel{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.panel button{background:rgba(255,255,255,.15);border:1px solid #fff;color:#fff;padding:6px 10px;border-radius:20px;cursor:pointer;font-size:12px}
+.panel button.on{background:#2E7D32;border-color:#2E7D32}
+.sound-box{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);padding:6px 10px;border-radius:20px;flex:1;min-width:180px}
+.sound-box input{flex:1;-webkit-appearance:none;height:5px;border-radius:10px;background:#2E7D32;outline:none}
+.sound-box input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #2E7D32}
+.reaction-picker{position:absolute;bottom:220px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:10px;border-radius:30px;display:none;gap:8px;z-index:60;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.reaction-picker button{background:none;border:none;font-size:30px;cursor:pointer;padding:2px 4px}
+.reaction-picker button.active{background:#e8f5e9;border-radius:50%}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;justify-content:center;align-items:flex-end}
+.modalBox{background:#fff;color:#000;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:16px;max-height:75vh;overflow-y:auto}
+.menu-item{display:flex;gap:10px;align-items:center;padding:12px;border-radius:10px;cursor:pointer;background:#f0f2f5;margin:6px 0;font-weight:bold}
+#toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#1B5E20;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;font-weight:bold;z-index:9999;display:none;max-width:90%;text-align:center}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div class="top"><div class="logo">Autro<span>book</span> • reaction</div><div style="display:flex;gap:8px"><button onclick="window.location.href='home.html'">🏠 Home</button><button onclick="window.location.href='reaction-on-off.html'">⚙️ Settings</button></div></div>
+<div class="reelsWrap" id="reels"></div>
+<div class="modal" id="shareModal"><div class="modalBox"><span style="float:right;font-size:24px;cursor:pointer" onclick="closeModal('shareModal')">×</span><h3>Share Reel</h3><div id="shareBody"></div><button class="menu-item" onclick="closeModal('shareModal')" style="width:100%">Cancel</button></div></div>
+<div class="modal" id="menuModal"><div class="modalBox"><span style="float:right;font-size:24px;cursor:pointer" onclick="closeModal('menuModal')">×</span><h3>Reel Options</h3><div id="menuBody"></div><button class="menu-item" onclick="closeModal('menuModal')" style="width:100%">Cancel</button></div></div>
+<script>
+function toast(m){var t=document.getElementById('toast');t.innerText=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2500);}
+function openModal(id){document.getElementById(id).style.display='flex';}
+function closeModal(id){document.getElementById(id).style.display='none';}
+function uid(){return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
+function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d;}catch(e){return d;}}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
+function fmtNum(n){if(n>=1000000)return (n/1000000).toFixed(1)+'M';if(n>=1000)return (n/1000).toFixed(1)+'K';return n||0;}
+function fmtSec(s){s=Math.floor(s||0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+var myId='u_me',myName='You';
+var REACTIONS=[{k:'love',e:'❤️',label:'Love'},{k:'like',e:'👍',label:'Like'},{k:'haha',e:'😆',label:'Haha'},{k:'angry',e:'😠',label:'Angry'},{k:'wow',e:'😮',label:'Wow'},{k:'sad',e:'😢',label:'Sad'},{k:'smallhand',e:'🤏',label:'small hand'}];
+// QUALITY MAP - 4K to 16K AI Exchange (video source same, AI filter + label changes - real 16K file browser e heavy hoy tai AI upscale simulation)
+var QUALITIES=['4K','8K','12K','16K'];
+var reels=load('ab_reaction_reels',[
+{id:'r1',name:'Nature Bangladesh',userId:'u1',video:'https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4',desc:'🌿 Forest Stream - Sunlight through trees | Nature | Relax',views:45800,reactions:{},comments:[],shares:12,quality:'4K',ai:false,sound:100,time:Date.now()},
+{id:'r2',name:'Ocean Vibes',userId:'u2',video:'https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4',desc:'🌊 Ocean Waves - Relaxing Sea | Nature | Relax',views:62300,reactions:{},comments:[],shares:20,quality:'8K',ai:true,sound:150,time:Date.now()},
+{id:'r3',name:'Mountain View',userId:'u1',video:'https://assets.mixkit.co/videos/preview/mixkit-going-down-a-curved-highway-through-a-mountain-range-41576-large.mp4',desc:'🏔️ Mountain Road - Beautiful Mountains | Nature | Travel',views:38900,reactions:{},comments:[],shares:8,quality:'12K',ai:false,sound:100,time:Date.now()},
+{id:'r4',name:'Rainy Forest',userId:'u2',video:'https://assets.mixkit.co/videos/preview/mixkit-rain-falling-on-the-leaves-of-a-tree-4116-large.mp4',desc:'🌧️ Rain on Leaves - Calm Forest Rain | Nature | Sleep',views:51200,reactions:{},comments:[],shares:15,quality:'16K',ai:true,sound:120,time:Date.now()},
+{id:'r5',name:'Sunset Sky',userId:'u3',video:'https://assets.mixkit.co/videos/preview/mixkit-sunset-over-a-beach-1090-large.mp4',desc:'🌅 Sunset Over Beach - Golden Hour | Nature | Relax',views:71400,reactions:{},comments:[],shares:25,quality:'4K',ai:false,sound:100,time:Date.now()}
+]);
+var audioCtx={},gainNode={},audioSrc={};
+function reactionCount(r){return Object.keys(r.reactions||{}).length;}
+function reactionSummary(r){
+  var counts={};REACTIONS.forEach(function(x){counts[x.k]=0;});
+  Object.keys(r.reactions||{}).forEach(function(u){if(counts[r.reactions[u]]!==undefined)counts[r.reactions[u]]++;});
+  var total=reactionCount(r);
+  var base=total===0?'0 reactions • Be the first!':total===1?'1 reaction':total+' reactions';
+  var parts=REACTIONS.filter(function(x){return counts[x.k]>0;}).map(function(x){return x.e+' '+counts[x.k];});
+  var mine=r.reactions[myId]?REACTIONS.find(function(x){return x.k===r.reactions[myId];}):null;
+  return (parts.length?parts.join(' • ')+' • ':'')+base+' • You: '+(mine?mine.e+' '+mine.label:'No reaction');
+}
+function renderReels(){
+  var html='';
+  reels.forEach(function(r){
+    var total=reactionCount(r);
+    var myReact=r.reactions[myId];
+    var myEmoji=myReact?(REACTIONS.find(function(x){return x.k===myReact;})||{}).e||'❤️':'❤️';
+    html+='<div class="reel '+(r.ai?'ai-on':'')+'" id="reel-'+r.id+'">'
+    +'<video id="vid-'+r.id+'" src="'+r.video+'" loop playsinline muted autoplay></video>'
+    +'<span class="quality-badge">🎬 '+r.quality+' • AI Exchange</span>'
+    +'<span class="ai-badge">'+(r.ai?'✨ AI Enhance ON':'AI Enhance OFF')+'</span>'
+    +'<div class="reel-info"><b>'+r.name+'</b><p>'+r.desc+'</p><div class="counts">👀 <b>'+fmtNum(r.views)+'</b> Views • ❤️ <b>'+total+'</b> '+(total===1?'Reaction':'Reactions')+' • ↗️ <b>'+r.shares+'</b> Shares</div><div style="font-size:12px;margin-top:6px;color:#ddd">'+reactionSummary(r)+'</div></div>'
+    +'<div class="reel-actions">'
+    +'<div class="act" onclick="toggleReactionPicker(\''+r.id+'\')"><span>'+myEmoji+'</span><small>'+total+' React</small></div>'
+    +'<div class="act" onclick="openComments(\''+r.id+'\')"><span>💬</span><small>'+(r.comments||[]).length+' Comment</small></div>'
+    +'<div class="act" onclick="openShare(\''+r.id+'\')"><span>↗️</span><small>'+r.shares+' Share</small></div>'
+    +'<div class="act" onclick="openMenu(\''+r.id+'\')"><span>⋯</span><small>More</small></div>'
+    +'</div>'
+    +'<div class="reaction-picker" id="picker-'+r.id+'">'+REACTIONS.map(function(x){return '<button onclick="applyReaction(\''+r.id+'\',\''+x.k+'\')" class="'+(myReact===x.k?'active':'')+'" title="'+x.label+'">'+x.e+'</button>';}).join('')+'</div>'
+    +'<div class="controls">'
+    +'<input type="range" class="progress" id="prog-'+r.id+'" value="0" min="0" max="100" step="0.1"><div class="time"><span id="cur-'+r.id+'">0:00</span><span id="dur-'+r.id+'">0:00</span></div>'
+    +'<div class="panel">'
+    +'<span style="font-size:12px">Quality:</span>'+QUALITIES.map(function(q){return '<button onclick="setQuality(\''+r.id+'\',\''+q+'\')" class="'+(r.quality===q?'on':'')+'">'+q+'</button>';}).join('')
+    +'<button onclick="toggleAI(\''+r.id+'\')" class="'+(r.ai?'on':'')+'">✨ AI '+(r.ai?'ON':'OFF')+'</button>'
+    +'</div>'
+    +'<div class="panel"><div class="sound-box">🔊 <span id="volLabel-'+r.id+'">Sound '+r.sound+'%</span><input type="range" min="100" max="200" step="5" value="'+r.sound+'" oninput="setSound(\''+r.id+'\',this.value)"><button onclick="toggleMute(\''+r.id+'\')" id="muteBtn-'+r.id+'">🔇 Unmute</button></div></div>'
+    +'<div class="panel"><button onclick="togglePlay(\''+r.id+'\')">⏯️ Play / Pause</button><button onclick="window.location.href=\'home.html\'">🏠 Home</button><button onclick="window.location.href=\'reaction-on-off.html\'">⚙️ Reaction Settings</button></div>'
+    +'</div></div>';
+  });
+  document.getElementById('reels').innerHTML=html;
+  // Bind video events + sound enhance
+  reels.forEach(function(r){
+    var vid=document.getElementById('vid-'+r.id);
+    var bar=document.getElementById('prog-'+r.id);
+    var cur=document.getElementById('cur-'+r.id);
+    var dur=document.getElementById('dur-'+r.id);
+    vid.volume=(r.sound||100)/100; // 100-200% - 200% er jonno WebAudio gain niche
+    vid.onloadedmetadata=function(){dur.innerText=fmtSec(vid.duration);};
+    vid.ontimeupdate=function(){if(!vid.duration)return;var pct=(vid.currentTime/vid.duration)*100;if(document.activeElement!==bar)bar.value=pct;cur.innerText=fmtSec(vid.currentTime);dur.innerText=fmtSec(vid.duration);bar.style.background='linear-gradient(to right,#2E7D32 '+pct+'%,rgba(255,255,255,.4) '+pct+'%)';};
+    bar.oninput=function(){vid.currentTime=(bar.value/100)*vid.duration;};
+    vid.onclick=function(){togglePlay(r.id);};
+    // Auto view count - video play hole view +1 (ekbar)
+    if(!r.viewed){r.viewed=true;r.views=(r.views||0)+1;save('ab_reaction_reels',reels);}
+    setupAudioEnhance(r.id, vid);
+  });
+}
+// SOUND ENHANCE 100-200% - Web Audio Gain (100% = normal, 200% = double loud)
+function setupAudioEnhance(id, vid){
+  try{
+    if(audioCtx[id]) return;
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    var src=ctx.createMediaElementSource(vid);
+    var gain=ctx.createGain();
+    var reel=reels.find(function(x){return x.id===id;});
+    gain.gain.value=(reel.sound||100)/100;
+    src.connect(gain); gain.connect(ctx.destination);
+    audioCtx[id]=ctx; gainNode[id]=gain; audioSrc[id]=src;
+  }catch(e){ /* muted video te audio ctx lagbe na, volume property diye hobe */ }
+}
+function setSound(id, val){
+  val=parseInt(val);
+  var r=reels.find(function(x){return x.id===id;}); r.sound=val; save('ab_reaction_reels',reels);
+  var vid=document.getElementById('vid-'+id);
+  if(vid){ vid.volume=Math.min(1,val/100); vid.muted=false; }
+  if(gainNode[id]){ try{gainNode[id].gain.value=val/100;}catch(e){} }
+  var lbl=document.getElementById('volLabel-'+id); if(lbl) lbl.innerText='Sound '+val+'%'+(val>100?' 🔥 Boosted':'');
+  toast('Sound Enhanced: '+val+'%'+(val>=200?' - Max Boost 🔊':''));
+}
+function toggleMute(id){
+  var vid=document.getElementById('vid-'+id); vid.muted=!vid.muted;
+  document.getElementById('muteBtn-'+id).innerText=vid.muted?'🔊 Unmute':'🔇 Mute';
+}
+function togglePlay(id){
+  var vid=document.getElementById('vid-'+id); if(vid.paused){vid.play();}else{vid.pause();}
+}
+function setQuality(id,q){
+  var r=reels.find(function(x){return x.id===id;}); r.quality=q;
+  // AI Exchange - 16K te extra sharpness
+  var el=document.getElementById('reel-'+id);
+  if(el){ var vid=el.querySelector('video'); if(q==='16K') vid.style.filter='contrast(1.3) brightness(1.18) saturate(1.45)'; else if(q==='12K') vid.style.filter='contrast(1.2) brightness(1.12) saturate(1.3)'; else vid.style.filter=''; if(r.ai) el.classList.add('ai-on'); }
+  save('ab_reaction_reels',reels); renderReels(); toast('Quality Changed to '+q+' • AI Exchange ✅');
+}
+function toggleAI(id){
+  var r=reels.find(function(x){return x.id===id;}); r.ai=!r.ai; save('ab_reaction_reels',reels); renderReels(); toast('AI Enhance '+(r.ai?'ON ✨ - Sharp + Bright + Color Boost':'OFF'));
+}
+function toggleReactionPicker(id){
+  var p=document.getElementById('picker-'+id);
+  var isOpen=p.style.display==='flex';
+  document.querySelectorAll('.reaction-picker').forEach(function(el){el.style.display='none';});
+  p.style.display=isOpen?'none':'flex';
+}
+function applyReaction(id, key){
+  var r=reels.find(function(x){return x.id===id;}); if(!r.reactions) r.reactions={};
+  var before=reactionCount(r);
+  if(r.reactions[myId]===key){delete r.reactions[myId]; toast('Reaction removed - Count: '+reactionCount(r)+' (was '+before+')');}
+  else{
+    r.reactions[myId]=key;
+    var e=REACTIONS.find(function(x){return x.k===key;});
+    toast('You reacted '+e.e+' '+e.label+' - Count: '+reactionCount(r)+' (was '+before+') - Views: '+fmtNum(r.views));
+  }
+  save('ab_reaction_reels',reels); renderReels();
+}
+function openComments(id){
+  var r=reels.find(function(x){return x.id===id;});
+  var txt=prompt('Write comment (Text) - Voice comment is in Home Feed posts:');
+  if(!txt) return;
+  if(!r.comments) r.comments=[];
+  r.comments.push({name:myName,text:txt,time:Date.now()});
+  save('ab_reaction_reels',reels); renderReels(); toast('Comment Added 💬');
+}
+function openShare(id){
+  var r=reels.find(function(x){return x.id===id;});
+  var url=location.href.split('?')[0]+'?reel='+id;
+  document.getElementById('shareBody').innerHTML=
+  '<div class="menu-item" onclick="doShare(\''+id+'\',\'copy\')">🔗 Copy Link</div>'+
+  '<div class="menu-item" onclick="doShare(\''+id+'\',\'whatsapp\')">💬 Share on WhatsApp</div>'+
+  '<div class="menu-item" onclick="doShare(\''+id+'\',\'facebook\')">📘 Share on Facebook</div>'+
+  '<div class="menu-item" onclick="doShare(\''+id+'\',\'messenger\')">💬 Share on Messenger</div>'+
+  '<p style="font-size:13px;color:#65676b;margin-top:8px">Link: '+url+'</p><p>Views: '+fmtNum(r.views)+' • Reactions: '+reactionCount(r)+' • Shares: '+r.shares+'</p>';
+  openModal('shareModal');
+}
+function doShare(id, type){
+  var r=reels.find(function(x){return x.id===id;});
+  r.shares=(r.shares||0)+1; save('ab_reaction_reels',reels);
+  var url=location.href.split('?')[0]+'?reel='+id;
+  var text=encodeURIComponent(r.desc+' - Watch on Autrobook! Views: '+fmtNum(r.views)+' Reactions: '+reactionCount(r));
+  if(type==='copy' && navigator.clipboard) navigator.clipboard.writeText(url);
+  if(type==='whatsapp') window.open('https://wa.me/?text='+text+'%20'+encodeURIComponent(url),'_blank');
+  if(type==='facebook') window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(url),'_blank');
+  if(type==='messenger') window.open('https://www.facebook.com/dialog/send?link='+encodeURIComponent(url),'_blank');
+  closeModal('shareModal'); renderReels(); toast('Shared ✅ - Total Shares: '+r.shares+' ↗️');
+}
+function openMenu(id){
+  var r=reels.find(function(x){return x.id===id;});
+  document.getElementById('menuBody').innerHTML=
+  '<div class="menu-item" onclick="toggleAI(\''+id+'\');closeModal(\'menuModal\')">✨ AI Enhance '+(r.ai?'OFF':'ON')+'</div>'+
+  '<div class="menu-item" onclick="setQuality(\''+id+'\',\'16K\');closeModal(\'menuModal\')">🎬 Change to 16K</div>'+
+  '<div class="menu-item" onclick="setSound(\''+id+'\',200);closeModal(\'menuModal\')">🔊 Sound Boost to 200%</div>'+
+  '<div class="menu-item" onclick="doShare(\''+id+'\',\'copy\')">🔗 Copy Link</div>'+
+  '<div class="menu-item" onclick="alert(\''+reactionCount(r)+' reactions - Views: '+fmtNum(r.views)+'\')">👀 See Views + Reactions</div>'+
+  '<div class="menu-item" onclick="hideReel(\''+id+'\')">🙈 Hide Reel</div>'+
+  '<div class="menu-item" onclick="reportReel(\''+id+'\')">⚠️ Report Reel</div>';
+  openModal('menuModal');
+}
+function hideReel(id){reels=reels.filter(function(x){return x.id!==id;});save('ab_reaction_reels',reels);closeModal('menuModal');renderReels();toast('Reel Hidden 🙈');}
+function reportReel(id){closeModal('menuModal');toast('Reel Reported ⚠️ - We will review');}
+renderReels();
+</script>
+</body>
+</html>
