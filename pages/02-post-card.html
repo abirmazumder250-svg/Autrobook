@@ -141,9 +141,71 @@ function toggleComments(btn) {
   alert('Comments toggled');
 }
 
-// Voice Comment - Placeholder
-function startVoiceComment(btn) {
-  alert('Voice recording coming soon!');
-  btn.classList.toggle('recording');
+// Voice Comment - 30 Second Recording
+let mediaRecorder;
+let audioChunks = [];
+let recordingTimer;
+let recordingTime = 0;
+
+async function startVoiceComment(btn) {
+  if(btn.classList.contains('recording')) {
+    stopRecording(btn);
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    recordingTime = 0;
+
+    mediaRecorder.ondataavailable = (e) => {
+      audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      sendVoiceComment(audioUrl, recordingTime);
+      stream.getTracks().forEach(track => track.stop());
+    };
+
+    mediaRecorder.start();
+    btn.classList.add('recording');
+    btn.innerHTML = '⏹️ Stop';
+    
+    recordingTimer = setInterval(() => {
+      recordingTime++;
+      btn.innerHTML = `⏹️ ${30 - recordingTime}s`;
+      if(recordingTime >= 30) {
+        stopRecording(btn);
+      }
+    }, 1000);
+
+  } catch(err) {
+    alert('Microphone permission denied!');
+  }
 }
-  </script>
+
+function stopRecording(btn) {
+  if(mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  clearInterval(recordingTimer);
+  btn.classList.remove('recording');
+  btn.innerHTML = '🎤 Voice';
+}
+
+function sendVoiceComment(audioUrl, duration) {
+  alert(`Voice sent! Duration: ${duration}s`);
+  const audio = new Audio(audioUrl);
+  audio.controls = true;
+  audio.style.width = '100%';
+  audio.style.marginTop = '8px';
+  document.querySelector('.comment-section').prepend(audio);
+}
+
+// Load Reactions Component
+loadComponent('reaction-component', 'pages/08-reactions.html');
+
+</script>
