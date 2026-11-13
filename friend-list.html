@@ -5,73 +5,202 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Friends - Autrobook</title>
 <style>
-  :root{--bg:#18191a;--card:#242526;--text:#e4e6eb;--text2:#b0b3b8;--border:#3a3b3c;--brand:#1877f2;}
-  body.light{--bg:#f0f2f5;--card:#ffffff;--text:#050505;--text2:#65676b;--border:#ddd;}
-  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
-  body{background:var(--bg);color:var(--text); padding:10px;}
-  .header{display:flex;align-items:center;gap:15px;padding:12px 0;position:sticky;top:0;background:var(--bg);z-index:10;}
-  .header b{font-size:20px; flex:1;}
-  .friend-item{display:flex; gap:12px; padding:12px; background:var(--card); border-radius:8px; margin:8px 0; align-items:center;}
-  .friend-item img{width:60px; height:60px; border-radius:50%; background:#555;}
-  .btn{padding:6px 12px; background:var(--brand); color:white; border:none; border-radius:6px; cursor:pointer;}
-  .btn-gray{background:#3a3b3c;}
-  .no-data{text-align:center; padding:50px; color:var(--text2);}
+  :root { --bg: #18191a; --card: #242526; --hover: #3a3b3c; --text: #e4e6eb; --text2: #b0b3b8; --border: #3a3b3c; --brand: #1877f2; --danger: #f3425f; }
+  body.light { --bg: #f0f2f5; --card: #ffffff; --hover: #e4e6eb; --text: #050505; --text2: #65676b; --border: #ddd; }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 12px; max-width: 600px; margin: 0 auto; padding-bottom: 40px; }
+  
+  .header { display: flex; align-items: center; gap: 12px; padding: 12px 0; position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); }
+  .header b { font-size: 20px; flex: 1; }
+  .header span { cursor: pointer; font-size: 22px; padding: 4px 8px; border-radius: 50%; }
+  .header span:hover { background: var(--hover); }
+
+  /* Search & Tabs */
+  .search-box { width: 100%; padding: 10px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; color: var(--text); font-size: 14px; margin: 12px 0; outline: none; }
+  .tab-group { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
+  .tab-btn { background: var(--card); border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; color: var(--text); font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+  .tab-btn.active { background: rgba(24, 119, 242, 0.2); border-color: var(--brand); color: #4599ff; }
+
+  /* Friend Item Card */
+  .friend-item { display: flex; gap: 12px; padding: 12px; background: var(--card); border-radius: 12px; margin: 8px 0; align-items: center; border: 1px solid var(--border); transition: 0.2s; }
+  .friend-item:hover { border-color: var(--brand); }
+  .friend-item img { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; background: #555; }
+  .friend-info { flex: 1; }
+  .friend-info b { font-size: 16px; }
+  .friend-info p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .btn-group { display: flex; gap: 6px; }
+  .btn { padding: 7px 14px; background: var(--brand); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+  .btn:hover { opacity: 0.9; }
+  .btn-gray { background: var(--hover); color: var(--text); }
+  .btn-danger { background: rgba(243, 66, 95, 0.15); color: var(--danger); }
+
+  .no-data { text-align: center; padding: 50px 20px; color: var(--text2); font-size: 15px; background: var(--card); border-radius: 12px; border: 1px dashed var(--border); margin-top: 10px; }
+  
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--brand); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 99; display: none; }
 </style>
 </head>
 <body>
 
+<div id="toast"></div>
+
 <div class="header">
-  <span onclick="history.back()" style="font-size:22px">←</span>
-  <b>Friends</b>
-  <span id="friendTotal">0</span>
+  <span onclick="history.back()">←</span>
+  <b>Friends (<span id="friendTotal">0</span>)</b>
 </div>
 
-<button class="btn" onclick="addFriend()" style="width:100%; margin:10px 0">➕ Add Test Friend</button>
+<input type="text" id="searchInput" class="search-box" placeholder="🔍 Search friends by name..." oninput="filterFriends()">
 
-<div id="friendList"></div>
+<div class="tab-group">
+  <button class="tab-btn active" id="tabAll" onclick="switchTab('all')">All Friends</button>
+  <button class="tab-btn" id="tabReq" onclick="switchTab('requests')">Friend Requests (<span id="reqCount">0</span>)</button>
+  <button class="tab-btn" id="tabSugg" onclick="switchTab('suggestions')">Suggestions</button>
+</div>
+
+<div id="friendContainer"></div>
 
 <script>
-function loadFriends(){
-  let friends = JSON.parse(localStorage.getItem('my_friends') || '[]');
-  document.getElementById('friendTotal').innerText = friends.length + ' Friends';
+  let currentTab = 'all';
   
-  const container = document.getElementById('friendList');
-  
-  if(friends.length == 0){
-    container.innerHTML = `<div class="no-data">No friends yet<br>Add some friends</div>`;
-    return;
+  // LocalStorage Mock Data Initialization
+  if (!localStorage.getItem('my_friends')) {
+    localStorage.setItem('my_friends', JSON.stringify([
+      { id: 1, name: 'Sadia Afrin', bio: 'UI/UX Designer | Dhaka', avatar: 'https://i.pravatar.cc/130?img=2', mutual: 5, time: Date.now() - 100000 },
+      { id: 2, name: 'Nayeem Hasan', bio: 'Travel Lover ✈️', avatar: 'https://i.pravatar.cc/130?img=3', mutual: 2, time: Date.now() - 200000 }
+    ]));
   }
   
-  container.innerHTML = friends.map((f,i)=>`
-    <div class="friend-item">
-      <img src="https://via.placeholder.com/60">
-      <div style="flex:1">
-        <b>${f.name}</b><br>
-        <small style="color:var(--text2)">${timeAgo(f.time)}</small>
-      </div>
-      <button class="btn-gray" onclick="removeFriend(${i})">Remove</button>
-    </div>
-  `).join('');
-}
+  if (!localStorage.getItem('friend_requests')) {
+    localStorage.setItem('friend_requests', JSON.stringify([
+      { id: 3, name: 'Fatema Begum', bio: 'Chef 🍛', avatar: 'https://i.pravatar.cc/130?img=4', mutual: 8 }
+    ]));
+  }
 
-function addFriend(){
-  let friends = JSON.parse(localStorage.getItem('my_friends') || '[]');
-  friends.push({name: 'Friend ' + (friends.length+1), time: Date.now()});
-  localStorage.setItem('my_friends', JSON.stringify(friends));
-  loadFriends();
-}
+  if (!localStorage.getItem('friend_suggestions')) {
+    localStorage.setItem('friend_suggestions', JSON.stringify([
+      { id: 4, name: 'Karim Uddin', bio: 'Software Engineer', avatar: 'https://i.pravatar.cc/130?img=5', mutual: 12 }
+    ]));
+  }
 
-function removeFriend(i){
-  let friends = JSON.parse(localStorage.getItem('my_friends') || '[]');
-  friends.splice(i,1);
-  localStorage.setItem('my_friends', JSON.stringify(friends));
-  loadFriends();
-}
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2000);
+  }
 
-function timeAgo(t){ return Math.floor((Date.now()-t)/1000/60)+'m ago'; }
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tabAll').classList.toggle('active', tab === 'all');
+    document.getElementById('tabReq').classList.toggle('active', tab === 'requests');
+    document.getElementById('tabSugg').classList.toggle('active', tab === 'suggestions');
+    document.getElementById('searchInput').value = '';
+    renderList();
+  }
 
-loadFriends();
-if(localStorage.getItem('theme') == 'light'){document.body.classList.add('light');}
+  function renderList() {
+    let friends = JSON.parse(localStorage.getItem('my_friends') || '[]');
+    let requests = JSON.parse(localStorage.getItem('friend_requests') || '[]');
+    let suggestions = JSON.parse(localStorage.getItem('friend_suggestions') || '[]');
+
+    document.getElementById('friendTotal').innerText = friends.length;
+    document.getElementById('reqCount').innerText = requests.length;
+
+    const container = document.getElementById('friendContainer');
+    container.innerHTML = '';
+
+    let dataset = currentTab === 'all' ? friends : (currentTab === 'requests' ? requests : suggestions);
+    let query = document.getElementById('searchInput').value.toLowerCase();
+
+    let filtered = dataset.filter(item => item.name.toLowerCase().includes(query));
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="no-data">No ${currentTab} found.</div>`;
+      return;
+    }
+
+    filtered.forEach((item, index) => {
+      let card = document.createElement('div');
+      card.className = 'friend-item';
+
+      let buttonsHTML = '';
+      if (currentTab === 'all') {
+        buttonsHTML = `<button class="btn btn-gray" onclick="removeFriend(${item.id})">Remove</button>`;
+      } else if (currentTab === 'requests') {
+        buttonsHTML = `
+          <button class="btn" onclick="acceptRequest(${item.id})">Confirm</button>
+          <button class="btn btn-danger" onclick="deleteRequest(${item.id})">Delete</button>
+        `;
+      } else {
+        buttonsHTML = `<button class="btn" onclick="addFriend(${item.id})">Add Friend</button>`;
+      }
+
+      card.innerHTML = `
+        <img src="${item.avatar}">
+        <div class="friend-info">
+          <b>${item.name}</b>
+          <p>${item.bio || 'Autrobook Member'}</p>
+          <p style="color:var(--brand); margin-top:2px;">${item.mutual || 0} mutual friends</p>
+        </div>
+        <div class="btn-group">${buttonsHTML}</div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function filterFriends() {
+    renderList();
+  }
+
+  function removeFriend(id) {
+    if (!confirm('Are you sure you want to remove this friend?')) return;
+    let friends = JSON.parse(localStorage.getItem('my_friends') || '[]');
+    friends = friends.filter(f => f.id !== id);
+    localStorage.setItem('my_friends', JSON.stringify(friends));
+    toast('Friend removed');
+    renderList();
+  }
+
+  function acceptRequest(id) {
+    let requests = JSON.parse(localStorage.getItem('friend_requests') || '[]');
+    let friends = JSON.parse(localStorage.getItem('my_friends') || '[]');
+    let req = requests.find(r => r.id === id);
+    if (req) {
+      friends.push(req);
+      requests = requests.filter(r => r.id !== id);
+      localStorage.setItem('my_friends', JSON.stringify(friends));
+      localStorage.setItem('friend_requests', JSON.stringify(requests));
+      toast('Friend request accepted! 🎉');
+      renderList();
+    }
+  }
+
+  function deleteRequest(id) {
+    let requests = JSON.parse(localStorage.getItem('friend_requests') || '[]');
+    requests = requests.filter(r => r.id !== id);
+    localStorage.setItem('friend_requests', JSON.stringify(requests));
+    toast('Request deleted');
+    renderList();
+  }
+
+  function addFriend(id) {
+    let suggestions = JSON.parse(localStorage.getItem('friend_suggestions') || '[]');
+    let sugg = suggestions.find(s => s.id === id);
+    if (sugg) {
+      suggestions = suggestions.filter(s => s.id !== id);
+      localStorage.setItem('friend_suggestions', JSON.stringify(suggestions));
+      toast('Friend request sent! 🤝');
+      renderList();
+    }
+  }
+
+  // Theme support
+  if (localStorage.getItem('theme') == 'light') { 
+    document.body.classList.add('light'); 
+  }
+
+  // Initial load
+  renderList();
 </script>
 </body>
 </html>
