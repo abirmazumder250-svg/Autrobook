@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Autrobook - Sign Up</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <style>
 :root{ --brand:#0f5132; --brand-light:#198754; --bg:#1c1c1e; --card:#2c2c2e; }
@@ -84,7 +85,6 @@ input:focus{border-color:var(--brand-light);box-shadow:0 0 0 3px rgba(25,135,84,
 <p style="color:#aaa;font-size:12px;margin-top:8px" data-key="faceNote">Selfie is only for verification, no one will see it</p>
 </div>
 
-<!-- সঠিক reCAPTCHA Site Key -->
 <div class="g-recaptcha" data-sitekey="6Leifx0uAAAAAP0vZ1H6sH9T7UfUH8lpyhWakTze" data-callback="enableBtn" data-expired-callback="disableBtn"></div>
 <p style="font-size:12px;color:#aaa;text-align:center" data-key="captchaNote">If reCAPTCHA doesn't load, tick below</p>
 <div class="checkbox-row"><input type="checkbox" id="humanCheck" onchange="manualCaptcha()"> <span data-key="human">I'm not a robot - Verify manually</span></div>
@@ -113,6 +113,12 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// EmailJS Configuration
+const EMAILJS_SERVICE_ID = "service_bk1amce";
+const EMAILJS_TEMPLATE_ID = "template_95p9e6c";
+const EMAILJS_PUBLIC_KEY = "kQ86I3mRX2Ex93I6";
+emailjs.init(EMAILJS_PUBLIC_KEY);
+
 let selfieData = ""; let stream = null;
 let currentLang = localStorage.getItem('lang') || 'en';
 const translations = {
@@ -123,9 +129,7 @@ const translations = {
   es: { title:"Crear Cuenta", subtitle:"Completa tus datos para continuar", dob:"Fecha de nacimiento", email:"Correo", password:"Contraseña", face:"Verificación facial", cameraBtn:"📷 Tomar Selfie en Vivo", faceNote:"La selfie es solo para verificación", captchaNote:"Si reCAPTCHA no carga, marca abajo", human:"No soy un robot", signup:"Registrarse", haveAcc:"¿Ya tienes cuenta?", err1:"Elige fecha de nacimiento", errAge:"Debes tener al menos 13 años", err2:"Escribe tu correo", err3:"Escribe un correo válido", err4:"Contraseña mínimo 6 caracteres", err5:"Toma una selfie", err6:"Demuestra que no eres robot", success:"✅ ¡Cuenta creada!", exist:"Este correo ya existe - Inicia sesión", weak:"Contraseña débil", medium:"Contraseña media", strong:"Contraseña fuerte ✅" }
 };
 
-window.goBack = () => {
-  location.href = 'signup-name.html';
-}
+window.goBack = () => { location.href = 'signup-name.html'; }
 
 function applyLanguage(lang){
   currentLang = lang; localStorage.setItem('lang', lang);
@@ -205,20 +209,35 @@ window.goNext = async () => {
   if(!pass || pass.length<6) return showMsg(t.err4,'error');
   if(!selfieData) return showMsg(t.err5,'error');
   if(captcha.length == 0 && !humanChecked) return showMsg(t.err6,'error');
+  
   const btn=document.getElementById('nextBtn'); btn.disabled=true; btn.textContent='Creating...';
   const localUser = { name: (fn+' '+sn).trim(), firstName: fn, surname: sn, dob: dob, email: email, pass: pass, selfie: selfieData, lang: currentLang, time: Date.now() };
+  
   try{
     const userCred = await createUserWithEmailAndPassword(auth, email, pass);
     await setDoc(doc(db, "users", userCred.user.uid), {
       firstName: fn, surname: sn, dob: dob, email: email, selfie: selfieData, lang: currentLang, createdAt: new Date()
     });
+    
+    // Send Welcome Email via EmailJS upon successful registration
+    try {
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_email: email,
+        email: email,
+        name: (fn+' '+sn).trim() || 'Autrobook User',
+        otp: 'Welcome! Your account is created successfully.'
+      });
+    } catch(err) {
+      console.log('EmailJS welcome send failed:', err);
+    }
+
     var users=JSON.parse(localStorage.getItem('ab_users')||'[]');
     users.push(localUser); localStorage.setItem('ab_users',JSON.stringify(users));
     localStorage.setItem('autrobook_user',JSON.stringify(localUser));
     localStorage.setItem('ab_logged_in','1');
     localStorage.setItem('signup_step','done');
     showMsg(t.success,'success');
-    setTimeout(()=>location.href='home.html',1200);
+    setTimeout(()=>location.href='welcome.html',1200);
   } catch(error){
     if(error.code == 'auth/email-already-in-use'){ showMsg(t.exist, 'error'); btn.disabled=false; btn.textContent=t.signup; return; }
     if(error.code == 'auth/network-request-failed' || error.code == 'auth/invalid-api-key'){
@@ -227,8 +246,18 @@ window.goNext = async () => {
       localStorage.setItem('ab_users',JSON.stringify(users2));
       localStorage.setItem('autrobook_user',JSON.stringify(localUser));
       localStorage.setItem('ab_logged_in','1');
+      
+      try {
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email: email,
+          email: email,
+          name: (fn+' '+sn).trim() || 'Autrobook User',
+          otp: 'Welcome! Your account is created successfully.'
+        });
+      } catch(err) {}
+
       showMsg('Network issue - Local Account Created ✅','success');
-      setTimeout(()=>location.href='home.html',1200);
+      setTimeout(()=>location.href='welcome.html',1200);
       return;
     }
     showMsg(error.message, 'error');
