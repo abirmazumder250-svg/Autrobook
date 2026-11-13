@@ -1,700 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Autrobook — Home Feed (2026 Edition)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <style>
-    /* Zen Mode Styles */
-    body.zen-active .zen-hide {
-      display: none !important;
-    }
-    body.zen-active {
-      background-color: #f4f1ea;
-    }
-    /* Hide scrollbar for stories */
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Autrobook — Home Feed</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<style>
+.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+body.zen-active .zen-hide{display:none!important}body.zen-active{background:#f4f1ea}
+/* FACEBOOK REACTION PICKER */
+.react-wrap{position:relative}
+.react-picker{position:absolute;bottom:38px;left:0;background:#fff;border-radius:999px;box-shadow:0 8px 30px rgba(0,0,0,.25);padding:6px 8px;display:none;gap:4px;z-index:50;align-items:center}
+.react-picker.show{display:flex}
+.react-picker span{font-size:32px;cursor:pointer;transition:.15s;display:inline-block;line-height:1}
+.react-picker span:hover{transform:scale(1.4) translateY(-6px)}
+.react-picker span.active{transform:scale(1.25)}
+.react-icons{display:flex}.react-icons span{width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;margin-left:-5px;box-shadow:0 1px 3px rgba(0,0,0,.2)}.react-icons span:first-child{margin-left:0}
+.like-btn.liked{color:#1877F2!important}.like-btn.love{color:#F33E58!important}.like-btn.haha,.like-btn.wow,.like-btn.sad{color:#F7B125!important}.like-btn.angry{color:#E9710F!important}.like-btn.care{color:#F33E58!important}
+.dislike-btn.active{color:#e41e3f!important;background:#fee2e2!important}
+/* VOICE */
+.voice-bar{display:none}.voice-bar.show{display:flex}
+.voice-wave{display:flex;gap:2px;align-items:end;height:22px}.voice-wave i{width:3px;background:#1877F2;border-radius:2px;display:block}
+@keyframes pulseRec{0%{opacity:1}50%{opacity:.3}100%{opacity:1}}
+.rec-dot{animation:pulseRec 1s infinite}
+</style>
 </head>
-<body class="bg-gray-100 text-gray-900 font-sans transition-colors duration-300">
-
-  <!-- TOP NAVBAR -->
-  <header class="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-    <!-- Left: Brand + Search -->
-    <div class="flex items-center gap-3">
-      <div class="flex items-center gap-2">
-        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xl">A</div>
-        <span class="text-xl font-bold text-blue-600 hidden sm:inline">Autrobook</span>
-      </div>
-      <div class="relative hidden md:block">
-        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
-        <input type="text" placeholder="Search Autrobook..." class="bg-gray-100 rounded-full pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64" />
-      </div>
-    </div>
-
-    <!-- Center: Navigation Tabs -->
-    <nav class="flex items-center gap-2 sm:gap-6 text-gray-500">
-      <button class="px-4 py-2 text-blue-600 border-b-2 border-blue-600 font-medium" title="Home">
-        <i class="fas fa-home text-lg"></i>
-      </button>
-      <button class="px-4 py-2 hover:bg-gray-100 rounded-lg" title="Reels (90s Short Video)">
-        <i class="fas fa-clapperboard text-lg"></i>
-      </button>
-      <button class="px-4 py-2 hover:bg-gray-100 rounded-lg" title="Marketplace">
-        <i class="fas fa-store text-lg"></i>
-      </button>
-      <button class="px-4 py-2 hover:bg-gray-100 rounded-lg" title="Groups & Channels">
-        <i class="fas fa-users text-lg"></i>
-      </button>
-    </nav>
-
-    <!-- Right: Zen Mode, Data Saver, No Ads, Profile -->
-    <div class="flex items-center gap-2">
-      <!-- Zen Mode Toggle (2026 Feature) -->
-      <button id="zenToggleBtn" onclick="toggleZenMode()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition" title="Zen Mode: Hide likes, comments & notifications">
-        <i class="fas fa-leaf"></i>
-        <span id="zenStatusText">Zen Mode: OFF</span>
-      </button>
-
-      <!-- Requested Feature: No Ads Toggle -->
-      <button id="noAdsBtn" onclick="toggleNoAds()" class="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 transition" title="Hide Sponsored Posts">
-        <i class="fas fa-ban"></i>
-        <span id="noAdsText">Ads: ON</span>
-      </button>
-
-      <!-- Notifications (Hidden in Zen Mode) -->
-      <button class="zen-hide relative w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
-        <i class="fas fa-bell text-gray-700"></i>
-        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">4</span>
-      </button>
-
-      <!-- Profile Avatar -->
-      <img src="https://i.pravatar.cc/150?img=11" alt="Profile" class="w-9 h-9 rounded-full border border-gray-300 cursor-pointer" />
-    </div>
-  </header>
-
-  <!-- ZEN MODE ACTIVE BANNER -->
-  <div id="zenBanner" class="hidden bg-emerald-700 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-4">
-    <span><i class="fas fa-spa mr-1"></i> <strong>Zen Mode Active:</strong> Like counts, comments, and notifications are hidden for peaceful scrolling.</span>
-    <span id="zenTimer" class="bg-emerald-900 px-2.5 py-0.5 rounded font-mono text-xs">15:00</span>
-    <button onclick="toggleZenMode()" class="underline text-xs hover:text-emerald-200">End Session</button>
-  </div>
-
-  <!-- MAIN 3-COLUMN LAYOUT -->
-  <div class="max-w-7xl mx-auto px-2 sm:px-4 pt-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-    <!-- LEFT SIDEBAR (Shortcuts & Feed Preferences) -->
-    <aside class="hidden lg:block lg:col-span-3 space-y-4">
-      <div class="bg-white rounded-xl p-4 shadow-sm space-y-3">
-        <div class="flex items-center gap-3 pb-2 border-b">
-          <img src="https://i.pravatar.cc/150?img=11" class="w-10 h-10 rounded-full" />
-          <div>
-            <p class="font-semibold text-sm">Alex Rahman</p>
-            <span class="text-[11px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">Professional Mode ON</span>
-          </div>
-        </div>
-
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-star text-yellow-500 w-5"></i> Favorites (30 Max)</li>
-          <li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-broadcast-tower text-indigo-500 w-5"></i> Creator Channels</li>
-          <li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-comments text-green-500 w-5"></i> Community Chats</li>
-          <li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-calendar-check text-red-500 w-5"></i> Local Events</li>
-        </ul>
-      </div>
-
-      <!-- Content Filter Sliders & Privacy Controls -->
-      <div class="bg-white rounded-xl p-4 shadow-sm space-y-4">
-        <h3 class="font-bold text-sm text-gray-800 flex items-center justify-between">
-          <span>Feed & Privacy Controls</span>
-          <i class="fas fa-sliders-h text-gray-400"></i>
-        </h3>
-
-        <!-- Topic Slider (2026 Feature) -->
-        <div>
-          <div class="flex justify-between text-xs text-gray-600 mb-1">
-            <span>Politics & News</span>
-            <span id="politicsVal">Normal</span>
-          </div>
-          <input type="range" min="1" max="3" value="2" onchange="updateSliderLabel(this, 'politicsVal')" class="w-full accent-blue-600 cursor-pointer" />
-        </div>
-
-        <div>
-          <div class="flex justify-between text-xs text-gray-600 mb-1">
-            <span>Sports & Gaming</span>
-            <span id="sportsVal">More</span>
-          </div>
-          <input type="range" min="1" max="3" value="3" onchange="updateSliderLabel(this, 'sportsVal')" class="w-full accent-blue-600 cursor-pointer" />
-        </div>
-
-        <!-- Global Hide Like Count -->
-        <div class="flex items-center justify-between pt-2 border-t text-xs">
-          <span class="font-medium text-gray-700">Hide Like & Reaction Counts</span>
-          <input type="checkbox" id="hideLikesCheckbox" onchange="toggleLikeCounts()" class="w-4 h-4 accent-blue-600 cursor-pointer" />
-        </div>
-
-        <!-- 4K Auto HD / Data Saver Toggle -->
-        <div class="flex items-center justify-between text-xs">
-          <span class="font-medium text-gray-700">Data Saver (480p instead of 4K)</span>
-          <input type="checkbox" id="dataSaverCheckbox" onchange="toggleDataSaver()" class="w-4 h-4 accent-blue-600 cursor-pointer" />
-        </div>
-
-        <!-- Ad Topic Control -->
-        <div class="pt-2 border-t">
-          <p class="text-xs font-semibold text-gray-600 mb-1.5">Blocked Ad Topics:</p>
-          <div class="flex flex-wrap gap-1.5 text-[11px]">
-            <span class="bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-200"><i class="fas fa-times mr-1"></i>Crypto</span>
-            <span class="bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-200"><i class="fas fa-times mr-1"></i>Dating</span>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- CENTER FEED -->
-    <main class="col-span-1 lg:col-span-6 space-y-4 pb-12">
-
-      <!-- 24-HOUR STORIES BAR -->
-      <div class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-        <!-- Create Story -->
-        <div class="min-w-[105px] h-44 bg-white rounded-xl shadow-sm overflow-hidden relative cursor-pointer border border-gray-200 flex flex-col">
-          <img src="https://i.pravatar.cc/150?img=11" class="h-32 w-full object-cover" />
-          <div class="flex-1 flex flex-col items-center justify-center relative bg-white">
-            <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center -mt-5 border-2 border-white text-xs">
-              <i class="fas fa-plus"></i>
-            </div>
-            <span class="text-[11px] font-semibold mt-1">Create Story</span>
-          </div>
-        </div>
-
-        <!-- Story Item 1 -->
-        <div class="min-w-[105px] h-44 rounded-xl overflow-hidden relative cursor-pointer shadow-sm group">
-          <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300" class="w-full h-full object-cover group-hover:scale-105 transition" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20"></div>
-          <img src="https://i.pravatar.cc/150?img=32" class="w-8 h-8 rounded-full border-2 border-blue-500 absolute top-2.5 left-2.5" />
-          <span class="absolute top-2.5 right-2 bg-pink-600 text-white text-[9px] px-1.5 py-0.5 rounded">Poll</span>
-          <p class="absolute bottom-2 left-2.5 right-2 text-white text-xs font-medium truncate">Sarah Jenkins</p>
-        </div>
-
-        <!-- Story Item 2 -->
-        <div class="min-w-[105px] h-44 rounded-xl overflow-hidden relative cursor-pointer shadow-sm group">
-          <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=300" class="w-full h-full object-cover group-hover:scale-105 transition" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20"></div>
-          <img src="https://i.pravatar.cc/150?img=12" class="w-8 h-8 rounded-full border-2 border-blue-500 absolute top-2.5 left-2.5" />
-          <span class="absolute top-2.5 right-2 bg-indigo-600 text-white text-[9px] px-1.5 py-0.5 rounded"><i class="fas fa-music"></i></span>
-          <p class="absolute bottom-2 left-2.5 right-2 text-white text-xs font-medium truncate">Tech Daily</p>
-        </div>
-
-        <!-- Story Item 3 -->
-        <div class="min-w-[105px] h-44 rounded-xl overflow-hidden relative cursor-pointer shadow-sm group">
-          <img src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300" class="w-full h-full object-cover group-hover:scale-105 transition" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20"></div>
-          <img src="https://i.pravatar.cc/150?img=45" class="w-8 h-8 rounded-full border-2 border-red-500 absolute top-2.5 left-2.5" />
-          <span class="absolute top-2.5 right-2 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">LIVE</span>
-          <p class="absolute bottom-2 left-2.5 right-2 text-white text-xs font-medium truncate">Nadia Islam</p>
-        </div>
-      </div>
-
-      <!-- CREATE POST BOX (With AI Caption Suggestion + Schedule Post from Profile) -->
-      <div class="bg-white rounded-xl p-4 shadow-sm space-y-3">
-        <div class="flex gap-3">
-          <img src="https://i.pravatar.cc/150?img=11" class="w-10 h-10 rounded-full" />
-          <div class="flex-1 space-y-2">
-            <textarea id="postInput" rows="2" placeholder="What's on your mind, Alex?" class="w-full bg-gray-100 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
-            
-            <!-- AI Caption Suggestions Box (2026 Feature) -->
-            <div id="aiCaptionsBox" class="hidden bg-indigo-50 border border-indigo-100 rounded-lg p-2.5 space-y-1.5">
-              <p class="text-[11px] font-semibold text-indigo-700"><i class="fas fa-wand-magic-sparkles mr-1"></i> AI Caption Suggestions (Click to use):</p>
-              <div class="flex flex-col gap-1 text-xs">
-                <button onclick="applyCaption(this.innerText)" class="text-left bg-white hover:bg-indigo-100 p-1.5 rounded border border-indigo-100">"Building the future of social networking one line of code at a time! 🚀 #Autrobook"</button>
-                <button onclick="applyCaption(this.innerText)" class="text-left bg-white hover:bg-indigo-100 p-1.5 rounded border border-indigo-100">"Less noise, more real connections. Loving the new 2026 feed experience! ✨"</button>
-                <button onclick="applyCaption(this.innerText)" class="text-left bg-white hover:bg-indigo-100 p-1.5 rounded border border-indigo-100">"Weekend vibes + coding marathon. Who else is shipping projects today? 💻☕"</button>
-              </div>
-            </div>
-
-            <!-- Requested Feature: Schedule Post from Profile -->
-            <div id="scheduleBox" class="hidden flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs">
-              <i class="fas fa-clock text-amber-600"></i>
-              <span class="font-medium text-amber-800">Schedule Post:</span>
-              <input type="datetime-local" id="scheduleTime" class="bg-white border rounded px-2 py-1 text-xs" />
-            </div>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center justify-between pt-2 border-t gap-2">
-          <div class="flex items-center gap-1 sm:gap-2 text-xs font-medium text-gray-600">
-            <button class="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg"><i class="fas fa-video text-red-500"></i> Multi-Live (4)</button>
-            <button class="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg"><i class="fas fa-image text-green-500"></i> 4K Photo/Video</button>
-            <button class="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg"><i class="fas fa-poll text-orange-500"></i> Poll/Q&A</button>
-            <button onclick="toggleAICaptions()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg"><i class="fas fa-sparkles"></i> AI Caption</button>
-            <button onclick="toggleSchedule()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg" title="Requested Feature"><i class="fas fa-calendar-alt"></i> Schedule</button>
-          </div>
-          <button onclick="publishPost()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition">Post</button>
-        </div>
-      </div>
-
-      <!-- FEED FILTER TABS: For You | Following | Chronological Only (Requested Feature) -->
-      <div class="bg-white rounded-xl p-1.5 shadow-sm flex items-center justify-between text-xs font-semibold">
-        <button onclick="switchFeedTab('foryou', this)" class="feed-tab flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 transition">
-          <i class="fas fa-sparkles mr-1"></i> For You (AI)
-        </button>
-        <button onclick="switchFeedTab('following', this)" class="feed-tab flex-1 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition">
-          <i class="fas fa-user-check mr-1"></i> Following
-        </button>
-        <button onclick="switchFeedTab('chronological', this)" class="feed-tab flex-1 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition" title="Requested Feature: Pure Latest Posts">
-          <i class="fas fa-clock mr-1"></i> Chronological Only
-        </button>
-      </div>
-
-      <!-- FEED POSTS CONTAINER -->
-      <div id="feedContainer" class="space-y-4">
-
-        <!-- POST 1: Long Post with AI Summary, Edit History Public (Requested), Dislike (Requested), Voice Comment (2026) -->
-        <article class="post-card bg-white rounded-xl p-4 shadow-sm space-y-3" data-category="following">
-          <!-- Post Header -->
-          <div class="flex items-start justify-between">
-            <div class="flex items-center gap-2.5">
-              <img src="https://i.pravatar.cc/150?img=32" class="w-10 h-10 rounded-full" />
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <h4 class="font-bold text-sm hover:underline cursor-pointer">Sarah Jenkins</h4>
-                  <span class="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium"><i class="fas fa-star text-[9px]"></i> Favorite</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs text-gray-500">
-                  <span>12 mins ago</span>
-                  <span>•</span>
-                  <i class="fas fa-globe-americas"></i>
-                  <!-- Requested Feature: Public Edit History -->
-                  <button onclick="toggleEditHistory('history1')" class="text-blue-600 hover:underline font-medium">
-                    <i class="fas fa-history"></i> Edited (View Public History)
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Post Menu: Snooze 30 Days / Unfollow -->
-            <div class="relative">
-              <button onclick="toggleMenu('menu1')" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
-                <i class="fas fa-ellipsis-h"></i>
-              </button>
-              <div id="menu1" class="hidden absolute right-0 mt-1 w-48 bg-white border rounded-xl shadow-lg py-1.5 text-xs z-20">
-                <button onclick="snoozePost(this)" class="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2"><i class="fas fa-clock text-orange-500"></i> Snooze Sarah for 30 days</button>
-                <button onclick="snoozePost(this)" class="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2"><i class="fas fa-user-slash text-red-500"></i> Unfollow Sarah</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Public Edit History Drawer (Requested Feature) -->
-          <div id="history1" class="hidden bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs space-y-1">
-            <p class="font-bold text-gray-700">Public Edit History:</p>
-            <p class="text-gray-500 line-through">Original (10:15 AM): AI is going to replace all developers by 2026.</p>
-            <p class="text-gray-800">Edited (10:22 AM): AI tools are empowering developers to ship 3x faster in 2026.</p>
-          </div>
-
-          <!-- Post Text -->
-          <p class="text-sm text-gray-800 leading-relaxed">
-            AI tools are empowering developers to ship 3x faster in 2026. Instead of spending hours on boilerplate code, engineers now focus on system architecture, user experience, and real-time voice/AI interfaces. What are your thoughts on the shift toward distraction-free social apps?
-          </p>
-
-          <!-- Meta AI in Feed + Summarize Button (2026 Feature) -->
-          <div class="flex flex-wrap items-center gap-2 pt-1">
-            <button onclick="toggleAISummary('summary1')" class="flex items-center gap-1.5 text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full hover:bg-blue-100 transition">
-              <i class="fas fa-align-left"></i> Summarize Post
-            </button>
-            <button onclick="askMetaAI('aiBox1')" class="flex items-center gap-1.5 text-xs font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1.5 rounded-full hover:opacity-90 transition">
-              <i class="fas fa-robot"></i> Ask Meta AI
-            </button>
-          </div>
-
-          <!-- AI Summary Result -->
-          <div id="summary1" class="hidden bg-blue-50/70 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
-            <strong><i class="fas fa-sparkles mr-1"></i> AI Summary:</strong> Developers in 2026 build 3x faster using AI, shifting focus from boilerplate coding to UX and distraction-free interfaces.
-          </div>
-
-          <!-- Ask Meta AI Box -->
-          <div id="aiBox1" class="hidden bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs space-y-2">
-            <p class="font-semibold text-purple-900"><i class="fas fa-robot mr-1"></i> Meta AI Assistant:</p>
-            <p class="text-purple-800">This post discusses developer productivity trends in 2026. Ask anything about this topic:</p>
-            <div class="flex gap-2">
-              <input type="text" placeholder="Ask Meta AI about this post..." class="flex-1 bg-white border border-purple-200 rounded px-2.5 py-1 text-xs focus:outline-none" />
-              <button onclick="alert('Meta AI: Based on 2026 industry reports, AI-assisted workflows reduce boilerplate time by up to 65%.')" class="bg-purple-600 text-white px-3 py-1 rounded font-semibold">Ask</button>
-            </div>
-          </div>
-
-          <!-- Stats Row (Hidden in Zen Mode or Hide Like Count) -->
-          <div class="zen-hide like-counter flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
-            <div class="flex items-center gap-3">
-              <span>👍❤️😮 142 Reactions</span>
-              <span class="text-gray-400">|</span>
-              <span class="text-red-500"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount1">4</span> Dislikes</span>
-            </div>
-            <div>18 Comments (3 Voice) • 9 Shares</div>
-          </div>
-
-          <!-- Action Buttons: 6 Reactions + Dislike Button (Requested) + Comment + Share -->
-          <div class="flex items-center justify-between border-t border-b py-1.5 text-xs font-semibold text-gray-600">
-            <button onclick="reactPost(this)" class="flex-1 py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5">
-              <i class="far fa-thumbs-up"></i> Like
-            </button>
-            <!-- Requested Feature: Dislike Button -->
-            <button onclick="incrementDislike('dislikeCount1', this)" class="flex-1 py-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg flex items-center justify-center gap-1.5" title="Requested Feature: Dislike Button">
-              <i class="far fa-thumbs-down"></i> Dislike
-            </button>
-            <button class="flex-1 py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5">
-              <i class="far fa-comment"></i> Comment
-            </button>
-            <button class="flex-1 py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5">
-              <i class="fas fa-share"></i> Share / Story
-            </button>
-          </div>
-
-          <!-- Comments Section with 15s Voice Comment & Auto-Caption (2026 Feature) -->
-          <div class="zen-hide space-y-2.5 pt-1">
-            <!-- Existing Voice Comment -->
-            <div class="flex items-start gap-2">
-              <img src="https://i.pravatar.cc/150?img=12" class="w-7 h-7 rounded-full mt-0.5" />
-              <div class="bg-gray-100 rounded-2xl px-3 py-2 text-xs max-w-md">
-                <p class="font-bold text-gray-800">Tech Daily</p>
-                <!-- Audio Waveform Player -->
-                <div class="flex items-center gap-2 my-1 bg-blue-600 text-white px-2.5 py-1 rounded-full w-48">
-                  <i class="fas fa-play text-[10px] cursor-pointer"></i>
-                  <div class="flex-1 h-1.5 bg-blue-300 rounded-full overflow-hidden">
-                    <div class="w-2/3 h-full bg-white"></div>
-                  </div>
-                  <span class="text-[10px] font-mono">0:12 / 0:15</span>
-                </div>
-                <p class="text-[11px] text-gray-600 italic"><span class="font-semibold not-italic text-blue-600">[Auto-Caption]:</span> "Totally agree! Voice comments save so much typing time."</p>
-              </div>
-            </div>
-
-            <!-- Add Comment Input + 15s Voice Recorder -->
-            <div class="flex items-center gap-2">
-              <img src="https://i.pravatar.cc/150?img=11" class="w-7 h-7 rounded-full" />
-              <div class="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1.5">
-                <input type="text" placeholder="Write a comment, GIF, or record 15s voice..." class="bg-transparent flex-1 text-xs focus:outline-none" />
-                <button id="voiceBtn" onclick="recordVoiceComment()" class="text-blue-600 hover:text-blue-800 px-2" title="Hold or click for 15s Voice Comment">
-                  <i class="fas fa-microphone"></i>
-                </button>
-                <button class="text-gray-500 hover:text-gray-700 px-1.5 text-xs font-bold">GIF</button>
-              </div>
-            </div>
-            <p id="voiceRecordingStatus" class="hidden text-[11px] text-red-600 font-semibold pl-9 animate-pulse">
-              <i class="fas fa-circle text-[8px] mr-1"></i> Recording 15s Voice Comment with Auto-Caption... (0:04)
-            </p>
-          </div>
-        </article>
-
-        <!-- POST 2: 4K Auto HD Video Post + Poll + Data Saver Indicator -->
-        <article class="post-card bg-white rounded-xl p-4 shadow-sm space-y-3" data-category="foryou">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <img src="https://i.pravatar.cc/150?img=53" class="w-10 h-10 rounded-full" />
-              <div>
-                <h4 class="font-bold text-sm">Nature & Travel 4K</h4>
-                <p class="text-xs text-gray-500">1 hour ago • Suggested For You</p>
-              </div>
-            </div>
-            <span id="videoQualityBadge" class="bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded">4K ULTRA HD</span>
-          </div>
-
-          <p class="text-sm text-gray-800">Morning drone shot over the Swiss Alps! Shot in 4K 60fps. Where should we travel next?</p>
-
-          <!-- Video Preview Frame -->
-          <div class="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center group cursor-pointer">
-            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800" class="w-full h-full object-cover opacity-85 group-hover:scale-105 transition duration-500" />
-            <div class="w-14 h-14 rounded-full bg-white/90 text-blue-600 flex items-center justify-center text-xl shadow-lg">
-              <i class="fas fa-play ml-1"></i>
-            </div>
-            <span class="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded">Auto-Play • 01:30</span>
-          </div>
-
-          <!-- Interactive Poll inside Post -->
-          <div class="bg-gray-50 border rounded-xl p-3 space-y-2">
-            <p class="text-xs font-bold text-gray-700"><i class="fas fa-poll text-blue-600 mr-1"></i> Vote Next Destination:</p>
-            <button onclick="votePoll(this)" class="w-full text-left bg-white hover:bg-blue-50 border rounded-lg px-3 py-2 text-xs flex justify-between items-center transition">
-              <span>🏔️ Patagonia, Chile</span>
-              <span class="font-bold text-blue-600">62%</span>
-            </button>
-            <button onclick="votePoll(this)" class="w-full text-left bg-white hover:bg-blue-50 border rounded-lg px-3 py-2 text-xs flex justify-between items-center transition">
-              <span>🌋 Kyoto, Japan</span>
-              <span class="font-bold text-gray-500">38%</span>
-            </button>
-          </div>
-        </article>
-
-        <!-- SPONSORED AD POST (Can be hidden with "No Ads" button) -->
-        <article id="sponsoredPost" class="post-card bg-white rounded-xl p-4 shadow-sm border border-purple-100 space-y-3" data-category="foryou">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold">S</div>
-              <div>
-                <h4 class="font-bold text-sm">CloudHost Pro</h4>
-                <p class="text-xs text-gray-400">Sponsored • <span class="underline cursor-pointer" onclick="toggleNoAds()">Hide All Ads</span></p>
-              </div>
-            </div>
-          </div>
-          <p class="text-sm text-gray-700">Deploy your web apps globally in 10 seconds with zero downtime.</p>
-          <div class="bg-purple-50 rounded-lg p-3 flex items-center justify-between">
-            <span class="text-xs font-semibold text-purple-900">Get $100 Free Credit for 2026</span>
-            <button class="bg-purple-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold">Learn More</button>
-          </div>
-        </article>
-
-      </div>
-    </main>
-
-    <!-- RIGHT SIDEBAR (Multi-Guest Live, Channels, Marketplace) -->
-    <aside class="hidden lg:block lg:col-span-3 space-y-4">
-
-      <!-- Multi-Guest Live (Up to 4 Guests) -->
-      <div class="bg-white rounded-xl p-4 shadow-sm space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="font-bold text-sm text-gray-800"><i class="fas fa-podcast text-red-500 mr-1"></i> Multi-Guest Live</h3>
-          <span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">4 Live</span>
-        </div>
-        <div class="grid grid-cols-2 gap-1.5 rounded-lg overflow-hidden bg-gray-900 p-1.5">
-          <div class="relative h-20 rounded overflow-hidden">
-            <img src="https://i.pravatar.cc/150?img=45" class="w-full h-full object-cover" />
-            <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Host: Nadia</span>
-          </div>
-          <div class="relative h-20 rounded overflow-hidden">
-            <img src="https://i.pravatar.cc/150?img=14" class="w-full h-full object-cover" />
-            <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Guest 1</span>
-          </div>
-          <div class="relative h-20 rounded overflow-hidden">
-            <img src="https://i.pravatar.cc/150?img=22" class="w-full h-full object-cover" />
-            <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Guest 2</span>
-          </div>
-          <div class="relative h-20 rounded overflow-hidden">
-            <img src="https://i.pravatar.cc/150?img=33" class="w-full h-full object-cover" />
-            <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Guest 3</span>
-          </div>
-        </div>
-        <button class="w-full py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold transition">Join Live Talk</button>
-      </div>
-
-      <!-- Broadcast Channels (1-Way Creator Broadcast) -->
-      <div class="bg-white rounded-xl p-4 shadow-sm space-y-3">
-        <h3 class="font-bold text-sm text-gray-800">Broadcast Channels</h3>
-        <div class="flex items-center justify-between text-xs">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">AI</div>
-            <div>
-              <p class="font-semibold">AI Builders 2026</p>
-              <p class="text-[11px] text-gray-500">42K members</p>
-            </div>
-          </div>
-          <button class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-semibold hover:bg-blue-100">Join</button>
-        </div>
-      </div>
-
-      <!-- Marketplace Quick Picks -->
-      <div class="bg-white rounded-xl p-4 shadow-sm space-y-3">
-        <h3 class="font-bold text-sm text-gray-800">Marketplace Near You</h3>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <div class="border rounded-lg p-1.5">
-            <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200" class="h-20 w-full object-cover rounded" />
-            <p class="font-bold mt-1">$850</p>
-            <p class="text-gray-500 truncate">MacBook Air M3</p>
-          </div>
-          <div class="border rounded-lg p-1.5">
-            <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200" class="h-20 w-full object-cover rounded" />
-            <p class="font-bold mt-1">$120</p>
-            <p class="text-gray-500 truncate">Sony ANC Headphones</p>
-          </div>
-        </div>
-      </div>
-
-    </aside>
-  </div>
-
-  <!-- INTERACTIVE JAVASCRIPT -->
-  <script>
-    // 1. Zen Mode Toggle + Timer
-    let zenActive = false;
-    let zenInterval;
-    let zenSeconds = 15 * 60;
-
-    function toggleZenMode() {
-      zenActive = !zenActive;
-      document.body.classList.toggle('zen-active', zenActive);
-      const btn = document.getElementById('zenToggleBtn');
-      const statusText = document.getElementById('zenStatusText');
-      const banner = document.getElementById('zenBanner');
-
-      if (zenActive) {
-        btn.classList.replace('bg-emerald-50', 'bg-emerald-600');
-        btn.classList.replace('text-emerald-700', 'text-white');
-        statusText.innerText = 'Zen Mode: ON';
-        banner.classList.remove('hidden');
-        startZenTimer();
-      } else {
-        btn.classList.replace('bg-emerald-600', 'bg-emerald-50');
-        btn.classList.replace('text-white', 'text-emerald-700');
-        statusText.innerText = 'Zen Mode: OFF';
-        banner.classList.add('hidden');
-        clearInterval(zenInterval);
-        alert('Zen Session Ended! You enjoyed distraction-free scrolling.');
-        zenSeconds = 15 * 60;
-      }
-    }
-
-    function startZenTimer() {
-      zenInterval = setInterval(() => {
-        zenSeconds--;
-        const mins = Math.floor(zenSeconds / 60);
-        const secs = zenSeconds % 60;
-        document.getElementById('zenTimer').innerText =
-          `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        if (zenSeconds <= 0) toggleZenMode();
-      }, 1000);
-    }
-
-    // 2. Requested Feature: No Ads Toggle
-    let adsEnabled = true;
-    function toggleNoAds() {
-      adsEnabled = !adsEnabled;
-      const adPost = document.getElementById('sponsoredPost');
-      const adText = document.getElementById('noAdsText');
-      if (adPost) adPost.style.display = adsEnabled ? 'block' : 'none';
-      adText.innerText = adsEnabled ? 'Ads: ON' : 'Ads: BLOCKED';
-    }
-
-    // 3. Hide Like Counts Globally
-    function toggleLikeCounts() {
-      const isChecked = document.getElementById('hideLikesCheckbox').checked;
-      document.querySelectorAll('.like-counter').forEach(el => {
-        el.style.display = isChecked ? 'none' : 'flex';
-      });
-    }
-
-    // 4. Data Saver (4K vs 480p)
-    function toggleDataSaver() {
-      const isDataSaver = document.getElementById('dataSaverCheckbox').checked;
-      const badge = document.getElementById('videoQualityBadge');
-      badge.innerText = isDataSaver ? '480p DATA SAVER' : '4K ULTRA HD';
-      badge.className = isDataSaver
-        ? 'bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded'
-        : 'bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded';
-    }
-
-    // 5. Feed Tab Switcher (For You / Following / Chronological Only)
-    function switchFeedTab(tab, btn) {
-      document.querySelectorAll('.feed-tab').forEach(b => {
-        b.classList.remove('bg-blue-50', 'text-blue-600');
-        b.classList.add('text-gray-600');
-      });
-      btn.classList.add('bg-blue-50', 'text-blue-600');
-      btn.classList.remove('text-gray-600');
-
-      const posts = document.querySelectorAll('.post-card');
-      posts.forEach(post => {
-        if (tab === 'following') {
-          post.style.display = post.dataset.category === 'following' ? 'block' : 'none';
-        } else {
-          post.style.display = 'block';
-        }
-      });
-    }
-
-    // 6. AI Caption Suggestions & Schedule Post
-    function toggleAICaptions() {
-      document.getElementById('aiCaptionsBox').classList.toggle('hidden');
-    }
-    function applyCaption(text) {
-      document.getElementById('postInput').value = text.replace(/^"|"$/g, '');
-      document.getElementById('aiCaptionsBox').classList.add('hidden');
-    }
-    function toggleSchedule() {
-      document.getElementById('scheduleBox').classList.toggle('hidden');
-    }
-
-    // 7. Publish Post (Supports Scheduling)
-    function publishPost() {
-      const input = document.getElementById('postInput');
-      const scheduleTime = document.getElementById('scheduleTime').value;
-      const text = input.value.trim();
-      if (!text) return;
-
-      if (scheduleTime) {
-        alert(`Post scheduled for ${new Date(scheduleTime).toLocaleString()}!`);
-        input.value = '';
-        document.getElementById('scheduleTime').value = '';
-        document.getElementById('scheduleBox').classList.add('hidden');
-        return;
-      }
-
-      const feed = document.getElementById('feedContainer');
-      const newPost = document.createElement('article');
-      newPost.className = 'post-card bg-white rounded-xl p-4 shadow-sm space-y-3';
-      newPost.dataset.category = 'following';
-      newPost.innerHTML = `
-        <div class="flex items-center gap-2.5">
-          <img src="https://i.pravatar.cc/150?img=11" class="w-10 h-10 rounded-full" />
-          <div>
-            <h4 class="font-bold text-sm">Alex Rahman</h4>
-            <p class="text-xs text-gray-500">Just now • Chronological</p>
-          </div>
-        </div>
-        <p class="text-sm text-gray-800">${text}</p>
-      `;
-      feed.prepend(newPost);
-      input.value = '';
-    }
-
-    // 8. AI Summary, Ask Meta AI, Public Edit History
-    function toggleAISummary(id) {
-      document.getElementById(id).classList.toggle('hidden');
-    }
-    function askMetaAI(id) {
-      document.getElementById(id).classList.toggle('hidden');
-    }
-    function toggleEditHistory(id) {
-      document.getElementById(id).classList.toggle('hidden');
-    }
-    function toggleMenu(id) {
-      document.getElementById(id).classList.toggle('hidden');
-    }
-    function snoozePost(btn) {
-      btn.closest('.post-card').innerHTML =
-        '<p class="text-xs text-gray-500 text-center py-4">Post hidden. You will not see updates from this user for 30 days.</p>';
-    }
-
-    // 9. Dislike Button & Like Button
-    function incrementDislike(counterId, btn) {
-      const counter = document.getElementById(counterId);
-      counter.innerText = parseInt(counter.innerText) + 1;
-      btn.classList.add('text-red-600', 'bg-red-50');
-    }
-    function reactPost(btn) {
-      btn.classList.toggle('text-blue-600');
-      btn.innerHTML = btn.classList.contains('text-blue-600')
-        ? '<i class="fas fa-thumbs-up"></i> Liked'
-        : '<i class="far fa-thumbs-up"></i> Like';
-    }
-
-    // 10. 15s Voice Comment Recorder Simulation
-    function recordVoiceComment() {
-      const status = document.getElementById('voiceRecordingStatus');
-      status.classList.toggle('hidden');
-    }
-
-    // 11. Content Filter Slider Label
-    function updateSliderLabel(slider, labelId) {
-      const labels = { '1': 'Less', '2': 'Normal', '3': 'More' };
-      document.getElementById(labelId).innerText = labels[slider.value];
-    }
-
-    // 12. Poll Vote
-    function votePoll(btn) {
-      btn.classList.add('border-blue-600', 'bg-blue-50');
-    }
-  </script>
+<body class="bg-gray-100 text-gray-900 font-sans">
+
+<!-- TOP NAVBAR -->
+<header class="sticky top-0 z-50 bg-white shadow-sm border-b px-4 py-2 flex items-center justify-between">
+<div class="flex items-center gap-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xl">A</div><span class="text-xl font-bold text-blue-600 hidden sm:inline">Autrobook</span></div><div class="relative hidden md:block"><i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i><input type="text" placeholder="Search Autrobook..." class="bg-gray-100 rounded-full pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64" /></div></div>
+<nav class="flex items-center gap-2 sm:gap-6 text-gray-500"><button class="px-4 py-2 text-blue-600 border-b-2 border-blue-600"><i class="fas fa-home text-lg"></i></button><button class="px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-clapperboard text-lg"></i></button><button class="px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-store text-lg"></i></button><button class="px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-users text-lg"></i></button></nav>
+<div class="flex items-center gap-2"><button id="zenToggleBtn" onclick="toggleZenMode()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fas fa-leaf"></i><span id="zenStatusText">Zen Mode: OFF</span></button><button id="noAdsBtn" onclick="toggleNoAds()" class="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200"><i class="fas fa-ban"></i><span id="noAdsText">Ads: ON</span></button><button class="zen-hide relative w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"><i class="fas fa-bell"></i><span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">4</span></button><img src="https://i.pravatar.cc/150?img=11" class="w-9 h-9 rounded-full border cursor-pointer" /></div>
+</header>
+
+<div id="zenBanner" class="hidden bg-emerald-700 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-4"><span><i class="fas fa-spa mr-1"></i><strong>Zen Mode Active:</strong> Like counts, comments, notifications hidden.</span><span id="zenTimer" class="bg-emerald-900 px-2.5 py-0.5 rounded font-mono text-xs">15:00</span><button onclick="toggleZenMode()" class="underline text-xs">End Session</button></div>
+
+<div class="max-w-7xl mx-auto px-2 sm:px-4 pt-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- LEFT -->
+<aside class="hidden lg:block lg:col-span-3 space-y-4">
+<div class="bg-white rounded-xl p-4 shadow-sm space-y-3"><div class="flex items-center gap-3 pb-2 border-b"><img src="https://i.pravatar.cc/150?img=11" class="w-10 h-10 rounded-full" /><div><p class="font-semibold text-sm">Alex Rahman</p><span class="text-[11px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">Professional Mode ON</span></div></div><ul class="space-y-2 text-sm text-gray-700"><li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-star text-yellow-500 w-5"></i> Favorites (30 Max)</li><li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-broadcast-tower text-indigo-500 w-5"></i> Creator Channels</li><li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-comments text-green-500 w-5"></i> Community Chats</li><li class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"><i class="fas fa-calendar-check text-red-500 w-5"></i> Local Events</li></ul></div>
+<div class="bg-white rounded-xl p-4 shadow-sm space-y-4"><h3 class="font-bold text-sm flex justify-between"><span>Feed & Privacy Controls</span><i class="fas fa-sliders-h text-gray-400"></i></h3><div><div class="flex justify-between text-xs text-gray-600 mb-1"><span>Politics & News</span><span id="politicsVal">Normal</span></div><input type="range" min="1" max="3" value="2" onchange="updateSliderLabel(this,'politicsVal')" class="w-full accent-blue-600" /></div><div><div class="flex justify-between text-xs text-gray-600 mb-1"><span>Sports & Gaming</span><span id="sportsVal">More</span></div><input type="range" min="1" max="3" value="3" onchange="updateSliderLabel(this,'sportsVal')" class="w-full accent-blue-600" /></div><div class="flex items-center justify-between pt-2 border-t text-xs"><span class="font-medium">Hide Like & Reaction Counts</span><input type="checkbox" id="hideLikesCheckbox" onchange="toggleLikeCounts()" class="w-4 h-4 accent-blue-600" /></div><div class="flex items-center justify-between text-xs"><span class="font-medium">Data Saver (480p instead of 4K)</span><input type="checkbox" id="dataSaverCheckbox" onchange="toggleDataSaver()" class="w-4 h-4 accent-blue-600" /></div><div class="pt-2 border-t"><p class="text-xs font-semibold text-gray-600 mb-1.5">Blocked Ad Topics:</p><div class="flex flex-wrap gap-1.5 text-[11px]"><span class="bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-200">✕ Crypto</span><span class="bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-200">✕ Dating</span></div></div></div>
+</aside>
+
+<!-- CENTER -->
+<main class="col-span-1 lg:col-span-6 space-y-4 pb-12">
+<div class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+<div class="min-w-[105px] h-44 bg-white rounded-xl shadow-sm overflow-hidden relative cursor-pointer border flex flex-col"><img src="https://i.pravatar.cc/150?img=11" class="h-32 w-full object-cover" /><div class="flex-1 flex flex-col items-center justify-center relative"><div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center -mt-5 border-2 border-white text-xs"><i class="fas fa-plus"></i></div><span class="text-[11px] font-semibold mt-1">Create Story</span></div></div>
+<div class="min-w-[105px] h-44 rounded-xl overflow-hidden relative cursor-pointer shadow-sm"><img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300" class="w-full h-full object-cover" /><div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div><img src="https://i.pravatar.cc/150?img=32" class="w-8 h-8 rounded-full border-2 border-blue-500 absolute top-2.5 left-2.5" /><span class="absolute top-2.5 right-2 bg-pink-600 text-white text-[9px] px-1.5 py-0.5 rounded">Poll</span><p class="absolute bottom-2 left-2.5 text-white text-xs font-medium">Sarah Jenkins</p></div>
+<div class="min-w-[105px] h-44 rounded-xl overflow-hidden relative cursor-pointer shadow-sm"><img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=300" class="w-full h-full object-cover" /><div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div><img src="https://i.pravatar.cc/150?img=12" class="w-8 h-8 rounded-full border-2 border-blue-500 absolute top-2.5 left-2.5" /><p class="absolute bottom-2 left-2.5 text-white text-xs font-medium">Tech Daily</p></div>
+<div class="min-w-[105px] h-44 rounded-xl overflow-hidden relative cursor-pointer shadow-sm"><img src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300" class="w-full h-full object-cover" /><div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div><img src="https://i.pravatar.cc/150?img=45" class="w-8 h-8 rounded-full border-2 border-red-500 absolute top-2.5 left-2.5" /><span class="absolute top-2.5 right-2 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">LIVE</span><p class="absolute bottom-2 left-2.5 text-white text-xs font-medium">Nadia Islam</p></div>
+</div>
+
+<!-- CREATE POST -->
+<div class="bg-white rounded-xl p-4 shadow-sm space-y-3"><div class="flex gap-3"><img src="https://i.pravatar.cc/150?img=11" class="w-10 h-10 rounded-full" /><div class="flex-1 space-y-2"><textarea id="postInput" rows="2" placeholder="What's on your mind, Alex?" class="w-full bg-gray-100 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea><div id="aiCaptionsBox" class="hidden bg-indigo-50 border border-indigo-100 rounded-lg p-2.5 space-y-1.5"><p class="text-[11px] font-semibold text-indigo-700">✨ AI Caption Suggestions (Click to use):</p><div class="flex flex-col gap-1 text-xs"><button onclick="applyCaption(this.innerText)" class="text-left bg-white hover:bg-indigo-100 p-1.5 rounded border">"Building the future of social networking one line of code at a time! 🚀 #Autrobook"</button><button onclick="applyCaption(this.innerText)" class="text-left bg-white hover:bg-indigo-100 p-1.5 rounded border">"Less noise, more real connections. Loving the new 2026 feed experience! ✨"</button></div></div><div id="scheduleBox" class="hidden flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs"><i class="fas fa-clock text-amber-600"></i><span class="font-medium">Schedule Post:</span><input type="datetime-local" id="scheduleTime" class="bg-white border rounded px-2 py-1 text-xs" /></div></div></div><div class="flex flex-wrap items-center justify-between pt-2 border-t gap-2"><div class="flex items-center gap-1 text-xs font-medium text-gray-600"><button class="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg"><i class="fas fa-video text-red-500"></i> Multi-Live (4)</button><button class="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg"><i class="fas fa-image text-green-500"></i> 4K Photo/Video</button><button class="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg"><i class="fas fa-poll text-orange-500"></i> Poll/Q&A</button><button onclick="toggleAICaptions()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><i class="fas fa-sparkles"></i> AI Caption</button><button onclick="toggleSchedule()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-lg"><i class="fas fa-calendar-alt"></i> Schedule</button></div><button onclick="publishPost()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold">Post</button></div></div>
+
+<!-- FEED TABS -->
+<div class="bg-white rounded-xl p-1.5 shadow-sm flex text-xs font-semibold"><button onclick="switchFeedTab('foryou',this)" class="feed-tab flex-1 py-2 rounded-lg bg-blue-50 text-blue-600">✨ For You (AI)</button><button onclick="switchFeedTab('following',this)" class="feed-tab flex-1 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Following</button><button onclick="switchFeedTab('chronological',this)" class="feed-tab flex-1 py-2 rounded-lg text-gray-600 hover:bg-gray-50">🕒 Chronological Only</button></div>
+
+<div id="feedContainer" class="space-y-4">
+
+<!-- POST 1 : FACEBOOK REACTIONS + DISLIKE + 30s VOICE -->
+<article class="post-card bg-white rounded-xl p-4 shadow-sm space-y-3" data-category="following" data-postid="1">
+<div class="flex items-start justify-between"><div class="flex items-center gap-2.5"><img src="https://i.pravatar.cc/150?img=32" class="w-10 h-10 rounded-full" /><div><div class="flex items-center gap-1.5"><h4 class="font-bold text-sm hover:underline cursor-pointer">Sarah Jenkins</h4><span class="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">⭐ Favorite</span></div><div class="flex items-center gap-2 text-xs text-gray-500"><span>12 mins ago</span><span>•</span><i class="fas fa-globe-americas"></i><button onclick="toggleEditHistory('history1')" class="text-blue-600 hover:underline font-medium">Edited (View Public History)</button></div></div></div><div class="relative"><button onclick="toggleMenu('menu1')" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"><i class="fas fa-ellipsis-h"></i></button><div id="menu1" class="hidden absolute right-0 mt-1 w-56 bg-white border rounded-xl shadow-lg py-1.5 text-xs z-20"><button onclick="copyPostText('postText1')" class="w-full text-left px-3 py-2 hover:bg-gray-100 flex gap-2">📋 Copy Text</button><button onclick="downloadPost4K('postText1')" class="w-full text-left px-3 py-2 hover:bg-gray-100 flex gap-2">⬇️ Download Image / Video in 4K (Public Only)</button><button onclick="snoozePost(this)" class="w-full text-left px-3 py-2 hover:bg-gray-100 flex gap-2">🕒 Snooze Sarah for 30 days</button><button onclick="snoozePost(this)" class="w-full text-left px-3 py-2 hover:bg-gray-100 flex gap-2">🚫 Unfollow Sarah</button><button onclick="toggleSavePost(this)" class="w-full text-left px-3 py-2 hover:bg-gray-100 flex gap-2">🔖 Save Post</button></div></div></div>
+<div id="history1" class="hidden bg-gray-50 border rounded-lg p-2.5 text-xs space-y-1"><p class="font-bold">Public Edit History:</p><p class="text-gray-500 line-through">Original (10:15 AM): AI is going to replace all developers by 2026.</p><p>Edited (10:22 AM): AI tools are empowering developers to ship 3x faster in 2026.</p></div>
+<p id="postText1" class="text-sm text-gray-800 leading-relaxed">AI tools are empowering developers to ship 3x faster in 2026. Instead of spending hours on boilerplate code, engineers now focus on system architecture, user experience, and real-time voice/AI interfaces. What are your thoughts on the shift toward distraction-free social apps?</p>
+<div class="flex flex-wrap gap-2 pt-1"><button onclick="toggleAISummary('summary1')" class="text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full">Summarize Post</button><button onclick="askMetaAI('aiBox1')" class="text-xs font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1.5 rounded-full">🤖 Ask Meta AI</button><button onclick="copyPostText('postText1')" class="text-xs font-semibold bg-gray-100 px-3 py-1.5 rounded-full">📋 Copy Text</button><button onclick="downloadPost4K('postText1')" class="text-xs font-semibold bg-gray-100 px-3 py-1.5 rounded-full">⬇️ Download 4K</button></div>
+<div id="summary1" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900"><strong>✨ AI Summary:</strong> Developers in 2026 build 3x faster using AI, shifting focus from boilerplate to UX and distraction-free interfaces.</div>
+<div id="aiBox1" class="hidden bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs space-y-2"><p class="font-semibold text-purple-900">🤖 Meta AI:</p><div class="flex gap-2"><input type="text" placeholder="Ask Meta AI about this post..." class="flex-1 bg-white border rounded px-2.5 py-1 text-xs focus:outline-none" /><button onclick="alert('Meta AI: AI-assisted workflows reduce boilerplate time by up to 65%.')" class="bg-purple-600 text-white px-3 py-1 rounded font-semibold">Ask</button></div></div>
+
+<!-- FACEBOOK STYLE COUNTS ROW -->
+<div class="zen-hide like-counter flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
+<div class="flex items-center gap-1 cursor-pointer" onclick="showReactionList('1')"><span class="react-icons" id="topIcons1"><span>👍</span><span>❤️</span><span>😆</span></span><span id="totalReact1">142</span><span class="hidden sm:inline">Reactions</span></div>
+<div class="flex items-center gap-3"><span class="text-red-500">👎 <span id="dislikeCount1">4</span> Dislikes</span><span>•</span><span>18 Comments (3 Voice)</span><span>•</span><span>9 Shares</span></div>
+</div>
+
+<!-- REACTION LIST MODAL PREVIEW -->
+<div id="reactList1" class="hidden bg-gray-50 border rounded-xl p-3 text-xs space-y-1.5"><p class="font-bold">All Reactions — 142</p><div class="flex flex-wrap gap-1"><button onclick="filterReactions('1','all')" class="px-2 py-1 bg-blue-600 text-white rounded-full">All 142</button><button onclick="filterReactions('1','👍')" class="px-2 py-1 bg-white border rounded-full">👍 68</button><button onclick="filterReactions('1','❤️')" class="px-2 py-1 bg-white border rounded-full">❤️ 42</button><button onclick="filterReactions('1','🥰')" class="px-2 py-1 bg-white border rounded-full">🥰 12</button><button onclick="filterReactions('1','😆')" class="px-2 py-1 bg-white border rounded-full">😆 10</button><button onclick="filterReactions('1','😮')" class="px-2 py-1 bg-white border rounded-full">😮 5</button><button onclick="filterReactions('1','😢')" class="px-2 py-1 bg-white border rounded-full">😢 3</button><button onclick="filterReactions('1','😠')" class="px-2 py-1 bg-white border rounded-full">😠 2</button></div><div id="reactListBody1" class="space-y-1"><p>👍 Alex Rahman • ❤️ Sarah • 🥰 Nadia • 😆 Tech Daily • 😮 John • 😢 Mia • 😠 Alex</p></div></div>
+
+<!-- FACEBOOK ACTION BAR -->
+<div class="flex items-center justify-between border-t border-b py-1 text-xs font-semibold text-gray-600">
+<div class="react-wrap flex-1">
+<div class="react-picker" id="picker1"><span data-emoji="👍" data-label="Like" data-class="liked" onclick="setReaction('1',this)">👍</span><span data-emoji="❤️" data-label="Love" data-class="love" onclick="setReaction('1',this)">❤️</span><span data-emoji="🥰" data-label="Care" data-class="care" onclick="setReaction('1',this)">🥰</span><span data-emoji="😆" data-label="Haha" data-class="haha" onclick="setReaction('1',this)">😆</span><span data-emoji="😮" data-label="Wow" data-class="wow" onclick="setReaction('1',this)">😮</span><span data-emoji="😢" data-label="Sad" data-class="sad" onclick="setReaction('1',this)">😢</span><span data-emoji="😠" data-label="Angry" data-class="angry" onclick="setReaction('1',this)">😠</span></div>
+<button id="likeBtn1" class="like-btn w-full py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5" onmouseenter="showPicker('1')" onmouseleave="hidePickerDelayed('1')" onclick="quickLike('1')" oncontextmenu="event.preventDefault();showPicker('1')" ontouchstart="pressStart('1',event)" ontouchend="pressEnd('1',event)"><span id="likeEmoji1">👍</span><span id="likeLabel1">Like</span></button>
+</div>
+<button id="dislikeBtn1" onclick="toggleDislike('1')" class="dislike-btn flex-1 py-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg flex items-center justify-center gap-1.5">👎 Dislike <span id="dislikeBtnCount1">4</span></button>
+<button class="flex-1 py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5" onclick="document.getElementById('commentInput1').focus()">💬 Comment</button>
+<button class="flex-1 py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5">↗️ Share / Story</button>
+</div>
+<p class="text-[11px] text-gray-400 -mt-1">Tip: Hover / Long-press Like = Facebook Reactions • Tap Like = 👍 • Dislike = Separate</p>
+
+<!-- COMMENTS + 30s VOICE -->
+<div class="zen-hide space-y-2.5 pt-1">
+<div class="flex items-start gap-2"><img src="https://i.pravatar.cc/150?img=12" class="w-7 h-7 rounded-full mt-0.5" /><div class="bg-gray-100 rounded-2xl px-3 py-2 text-xs max-w-md"><p class="font-bold">Tech Daily</p><div class="flex items-center gap-2 my-1 bg-blue-600 text-white px-2.5 py-1 rounded-full w-52"><button onclick="playVoiceDemo(this)">▶️</button><div class="flex-1 h-1.5 bg-blue-300 rounded-full overflow-hidden"><div class="w-2/3 h-full bg-white"></div></div><span class="text-[10px] font-mono">0:12 / 0:30</span></div><p class="text-[11px] text-gray-600 italic"><span class="font-semibold not-italic text-blue-600">[Auto-Caption]:</span> "Totally agree! Voice comments save so much typing time."</p><div class="flex gap-2 mt-1 text-[11px] text-gray-500 font-semibold"><span>Like</span><span>Reply</span><span>30s Voice</span></div></div></div>
+<div id="voiceList1" class="space-y-2"></div>
+<div class="flex items-center gap-2"><img src="https://i.pravatar.cc/150?img=11" class="w-7 h-7 rounded-full" /><div class="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1.5"><input id="commentInput1" type="text" placeholder="Write a comment, GIF, or record 30s voice..." class="bg-transparent flex-1 text-xs focus:outline-none" /><button onclick="toggleVoiceBar('1')" class="text-blue-600 px-2" title="30s Voice Comment"><i class="fas fa-microphone"></i></button><button class="text-gray-500 px-1.5 text-xs font-bold">GIF</button><button onclick="addTextComment('1')" class="text-blue-600 text-xs font-bold px-1">Send</button></div></div>
+<!-- 30s VOICE BAR -->
+<div id="voiceBar1" class="voice-bar items-center gap-2 bg-gray-50 border rounded-xl p-2.5 text-xs flex-wrap">
+<select id="voiceFilter1" class="bg-white border rounded px-2 py-1.5 text-xs"><option value="normal">🎙️ Normal Voice</option><option value="echo">🔁 Echo Voice</option><option value="deep">🔊 Deep Voice</option></select>
+<button id="voiceRecBtn1" onclick="toggleVoiceRecord('1')" class="bg-red-500 text-white px-3 py-1.5 rounded-full font-bold">● Record 30s</button>
+<span id="voiceTimer1" class="font-mono font-bold">00:00 / 00:30</span>
+<div class="voice-wave" id="voiceWave1"><i style="height:8px"></i><i style="height:14px"></i><i style="height:20px"></i><i style="height:12px"></i><i style="height:18px"></i><i style="height:8px"></i><i style="height:16px"></i></div>
+<span id="voiceStatus1" class="text-gray-500">Tap Record → Speak → Auto-stop at 30s</span>
+<button id="voiceSendBtn1" onclick="sendVoiceComment('1')" class="hidden bg-blue-600 text-white px-3 py-1.5 rounded-full font-bold">Send Voice ✅</button>
+<button onclick="discardVoice('1')" class="text-red-500 font-bold">Delete</button>
+</div>
+<p id="voiceRecordingStatus1" class="hidden text-[11px] text-red-600 font-semibold pl-9 animate-pulse"><span class="rec-dot">●</span> Recording 30s Voice Comment with Auto-Caption...</p>
+</div>
+</article>
+
+<!-- POST 2 : 4K + POLL -->
+<article class="post-card bg-white rounded-xl p-4 shadow-sm space-y-3" data-category="foryou" data-postid="2">
+<div class="flex items-center justify-between"><div class="flex items-center gap-2.5"><img src="https://i.pravatar.cc/150?img=53" class="w-10 h-10 rounded-full" /><div><h4 class="font-bold text-sm">Nature & Travel 4K</h4><p class="text-xs text-gray-500">1 hour ago • Suggested For You • 🌍 Public</p></div></div><span id="videoQualityBadge" class="bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded">4K ULTRA HD</span></div>
+<p class="text-sm text-gray-800">Morning drone shot over the Swiss Alps! Shot in 4K 60fps. Where should we travel next?</p>
+<div class="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center group cursor-pointer"><img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800" class="w-full h-full object-cover opacity-85 group-hover:scale-105 transition" /><div class="w-14 h-14 rounded-full bg-white/90 text-blue-600 flex items-center justify-center text-xl shadow-lg"><i class="fas fa-play ml-1"></i></div><span class="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded">Auto-Play • 01:30</span></div>
+<div class="bg-gray-50 border rounded-xl p-3 space-y-2"><p class="text-xs font-bold"><i class="fas fa-poll text-blue-600 mr-1"></i> Vote Next Destination:</p><button onclick="votePoll(this)" class="w-full text-left bg-white hover:bg-blue-50 border rounded-lg px-3 py-2 text-xs flex justify-between"><span>🏔️ Patagonia, Chile</span><span class="font-bold text-blue-600">62%</span></button><button onclick="votePoll(this)" class="w-full text-left bg-white hover:bg-blue-50 border rounded-lg px-3 py-2 text-xs flex justify-between"><span>🌋 Kyoto, Japan</span><span class="font-bold text-gray-500">38%</span></button></div>
+<div class="flex items-center justify-between border-t border-b py-1 text-xs font-semibold text-gray-600"><div class="react-wrap flex-1"><div class="react-picker" id="picker2"><span onclick="setReaction('2',this)" data-emoji="👍" data-label="Like" data-class="liked">👍</span><span onclick="setReaction('2',this)" data-emoji="❤️" data-label="Love" data-class="love">❤️</span><span onclick="setReaction('2',this)" data-emoji="🥰" data-label="Care" data-class="care">🥰</span><span onclick="setReaction('2',this)" data-emoji="😆" data-label="Haha" data-class="haha">😆</span><span onclick="setReaction('2',this)" data-emoji="😮" data-label="Wow" data-class="wow">😮</span><span onclick="setReaction('2',this)" data-emoji="😢" data-label="Sad" data-class="sad">😢</span><span onclick="setReaction('2',this)" data-emoji="😠" data-label="Angry" data-class="angry">😠</span></div><button id="likeBtn2" class="like-btn w-full py-1.5 hover:bg-gray-100 rounded-lg" onmouseenter="showPicker('2')" onclick="quickLike('2')"><span id="likeEmoji2">👍</span> <span id="likeLabel2">Like</span></button></div><button id="dislikeBtn2" onclick="toggleDislike('2')" class="dislike-btn flex-1 py-1.5 hover:bg-red-50 rounded-lg">👎 Dislike <span id="dislikeBtnCount2">1</span></button><button class="flex-1 py-1.5 hover:bg-gray-100 rounded-lg">💬 Comment</button><button class="flex-1 py-1.5 hover:bg-gray-100 rounded-lg">↗️ Share</button></div>
+</article>
+
+<!-- SPONSORED -->
+<article id="sponsoredPost" class="post-card bg-white rounded-xl p-4 shadow-sm border border-purple-100 space-y-3" data-category="foryou"><div class="flex items-center justify-between"><div class="flex items-center gap-2.5"><div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold">S</div><div><h4 class="font-bold text-sm">CloudHost Pro</h4><p class="text-xs text-gray-400">Sponsored • <span class="underline cursor-pointer" onclick="toggleNoAds()">Hide All Ads</span></p></div></div></div><p class="text-sm text-gray-700">Deploy your web apps globally in 10 seconds with zero downtime.</p><div class="bg-purple-50 rounded-lg p-3 flex items-center justify-between"><span class="text-xs font-semibold text-purple-900">Get $100 Free Credit for 2026</span><button class="bg-purple-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold">Learn More</button></div></article>
+
+</div>
+</main>
+
+<!-- RIGHT -->
+<aside class="hidden lg:block lg:col-span-3 space-y-4">
+<div class="bg-white rounded-xl p-4 shadow-sm space-y-3"><div class="flex justify-between"><h3 class="font-bold text-sm">🎙️ Multi-Guest Live</h3><span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">4 Live</span></div><div class="grid grid-cols-2 gap-1.5 rounded-lg overflow-hidden bg-gray-900 p-1.5"><div class="relative h-20 rounded overflow-hidden"><img src="https://i.pravatar.cc/150?img=45" class="w-full h-full object-cover" /><span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Host: Nadia</span></div><div class="relative h-20 rounded overflow-hidden"><img src="https://i.pravatar.cc/150?img=14" class="w-full h-full object-cover" /><span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Guest 1</span></div><div class="relative h-20 rounded overflow-hidden"><img src="https://i.pravatar.cc/150?img=22" class="w-full h-full object-cover" /><span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Guest 2</span></div><div class="relative h-20 rounded overflow-hidden"><img src="https://i.pravatar.cc/150?img=33" class="w-full h-full object-cover" /><span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">Guest 3</span></div></div><button class="w-full py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-semibold">Join Live Talk</button></div>
+<div class="bg-white rounded-xl p-4 shadow-sm space-y-3"><h3 class="font-bold text-sm">Broadcast Channels</h3><div class="flex items-center justify-between text-xs"><div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">AI</div><div><p class="font-semibold">AI Builders 2026</p><p class="text-[11px] text-gray-500">42K members</p></div></div><button class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-semibold">Join</button></div></div>
+<div class="bg-white rounded-xl p-4 shadow-sm space-y-3"><h3 class="font-bold text-sm">Marketplace Near You</h3><div class="grid grid-cols-2 gap-2 text-xs"><div class="border rounded-lg p-1.5"><img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200" class="h-20 w-full object-cover rounded" /><p class="font-bold mt-1">$850</p><p class="text-gray-500 truncate">MacBook Air M3</p></div><div class="border rounded-lg p-1.5"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200" class="h-20 w-full object-cover rounded" /><p class="font-bold mt-1">$120</p><p class="text-gray-500 truncate">Sony ANC Headphones</p></div></div></div>
+</aside>
+</div>
+
+<script>
+// ===== STATE =====
+let reactions={ '1':{my:null,counts:{'👍':68,'❤️':42,'🥰':12,'😆':10,'😮':5,'😢':3,'😠':2},total:142}, '2':{my:null,counts:{'👍':20,'❤️':10,'🥰':5,'😆':3,'😮':2,'😢':0,'😠':0},total:40} };
+let dislikes={ '1':{my:false,count:4}, '2':{my:false,count:1} };
+let pickerTimer=null, pressTimer=null, longPress=false;
+let mediaRecorder=null, voiceChunks=[], voiceBlobUrl={}, voiceTimerInt=null, voiceSec=0, isRecording=false;
+
+// ===== FACEBOOK REACTIONS =====
+function showPicker(id){ clearTimeout(pickerTimer); document.getElementById('picker'+id).classList.add('show'); }
+function hidePickerDelayed(id){ pickerTimer=setTimeout(()=>{ document.getElementById('picker'+id).classList.remove('show'); },350); }
+function pressStart(id,e){ longPress=false; pressTimer=setTimeout(()=>{ longPress=true; showPicker(id); if(navigator.vibrate) navigator.vibrate(20); },400); }
+function pressEnd(id,e){ clearTimeout(pressTimer); if(longPress){ e.preventDefault(); return; } }
+document.addEventListener('click',e=>{ if(!e.target.closest('.react-wrap')) document.querySelectorAll('.react-picker').forEach(p=>p.classList.remove('show')); });
+function quickLike(id){
+  let r=reactions[id];
+  if(r.my){ r.counts[r.my]--; r.total--; r.my=null; }
+  else { r.my='👍'; r.counts['👍']++; r.total++; }
+  updateReactionUI(id);
+}
+function setReaction(id,el){
+  let emoji=el.dataset.emoji, label=el.dataset.label, cls=el.dataset.class;
+  let r=reactions[id];
+  if(r.my) r.counts[r.my]--;
+  else r.total++;
+  r.my=emoji; r.counts[emoji]=(r.counts[emoji]||0)+1;
+  document.getElementById('picker'+id).classList.remove('show');
+  updateReactionUI(id);
+  if(navigator.vibrate) navigator.vibrate(10);
+}
+function updateReactionUI(id){
+  let r=reactions[id]; let btn=document.getElementById('likeBtn'+id);
+  btn.className='like-btn w-full py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5 '+(r.my? (r.my==='👍'?'liked':r.my==='❤️'?'love':r.my==='🥰'?'care':r.my==='😆'?'haha':r.my==='😮'?'wow':r.my==='😢'?'sad':'angry') : '');
+  document.getElementById('likeEmoji'+id).innerText=r.my||'👍';
+  document.getElementById('likeLabel'+id).innerText=r.my? ({'👍':'Like','❤️':'Love','🥰':'Care','😆':'Haha','😮':'Wow','😢':'Sad','😠':'Angry'}[r.my]) : 'Like';
+  let totalEl=document.getElementById('totalReact'+id); if(totalEl) totalEl.innerText=r.total;
+  let top=Object.entries(r.counts).sort((a,b)=>b[1]-a[1]).filter(x=>x[1]>0).slice(0,3);
+  let icons=document.getElementById('topIcons'+id); if(icons) icons.innerHTML=top.map(x=>`<span>${x[0]}</span>`).join('');
+}
+function showReactionList(id){ document.getElementById('reactList'+id)?.classList.toggle('hidden'); }
+function filterReactions(id,emoji){
+  let r=reactions[id]; let body=document.getElementById('reactListBody'+id); if(!body) return;
+  if(emoji==='all') body.innerHTML=`<p>👍 ${r.counts['👍']} • ❤️ ${r.counts['❤️']} • 🥰 ${r.counts['🥰']} • 😆 ${r.counts['😆']} • 😮 ${r.counts['😮']} • 😢 ${r.counts['😢']} • 😠 ${r.counts['😠']}</p>`;
+  else body.innerHTML=`<p>${emoji} — ${r.counts[emoji]||0} people reacted with ${emoji}</p>`;
+}
+
+// ===== DISLIKE =====
+function toggleDislike(id){
+  let d=dislikes[id]; d.my=!d.my; d.count+=d.my?1:-1;
+  document.getElementById('dislikeCount'+id).innerText=d.count;
+  let btnCount=document.getElementById('dislikeBtnCount'+id); if(btnCount) btnCount.innerText=d.count;
+  document.getElementById('dislikeBtn'+id).classList.toggle('active',d.my);
+}
+function toggleDislikeLegacy(){}
+
+// ===== COPY + 4K DOWNLOAD (PUBLIC ONLY) =====
+function copyPostText(id){ let t=document.getElementById(id).innerText; navigator.clipboard.writeText(t).then(()=>alert('Text Copied 📋 ✅')); }
+function downloadPost4K(id){ alert('Public Post — Downloading Image / Video in 4K (3840x2160) ⬇️\nPrivate / Locked ID = Download Not Allowed 🔒'); }
+function toggleSavePost(btn){ btn.innerText='🔖 Saved ✅'; alert('Saved for later 🔖'); }
+
+// ===== 30s VOICE COMMENT =====
+function toggleVoiceBar(id){ document.getElementById('voiceBar'+id).classList.toggle('show'); }
+function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+async function toggleVoiceRecord(id){
+  let btn=document.getElementById('voiceRecBtn'+id);
+  if(!isRecording){
+    try{
+      let stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      mediaRecorder=new MediaRecorder(stream); voiceChunks=[];
+      mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) voiceChunks.push(e.data); };
+      mediaRecorder.onstop=()=>{ let blob=new Blob(voiceChunks,{type:'audio/webm'}); voiceBlobUrl[id]=URL.createObjectURL(blob); document.getElementById('voiceSendBtn'+id).classList.remove('hidden'); document.getElementById('voiceStatus'+id).innerText='✅ Recorded '+fmt(voiceSec)+' — Tap Send Voice'; stream.getTracks().forEach(t=>t.stop()); };
+      mediaRecorder.start(); isRecording=true; voiceSec=0;
+      document.getElementById('voiceTimer'+id).innerText='00:00 / 00:30';
+      document.getElementById('voiceRecordingStatus'+id).classList.remove('hidden');
+      btn.innerText='⏹️ Stop'; btn.classList.replace('bg-red-500','bg-gray-800');
+      document.getElementById('voiceStatus'+id).innerText='🎙️ Recording... Auto-stop at 30s';
+      voiceTimerInt=setInterval(()=>{ voiceSec++; document.getElementById('voiceTimer'+id).innerText=fmt(voiceSec)+' / 00:30'; if(voiceSec>=30) stopVoice(id); },1000);
+    }catch(e){ alert('Mic permission needed 🎙️ — Allow microphone'); }
+  } else stopVoice(id);
+}
+function stopVoice(id){
+  if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();
+  clearInterval(voiceTimerInt); isRecording=false;
+  document.getElementById('voiceRecordingStatus'+id).classList.add('hidden');
+  let btn=document.getElementById('voiceRecBtn'+id); btn.innerText='● Record 30s'; btn.classList.replace('bg-gray-800','bg-red-500');
+}
+function sendVoiceComment(id){
+  if(!voiceBlobUrl[id]) return alert('First record voice');
+  let filter=document.getElementById('voiceFilter'+id).value;
+  let label=filter==='deep'?'Deep Voice':filter==='echo'?'Echo Voice':'Normal Voice';
+  let list=document.getElementById('voiceList'+id);
+  let div=document.createElement('div');
+  div.className='flex items-start gap-2';
+  div.innerHTML=`<img src="https://i.pravatar.cc/150?img=11" class="w-7 h-7 rounded-full mt-0.5" /><div class="bg-gray-100 rounded-2xl px-3 py-2 text-xs max-w-md w-full"><p class="font-bold">You • <span class="text-gray-500 font-normal">${label} • ${fmt(voiceSec)} / 0:30 • Sent ✓✓</span></p><audio controls src="${voiceBlobUrl[id]}" class="w-full mt-1" data-filter="${filter}"></audio><p class="text-[11px] text-gray-600 italic mt-1"><span class="font-semibold not-italic text-blue-600">[Auto-Caption]:</span> "Voice comment (${label}) — 30s max"</p><div class="flex gap-2 mt-1 text-[11px] text-gray-500 font-semibold"><span>Like</span><span>Reply</span><span onclick="this.closest('.flex').remove()" class="text-red-500 cursor-pointer">Delete</span></div></div>`;
+  list.appendChild(div);
+  // Apply Deep / Echo on play
+  let aud=div.querySelector('audio');
+  aud.addEventListener('play',()=>{ if(filter==='deep') aud.playbackRate=0.7; else aud.playbackRate=1; });
+  document.getElementById('voiceBar'+id).classList.remove('show');
+  document.getElementById('voiceSendBtn'+id).classList.add('hidden');
+  document.getElementById('voiceTimer'+id).innerText='00:00 / 00:30';
+  document.getElementById('voiceStatus'+id).innerText='Tap Record → Speak → Auto-stop at 30s';
+  voiceBlobUrl[id]=null; voiceSec=0;
+  alert('Voice Comment Sent ✓✓ • '+label);
+}
+function discardVoice(id){ if(isRecording) stopVoice(id); voiceBlobUrl[id]=null; voiceSec=0; document.getElementById('voiceTimer'+id).innerText='00:00 / 00:30'; document.getElementById('voiceStatus'+id).innerText='Tap Record → Speak → Auto-stop at 30s'; document.getElementById('voiceSendBtn'+id).classList.add('hidden'); }
+function playVoiceDemo(btn){ alert('Playing 30s Voice Comment ▶️'); }
+function addTextComment(id){ let inp=document.getElementById('commentInput'+id); if(!inp.value.trim()) return; alert('Comment Sent ✓✓ • '+inp.value); inp.value=''; }
+
+// ===== OLD FEATURES =====
+let zenActive=false, zenInterval, zenSeconds=15*60;
+function toggleZenMode(){ zenActive=!zenActive; document.body.classList.toggle('zen-active',zenActive); const btn=document.getElementById('zenToggleBtn'), st=document.getElementById('zenStatusText'), banner=document.getElementById('zenBanner'); if(zenActive){ btn.classList.replace('bg-emerald-50','bg-emerald-600'); btn.classList.replace('text-emerald-700','text-white'); st.innerText='Zen Mode: ON'; banner.classList.remove('hidden'); zenInterval=setInterval(()=>{ zenSeconds--; document.getElementById('zenTimer').innerText=`${String(Math.floor(zenSeconds/60)).padStart(2,'0')}:${String(zenSeconds%60).padStart(2,'0')}`; if(zenSeconds<=0) toggleZenMode(); },1000); } else { btn.classList.replace('bg-emerald-600','bg-emerald-50'); btn.classList.replace('text-white','text-emerald-700'); st.innerText='Zen Mode: OFF'; banner.classList.add('hidden'); clearInterval(zenInterval); zenSeconds=15*60; } }
+let adsEnabled=true; function toggleNoAds(){ adsEnabled=!adsEnabled; const ad=document.getElementById('sponsoredPost'); if(ad) ad.style.display=adsEnabled?'block':'none'; document.getElementById('noAdsText').innerText=adsEnabled?'Ads: ON':'Ads: BLOCKED'; }
+function toggleLikeCounts(){ const c=document.getElementById('hideLikesCheckbox').checked; document.querySelectorAll('.like-counter').forEach(el=>el.style.display=c?'none':'flex'); }
+function toggleDataSaver(){ const d=document.getElementById('dataSaverCheckbox').checked; const b=document.getElementById('videoQualityBadge'); b.innerText=d?'480p DATA SAVER':'4K ULTRA HD'; b.className=d?'bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded':'bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded'; }
+function switchFeedTab(tab,btn){ document.querySelectorAll('.feed-tab').forEach(b=>{ b.classList.remove('bg-blue-50','text-blue-600'); b.classList.add('text-gray-600'); }); btn.classList.add('bg-blue-50','text-blue-600'); document.querySelectorAll('.post-card').forEach(p=>{ if(tab==='following') p.style.display=p.dataset.category==='following'?'block':'none'; else p.style.display='block'; }); }
+function toggleAICaptions(){ document.getElementById('aiCaptionsBox').classList.toggle('hidden'); }
+function applyCaption(t){ document.getElementById('postInput').value=t.replace(/^"|"$/g,''); document.getElementById('aiCaptionsBox').classList.add('hidden'); }
+function toggleSchedule(){ document.getElementById('scheduleBox').classList.toggle('hidden'); }
+function publishPost(){ const input=document.getElementById('postInput'), st=document.getElementById('scheduleTime').value, text=input.value.trim(); if(!text) return; if(st){ alert(`Post scheduled for ${new Date(st).toLocaleString()}!`); input.value=''; document.getElementById('scheduleTime').value=''; document.getElementById('scheduleBox').classList.add('hidden'); return; } const feed=document.getElementById('feedContainer'); const np=document.createElement('article'); np.className='post-card bg-white rounded-xl p-4 shadow-sm space-y-3'; np.dataset.category='following'; np.innerHTML=`<div class="flex items-center gap-2.5"><img src="https://i.pravatar.cc/150?img=11" class="w-10 h-10 rounded-full" /><div><h4 class="font-bold text-sm">Alex Rahman</h4><p class="text-xs text-gray-500">Just now • Chronological</p></div></div><p class="text-sm text-gray-800">${text}</p>`; feed.prepend(np); input.value=''; }
+function toggleAISummary(id){ document.getElementById(id).classList.toggle('hidden'); }
+function askMetaAI(id){ document.getElementById(id).classList.toggle('hidden'); }
+function toggleEditHistory(id){ document.getElementById(id).classList.toggle('hidden'); }
+function toggleMenu(id){ document.getElementById(id).classList.toggle('hidden'); }
+function snoozePost(btn){ btn.closest('.post-card').innerHTML='<p class="text-xs text-gray-500 text-center py-4">Post hidden. You will not see updates from this user for 30 days.</p>'; }
+function updateSliderLabel(slider,labelId){ const labels={'1':'Less','2':'Normal','3':'More'}; document.getElementById(labelId).innerText=labels[slider.value]; }
+function votePoll(btn){ btn.classList.add('border-blue-600','bg-blue-50'); }
+</script>
 </body>
-          </html>
+  </html>
