@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autro AI 24-Hour Monitoring - Autrobook</title>
+<style>
+  /* System Default: Dark Green Theme */
+  :root {
+    --bg: #0a1a0f;
+    --card: #13261a;
+    --hover: #1f3d2a;
+    --text: #e4e6eb;
+    --text2: #7a9e80;
+    --border: #1f3d2a;
+    --brand: #10b981;
+    --brand-dark: #059669;
+    --btn-green: #14532d;
+    --btn-green-hover: #166534;
+    --btn-green-border: #15803d;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+  }
+
+  /* Automatic System Light Mode when OS is set to Light */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f0f4f1;
+      --card: #ffffff;
+      --hover: #e2ebe4;
+      --text: #0f1f14;
+      --text2: #4b6352;
+      --border: #d1dfd5;
+      --brand: #059669;
+      --brand-dark: #047857;
+      --btn-green: #15803d;
+      --btn-green-hover: #166534;
+      --btn-green-border: #14532d;
+    }
+  }
+
+  /* Manual Override Classes */
+  body.light {
+    --bg: #f0f4f1;
+    --card: #ffffff;
+    --hover: #e2ebe4;
+    --text: #0f1f14;
+    --text2: #4b6352;
+    --border: #d1dfd5;
+    --brand: #059669;
+    --brand-dark: #047857;
+    --btn-green: #15803d;
+    --btn-green-hover: #166534;
+    --btn-green-border: #14532d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 16px; max-width: 650px; margin: 0 auto; padding-bottom: 50px; transition: background 0.3s, color 0.3s; }
+
+  .header { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .header .nav-btn { cursor: pointer; background: var(--btn-green); color: #ffffff; border: 1px solid var(--btn-green-border); font-size: 16px; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+  .header .nav-btn:hover { background: var(--btn-green-hover); }
+  .header b { font-size: 18px; flex: 1; }
+
+  /* AI Status Card */
+  .ai-status-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+  .ai-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .ai-avatar { width: 48px; height: 48px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 2px solid var(--brand); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+  .ai-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .ai-title b { font-size: 16px; display: block; }
+  .ai-title small { color: var(--text2); font-size: 12px; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .metric-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
+  .metric-box b { font-size: 18px; color: var(--brand); display: block; }
+  .metric-box small { font-size: 11px; color: var(--text2); }
+
+  /* Section Tabs */
+  .section-title { font-size: 13px; color: var(--brand); font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 10px; }
+  
+  .monitor-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+  .monitor-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text2); }
+  .monitor-content { font-size: 14px; line-height: 1.4; word-break: break-word; }
+  
+  .status-pill { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 6px; font-weight: bold; }
+  .status-pill.reviewing { background: rgba(245, 158, 11, 0.2); color: var(--warn); border: 1px solid var(--warn); }
+  .status-pill.restricted { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+  .status-pill.cleared { background: rgba(16, 185, 129, 0.2); color: var(--brand); border: 1px solid var(--brand); }
+
+  /* Dark Green Action Buttons */
+  .action-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .ai-btn { background: var(--btn-green); border: 1px solid var(--btn-green-border); color: #ffffff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+  .ai-btn:hover { background: var(--btn-green-hover); }
+  .ai-btn:active { transform: scale(0.98); }
+  .ai-btn.danger { background: #7f1d1d; border-color: #991b1b; color: #ffffff; }
+  .ai-btn.danger:hover { background: #991b1b; }
+
+  .no-data { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); }
+  
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--btn-green); border: 1px solid var(--btn-green-border); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="header">
+  <button class="nav-btn" onclick="goBack()" title="Back">←</button>
+  <b>Autro AI 24h Command Center</b>
+  <button class="nav-btn" onclick="refreshDashboard()" title="Refresh Data">🔄</button>
+</div>
+
+<!-- AI Overview Card -->
+<div class="ai-status-card">
+  <div class="ai-header">
+    <div class="ai-avatar">
+      <img src="logo.png" alt="Autro AI" onerror="this.style.display='none'; this.parentElement.innerHTML='🤖';">
+    </div>
+    <div class="ai-title">
+      <b>Autro AI Core Active</b>
+      <small>Continuous 24-Hour Community Standards Engine</small>
+    </div>
+  </div>
+  <p style="font-size: 13px; color: var(--text2); line-height: 1.4;">
+    Autro AI automatically inspects new comments and posts in real time. Flagged content undergoes a mandatory 24-hour verification window before permanent action or restriction is enforced.
+  </p>
+  
+  <div class="metrics-grid">
+    <div class="metric-box">
+      <b id="statScanning">0</b>
+      <small>Under 24h Scan</small>
+    </div>
+    <div class="metric-box">
+      <b id="statRestricted">0</b>
+      <small>Restricted Users</small>
+    </div>
+    <div class="metric-box">
+      <b id="statCleared">0</b>
+      <small>Cleared & Safe</small>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">🕒 Items Under 24-Hour Observation Window</div>
+<div id="monitoringContainer"></div>
+
+<script>
+function applySystemTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light');
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else if (savedTheme === 'dark') {
+    document.body.classList.remove('light');
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    // Follow OS / System Default
+    document.body.classList.remove('light');
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+applySystemTheme();
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applySystemTheme);
+
+function loadMonitoringData(){
+  let monitoredItems = [];
+  
+  // Scan localStorage keys for comments
+  for (let i = 0; i < localStorage.length; i++) {
+    let key = localStorage.key(i);
+    if (key && key.startsWith('ab_comments_')) {
+      try {
+        let comments = JSON.parse(localStorage.getItem(key) || '[]');
+        comments.forEach(c => {
+          let timeElapsed = Date.now() - c.time;
+          let hoursLeft = Math.max(0, 24 - (timeElapsed / (1000 * 60 * 60))).toFixed(1);
+          
+          monitoredItems.push({
+            id: c.id,
+            storageKey: key,
+            author: c.name || 'Anonymous',
+            text: c.text || '[Voice Comment]',
+            time: c.time,
+            hoursLeft: hoursLeft,
+            reported: c.reported || false,
+            status: c.reported ? (hoursLeft <= 0 ? 'Validated & Removed' : 'Under 24h Review') : 'Active / Monitored'
+          });
+        });
+      } catch(e) {}
+    }
+  }
+
+  // Update Stats
+  let scanningCount = monitoredItems.filter(x => parseFloat(x.hoursLeft) > 0).length;
+  let restrictedCount = monitoredItems.filter(x => x.reported).length;
+  let clearedCount = monitoredItems.filter(x => !x.reported).length;
+
+  document.getElementById('statScanning').innerText = scanningCount;
+  document.getElementById('statRestricted').innerText = restrictedCount;
+  document.getElementById('statCleared').innerText = clearedCount;
+
+  const container = document.getElementById('monitoringContainer');
+  if(monitoredItems.length === 0){
+    container.innerHTML = `<div class="no-data">✨ All clear! No items currently flagged or under 24h AI observation.</div>`;
+    return;
+  }
+
+  container.innerHTML = monitoredItems.map(item => `
+    <div class="monitor-card">
+      <div class="monitor-meta">
+        <b>Author: ${escapeHtml(item.author)}</b>
+        <span class="status-pill ${item.reported ? 'restricted' : 'cleared'}">${item.status}</span>
+      </div>
+      <div class="monitor-content">${escapeHtml(item.text)}</div>
+      <div class="monitor-meta">
+        <span>⏳ Time remaining in 24h window: <b>${item.hoursLeft} hours</b></span>
+        <small>${timeAgo(item.time)}</small>
+      </div>
+      <div class="action-row">
+        <button class="ai-btn" onclick="aiOverrideClear('${item.storageKey}', '${item.id}')">✅ AI Clear & Approve</button>
+        <button class="ai-btn danger" onclick="aiImmediateRemove('${item.storageKey}', '${item.id}')">🗑️ Enforce Removal & Issue</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function aiOverrideClear(storageKey, id){
+  let items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  let item = items.find(x => x.id === id);
+  if(item){
+    item.reported = false;
+    item.userIssue = null;
+    localStorage.setItem(storageKey, JSON.stringify(items));
+    loadMonitoringData();
+    toast('🤖 Autro AI: Item cleared and restored to feed.');
+  }
+}
+
+function aiImmediateRemove(storageKey, id){
+  let items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  items = items.filter(x => x.id !== id);
+  localStorage.setItem(storageKey, JSON.stringify(items));
+  loadMonitoringData();
+  toast('🤖 Autro AI: Item immediately removed and penalty applied.');
+}
+
+function refreshDashboard(){
+  loadMonitoringData();
+  toast('Dashboard refreshed ✓');
+}
+
+function timeAgo(t){
+  const mins = Math.floor((Date.now() - t) / 1000 / 60);
+  if(mins < 1) return 'Just now';
+  if(mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+function escapeHtml(str) {
+  return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+function goBack(){
+  if(window.history.length > 1){
+    history.back();
+  } else {
+    window.location.href = 'main-settings.html';
+  }
+}
+
+loadMonitoringData();
+</script>
+</body>
+</html>
