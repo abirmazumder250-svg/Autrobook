@@ -1,129 +1,160 @@
-// ========== AUTROBOOK PAGE NAVIGATION SYSTEM ==========
-
-// Load a component into a div. Used for Header and Bottom Nav
-async function loadComponent(containerId, filePath) {
-  const container = document.getElementById(containerId);
-  if (!container) return console.error('Container not found:', containerId);
-  
-  try {
-    const response = await fetch(filePath);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const html = await response.text();
-    container.innerHTML = html;
-    
-    // Run any script tags inside loaded html
-    container.querySelectorAll('script').forEach(oldScript => {
-      const newScript = document.createElement('script');
-      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-      newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-      oldScript.parentNode.replaceChild(newScript, oldScript);
-    });
-    
-  } catch (error) {
-    console.error('Error loading component:', filePath, error);
-    container.innerHTML = `<div class="card" style="color:var(--danger)">Failed to load ${filePath}</div>`;
+// ========== REACTION + SOUND SYSTEM ==========
+function playSound(id){
+  const sound = document.getElementById(id);
+  if(sound){
+    sound.currentTime = 0; // restart
+    sound.play().catch(e => console.log("Sound error:", e));
   }
 }
 
-// Main function to navigate between pages
-let currentPage = '';
+// Like / Dislike React
+function reactPost(btn, type){
+  const postCard = btn.closest('.post-card');
+  
+  // 1. Add pop animation
+  btn.classList.add('pop');
+  setTimeout(() => btn.classList.remove('pop'), 300);
 
-async function navigateTo(pagePath, addToHistory = true) {
-  const app = document.getElementById('app-container');
-  if (!app) return;
-  
-  // Don't reload same page
-  if (currentPage === pagePath) return;
-  
-  // Show loading
-  app.innerHTML = `
-    <div class="card" style="text-align:center;padding:40px">
-      <p>Loading...</p>
-    </div>
-  `;
-  window.scrollTo(0, 0);
-  
-  try {
-    const response = await fetch(pagePath);
-    if (!response.ok) throw new Error(`Page not found: ${pagePath}`);
-    
-    const html = await response.text();
-    app.innerHTML = html;
-    currentPage = pagePath;
-    
-    // Update URL without reload
-    if (addToHistory) {
-      history.pushState({ page: pagePath }, '', `#${pagePath.replace('pages/', '').replace('.html', '')}`);
-    }
-    
-    // Update active tab in bottom nav
-    updateActiveNav(pagePath);
-    
-    // Run scripts inside loaded page
-    app.querySelectorAll('script').forEach(oldScript => {
-      const newScript = document.createElement('script');
-      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-      newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-      oldScript.parentNode.replaceChild(newScript, oldScript);
-    });
-    
-  } catch (error) {
-    console.error('Navigation Error:', error);
-    app.innerHTML = `
-      <div class="card" style="text-align:center">
-        <h3 style="color:var(--danger)">404 - Page Not Found</h3>
-        <p>File: ${pagePath}</p>
-        <button onclick="navigateTo('pages/01-feed.html')">Go to Home</button>
-      </div>
-    `;
+  // 2. Play Sound + Toggle Active
+  if(type === 'like'){
+    playSound('like-sound');
+    btn.classList.toggle('like-active');
+    // remove dislike if active
+    const dislikeBtn = postCard.querySelector('.action-btn[onclick*="dislike"]');
+    dislikeBtn.classList.remove('dislike-active');
+    btn.innerHTML = btn.classList.contains('like-active') ? '👍 Liked' : '👍 Like';
   }
+  
+  if(type === 'dislike'){
+    playSound('dislike-sound');
+    btn.classList.toggle('dislike-active');
+    // remove like if active
+    const likeBtn = postCard.querySelector('.action-btn[onclick*="like"]');
+    likeBtn.classList.remove('like-active');
+    btn.innerHTML = btn.classList.contains('dislike-active') ? '👎 Disliked' : '👎 Dislike';
+  }
+  
+  // TODO: Here send to backend to save reaction
 }
 
-// Update active class in bottom navigation
-function updateActiveNav(pagePath) {
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.remove('active');
-    if (item.getAttribute('data-page') === pagePath) {
-      item.classList.add('active');
-    }
+// ========== POST MENU SYSTEM ==========
+function togglePostMenu(btn){
+  const dropdown = btn.nextElementSibling;
+  document.querySelectorAll('.post-menu-dropdown').forEach(d => {
+    if(d !== dropdown) d.classList.add('hidden');
   });
+  dropdown.classList.toggle('hidden');
 }
 
-// Handle browser back/forward button
-window.addEventListener('popstate', function(event) {
-  if (event.state && event.state.page) {
-    navigateTo(event.state.page, false);
-  } else {
-    navigateTo('pages/01-feed.html', false);
+// Close menu when clicking outside
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.post-menu-wrapper')){
+    document.querySelectorAll('.post-menu-dropdown').forEach(d => d.classList.add('hidden'));
   }
 });
 
-// Quick helper to go to page by name only
-function goTo(pageName) {
-  navigateTo(`pages/${pageName}.html`);
+// ========== REPORT SYSTEM ==========
+let reportTarget = {type: '', id: ''};
+
+function reportPost(postId){
+  reportTarget = {type: 'post', id: postId};
+  document.getElementById('report-modal').classList.remove('hidden');
+  togglePostMenu(document.querySelector(`[data-post-id="${postId}"] .post-menu`));
 }
 
-// Show Toast Notification
-function showToast(message) {
-  let toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    background: var(--brand); color: white; padding: 12px 20px;
-    border-radius: 20px; z-index: 9999; font-weight: 600;
-    animation: fadeInOut 2s forwards;
-  `;
-  toast.innerText = message;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
+function reportComment(commentId){
+  reportTarget = {type: 'comment', id: commentId};
+  document.getElementById('report-modal').classList.remove('hidden');
 }
 
-// Add fade animation
-const style = document.createElement('style');
-style.innerHTML = `
-@keyframes fadeInOut {
-  0% {opacity: 0; transform: translateX(-50%) translateY(20px)}
-  20% {opacity: 1; transform: translateX(-50%) translateY(0)}
-  80% {opacity: 1; transform: translateX(-50%) translateY(0)}
-  100% {opacity: 0; transform: translateX(-50%) translateY(-20px)}
-}`;
-document.head.appendChild(style);
+function submitReport(reason){
+  console.log(`Reporting ${reportTarget.type} ID: ${reportTarget.id} for: ${reason}`);
+  closeModal();
+  showToast(`Thank you. We received your report: ${reason}`);
+  // TODO: Send to backend
+}
+
+function closeModal(){
+  document.getElementById('report-modal').classList.add('hidden');
+}
+
+// ========== COMMENT SYSTEM ==========
+function toggleComments(btn){
+  const postCard = btn.closest('.post-card');
+  const commentSection = postCard.querySelector('.comment-section');
+  const disabledMsg = postCard.querySelector('.comments-disabled');
+  
+  commentSection.classList.toggle('hidden');
+  disabledMsg.classList.toggle('hidden');
+  
+  const isHidden = commentSection.classList.contains('hidden');
+  btn.innerText = isHidden ? '🔓 Turn On Comments' : '🔒 Turn Off Comments';
+  showToast(isHidden ? 'Comments turned off' : 'Comments turned on');
+}
+
+function openComments(){
+  showToast('Comment box focused');
+}
+
+// ========== VOICE COMMENT 30s ==========
+let mediaRecorder;
+let audioChunks = [];
+let recordingTimer;
+let recordingSeconds = 0;
+
+async function startVoiceComment(btn){
+  if(mediaRecorder && mediaRecorder.state === "recording"){
+    // Stop recording
+    mediaRecorder.stop();
+    clearInterval(recordingTimer);
+    btn.innerText = '🎤';
+    return;
+  }
+  
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    recordingSeconds = 0;
+    
+    btn.innerText = '⏹️ 0s';
+    btn.style.background = 'var(--danger)';
+    
+    // 30 second timer
+    recordingTimer = setInterval(() => {
+      recordingSeconds++;
+      btn.innerText = `⏹️ ${recordingSeconds}s`;
+      if(recordingSeconds >= 30){
+        mediaRecorder.stop();
+        clearInterval(recordingTimer);
+      }
+    }, 1000);
+    
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      console.log('Voice comment recorded:', audioBlob);
+      btn.innerText = '🎤';
+      btn.style.background = 'var(--brand)';
+      stream.getTracks().forEach(track => track.stop());
+      showToast('Voice comment ready to send!');
+      // TODO: Upload audioBlob to server
+    };
+    
+    mediaRecorder.start();
+    showToast('Recording... Hold max 30s');
+    
+  } catch(err){
+    console.error('Mic error:', err);
+    showToast('Microphone permission denied');
+  }
+}
+
+// ========== OTHER HELPERS ==========
+function savePost(){
+  showToast('Post saved!');
+  closeModal();
+}
+function sharePost(){
+  showToast('Share options coming soon!');
+}
