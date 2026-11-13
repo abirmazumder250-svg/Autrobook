@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Posts - Autrobook</title>
+<style>
+  /* System Default: Dark Green Theme */
+  :root {
+    --bg: #0a1a0f;
+    --card: #13261a;
+    --hover: #1f3d2a;
+    --text: #e4e6eb;
+    --text2: #7a9e80;
+    --border: #1f3d2a;
+    --brand: #10b981;
+    --brand-dark: #059669;
+    --danger: #ef4444;
+  }
+
+  /* Automatic System Light Mode when OS is set to Light */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f0f4f1;
+      --card: #ffffff;
+      --hover: #e2ebe4;
+      --text: #0f1f14;
+      --sub: #4b6352;
+      --border: #d1dfd5;
+      --brand: #059669;
+      --brand-dark: #047857;
+    }
+  }
+
+  /* Manual Override Classes */
+  body.light {
+    --bg: #f0f4f1;
+    --card: #ffffff;
+    --hover: #e2ebe4;
+    --text: #0f1f14;
+    --text2: #4b6352;
+    --border: #d1dfd5;
+    --brand: #059669;
+    --brand-dark: #047857;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 12px; max-width: 600px; margin: 0 auto; padding-bottom: 50px; transition: background 0.3s, color 0.3s; }
+
+  .header { display: flex; align-items: center; gap: 15px; padding: 12px 0; position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); }
+  .header span { cursor: pointer; padding: 4px 8px; border-radius: 50%; color: var(--brand); }
+  .header span:hover { background: var(--hover); }
+  .header b { font-size: 18px; flex: 1; }
+
+  /* Post Creator Box */
+  .post-box { display: flex; gap: 12px; padding: 14px; background: var(--card); border-radius: 12px; margin: 12px 0; border: 1px solid var(--border); align-items: center; cursor: pointer; }
+  .post-box img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--brand); }
+  .post-box .fake-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 16px; color: var(--text2); font-size: 14px; }
+
+  /* Post Card */
+  .post { background: var(--card); margin: 14px 0; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+  .post-header { display: flex; align-items: center; gap: 12px; padding: 14px; position: relative; }
+  .post-header img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+  .post-header .menu-btn { margin-left: auto; cursor: pointer; font-size: 18px; color: var(--text2); padding: 4px 8px; border-radius: 50%; }
+  .post-header .menu-btn:hover { background: var(--hover); }
+
+  .post-text { padding: 0 14px 10px; font-size: 15px; line-height: 1.4; word-break: break-word; }
+  .post-image { width: 100%; max-height: 400px; object-fit: cover; display: block; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+  /* Reaction & Action Bar */
+  .react-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-size: 13px; color: var(--text2); border-bottom: 1px solid var(--border); }
+  .react-btns { display: flex; position: relative; }
+  .react-btn { flex: 1; text-align: center; cursor: pointer; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: bold; font-size: 14px; color: var(--text2); transition: background 0.2s; }
+  .react-btn:hover { background: var(--hover); color: var(--brand); }
+
+  /* Floating Reaction Picker */
+  .react-picker { display: none; position: absolute; bottom: 110%; left: 10px; background: var(--card); border: 1px solid var(--border); padding: 8px 12px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); gap: 10px; z-index: 20; }
+  .react-picker span { font-size: 24px; cursor: pointer; transition: transform 0.2s; }
+  .react-picker span:hover { transform: scale(1.3); }
+
+  /* Comments Section */
+  .comments-section { padding: 10px 14px; background: var(--bg); border-top: 1px solid var(--border); display: none; }
+  .comments-section.active { display: block; }
+  .comment-item { display: flex; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+  .comment-bubble { background: var(--card); padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); flex: 1; }
+  
+  .comment-input-box { display: flex; gap: 8px; margin-top: 8px; }
+  .comment-input-box input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 8px 14px; color: var(--text); outline: none; font-size: 13px; }
+  
+  /* Dark Green Buttons */
+  .comment-input-box button { background: var(--brand); color: #fff; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 13px; transition: background 0.2s; }
+  .comment-input-box button:hover { background: var(--brand-dark); }
+
+  .no-data { text-align: center; padding: 60px 20px; color: var(--text2); font-size: 15px; }
+
+  /* Toast Notification */
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--brand); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="header">
+  <span onclick="goBack()" title="Back">←</span>
+  <b>Posts Feed</b>
+  <span id="postTotal" style="font-size: 14px; color: var(--text2);">0 Posts</span>
+</div>
+
+<!-- POST CREATOR BOX -->
+<div class="post-box" onclick="openCreatePostModal()">
+  <img id="myAvatar" src="https://via.placeholder.com/40">
+  <div class="fake-input">What's on your mind? Share a thought or photo...</div>
+</div>
+
+<div id="postsContainer"></div>
+
+<audio id="reactSound" src="https://www.myinstants.com/media/sounds/facebook-pop.mp3" preload="auto"></audio>
+
+<script>
+const user = JSON.parse(localStorage.getItem('autrobook_user') || '{}');
+document.getElementById('myAvatar').src = localStorage.getItem('my_avatar') || user.profilePic || 'https://via.placeholder.com/40';
+
+function applySystemTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light');
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else if (savedTheme === 'dark') {
+    document.body.classList.remove('light');
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.body.classList.remove('light');
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+applySystemTheme();
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applySystemTheme);
+
+function loadPosts(){
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  document.getElementById('postTotal').innerText = posts.length + (posts.length === 1 ? ' Post' : ' Posts');
+  const container = document.getElementById('postsContainer');
+  
+  if(posts.length === 0){
+    container.innerHTML = `<div class="no-data">✨ No posts yet.<br>Click above to share your first post!</div>`;
+    return;
+  }
+  
+  container.innerHTML = posts.map((p, i) => `
+    <div class="post">
+      <div class="post-header">
+        <img src="${localStorage.getItem('my_avatar') || user.profilePic || 'https://via.placeholder.com/40'}" onerror="this.src='https://via.placeholder.com/40'">
+        <div>
+          <b>${user.name || 'Autrobook User'}</b>
+          <br><small style="color:var(--text2)">${timeAgo(p.time)}</small>
+        </div>
+        <div class="menu-btn" onclick="deletePost(${i})" title="Delete Post">🗑️</div>
+      </div>
+      
+      <div class="post-text">${escapeHtml(p.text)}</div>
+      ${p.img ? `<img src="${p.img}" class="post-image" onerror="this.style.display='none'">` : ''}
+      
+      <div class="react-bar">
+        <span>${getTotalReact(p.reacts)} reactions</span>
+        <span>${(p.comments || []).length} comments</span>
+      </div>
+      
+      <div class="react-btns">
+        <div class="react-btn" onmouseenter="showPicker(${i})" onclick="addReact(${i}, 'like')">
+          <span id="reactIcon${i}">${p.myReact || '👍'}</span> ${p.myReactText || 'Like'}
+        </div>
+        <div class="react-btn" onclick="toggleComments(${i})">
+          💬 Comment
+        </div>
+        
+        <div class="react-picker" id="picker${i}" onmouseleave="hidePicker(${i})">
+          <span onclick="addReact(${i}, 'like', '👍', 'Like')">👍</span>
+          <span onclick="addReact(${i}, 'love', '❤️', 'Love')">❤️</span>
+          <span onclick="addReact(${i}, 'care', '🥰', 'Care')">🥰</span>
+          <span onclick="addReact(${i}, 'haha', '😆', 'Haha')">😆</span>
+          <span onclick="addReact(${i}, 'wow', '😮', 'Wow')">😮</span>
+          <span onclick="addReact(${i}, 'sad', '😢', 'Sad')">😢</span>
+          <span onclick="addReact(${i}, 'angry', '😠', 'Angry')">😠</span>
+        </div>
+      </div>
+
+      <!-- Comments Drawer -->
+      <div class="comments-section" id="commentsSection${i}">
+        <div id="commentList${i}">
+          ${(p.comments || []).map(c => `
+            <div class="comment-item">
+              <div class="comment-bubble">
+                <b>${c.name}</b> ${escapeHtml(c.text)}
+                <div style="font-size:10px; color:var(--text2); margin-top:2px;">${timeAgo(c.time)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="comment-input-box">
+          <input type="text" id="commentInput${i}" placeholder="Write a comment..." onkeypress="handleCommentKey(event, ${i})">
+          <button onclick="postComment(${i})">Post</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getTotalReact(r){ 
+  return Object.values(r || {}).reduce((a, b) => a + b, 0); 
+}
+
+function timeAgo(t){
+  const mins = Math.floor((Date.now() - t) / 1000 / 60);
+  if(mins < 1) return 'Just now';
+  if(mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+function showPicker(i){ document.getElementById('picker' + i).style.display = 'flex'; }
+function hidePicker(i){ document.getElementById('picker' + i).style.display = 'none'; }
+
+function addReact(i, type, emoji = '👍', label = 'Like'){
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  if(!posts[i].reacts) posts[i].reacts = {};
+  
+  posts[i].reacts[type] = (posts[i].reacts[type] || 0) + 1;
+  posts[i].myReact = emoji;
+  posts[i].myReactText = label;
+  
+  localStorage.setItem('my_posts', JSON.stringify(posts));
+  
+  const sound = document.getElementById('reactSound');
+  if(sound) { sound.currentTime = 0; sound.play().catch(()=>{}); }
+  
+  hidePicker(i);
+  loadPosts();
+}
+
+function toggleComments(i){
+  const sec = document.getElementById('commentsSection' + i);
+  sec.classList.toggle('active');
+}
+
+function postComment(i){
+  const input = document.getElementById('commentInput' + i);
+  const text = input.value.trim();
+  if(!text) return;
+  
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  if(!posts[i].comments) posts[i].comments = [];
+  
+  posts[i].comments.push({
+    name: user.name || 'You',
+    text: text,
+    time: Date.now()
+  });
+  
+  localStorage.setItem('my_posts', JSON.stringify(posts));
+  input.value = '';
+  loadPosts();
+  document.getElementById('commentsSection' + i).classList.add('active');
+}
+
+function handleCommentKey(e, i){
+  if(e.key === 'Enter') postComment(i);
+}
+
+function openCreatePostModal(){
+  const text = prompt("What's on your mind?");
+  if(text === null) return;
+  
+  let imgUrl = prompt("Optional: Enter image URL (or leave blank):", "");
+  
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  posts.unshift({
+    text: text || '',
+    img: imgUrl ? imgUrl.trim() : null,
+    time: Date.now(),
+    reacts: {},
+    comments: []
+  });
+  
+  localStorage.setItem('my_posts', JSON.stringify(posts));
+  loadPosts();
+  showToast('Post published successfully! 🎉');
+}
+
+function deletePost(i){
+  if(!confirm('Are you sure you want to delete this post?')) return;
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  posts.splice(i, 1);
+  localStorage.setItem('my_posts', JSON.stringify(posts));
+  loadPosts();
+  showToast('Post deleted 🗑️');
+}
+
+function escapeHtml(str) {
+  return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+function goBack(){
+  if(window.history.length > 1){
+    history.back();
+  } else {
+    window.location.href = 'home.html';
+  }
+}
+
+loadPosts();
+</script>
+</body>
+</html>
