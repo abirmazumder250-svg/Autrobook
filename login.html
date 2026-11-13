@@ -17,6 +17,21 @@ body{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding:20px; transition: background 0.3s, color 0.3s;
 }
+/* লোগোর উপরে ট্রান্সলেশন বার স্টাইল */
+.lang-bar{
+  margin-bottom: 20px;
+  text-align: center;
+}
+.lang-bar select{
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid light-dark(#ccc, #2c2c2e);
+  background: light-dark(#f5f5f5, #1c1c1e);
+  color: light-dark(#111, white);
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+}
 .logo{text-align:center;margin-bottom:25px}
 .logo img{
   width:70px; height:70px; border-radius:18px; object-fit:cover;
@@ -38,8 +53,8 @@ input:focus{border-color:var(--brand-green)}
 }
 .btn:disabled{background:#555}
 .forgot{text-align:center;margin:15px 0;font-size:15px;cursor:pointer;color:var(--brand-green)}
-.msg{text-align:center;font-size:14px;min-height:20px;margin-top:10px}
-.msg.error{color:#ff5252}
+.msg{text-align:center;font-size:15px;font-weight:bold;min-height:20px;margin-top:10px}
+.msg.error{color:#ff3333 !important;}
 .msg.success{color:#4caf50}
 .step{display:none}
 .otp-box{text-align:center;letter-spacing:10px;font-size:24px;font-weight:bold}
@@ -57,23 +72,37 @@ canvas{display:none}
 </style>
 </head>
 <body>
+
+<!-- লোগোর উপরে ট্রান্সলেশন বার (মালয়েশিয়া সহ) -->
+<div class="lang-bar">
+  <select id="langSelect" onchange="changeLanguage()">
+    <option value="en">English (US)</option>
+    <option value="ms">🇲🇾 Bahasa Melayu (Malaysia)</option>
+    <option value="bn">বাংলা</option>
+    <option value="hi">हिन्दी</option>
+    <option value="ar">العربية</option>
+    <option value="es">Español</option>
+  </select>
+</div>
+
 <div class="logo">
   <img src="logo.png" alt="Autrobook" onerror="this.src='https://via.placeholder.com/70/1c1c1e/198754?text=A'">
 </div>
+
 <div class="wrap">
 <!-- STEP 1 : LOGIN -->
 <div id="step1" class="step" style="display:block">
-  <div class="title">Please Login</div>
-  <div class="label">Email Address :</div>
+  <div class="title" data-key="loginTitle">Please Login</div>
+  <div class="label" data-key="emailLabel">Email Address :</div>
   <input type="email" id="email" placeholder="Enter your email">
-  <div class="label">Password :</div>
+  <div class="label" data-key="passLabel">Password :</div>
   <input type="password" id="password" placeholder="Enter your password">
-  <button class="btn" onclick="login()">Login</button>
-  <div class="forgot" onclick="showForget()">Forget password?</div>
+  <button class="btn" onclick="login()" data-key="loginBtn">Login</button>
+  <div class="forgot" onclick="showForget()" data-key="forgotText">Forget password?</div>
   <div class="msg" id="msg1"></div>
   <div class="bottom-links">
-    <span onclick="goSignup()">Signup New Account</span>
-    <span onclick="selfieLogin()">Live Selfie Verification</span>
+    <span onclick="goSignup()" data-key="signupText">Signup New Account</span>
+    <span onclick="selfieLogin()" data-key="selfieText">Live Selfie Verification</span>
   </div>
 </div>
 
@@ -128,6 +157,35 @@ let otpTime = 0;
 let otpTries = 0;
 let captchaVerified = false;
 let countdownInterval = null;
+
+// মালয়েশিয়াসহ ভাষা ডিকশনারি
+let currentLang = localStorage.getItem('lang') || 'en';
+const translations = {
+  en: { loginTitle: "Please Login", emailLabel: "Email Address :", passLabel: "Password :", loginBtn: "Login", forgotText: "Forget password?", signupText: "Signup New Account", selfieText: "Live Selfie Verification" },
+  ms: { loginTitle: "Sila Log Masuk", emailLabel: "Alamat E-mel :", passLabel: "Kata Laluan :", loginBtn: "Log Masuk", forgotText: "Lupa kata laluan?", signupText: "Daftar Akaun Baru", selfieText: "Pengesahan Selfie Langsung" },
+  bn: { loginTitle: "দয়া করে লগইন করুন", emailLabel: "ইমেইল ঠিকানা :", passLabel: "পাসওয়ার্ড :", loginBtn: "লগইন", forgotText: "পাসওয়ার্ড ভুলে গেছেন?", signup_text: "নতুন অ্যাকাউন্ট তৈরি করুন", selfieText: "লাইভ সেলফি ভেরিফিকেশন" },
+  hi: { loginTitle: "कृपया लॉगिन करें", emailLabel: "ईमेल एड्रेस :", passLabel: "पासवर्ड :", loginBtn: "लॉगिन", forgotText: "पासवर्ड भूल गए?", signupText: "नया अकाउंट बनाएं", selfieText: "लाइव सेल्फी वेरिफिकेशन" },
+  ar: { loginTitle: "الرجاء تسجيل الدخول", emailLabel: "عنوان البريد الإلكتروني :", passLabel: "كلمة المرور :", loginBtn: "تسجيل الدخول", forgotText: "هل نسيت كلمة المرور؟", signupText: "إنشاء حساب جديد", selfieText: "التحقق من السيلفي المباشر" },
+  es: { loginTitle: "Por favor inicie sesión", emailLabel: "Correo Electrónico :", passLabel: "Contraseña :", loginBtn: "Iniciar Sesión", forgotText: "¿Olvidó su contraseña?", signupText: "Registrar Nueva Cuenta", selfieText: "Verificación Facial en Vivo" }
+};
+
+function applyLanguage(lang){
+  currentLang = lang; localStorage.setItem('lang', lang);
+  document.body.style.direction = (lang==='ar') ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const key = el.getAttribute('data-key');
+    if(translations[lang] && translations[lang][key]){ el.innerText = translations[lang][key]; }
+  });
+}
+
+window.changeLanguage = () => {
+  applyLanguage(document.getElementById('langSelect').value);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('langSelect').value = currentLang;
+  applyLanguage(currentLang);
+});
 
 function onCaptchaSuccess(){
   captchaVerified = true;
