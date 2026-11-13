@@ -1,60 +1,293 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Profile Status - Autrobook</title> <style> 
-:root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; --blue:#1877f2; --brand:#4caf50; } 
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;} 
-body{background:var(--bg);color:var(--text);text-align:center;} 
-.header{display:flex;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);} 
-.header b{flex:1;text-align:center;font-size:18px;} 
-.profile-pic{width:100px;height:100px;border-radius:50%;margin:20px auto;position:relative;} 
-.profile-pic img{width:100%;height:100%;border-radius:50%;object-fit:cover;} 
-.blue-dot{position:absolute;bottom:5px;right:5px;width:25px;height:25px;background:var(--blue);border-radius:50%;border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;} 
-.section{padding:16px;text-align:left;} 
-.section h2{font-size:18px;margin:16px 0 8px;} 
-.item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;} 
-.item:hover{background:#2e2f30;} 
-.item .dot{width:10px;height:10px;border-radius:50%;background:var(--blue);} 
-.item .gray{width:10px;height:10px;border-radius:50%;background:#555;} 
-</style> </head> <body> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Status - Autrobook</title>
+<style>
+  :root {
+    --bg: #0a1a0f;
+    --card: #13261a;
+    --hover: #1f3d2a;
+    --text: #e4e6eb;
+    --sub: #7a9e80;
+    --border: #1f3d2a;
+    --brand: #10b981;
+    --warn: #f59e0b;
+  }
+  body.light {
+    --bg: #f0f2f5;
+    --card: #ffffff;
+    --hover: #e4e6eb;
+    --text: #050505;
+    --sub: #65676b;
+    --border: #ddd;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: var(--bg); color: var(--text); text-align: center; padding-bottom: 40px; transition: background 0.3s; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
+  .header span { cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 50%; }
+  .header span:hover { background: var(--hover); }
+  .header b { font-size: 18px; }
+
+  .container { max-width: 600px; margin: 0 auto; padding: 0 14px; }
+
+  /* Profile Avatar & Black Verification Badge */
+  .profile-pic { width: 100px; height: 100px; border-radius: 50%; margin: 22px auto 12px; position: relative; border: 3px solid var(--brand); }
+  .profile-pic img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+  .verify-badge { position: absolute; bottom: 2px; right: 2px; width: 26px; height: 26px; background: #000; color: #fff; border: 2px solid var(--brand); border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; }
+
+  .profile-meta { font-size: 13px; color: var(--sub); margin-top: 4px; }
+
+  /* Health Standing Banner */
+  .standing-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-top: 18px; text-align: left; display: flex; align-items: center; gap: 12px; }
+  .standing-icon { width: 42px; height: 42px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+
+  /* Sections & Items */
+  .section { margin-top: 20px; text-align: left; }
+  .section h2 { font-size: 15px; color: var(--sub); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-left: 4px; }
+  .card-group { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s; }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: var(--hover); }
+  .item-icon { font-size: 20px; width: 28px; text-align: center; }
+
+  .status-line { font-size: 12px; color: var(--sub); margin-top: 3px; display: flex; align-items: center; gap: 6px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--brand); }
+  .dot.gray { background: #6b7280; }
+  .dot.warn { background: var(--warn); }
+
+  /* Bottom Detail Sheet */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 100; align-items: flex-end; justify-content: center; }
+  .modal-sheet { background: var(--card); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; width: 100%; max-width: 600px; padding: 20px; text-align: left; }
+  .modal-sheet h3 { font-size: 18px; margin-bottom: 8px; }
+  .modal-sheet p { font-size: 14px; color: var(--sub); line-height: 1.5; margin-bottom: 16px; }
+  .modal-btn { width: 100%; background: var(--brand); color: #fff; border: none; padding: 11px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
 
 <div class="header">
-<span onclick="history.back()">←</span>
-<b>Profile status</b>
-<span>👤</span>
+  <span onclick="goBack()" title="Back">←</span>
+  <b>Profile Status</b>
+  <span onclick="refreshStatus()" title="Refresh">🔄</span>
 </div>
 
-<div class="profile-pic">
-<img id="profilePic" src="https://via.placeholder.com/100/555/fff">
-<div class="blue-dot">✓</div>
-</div>
-<h2 id="profileName">User Name</h2>
+<div class="container">
+  <div class="profile-pic">
+    <img id="profilePic" src="https://via.placeholder.com/100/13261a/4caf50?text=User" onerror="this.src='https://via.placeholder.com/100/13261a/4caf50?text=User'">
+    <div class="verify-badge" id="verifyBadge" title="Verified Profile">✓</div>
+  </div>
+  <h2 id="profileName">User Name</h2>
+  <div class="profile-meta" id="profileRole">Standard Member • Autrobook</div>
 
-<div class="section">
-<h2>Features</h2>
-<div class="item">
-<span>⭐</span>
-<div><b>Recommendations</b><div style="font-size:12px"><span class="dot"></span> Active</div></div>
-<span style="margin-left:auto">›</span>
-</div>
-<div class="item">
-<span>$</span>
-<div><b>Monetization</b><div style="font-size:12px"><span class="gray"></span> Not Available Now</div></div>
-<span style="margin-left:auto">›</span>
-</div>
-<div class="item">
-<span>🏪</span>
-<div><b>Marketplace</b><div style="font-size:12px"><span class="dot"></span> Active</div></div>
-<span style="margin-left:auto">›</span>
-</div>
+  <!-- Account Standing Card -->
+  <div class="standing-card">
+    <div class="standing-icon">🛡️</div>
+    <div>
+      <b style="font-size: 15px;">Profile has no issues</b>
+      <div style="font-size: 12px; color: var(--sub); margin-top: 2px;">Your account follows Autrobook Community Standards.</div>
+    </div>
+  </div>
+
+  <!-- Features Section -->
+  <div class="section">
+    <h2>Feature Eligibility</h2>
+    <div class="card-group">
+      <div class="item" onclick="openDetail('recommendations')">
+        <span class="item-icon">⭐</span>
+        <div>
+          <b>Recommendations</b>
+          <div class="status-line"><span class="dot"></span> Eligible & Active</div>
+        </div>
+        <span style="margin-left:auto; color:var(--sub);">›</span>
+      </div>
+
+      <div class="item" onclick="openDetail('monetization')">
+        <span class="item-icon">💰</span>
+        <div>
+          <b>Monetization</b>
+          <div class="status-line" id="monetizationStatus"><span class="dot gray"></span> Requires Professional Mode</div>
+        </div>
+        <span style="margin-left:auto; color:var(--sub);">›</span>
+      </div>
+
+      <div class="item" onclick="openDetail('marketplace')">
+        <span class="item-icon">🏪</span>
+        <div>
+          <b>Marketplace</b>
+          <div class="status-line"><span class="dot"></span> Active</div>
+        </div>
+        <span style="margin-left:auto; color:var(--sub);">›</span>
+      </div>
+
+      <div class="item" onclick="openDetail('verification')">
+        <span class="item-icon">✓</span>
+        <div>
+          <b>Black Verification Badge</b>
+          <div class="status-line" id="verifyFeatureStatus"><span class="dot warn"></span> Not Verified Yet</div>
+        </div>
+        <span style="margin-left:auto; color:var(--sub);">›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help & Support Section -->
+  <div class="section">
+    <h2>Get Help & Tools</h2>
+    <div class="card-group">
+      <div class="item" onclick="window.location.href='autro-ai.html'">
+        <span class="item-icon">✨</span>
+        <div>
+          <b>Autro AI Assistant</b>
+          <div class="status-line">Ask questions about your profile & rules</div>
+        </div>
+        <span style="margin-left:auto; color:var(--sub);">›</span>
+      </div>
+
+      <div class="item" onclick="openDetail('support')">
+        <span class="item-icon">❤️</span>
+        <div>
+          <b>Support Inbox</b>
+          <div class="status-line">0 active reports or policy violations</div>
+        </div>
+        <span style="margin-left:auto; color:var(--sub);">›</span>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="section">
-<h2>Get help</h2>
-<div class="item" onclick="window.location.href='autro-ai.html'"><span>✨</span> Autro AI Assistant <span style="margin-left:auto">›</span></div>
-<div class="item"><span>❤️</span> Support <span style="margin-left:auto">›</span></div>
+<!-- Info Modal -->
+<div class="modal-backdrop" id="detailModal" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <h3 id="modalTitle">Feature Details</h3>
+    <p id="modalBody"></p>
+    <button class="modal-btn" id="modalActionBtn" onclick="closeModal()">Got it</button>
+  </div>
 </div>
 
 <script>
-let currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {};
-document.getElementById('profileName').innerText = currentUser.name || 'User';
-document.getElementById('profilePic').src = currentUser.profilePic || 'https://via.placeholder.com/100/555/fff';
+  let currentUser = {};
+  try {
+    currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {};
+  } catch (e) {
+    currentUser = {};
+  }
+
+  function loadProfileStatus() {
+    if (localStorage.getItem('theme') === 'light') {
+      document.body.classList.add('light');
+    }
+
+    document.getElementById('profileName').innerText = currentUser.name || 'Autrobook User';
+    if (currentUser.profilePic) {
+      document.getElementById('profilePic').src = currentUser.profilePic;
+    }
+
+    const isVerified = Boolean(currentUser.blackVerified || currentUser.verified || currentUser.verificationStatus === 'approved');
+    const isPro = Boolean(currentUser.professional);
+
+    // Role Subtitle
+    document.getElementById('profileRole').innerText = (isPro ? 'Digital Creator (PRO)' : 'Personal Profile') + (isVerified ? ' • Verified ✓' : '');
+
+    // Verification Badge & Row Sync
+    const badge = document.getElementById('verifyBadge');
+    const verifyRow = document.getElementById('verifyFeatureStatus');
+    if (isVerified) {
+      badge.style.display = 'flex';
+      verifyRow.innerHTML = '<span class="dot"></span> Verified ✓';
+    } else if (currentUser.verificationStatus === 'pending') {
+      badge.style.display = 'none';
+      verifyRow.innerHTML = '<span class="dot warn"></span> Under Review';
+    } else {
+      badge.style.display = 'none';
+      verifyRow.innerHTML = '<span class="dot gray"></span> Not Verified Yet';
+    }
+
+    // Monetization Sync with Professional Mode
+    const monRow = document.getElementById('monetizationStatus');
+    if (isPro) {
+      monRow.innerHTML = '<span class="dot"></span> Eligible (Creator Tools Active)';
+    } else {
+      monRow.innerHTML = '<span class="dot gray"></span> Turn on Professional Mode to unlock';
+    }
+  }
+
+  const featureDetails = {
+    recommendations: {
+      title: '⭐ Profile Recommendations',
+      body: 'Your profile and public posts are eligible to be recommended to new people across Autrobook feeds because your content follows our community guidelines.',
+      actionText: 'Got it',
+      actionUrl: null
+    },
+    monetization: {
+      title: '💰 Creator Monetization',
+      body: currentUser.professional
+        ? 'Your Professional Mode is ON! You can manage Fan Badges and Creator Tools inside the Creator Dashboard.'
+        : 'Monetization tools are available for Professional Mode accounts. Turn on Professional Mode in Profile Settings to unlock creator features.',
+      actionText: currentUser.professional ? 'Open Creator Dashboard' : 'Go to Profile Settings',
+      actionUrl: currentUser.professional ? 'fan-engagement.html' : 'profile-settings.html'
+    },
+    marketplace: {
+      title: '🏪 Marketplace Access',
+      body: 'You have full access to buy and list items on Autrobook Marketplace with zero restrictions.',
+      actionText: 'Got it',
+      actionUrl: null
+    },
+    verification: {
+      title: '✓ Black Verification Badge',
+      body: (currentUser.blackVerified || currentUser.verified)
+        ? 'Your identity is verified with the official Autrobook Black Verification Badge.'
+        : 'Verify your identity using your NID and selfie in Edit Profile to earn your official Black Verification Badge.',
+      actionText: (currentUser.blackVerified || currentUser.verified) ? 'Done' : 'Verify Now',
+      actionUrl: (currentUser.blackVerified || currentUser.verified) ? null : 'edit-profile.html'
+    },
+    support: {
+      title: '❤️ Support Inbox',
+      body: 'No warnings, restrictions, or policy violations have been recorded on your account. Everything looks great!',
+      actionText: 'Close',
+      actionUrl: null
+    }
+  };
+
+  function openDetail(key) {
+    const info = featureDetails[key];
+    if (!info) return;
+    document.getElementById('modalTitle').innerText = info.title;
+    document.getElementById('modalBody').innerText = info.body;
+    const btn = document.getElementById('modalActionBtn');
+    btn.innerText = info.actionText;
+    btn.onclick = function () {
+      if (info.actionUrl) {
+        window.location.href = info.actionUrl;
+      } else {
+        document.getElementById('detailModal').style.display = 'none';
+      }
+    };
+    document.getElementById('detailModal').style.display = 'flex';
+  }
+
+  function closeModal(e) {
+    if (!e || e.target.id === 'detailModal') {
+      document.getElementById('detailModal').style.display = 'none';
+    }
+  }
+
+  function refreshStatus() {
+    try { currentUser = JSON.parse(localStorage.getItem('autrobook_user')) || {}; } catch (e) {}
+    loadProfileStatus();
+  }
+
+  function goBack() {
+    if (window.history.length > 1) {
+      history.back();
+    } else {
+      window.location.href = 'profile-settings.html';
+    }
+  }
+
+  loadProfileStatus();
 </script>
-</body> </html>
+</body>
+</html>
