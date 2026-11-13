@@ -1,0 +1,128 @@
+<!-- ================= AUTROBOOK - pages/08-reactions.html ================= -->
+<!-- 6 Reaction Picker Component -->
+
+<div id="reaction-picker" class="reaction-picker hidden">
+  <div class="reaction-btn" data-reaction="like" title="Like">
+    <span>👍</span>
+    <small>Like</small>
+  </div>
+  <div class="reaction-btn" data-reaction="love" title="Love">
+    <span>❤️</span>
+    <small>Love</small>
+  </div>
+  <div class="reaction-btn" data-reaction="haha" title="Haha">
+    <span>😂</span>
+    <small>Haha</small>
+  </div>
+  <div class="reaction-btn" data-reaction="wow" title="Wow">
+    <span>😮</span>
+    <small>Wow</small>
+  </div>
+  <div class="reaction-btn" data-reaction="sad" title="Sad">
+    <span>😢</span>
+    <small>Sad</small>
+  </div>
+  <div class="reaction-btn" data-reaction="angry" title="Angry">
+    <span>😡</span>
+    <small>Angry</small>
+  </div>
+</div>
+
+<script>
+let currentReactionTarget = null;
+let holdTimer = null;
+
+// Initialize reactions for all like buttons
+function initReactions() {
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    if(btn.innerText.includes('Like')) {
+      // Mouse/Touch Hold
+      btn.addEventListener('mousedown', (e) => startHold(e, btn));
+      btn.addEventListener('mouseup', cancelHold);
+      btn.addEventListener('mouseleave', cancelHold);
+      
+      btn.addEventListener('touchstart', (e) => startHold(e, btn));
+      btn.addEventListener('touchend', cancelHold);
+      
+      // Click = Like
+      btn.addEventListener('click', (e) => {
+        if(!holdTimer) quickLike(btn);
+      });
+    }
+  });
+  
+  // Reaction picker clicks
+  document.querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => selectReaction(e, btn));
+  });
+  
+  // Close picker on outside click
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('.reaction-picker') && !e.target.closest('.action-btn')) {
+      hideReactionPicker();
+    }
+  });
+}
+
+function startHold(e, btn) {
+  e.preventDefault();
+  currentReactionTarget = btn;
+  holdTimer = setTimeout(() => {
+    showReactionPicker(btn);
+    holdTimer = null;
+  }, 500); // 500ms hold
+}
+
+function cancelHold() {
+  clearTimeout(holdTimer);
+  holdTimer = null;
+}
+
+function showReactionPicker(btn) {
+  const picker = document.getElementById('reaction-picker');
+  const rect = btn.getBoundingClientRect();
+  
+  picker.style.left = `${rect.left}px`;
+  picker.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+  picker.classList.remove('hidden');
+}
+
+function hideReactionPicker() {
+  document.getElementById('reaction-picker').classList.add('hidden');
+  currentReactionTarget = null;
+}
+
+function selectReaction(e, btn) {
+  e.stopPropagation();
+  const reaction = btn.dataset.reaction;
+  
+  if(currentReactionTarget) {
+    setReaction(currentReactionTarget, reaction);
+  }
+  hideReactionPicker();
+}
+
+function quickLike(btn) {
+  setReaction(btn, 'like');
+}
+
+function setReaction(btn, reaction) {
+  const reactions = {
+    like: { emoji: '👍', text: 'Like', color: 'var(--brand)' },
+    love: { emoji: '❤️', text: 'Love', color: '#f33e58' },
+    haha: { emoji: '😂', text: 'Haha', color: '#f7b125' },
+    wow: { emoji: '😮', text: 'Wow', color: '#f7b125' },
+    sad: { emoji: '😢', text: 'Sad', color: '#f7b125' },
+    angry: { emoji: '😡', text: 'Angry', color: '#e9710f' }
+  };
+  
+  const r = reactions[reaction];
+  btn.innerHTML = `${r.emoji} ${r.text}`;
+  btn.style.color = r.color + ' !important';
+  btn.classList.add('pop');
+  setTimeout(() => btn.classList.remove('pop'), 300);
+}
+
+// Auto init when component loads
+setTimeout(initReactions, 100);
+  </script>
