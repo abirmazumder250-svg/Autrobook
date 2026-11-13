@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ reply: `Hello ${userName}! How can I help you today?` });
     const protocol = "https://";
     const host = "generativelanguage." + "googleapis.com";
-    const fullUrl = protocol + host + "/v1beta/models/gemini-1.5-flash:generateContent?key=" + API_KEY;
+    const fullUrl = protocol + host + "/v1beta/models/gemini-2.5-flash:generateContent?key=" + API_KEY;
     const geminiResponse = await fetch(fullUrl, {
       method: "POST",
       headers: { 
