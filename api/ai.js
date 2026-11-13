@@ -54,6 +54,7 @@ export default async function handler(req, res) {
     }
 
     const history = body && body.history;
+    const userName = body && body.userName ? body.userName : "Friend";
     if (!history || !Array.isArray(history)) {
       return res.status(200).json({ reply: "Error: Invalid message history format." });
     }
@@ -69,13 +70,12 @@ export default async function handler(req, res) {
       }));
 
     if (contents.length === 0) {
-      return res.status(200).json({ reply: "Hello! How can I help you today?" });
+      return res.status(200).json({ reply: `Hello ${userName}! How can I help you today?` });
     }
 
     const protocol = "https://";
     const host = "generativelanguage." + "googleapis.com";
-    const fullUrl = protocol + host + "/v1beta/models/gemini-3.5-flash-lite:generateContent";
-
+    const fullUrl = protocol + host + "/v1beta/models/gemini-1.5-flash:generateContent?key=" + API_KEY;
     const geminiResponse = await fetch(fullUrl, {
       method: "POST",
       headers: { 
@@ -110,7 +110,7 @@ export default async function handler(req, res) {
     const reply = part && part.text;
 
     if (!reply) {
-      return res.status(200).json({ reply: "Hello! How can I assist you today?" });
+      return res.status(200).json({ reply });
     }
 
     return res.status(200).json({ reply });
