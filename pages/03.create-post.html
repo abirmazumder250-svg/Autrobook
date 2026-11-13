@@ -1,5 +1,7 @@
-<div class="page create-post-page">
+<!-- ================= AUTROBOOK - pages/03-create-post.html ================= -->
+<!-- Create Post Page with Image Upload -->
 
+<div class="page create-post-page">
   <!-- Header -->
   <div class="create-header">
     <button onclick="navigateTo('pages/01-feed.html')">✕</button>
@@ -11,7 +13,7 @@
   <div class="create-user">
     <img src="https://i.pravatar.cc/40?img=10" class="avatar">
     <div>
-      <h4>Your Name</h4>
+      <h4>You</h4>
       <select id="post-privacy">
         <option value="public">🌍 Public</option>
         <option value="friends">👥 Friends</option>
@@ -59,5 +61,99 @@
 
   <!-- Hidden File Input -->
   <input type="file" id="file-input" accept="image/*,video/*" class="hidden">
-
 </div>
+
+<script>
+let selectedFile = null;
+
+// Open file picker
+function openImagePicker() {
+  document.getElementById('file-input').click();
+}
+
+// When file selected
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  selectedFile = file;
+  
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    document.getElementById('preview-img').src = event.target.result;
+    document.getElementById('media-preview').classList.remove('hidden');
+  }
+  reader.readAsDataURL(file);
+});
+
+// Remove media
+function removeMedia() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('media-preview').classList.add('hidden');
+  document.getElementById('preview-img').src = '';
+}
+
+// Publish Post
+async function publishPost() {
+  const text = document.getElementById('post-text').value.trim();
+  const privacy = document.getElementById('post-privacy').value;
+  const disableComments = document.getElementById('disable-comments').checked;
+  const disableReactions = document.getElementById('disable-reactions').checked;
+  const allowShare = document.getElementById('allow-share').checked;
+  
+  if(text === '' && !selectedFile) {
+    alert('Write something or add an image!');
+    return;
+  }
+  
+  document.querySelector('.post-btn').innerText = 'Posting...';
+  document.querySelector('.post-btn').disabled = true;
+  
+  let imageUrl = null;
+  
+  // 1. Upload to Supabase if image selected
+  if(selectedFile) {
+    imageUrl = await uploadToSupabase(selectedFile);
+    if(!imageUrl) {
+      alert('Image upload failed');
+      document.querySelector('.post-btn').innerText = 'Post';
+      document.querySelector('.post-btn').disabled = false;
+      return;
+    }
+  }
+  
+  // 2. Save to Firebase
+  const newPost = {
+    text: text,
+    image: imageUrl,
+    privacy: privacy,
+    disableComments: disableComments,
+    disableReactions: disableReactions,
+    allowShare: allowShare,
+    author: 'You',
+    authorImg: 'https://i.pravatar.cc/40?img=10',
+    likes: 0,
+    comments: 0,
+    timestamp: Date.now()
+  };
+  
+  console.log('New Post Data:', newPost);
+  // TODO: Save to Firebase: db.collection('posts').add(newPost)
+  
+  alert('Post Published Successfully! 🚀');
+  navigateTo('pages/01-feed.html');
+}
+
+// Other buttons
+function addFeeling() {
+  alert('Feeling picker coming soon!');
+}
+function addLocation() {
+  alert('Location picker coming soon!');
+}
+function addTag() {
+  alert('Tag people coming soon!');
+}
+  </script>
