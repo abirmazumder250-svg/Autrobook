@@ -1,16 +1,30 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Edit Highlights - Autrobook</title> <style> 
-:root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; } 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Highlights - Autrobook</title>
+<style>
+:root{ --bg:#0a1a0f; --card:#13261a; --text:#e4e6eb; --text2:#7a9e80; --border:#1f3d2a; --brand:#4caf50; --danger:#f44336; }
+body.light{ --bg:#f0f2f5; --card:#ffffff; --text:#050505; --text2:#65676b; --border:#ddd; }
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;} 
-body{background:var(--bg);color:var(--text);} 
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);} 
+body{background:var(--bg);color:var(--text);padding-bottom:40px;} 
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;} 
 .header b{font-size:18px;} 
-.highlight-item{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid var(--border);} 
-.highlight-item img{width:60px;height:60px;border-radius:12px;object-fit:cover;} 
-.add-btn{font-size:24px;cursor:pointer;} 
-</style> </head> <body> 
+.header span{cursor:pointer;}
+.highlight-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--card);margin:8px 12px;border-radius:12px;} 
+.highlight-item img{width:65px;height:65px;border-radius:10px;object-fit:cover;border:1px solid var(--border);} 
+.add-btn{font-size:24px;cursor:pointer;color:var(--brand);font-weight:bold;} 
+.del-btn{background:none;border:none;color:var(--danger);font-size:18px;cursor:pointer;padding:6px;}
+.no-data{text-align:center;padding:50px 20px;color:var(--text2);font-size:15px;}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--brand);color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;font-weight:bold;z-index:99;display:none;}
+</style> 
+</head> <body> 
+
+<div id="toast"></div>
 
 <div class="header">
-<span onclick="history.back()">←</span>
+<span onclick="history.back()" style="font-size:22px">←</span>
 <b>Edit highlights</b>
 <span class="add-btn" onclick="document.getElementById('highlightUpload').click()">+</span>
 <input type="file" id="highlightUpload" accept="image/*" onchange="addHighlight(event)" style="display:none">
@@ -22,37 +36,65 @@ body{background:var(--bg);color:var(--text);}
 let highlights = JSON.parse(localStorage.getItem('highlights')) || [];
 loadHighlights();
 
-function loadHighlights(){
-if(highlights.length === 0){
-document.getElementById('highlightsContainer').innerHTML = '<p style="text-align:center;padding:40px;color:#aaa">No highlights yet</p>';
-return;
+function toast(msg){
+  let t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(()=>{ t.style.display = 'none'; }, 2000);
 }
-let html = '';
-highlights.forEach((h,i)=>{
-html += `<div class="highlight-item">
-<img src="${h.img}">
-<div><b>${h.emoji}</b><div style="color:#aaa;font-size:14px">Updated ${h.date}<br>${h.count} item</div></div>
-<span style="margin-left:auto;font-size:20px">⋮</span>
-</div>`;
-})
-document.getElementById('highlightsContainer').innerHTML = html;
+
+function loadHighlights(){
+  let container = document.getElementById('highlightsContainer');
+  if(highlights.length === 0){
+    container.innerHTML = `<div class="no-data">✨ No highlights yet.<br>Tap the '+' icon above to add your first highlight.</div>`;
+    return;
+  }
+  let html = '';
+  highlights.forEach((h,i)=>{
+    html += `<div class="highlight-item">
+      <img src="${h.img}">
+      <div style="flex:1;">
+        <b style="font-size:16px;">${h.title || 'Highlight'} ${h.emoji || '⭐'}</b>
+        <div style="color:var(--text2);font-size:13px;margin-top:3px;">Updated ${h.date} • ${h.count || 1} item</div>
+      </div>
+      <button class="del-btn" onclick="deleteHighlight(${i})" title="Delete">🗑️</button>
+    </div>`;
+  });
+  container.innerHTML = html;
 }
 
 function addHighlight(e){
-let file = e.target.files[0];
-let reader = new FileReader();
-reader.onload = function(){
-let newHighlight = {
-img: reader.result,
-emoji: '🤷',
-date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
-count: 1
-};
-highlights.unshift(newHighlight);
-localStorage.setItem('highlights', JSON.stringify(highlights));
-loadHighlights();
+  let file = e.target.files[0];
+  if(!file) return;
+  let reader = new FileReader();
+  reader.onload = function(){
+    let title = prompt("Enter highlight title (e.g. Travel, Friends):", "My Story");
+    if(title === null) return; // cancelled
+    let newHighlight = {
+      img: reader.result,
+      title: title || 'Highlight',
+      emoji: '✨',
+      date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+      count: 1
+    };
+    highlights.unshift(newHighlight);
+    localStorage.setItem('highlights', JSON.stringify(highlights));
+    loadHighlights();
+    toast('Highlight added successfully! 🎉');
+  }
+  reader.readAsDataURL(file);
+  e.target.value = '';
 }
-reader.readAsDataURL(file);
+
+function deleteHighlight(index){
+  if(!confirm('Are you sure you want to delete this highlight?')) return;
+  highlights.splice(index, 1);
+  localStorage.setItem('highlights', JSON.stringify(highlights));
+  loadHighlights();
+  toast('Highlight deleted 🗑️');
 }
+
+// Theme support
+if(localStorage.getItem('theme') == 'light'){ document.body.classList.add('light'); }
 </script>
 </body> </html>
