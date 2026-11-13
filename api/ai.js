@@ -79,8 +79,7 @@ export default async function handler(req, res) {
     const geminiResponse = await fetch(fullUrl, {
       method: "POST",
       headers: { 
-        "Content-Type": "application/json",
-        "x-goog-api-key": API_KEY
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         contents,
