@@ -1,4 +1,4 @@
-// Vercel API - Send OTP to Email via EmailJS + Firestore
+// Vercel API - Send OTP to Email via EmailJS + Firestore 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -8,10 +8,12 @@ export default async function handler(req, res) {
 
   try {
     let body = req.body;
-    if (typeof body === 'string') body = JSON.parse(body);
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch(e){ return res.status(400).json({ success: false, message: 'Invalid JSON' }); }
+    }
     const { name, email } = body || {};
     if (!name || !email) return res.status(400).json({ success: false, message: 'Name and Email required' });
-
+    
     const cleanEmail = String(email).trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({ success: false, message: 'Invalid email' });
@@ -19,6 +21,10 @@ export default async function handler(req, res) {
 
     const PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
     const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+    if (!PROJECT_ID || !FIREBASE_API_KEY) {
+      return res.status(500).json({ success: false, message: 'Firebase config missing' });
+    }
+
     const docId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
     const docUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/email_otps/${docId}?key=${FIREBASE_API_KEY}`;
 
@@ -39,28 +45,14 @@ export default async function handler(req, res) {
     await fetch(docUrl, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fields: {
-          otp: { stringValue: otp },
-          email: { stringValue: cleanEmail },
-          expiry: { integerValue: String(expiry) },
-          attempts: { integerValue: "0" },
-          lastSent: { integerValue: String(Date.now()) }
-        }
-      })
+      body: JSON.stringify({ fields: { otp: { stringValue: otp }, email: { stringValue: cleanEmail }, expiry: { integerValue: String(expiry) }, attempts: { integerValue: "0" }, lastSent: { integerValue: String(Date.now()) } } })
     });
 
     // Send Email via EmailJS
     const emailRes = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        service_id: process.env.EMAILJS_SERVICE_ID,
-        template_id: process.env.EMAILJS_TEMPLATE_ID,
-        user_id: process.env.EMAILJS_PUBLIC_KEY,
-        accessToken: process.env.EMAILJS_PRIVATE_KEY,
-        template_params: { to_email: cleanEmail, email: cleanEmail, name: name, otp: otp }
-      })
+      body: JSON.stringify({ service_id: process.env.EMAILJS_SERVICE_ID, template_id: process.env.EMAILJS_TEMPLATE_ID, user_id: process.env.EMAILJS_PUBLIC_KEY, accessToken: process.env.EMAILJS_PRIVATE_KEY, template_params: { to_email: cleanEmail, email: cleanEmail, name: name, otp: otp } })
     });
 
     if (!emailRes.ok) {
@@ -70,7 +62,8 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({ success: true, message: 'OTP sent to ' + cleanEmail });
+
   } catch (e) {
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
   }
-                          }
+                                      }
