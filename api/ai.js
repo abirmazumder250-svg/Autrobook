@@ -70,13 +70,10 @@ export default async function handler(req, res) {
       }));
 
     if (contents.length === 0) {
-      return res.status(200).json({ 
-        reply: `Hello ${userName}! How can I help you today?`,
-        logoUrl: "/logo.png" // Optional: Sending logo path if needed by frontend
-      });
+      return res.status(200).json({ reply: `Hello ${userName}! How can I help you today?` });
     }
 
-    // Correct Gemini API URL and model endpoint
+    // সঠিক Gemini API URL এবং মডেল (gemini-2.5-flash অথবা gemini-1.5-flash)
     const fullUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
     const systemPrompt = `You are Autro AI, the official assistant for Autrobook.
@@ -122,11 +119,7 @@ Be friendly, helpful and loyal to Autrobook and its Founder.`;
       return res.status(200).json({ reply: "Sorry, I could not generate a response." });
     }
 
-    // Return the response along with the logo reference if required
-    return res.status(200).json({ 
-      reply, 
-      logoUrl: "/logo.png" 
-    });
+    return res.status(200).json({ reply });
 
   } catch (e) {
     return res.status(200).json({ reply: "Server Error: " + e.message });
