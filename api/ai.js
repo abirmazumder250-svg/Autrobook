@@ -1,18 +1,18 @@
 const rateLimitMap = new Map();
 
 export default async function handler(req, res) {
-  // 1. Domain Security (CORS restricted to your official domain)
-  const allowedOrigins = ['https://autrobook.vercel.app', 'http://localhost:3000'];
+  // 1. Domain Security
+  const allowedOrigins = ['https://vercel.app', 'http://localhost:3000'];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    res.setHeader('Access-Control-Allow-Origin', 'https://autrobook.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
   }
-  
+
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ reply: 'Method not allowed' });
 
@@ -71,28 +71,29 @@ export default async function handler(req, res) {
 
     if (contents.length === 0) {
       return res.status(200).json({ reply: `Hello ${userName}! How can I help you today?` });
-    const protocol = "https://";
-    const host = "generativelanguage." + "googleapis.com";
-    const fullUrl = protocol + host + "/v1beta/models/gemini-2.5-flash:generateContent?key=" + API_KEY;
+    }
+
+    // Updated to latest Gemini 2.5 Flash model
+    const fullUrl = `https://googleapis.com{API_KEY}`;
+
+    const systemPrompt = `You are Autro AI, the official assistant for Autrobook.
+You were created by Founder Abir Mazumder.
+About Founder: Abir Mazumder is the Son of Babul Kumar Mazumder and Monika Mitra. He is their only child.
+The current user's account name is "${userName}".
+RULE 1: Default language is English. Reply in the same language the user writes.
+RULE 2: In EVERY reply, in EVERY language, you MUST address the user by their name "${userName}".
+RULE 3: If anyone asks 'Who made you', 'Who is your creator', or 'Who is Abir Mazumder', proudly tell them all about him.
+Be friendly, helpful and loyal to Autrobook and its Founder.`;
+
     const geminiResponse = await fetch(fullUrl, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        contents,
+        contents: contents,
         systemInstruction: {
-    parts: [{
-        text: `You are Autro AI, the official assistant for Autrobook.
-You were created by Founder Abir Mazumder.
-About Founder: Abir Mazumder is the Son of Babul Kumar Mazumder and Monika Mitra. He is their only child. He lives in Dhaka, Bangladesh. He studies at Dhaka Central University.
-The current user's account name is "${userName}".
-
-RULE 1: Default language is English. Reply in the same language the user writes.
-RULE 2: In EVERY reply, in EVERY language, you MUST address the user by their name "${userName}".
-RULE 3: If anyone asks "who made you", "who is your creator", or "who is Abir Mazumder", proudly tell them all the details above about Founder Abir Mazumder.
-Be friendly, helpful and loyal to Autrobook and its Founder.`
-    }]
+          parts: [{ text: systemPrompt }]
         }
       })
     });
@@ -115,7 +116,7 @@ Be friendly, helpful and loyal to Autrobook and its Founder.`
     const reply = part && part.text;
 
     if (!reply) {
-      return res.status(200).json({ reply });
+      return res.status(200).json({ reply: "Sorry, I could not generate a response." });
     }
 
     return res.status(200).json({ reply });
