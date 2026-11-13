@@ -1,0 +1,176 @@
+<!-- ================= AUTROBOOK - pages/07-comments.html ================= -->
+<!-- Comments + Reply Component -->
+
+<div class="comment-section-wrapper">
+  <!-- Comment Stats -->
+  <div class="post-stats">
+    <span id="comment-count">0 Comments</span>
+    <span>Share</span>
+  </div>
+
+  <!-- Comment List -->
+  <div id="comment-list" class="comment-list">
+    <!-- Comments will load here dynamically -->
+  </div>
+
+  <!-- Comment Input -->
+  <div class="comment-input-wrapper">
+    <img src="https://i.pravatar.cc/32?img=10" class="avatar-small">
+    <div class="comment-input-box">
+      <input type="text" id="comment-input" placeholder="Write a comment..." onkeyup="handleCommentKey(event)">
+      <button onclick="postComment()">Post</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let commentsData = [];
+let replyingTo = null;
+
+// Load sample comments
+function loadComments() {
+  commentsData = [
+    {
+      id: 1,
+      author: 'Rahim Khan',
+      avatar: 'https://i.pravatar.cc/32?img=1',
+      text: 'This is awesome bro! 🔥',
+      time: '2h',
+      likes: 5,
+      replies: [
+        {
+          id: 11,
+          author: 'You',
+          avatar: 'https://i.pravatar.cc/32?img=10',
+          text: 'Thanks man!',
+          time: '1h',
+          likes: 1
+        }
+      ]
+    },
+    {
+      id: 2,
+      author: 'Fatima Ahmed',
+      avatar: 'https://i.pravatar.cc/32?img=2',
+      text: 'Love this post ❤️',
+      time: '30m',
+      likes: 3,
+      replies: []
+    }
+  ];
+  renderComments();
+}
+
+// Render all comments
+function renderComments() {
+  const commentList = document.getElementById('comment-list');
+  commentList.innerHTML = '';
+  
+  commentsData.forEach(comment => {
+    commentList.innerHTML += createCommentHTML(comment, false);
+  });
+  
+  document.getElementById('comment-count').innerText = `${commentsData.length} Comments`;
+}
+
+// Create HTML for single comment
+function createCommentHTML(comment, isReply) {
+  const marginClass = isReply ? 'reply-comment' : '';
+  const repliesHTML = comment.replies && comment.replies.length > 0 
+    ? comment.replies.map(reply => createCommentHTML(reply, true)).join('')
+    : '';
+  
+  return `
+    <div class="comment ${marginClass}" id="comment-${comment.id}">
+      <img src="${comment.avatar}" class="avatar-small">
+      <div class="comment-content">
+        <div class="comment-body">
+          <strong>${comment.author}</strong>
+          <p>${comment.text}</p>
+        </div>
+        <div class="comment-actions">
+          <button onclick="likeComment(${comment.id})">Like ${comment.likes > 0 ? `(${comment.likes})` : ''}</button>
+          <button onclick="replyTo(${comment.id}, '${comment.author}')">Reply</button>
+          <span>${comment.time}</span>
+        </div>
+        <div class="reply-list">
+          ${repliesHTML}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Post new comment
+function postComment() {
+  const input = document.getElementById('comment-input');
+  const text = input.value.trim();
+  
+  if(text === '') return;
+  
+  const newComment = {
+    id: Date.now(),
+    author: 'You',
+    avatar: 'https://i.pravatar.cc/32?img=10',
+    text: text,
+    time: 'now',
+    likes: 0,
+    replies: []
+  };
+  
+  if(replyingTo) {
+    // Add as reply
+    const parent = findComment(commentsData, replyingTo);
+    if(parent) {
+      parent.replies.push(newComment);
+      replyingTo = null;
+      input.placeholder = 'Write a comment...';
+    }
+  } else {
+    // Add as new comment
+    commentsData.unshift(newComment);
+  }
+  
+  input.value = '';
+  renderComments();
+}
+
+// Reply to comment
+function replyTo(id, authorName) {
+  replyingTo = id;
+  const input = document.getElementById('comment-input');
+  input.placeholder = `Replying to ${authorName}...`;
+  input.focus();
+}
+
+// Like comment
+function likeComment(id) {
+  const comment = findComment(commentsData, id);
+  if(comment) {
+    comment.likes += 1;
+    renderComments();
+  }
+}
+
+// Find comment by ID
+function findComment(arr, id) {
+  for(let item of arr) {
+    if(item.id === id) return item;
+    if(item.replies) {
+      const found = findComment(item.replies, id);
+      if(found) return found;
+    }
+  }
+  return null;
+}
+
+// Enter key to post
+function handleCommentKey(e) {
+  if(e.key === 'Enter') {
+    postComment();
+  }
+}
+
+// Auto load on page load
+loadComments();
+  </script>
