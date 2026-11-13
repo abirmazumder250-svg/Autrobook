@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifications - Autrobook</title>
+<style>
+  /* System Default: Dark Green Theme */
+  :root {
+    --bg: #0a1a0f;
+    --card: #13261a;
+    --hover: #1f3d2a;
+    --text: #e4e6eb;
+    --text2: #7a9e80;
+    --border: #1f3d2a;
+    --brand: #10b981;
+    --brand-dark: #059669;
+    --btn-green: #14532d;
+    --btn-green-hover: #166534;
+    --btn-green-border: #15803d;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+  }
+
+  /* Automatic System Light Mode when OS is set to Light */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f0f4f1;
+      --card: #ffffff;
+      --hover: #e2ebe4;
+      --text: #0f1f14;
+      --text2: #4b6352;
+      --border: #d1dfd5;
+      --brand: #059669;
+      --brand-dark: #047857;
+      --btn-green: #15803d;
+      --btn-green-hover: #166534;
+      --btn-green-border: #14532d;
+    }
+  }
+
+  /* Manual Override Classes */
+  body.light {
+    --bg: #f0f4f1;
+    --card: #ffffff;
+    --hover: #e2ebe4;
+    --text: #0f1f14;
+    --text2: #4b6352;
+    --border: #d1dfd5;
+    --brand: #059669;
+    --brand-dark: #047857;
+    --btn-green: #15803d;
+    --btn-green-hover: #166534;
+    --btn-green-border: #14532d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 60px; transition: background 0.3s, color 0.3s; }
+
+  .header { display: flex; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; position: sticky; top: 0; background: var(--bg); z-index: 10; flex-wrap: wrap; }
+  .nav-btn { cursor: pointer; background: var(--btn-green); color: #ffffff; border: 1px solid var(--btn-green-border); font-size: 14px; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: background 0.2s; flex-shrink: 0; }
+  .nav-btn:hover { background: var(--btn-green-hover); }
+  .header b { font-size: 18px; flex: 1; }
+  
+  .header-actions { display: flex; gap: 6px; }
+  .action-pill { background: var(--btn-green); border: 1px solid var(--btn-green-border); color: #ffffff; font-size: 12px; padding: 6px 12px; border-radius: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+  .action-pill:hover { background: var(--btn-green-hover); }
+  .action-pill.danger { background: #7f1d1d; border-color: #991b1b; }
+  .action-pill.danger:hover { background: #991b1b; }
+
+  /* Notification List */
+  .notif-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer; transition: transform 0.15s, background 0.2s; position: relative; }
+  .notif-card:hover { background: var(--hover); }
+  .notif-card.unread { border-left: 4px solid var(--brand); }
+  
+  .notif-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .notif-body { flex: 1; padding-right: 28px; }
+  .notif-body p { font-size: 14px; line-height: 1.4; color: var(--text); }
+  .notif-body small { font-size: 11px; color: var(--text2); display: block; margin-top: 4px; }
+
+  .unread-dot { width: 8px; height: 8px; background: var(--brand); border-radius: 50%; position: absolute; top: 14px; right: 42px; }
+  
+  /* Individual Delete Button */
+  .del-btn { position: absolute; top: 10px; right: 10px; background: transparent; border: 1px solid transparent; color: var(--text2); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+  .del-btn:hover { background: rgba(239, 68, 68, 0.15); color: var(--danger); border-color: rgba(239, 68, 68, 0.4); }
+
+  .no-notif { text-align: center; padding: 60px 20px; color: var(--text2); font-size: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--btn-green); border: 1px solid var(--btn-green-border); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- Audio element for the notification "ting" sound -->
+<audio id="tingSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+<div class="header">
+  <button class="nav-btn" onclick="goBack()" title="Back">←</button>
+  <b>Notifications</b>
+  <div class="header-actions">
+    <button class="action-pill" onclick="markAllAsRead()">Mark read</button>
+    <button class="action-pill danger" onclick="clearAllNotifications()">Clear all</button>
+  </div>
+</div>
+
+<div id="notifContainer"></div>
+
+<script>
+function applySystemTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light');
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else if (savedTheme === 'dark') {
+    document.body.classList.remove('light');
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.body.classList.remove('light');
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+applySystemTheme();
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applySystemTheme);
+
+function getNotifications() {
+  let list = JSON.parse(localStorage.getItem('autro_notifications') || 'null');
+  if (!list) {
+    list = [
+      { id: 'n1', icon: '🤖', text: '<b>Autro AI</b> reviewed your monitored comments queue. All clear!', time: Date.now() - 1000 * 60 * 15, unread: true },
+      { id: 'n2', icon: '❤️', text: '<b>Rakibul</b> reacted Love to your post.', time: Date.now() - 1000 * 60 * 120, unread: true },
+      { id: 'n3', icon: '💬', text: '<b>Tanvir</b> commented on your video reel.', time: Date.now() - 1000 * 60 * 360, unread: false }
+    ];
+    localStorage.setItem('autro_notifications', JSON.stringify(list));
+  }
+  return list;
+}
+
+function playTingSound() {
+  const sound = document.getElementById('tingSound');
+  if (sound) {
+    sound.currentTime = 0;
+    sound.play().catch(() => {});
+  }
+}
+
+function loadNotifications() {
+  const notifs = getNotifications();
+  const container = document.getElementById('notifContainer');
+
+  if (notifs.length === 0) {
+    container.innerHTML = `<div class="no-notif">🔔 No notifications right now.</div>`;
+    return;
+  }
+
+  container.innerHTML = notifs.map(n => `
+    <div class="notif-card ${n.unread ? 'unread' : ''}" onclick="openNotification('${n.id}')">
+      <div class="notif-icon">${n.icon}</div>
+      <div class="notif-body">
+        <p>${n.text}</p>
+        <small>${timeAgo(n.time)}</small>
+      </div>
+      ${n.unread ? '<div class="unread-dot"></div>' : ''}
+      <button class="del-btn" onclick="deleteNotification(event, '${n.id}')" title="Remove notification">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function openNotification(id) {
+  let notifs = getNotifications();
+  let item = notifs.find(x => x.id === id);
+  if (item && item.unread) {
+    item.unread = false;
+    localStorage.setItem('autro_notifications', JSON.stringify(notifs));
+    playTingSound();
+    loadNotifications();
+  }
+  toast('Opened notification ✓');
+}
+
+function deleteNotification(event, id) {
+  event.stopPropagation(); // Prevent triggering openNotification
+  let notifs = getNotifications();
+  notifs = notifs.filter(x => x.id !== id);
+  localStorage.setItem('autro_notifications', JSON.stringify(notifs));
+  loadNotifications();
+  toast('🗑️ Notification removed');
+}
+
+function clearAllNotifications() {
+  let notifs = getNotifications();
+  if (notifs.length === 0) {
+    toast('No notifications to clear');
+    return;
+  }
+  localStorage.setItem('autro_notifications', JSON.stringify([]));
+  loadNotifications();
+  toast('🗑️ All notifications deleted');
+}
+
+function markAllAsRead() {
+  let notifs = getNotifications();
+  let hasUnread = notifs.some(x => x.unread);
+  
+  if (!hasUnread) {
+    toast('All notifications are already read');
+    return;
+  }
+
+  notifs.forEach(n => n.unread = false);
+  localStorage.setItem('autro_notifications', JSON.stringify(notifs));
+  
+  playTingSound();
+  loadNotifications();
+  toast('All marked as read ✓');
+}
+
+function timeAgo(t) {
+  const mins = Math.floor((Date.now() - t) / 1000 / 60);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+function goBack() {
+  if (window.history.length > 1) {
+    history.back();
+  } else {
+    window.location.href = 'main-settings.html';
+  }
+}
+
+loadNotifications();
+
+// Simulate an incoming notification with "ting" sound after 4 seconds
+setTimeout(() => {
+  let notifs = getNotifications();
+  if (!notifs.some(x => x.id === 'simulated_live')) {
+    notifs.unshift({
+      id: 'simulated_live',
+      icon: '✨',
+      text: '<b>Autro AI</b> successfully scanned your recent activity feed.',
+      time: Date.now(),
+      unread: true
+    });
+    localStorage.setItem('autro_notifications', JSON.stringify(notifs));
+    loadNotifications();
+    playTingSound();
+    toast('🔔 New notification received!');
+  }
+}, 4000);
+</script>
+</body>
+</html>
