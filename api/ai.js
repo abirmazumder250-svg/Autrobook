@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     if (contents.length === 0) {
       return res.status(200).json({ 
         reply: `Hello ${userName}! How can I help you today?`,
-        logoUrl: "/logo.png" // Optional: Sending logo path if needed by frontend
+        logoUrl: "/logo.png"
       });
     }
 
@@ -122,7 +122,6 @@ Be friendly, helpful and loyal to Autrobook and its Founder.`;
       return res.status(200).json({ reply: "Sorry, I could not generate a response." });
     }
 
-    // Return the response along with the logo reference if required
     return res.status(200).json({ 
       reply, 
       logoUrl: "/logo.png" 
