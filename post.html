@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Post - Autrobook</title>
+<style>
+  /* System Default & Dark Green Theme */
+  :root {
+    --bg: #0a1a0f;
+    --card: #13261a;
+    --hover: #1f3d2a;
+    --text: #e4e6eb;
+    --text2: #7a9e80;
+    --border: #1f3d2a;
+    --brand: #10b981;
+    --brand-dark: #059669;
+    --danger: #ef4444;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f0f4f1;
+      --card: #ffffff;
+      --hover: #e2ebe4;
+      --text: #0f1f14;
+      --text2: #4b6352;
+      --border: #d1dfd5;
+      --brand: #059669;
+      --brand-dark: #047857;
+    }
+  }
+
+  body.light {
+    --bg: #f0f4f1;
+    --card: #ffffff;
+    --hover: #e2ebe4;
+    --text: #0f1f14;
+    --text2: #4b6352;
+    --border: #d1dfd5;
+    --brand: #059669;
+    --brand-dark: #047857;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 12px; max-width: 600px; margin: 0 auto; transition: background 0.3s, color 0.3s; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .header b { font-size: 18px; }
+  .header span { cursor: pointer; color: var(--brand); font-size: 20px; padding: 4px 8px; border-radius: 50%; }
+  .header span:hover { background: var(--hover); }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  
+  .user-info { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .user-info img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--brand); }
+  .user-info b { font-size: 15px; display: block; }
+  .user-info small { color: var(--text2); font-size: 12px; }
+
+  textarea { width: 100%; min-height: 120px; background: transparent; border: none; outline: none; color: var(--text); font-size: 16px; resize: none; line-height: 1.5; }
+  
+  .media-input { width: 100%; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; margin-top: 10px; outline: none; }
+  .media-input:focus { border-color: var(--brand); }
+
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+  .tool-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 16px; font-size: 13px; cursor: pointer; transition: background 0.2s; }
+  .tool-btn:hover { background: var(--hover); border-color: var(--brand); }
+
+  .post-btn { width: 100%; background: var(--brand); color: #fff; border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 15px; cursor: pointer; transition: background 0.2s; }
+  .post-btn:hover { background: var(--brand-dark); }
+
+  .char-count { font-size: 12px; color: var(--text2); text-align: right; margin-bottom: 8px; }
+
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--brand); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="header">
+  <span onclick="goBack()">←</span>
+  <b>Create Post</b>
+  <span style="opacity:0"></span>
+</div>
+
+<div class="card">
+  <div class="user-info">
+    <img id="userAvatar" src="https://via.placeholder.com/44" onerror="this.src='https://via.placeholder.com/44'">
+    <div>
+      <b id="userName">Autrobook User</b>
+      <small>🌎 Public Post</small>
+    </div>
+  </div>
+
+  <textarea id="postText" placeholder="What's on your mind, mate?" oninput="updateCount()"></textarea>
+  <div class="char-count" id="charCount">0 / 500</div>
+
+  <input type="text" id="postImage" class="media-input" placeholder="🖼️ Optional Image URL (https://...)">
+
+  <div class="tools">
+    <div class="tool-btn" onclick="addEmoji('😊')">😊 Happy</div>
+    <div class="tool-btn" onclick="addEmoji('🔥')">🔥 Fire</div>
+    <div class="tool-btn" onclick="addEmoji('🚀')">🚀 Excited</div>
+    <div class="tool-btn" onclick="addEmoji('🇧🇩')">🇧🇩 Bangladesh</div>
+    <div class="tool-btn" onclick="clearForm()">🧹 Clear</div>
+  </div>
+
+  <button class="post-btn" onclick="publishPost()">Publish Post 🚀</button>
+</div>
+
+<script>
+const user = JSON.parse(localStorage.getItem('autrobook_user') || '{}');
+document.getElementById('userName').innerText = user.name || 'Autrobook Member';
+document.getElementById('userAvatar').src = localStorage.getItem('my_avatar') || user.profilePic || 'https://via.placeholder.com/44';
+
+function applySystemTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light');
+  } else if (savedTheme === 'dark') {
+    document.body.classList.remove('light');
+  }
+}
+applySystemTheme();
+
+function updateCount(){
+  const len = document.getElementById('postText').value.length;
+  document.getElementById('charCount').innerText = len + ' / 500';
+}
+
+function addEmoji(emoji){
+  const txt = document.getElementById('postText');
+  txt.value += ' ' + emoji;
+  updateCount();
+}
+
+function clearForm(){
+  document.getElementById('postText').value = '';
+  document.getElementById('postImage').value = '';
+  updateCount();
+  toast('Form cleared');
+}
+
+function publishPost(){
+  const text = document.getElementById('postText').value.trim();
+  const img = document.getElementById('postImage').value.trim();
+  
+  if(!text && !img){
+    toast('⚠️ Please write something or add an image!');
+    return;
+  }
+
+  let posts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+  posts.unshift({
+    text: text,
+    img: img || null,
+    time: Date.now(),
+    reacts: {},
+    comments: []
+  });
+
+  localStorage.setItem('my_posts', JSON.stringify(posts));
+  toast('🎉 Post published successfully!');
+  
+  setTimeout(() => {
+    window.location.href = 'posts.html';
+  }, 800);
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+function goBack(){
+  if(window.history.length > 1){
+    history.back();
+  } else {
+    window.location.href = 'posts.html';
+  }
+}
+</script>
+</body>
+</html>
