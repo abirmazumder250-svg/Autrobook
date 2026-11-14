@@ -1,10 +1,12 @@
 const rateLimitMap = new Map();
 
 export default async function handler(req, res) {
-  // 1. Domain Security
-  const allowedOrigins = ['https://vercel.app', 'http://localhost:3000'];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
+  // 1. Domain Security (CORS)
+  const origin = req.headers.origin || '';
+  const isVercelApp = origin.endsWith('.vercel.app');
+  const isLocalhost = origin.includes('localhost:3000');
+
+  if (isVercelApp || isLocalhost) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
     res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
@@ -18,30 +20,40 @@ export default async function handler(req, res) {
 
   // 2. Rate Limiting (Maximum 20 requests per minute per IP)
   try {
-    const ip = (req.headers && req.headers['x-forwarded-for']) || 'user-ip';
-    const now = Date.now();
-    const windowMs = 60 * 1000;
-    const userRecord = rateLimitMap.get(ip) || { count: 0, startTime: now };
+    const rawIp = req.headers['x-forwarded-for'];
+    const ip = rawIp ? rawIp.split(',')[0].trim() : (req.socket?.remoteAddress || 'unknown-ip');
+    
+    if (ip !== 'unknown-ip') {
+      const now = Date.now();
+      const windowMs = 60 * 1000;
+      
+      // Prevent memory leaks by clearing the map if it gets too large
+      if (rateLimitMap.size > 10000) {
+        rateLimitMap.clear();
+      }
 
-    if (now - userRecord.startTime > windowMs) {
-      userRecord.count = 1;
-      userRecord.startTime = now;
-    } else {
-      userRecord.count++;
-    }
-    rateLimitMap.set(ip, userRecord);
+      const userRecord = rateLimitMap.get(ip) || { count: 0, startTime: now };
 
-    if (userRecord.count > 20) {
-      return res.status(200).json({ reply: "Too many requests. Please wait a moment and try again." });
+      if (now - userRecord.startTime > windowMs) {
+        userRecord.count = 1;
+        userRecord.startTime = now;
+      } else {
+        userRecord.count++;
+      }
+      rateLimitMap.set(ip, userRecord);
+
+      if (userRecord.count > 20) {
+        return res.status(429).json({ reply: "Too many requests. Please wait a moment and try again." });
+      }
     }
   } catch (rateErr) {
-    // Continue if rate limit check encounters an issue
+    console.error("Rate limit error:", rateErr);
   }
 
   try {
     const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) {
-      return res.status(200).json({ reply: "Error: GEMINI_API_KEY is not set in Vercel." });
+      return res.status(500).json({ reply: "Error: GEMINI_API_KEY is not set in Vercel environment variables." });
     }
 
     let body = req.body;
@@ -49,20 +61,20 @@ export default async function handler(req, res) {
       try {
         body = JSON.parse(body);
       } catch (parseErr) {
-        return res.status(200).json({ reply: "Error: Invalid JSON format." });
+        return res.status(400).json({ reply: "Error: Invalid JSON format." });
       }
     }
 
     const history = body && body.history;
     const userName = body && body.userName ? body.userName : "Friend";
     if (!history || !Array.isArray(history)) {
-      return res.status(200).json({ reply: "Error: Invalid message history format." });
+      return res.status(400).json({ reply: "Error: Invalid message history format." });
     }
 
     // Keep the last 10 messages for faster response speed
     const recentHistory = history.slice(-10);
 
-    const contents = recentHistory
+    let contents = recentHistory
       .filter(msg => msg && msg.role !== 'system' && msg.content)
       .map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
@@ -74,6 +86,16 @@ export default async function handler(req, res) {
         reply: `Hello ${userName}! How can I help you today?`,
         logoUrl: "/logo.png"
       });
+    }
+
+    // Ensure strict role alternation for Gemini API to avoid 400 Bad Request
+    const sanitizedContents = [];
+    for (const msg of contents) {
+      if (sanitizedContents.length > 0 && sanitizedContents[sanitizedContents.length - 1].role === msg.role) {
+        sanitizedContents[sanitizedContents.length - 1] = msg;
+      } else {
+        sanitizedContents.push(msg);
+      }
     }
 
     // Correct Gemini API URL and model endpoint
@@ -94,7 +116,7 @@ Be friendly, helpful and loyal to Autrobook and its Founder.`;
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        contents: contents,
+        contents: sanitizedContents,
         systemInstruction: {
           parts: [{ text: systemPrompt }]
         }
@@ -106,12 +128,12 @@ Be friendly, helpful and loyal to Autrobook and its Founder.`;
     try {
       data = JSON.parse(rawText);
     } catch (jsonErr) {
-      return res.status(200).json({ reply: "Google server returned an invalid response. Please try again." });
+      return res.status(502).json({ reply: "Google server returned an invalid response. Please try again." });
     }
 
     if (!geminiResponse.ok) {
       const errMsg = (data.error && data.error.message) ? data.error.message : "API Error";
-      return res.status(200).json({ reply: "Error: " + errMsg });
+      return res.status(geminiResponse.status).json({ reply: "Error: " + errMsg });
     }
 
     const candidate = data.candidates && data.candidates[0];
@@ -128,6 +150,6 @@ Be friendly, helpful and loyal to Autrobook and its Founder.`;
     });
 
   } catch (e) {
-    return res.status(200).json({ reply: "Server Error: " + e.message });
+    return res.status(500).json({ reply: "Server Error: " + e.message });
   }
 }
