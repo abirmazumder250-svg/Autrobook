@@ -123,4 +123,4 @@ export default async function handler(req, res) {
     console.error('Server Internal Error:', e);
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
   }
-      }
+}
