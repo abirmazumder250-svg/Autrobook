@@ -1,5 +1,12 @@
 // Vercel API - Verify Email OTP with Supabase
-export default async function handler(req, res) {
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY
+)
+
+export default async function handler(req, res) { 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -13,12 +20,12 @@ export default async function handler(req, res) {
       try { body = JSON.parse(body); } 
       catch (e) { return res.status(400).json({ success: false, message: 'Invalid JSON' }); }
     }
-
+    
     const { email, otp } = body || {};
     if (!email || !otp) return res.status(400).json({ success: false, message: 'Email and OTP required' });
 
     const cleanEmail = String(email).trim().toLowerCase();
-    
+
     // 1. Get OTP from Supabase
     const { data, error } = await supabase
       .from('otps')
@@ -33,7 +40,7 @@ export default async function handler(req, res) {
     // 2. OTP matched. Login user with Supabase
     const { data: authData, error: authError } = await supabase.auth.signInWithOtp({ 
       email: cleanEmail,
-      options: { shouldCreateUser: true }
+      options: { shouldCreateUser: true } 
     });
     
     if(authError) throw authError;
@@ -44,6 +51,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: 'Login Successful' });
 
   } catch (e) {
+    console.error('Verify Error:', e);
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
-  }
+  } 
 }
