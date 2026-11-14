@@ -1,69 +1,65 @@
-// Vercel API - Send OTP to Email via EmailJS + Firestore 
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export default async function handler(req, res) {
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  }
 
   try {
+    // Check if API key is configured
+    if (!process.env.RESEND_API_KEY) {
+      return res.status(500).json({ success: false, message: 'Server configuration error: Missing API key' });
+    }
+
+    // Safely parse request body if sent as a string
     let body = req.body;
     if (typeof body === 'string') {
-      try { body = JSON.parse(body); } catch(e){ return res.status(400).json({ success: false, message: 'Invalid JSON' }); }
-    }
-    const { name, email } = body || {};
-    if (!name || !email) return res.status(400).json({ success: false, message: 'Name and Email required' });
-    
-    const cleanEmail = String(email).trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return res.status(400).json({ success: false, message: 'Invalid email' });
-    }
-
-    const PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
-    const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
-    if (!PROJECT_ID || !FIREBASE_API_KEY) {
-      return res.status(500).json({ success: false, message: 'Firebase config missing' });
-    }
-
-    const docId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-    const docUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/email_otps/${docId}?key=${FIREBASE_API_KEY}`;
-
-    // Rate Limit - 60 seconds
-    const getRes = await fetch(docUrl);
-    if (getRes.ok) {
-      const old = await getRes.json();
-      const lastSent = Number(old.fields?.lastSent?.integerValue || 0);
-      if (Date.now() - lastSent < 60000) {
-        return res.status(429).json({ success: false, message: 'Please wait 60 seconds before resend' });
+      try {
+        body = JSON.parse(body);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: 'Invalid JSON format' });
       }
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiry = Date.now() + 5 * 60 * 1000;
-
-    // Save to Firestore
-    await fetch(docUrl, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fields: { otp: { stringValue: otp }, email: { stringValue: cleanEmail }, expiry: { integerValue: String(expiry) }, attempts: { integerValue: "0" }, lastSent: { integerValue: String(Date.now()) } } })
-    });
-
-    // Send Email via EmailJS
-    const emailRes = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ service_id: process.env.EMAILJS_SERVICE_ID, template_id: process.env.EMAILJS_TEMPLATE_ID, user_id: process.env.EMAILJS_PUBLIC_KEY, accessToken: process.env.EMAILJS_PRIVATE_KEY, template_params: { to_email: cleanEmail, email: cleanEmail, name: name, otp: otp } })
-    });
-
-    if (!emailRes.ok) {
-      const err = await emailRes.text();
-      console.log("EmailJS Error:", err);
-      return res.status(500).json({ success: false, message: 'Failed to send email. Check EmailJS keys.' });
+    const { email, otp, name } = body || {};
+    
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
     }
 
-    return res.status(200).json({ success: true, message: 'OTP sent to ' + cleanEmail });
+    const { data, error } = await resend.emails.send({
+      from: 'Autrobook <onboarding@resend.dev>', // Update with your verified domain in production
+      to: [email.trim()],
+      subject: 'Your Autrobook Login OTP',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #111;">Hi ${name || 'User'},</h2>
+          <p style="color: #555;">Your Autrobook verification code is:</p>
+          <h1 style="letter-spacing: 5px; color: #0f5132; font-size: 32px; margin: 20px 0;">${otp}</h1>
+          <p style="color: #555; font-size: 14px;">This OTP expires in 5 minutes. Do not share it with anyone.</p>
+          <br>
+          <p style="color: #888; font-size: 13px;">- Team Autrobook</p>
+        </div>
+      `
+    });
 
+    if (error) {
+      console.error('Resend Error:', error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+
+    return res.status(200).json({ success: true, message: 'OTP sent successfully', id: data?.id });
+    
   } catch (e) {
+    console.error('Server Error:', e);
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
   }
-                                      }
+}
