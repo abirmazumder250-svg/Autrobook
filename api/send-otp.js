@@ -30,14 +30,14 @@ export default async function handler(req, res) {
 
     const cleanEmail = String(email).trim().toLowerCase();
 
-    // 1. Verify reCAPTCHA
+    // 1. Verify reCAPTCHA (সঠিক গুগল ভেরিফিকেশন লিংক এখানে দেওয়া হলো)
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     const params = new URLSearchParams();
     params.append('secret', secretKey);
     params.append('response', recaptchaToken);
 
     const recaptchaRes = await axios.post(
-      'https://google.com',
+      'https://www.google.com/recaptcha/api/siteverify',
       params
     );
     
@@ -54,7 +54,6 @@ export default async function handler(req, res) {
     const expiryTime = Date.now() + 5 * 60 * 1000;
 
     // 3. Save OTP to Supabase 'otps' table
-    // পুরোনো কোনো ওটিপি থাকলে তা মুছে নতুনটি সেভ করা হচ্ছে
     await supabase.from('otps').delete().eq('email', cleanEmail);
     
     const { error: dbError } = await supabase
