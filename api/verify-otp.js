@@ -63,24 +63,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
     }
 
-    // 4. OTP matched successfully. Sign in or authenticate user with Supabase
-    const { data: authData, error: authError } = await supabase.auth.signInWithOtp({ 
-      email: cleanEmail,
-      options: { shouldCreateUser: true } 
-    });
-    
-    if (authError) {
-      console.error('Supabase Auth Error:', authError);
-      throw authError;
-    }
-
-    // 5. Delete the OTP immediately after successful use to prevent reuse (Single-use token)
+    // 4. Delete the OTP immediately after successful use to prevent reuse (Single-use token)
     await supabase.from('otps').delete().eq('email', cleanEmail);
 
     // Log successful verification audit
     console.log(`[SECURITY AUDIT] OTP verified successfully for: ${cleanEmail} | IP: ${clientIp} | UA: ${userAgent}`);
 
-    return res.status(200).json({ success: true, message: 'Login Successful' });
+    return res.status(200).json({ success: true, message: 'OTP verified successfully' });
 
   } catch (e) {
     console.error('Verify Internal Error:', e);
