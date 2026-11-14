@@ -1,230 +1,162 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Autrobook</title>
-  
-  <!-- Auth Guard: Redirect to login if not authenticated -->
-  <script>
-    if (!localStorage.getItem('autrobook_user')) {
-      window.location.replace('login.html');
-    }
-  </script>
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+<meta charset="UTF-8"> 
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+<title>Autrobook</title> 
+<script> if (!localStorage.getItem('autrobook_user')) { window.location.replace('login.html'); } </script> 
+<link rel="stylesheet" href="style.css"> 
+<style> 
+:root { --bg: #0a1a0f; --card: #13261a; --text: #e4e6eb; --sub: #7a9e80; --brand: #10b981; --border: #1f3d2a; --danger: #ef4444; } 
+body.light { --bg: #f0f2f5; --card: #ffffff; --text: #050505; --sub: #65676b; --border: #ddd; } 
+body { background: var(--bg); color: var(--text); margin: 0; font-family: Arial, sans-serif; padding-bottom: 65px; transition: background 0.3s, color 0.3s; } 
+body.zen-active .badge-count, body.zen-active .promo-banner, body.zen-active .story-ring { filter: grayscale(100%); opacity: 0.7; } 
+#network-banner { display: none; position: fixed; top: 0; left: 0; width: 100%; text-align: center; padding: 6px; font-size: 13px; font-weight: bold; z-index: 10000; color: #fff; } 
+.net-offline { background: var(--danger); } 
+.net-online { background: var(--brand); } 
+#page-loader { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; } 
+.spinner { width: 38px; height: 38px; border: 4px solid var(--border); border-top: 4px solid var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; } 
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } 
+#global-toast { position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%); background: var(--brand); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); } 
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css">
-  <style>
-    :root { --bg: #0a1a0f; --card: #13261a; --text: #e4e6eb; --sub: #7a9e80; --brand: #10b981; --border: #1f3d2a; --danger: #ef4444; }
-    body.light { --bg: #f0f2f5; --card: #ffffff; --text: #050505; --sub: #65676b; --border: #ddd; }
-    body { background: var(--bg); color: var(--text); margin: 0; font-family: Arial, sans-serif; padding-bottom: 65px; transition: background 0.3s, color 0.3s; }
-    
-    /* Zen Mode Styling (Hides distracting badges/popups) */
-    body.zen-active .badge-count, 
-    body.zen-active .promo-banner,
-    body.zen-active .story-ring { filter: grayscale(100%); opacity: 0.7; }
+/* NEW: Quick Links Menu */
+.quick-menu{display:flex; justify-content:space-around; background:var(--card); padding:12px 0; border-bottom:1px solid var(--border); position:sticky; top:55px; z-index:9;}
+.quick-menu a{color:var(--sub); text-decoration:none; font-size:14px; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:4px;}
+.quick-menu a:hover{color:var(--brand);}
+.quick-menu a span{font-size:20px;}
 
-    /* Network Status Banner */
-    #network-banner { display: none; position: fixed; top: 0; left: 0; width: 100%; text-align: center; padding: 6px; font-size: 13px; font-weight: bold; z-index: 10000; color: #fff; }
-    .net-offline { background: var(--danger); }
-    .net-online { background: var(--brand); }
+</style> 
+<audio id="like-sound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3" preload="auto"></audio> 
+</head> 
+<body> 
+<div id="network-banner"></div> 
+<div id="page-loader"><div class="spinner"></div></div> 
+<div id="global-toast"></div> 
+<div id="header-container"></div> 
 
-    /* Loading Spinner */
-    #page-loader { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; }
-    .spinner { width: 38px; height: 38px; border: 4px solid var(--border); border-top: 4px solid var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+<!-- NEW: Quick Access Menu -->
+<div class="quick-menu">
+    <a href="#" onclick="navigateTo('comment/groups.html')">
+        <span>👥</span> Groups
+    </a>
+    <a href="#" onclick="navigateTo('comment/pages.html')">
+        <span>📄</span> Pages
+    </a>
+    <a href="#" onclick="navigateTo('comment/friends.html')">
+        <span>👤</span> Friends
+    </a>
+</div>
 
-    /* Global Toast */
-    #global-toast { position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%); background: var(--brand); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-  </style>
-  
-  <!-- Like Sound -->
-  <audio id="like-sound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3" preload="auto"></audio>
-</head>
-<body>
-  
-  <!-- Network Banner, Loader & Toast -->
-  <div id="network-banner"></div>
-  <div id="page-loader"><div class="spinner"></div></div>
-  <div id="global-toast"></div>
+<main id="app-container"></main> 
+<div id="bottom-nav-container"></div> 
 
-  <!-- Header Container -->
-  <div id="header-container"></div>
-  
-  <!-- Main Page Content -->
-  <main id="app-container"></main>
-  
-  <!-- Bottom Nav Container -->
-  <div id="bottom-nav-container"></div>
-
-  <!-- 1. Firebase Auth -->
-  <script type="module" src="./firebase.js"></script>
-  <script type="module" src="./auth.js"></script>
-  
-  <!-- 2. Supabase DB -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase.js"></script>
-
-  <!-- 3. Core Router & Advanced App Engine -->
-  <script>
-    const pageCache = {};
-    let currentPage = 'pages/01-feed.html';
-
-    // Execute <script> tags inside dynamically loaded HTML
-    function executeScripts(container) {
-      const scripts = container.querySelectorAll('script');
-      scripts.forEach(oldScript => {
-        const newScript = document.createElement('script');
-        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-        oldScript.parentNode.replaceChild(newScript, oldScript);
-      });
-    }
-
-    // Page Navigation with Smart Caching & History
-    function navigateTo(page, addToHistory = true, forceRefresh = false) {
-      const loader = document.getElementById('page-loader');
-      const container = document.getElementById('app-container');
-      currentPage = page;
-
-      if (pageCache[page] && !forceRefresh) {
-        container.innerHTML = pageCache[page];
-        executeScripts(container);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        if (addToHistory) history.pushState({ page: page }, '', '#' + page);
-        updateActiveNav(page);
-        return;
-      }
-
-      loader.style.display = 'block';
-      fetch(page)
-        .then(res => {
-          if (!res.ok) throw new Error('Page not found');
-          return res.text();
-        })
-        .then(html => {
-          pageCache[page] = html;
-          container.innerHTML = html;
-          executeScripts(container);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          
-          if (addToHistory) {
-            history.pushState({ page: page }, '', '#' + page);
-          }
-          updateActiveNav(page);
-        })
-        .catch(err => {
-          console.error('Page load error:', err);
-          container.innerHTML = `
-            <div style="text-align:center; padding:60px 20px;">
-              <h2>⚠️ Page Not Found</h2>
-              <p style="color:var(--sub); margin:10px 0;">Unable to load ${page}</p>
-              <button onclick="navigateTo('pages/01-feed.html')" style="background:var(--brand); color:#fff; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">Back to Feed</button>
-            </div>`;
-        })
-        .finally(() => {
-          loader.style.display = 'none';
-        });
-    }
-
-    // Refresh Current Page
-    window.refreshCurrentPage = function() {
-      navigateTo(currentPage, false, true);
-      showToast('Refreshed ✨');
-    };
-
-    // Component Loader
-    function loadComponent(containerId, file) {
-      const container = document.getElementById(containerId);
-      fetch(file)
-        .then(res => res.text())
-        .then(html => {
-          container.innerHTML = html;
-          executeScripts(container);
-        })
-        .catch(err => console.error('Component load error:', err));
-    }
-
-    // Highlight Active Bottom Nav Item
-    function updateActiveNav(page) {
-      document.querySelectorAll('#bottom-nav-container [data-page]').forEach(el => {
-        el.classList.toggle('active', el.getAttribute('data-page') === page);
-      });
-    }
-
-    // Global Zen Mode Toggle
-    window.toggleZenMode = function() {
-      const isZen = document.body.classList.toggle('zen-active');
-      localStorage.setItem('autrobook_zen', isZen ? 'on' : 'off');
-      showToast(isZen ? '🧘 Zen Mode Enabled' : 'Zen Mode Disabled');
-    };
-
-    // Global Theme Toggle
-    window.toggleTheme = function() {
-      const isLight = document.body.classList.toggle('light');
-      localStorage.setItem('theme', isLight ? 'light' : 'dark');
-      showToast(isLight ? '☀️ Light Theme' : '🌙 Dark Green Theme');
-    };
-
-    // Global Logout Function
-    window.logoutUser = function() {
-      if (!confirm('Are you sure you want to log out of Autrobook?')) return;
-      localStorage.removeItem('autrobook_user');
-      window.location.replace('login.html');
-    };
-
-    // Global Helper: Play Like Sound
-    window.playLikeSound = function() {
-      const audio = document.getElementById('like-sound');
-      if (audio) {
-        audio.currentTime = 0;
-        audio.play().catch(() => {});
-      }
-    };
-
-    // Global Helper: Show Toast Notification
-    window.showToast = function(msg) {
-      const t = document.getElementById('global-toast');
-      t.textContent = msg;
-      t.style.display = 'block';
-      setTimeout(() => { t.style.display = 'none'; }, 2500);
-    };
-
-    // Online / Offline Network Detection
-    window.addEventListener('offline', () => {
-      const banner = document.getElementById('network-banner');
-      banner.className = 'net-offline';
-      banner.textContent = '⚠️ You are currently offline. Check your internet connection.';
-      banner.style.display = 'block';
-    });
-
-    window.addEventListener('online', () => {
-      const banner = document.getElementById('network-banner');
-      banner.className = 'net-online';
-      banner.textContent = '✅ Back online!';
-      banner.style.display = 'block';
-      setTimeout(() => { banner.style.display = 'none'; }, 3000);
-    });
-
-    // Browser Back/Forward Support
-    window.addEventListener('popstate', (e) => {
-      if (e.state && e.state.page) {
-        navigateTo(e.state.page, false);
-      }
-    });
-
-    // App Initialization
-    window.onload = function() {
-      if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
-      if (localStorage.getItem('autrobook_zen') === 'on') document.body.classList.add('zen-active');
-
-      loadComponent('header-container', 'pages/47-header.html');
-      loadComponent('bottom-nav-container', 'pages/48-bottom-nav.html');
-
-      const initialPage = window.location.hash ? window.location.hash.substring(1) : 'pages/01-feed.html';
-      navigateTo(initialPage, false);
-    };
-  </script>
-
-</body>
+<script type="module" src="./firebase.js"></script> 
+<script type="module" src="./auth.js"></script> 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 
+<script src="./supabase.js"></script> 
+<script> 
+const pageCache = {}; 
+let currentPage = 'pages/01-feed.html'; 
+function executeScripts(container) { 
+const scripts = container.querySelectorAll('script'); 
+scripts.forEach(oldScript => { 
+const newScript = document.createElement('script'); 
+Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value)); 
+newScript.appendChild(document.createTextNode(oldScript.innerHTML)); 
+oldScript.parentNode.replaceChild(newScript, oldScript); 
+}); 
+} 
+function navigateTo(page, addToHistory = true, forceRefresh = false) { 
+const loader = document.getElementById('page-loader'); 
+const container = document.getElementById('app-container'); 
+currentPage = page; 
+if (pageCache[page] && !forceRefresh) { 
+container.innerHTML = pageCache[page]; 
+executeScripts(container); 
+window.scrollTo({ top: 0, behavior: 'smooth' }); 
+if (addToHistory) history.pushState({ page: page }, '', '#' + page); 
+updateActiveNav(page); 
+return; 
+} 
+loader.style.display = 'block'; 
+fetch(page) 
+.then(res => { if (!res.ok) throw new Error('Page not found'); return res.text(); }) 
+.then(html => { 
+pageCache[page] = html; 
+container.innerHTML = html; 
+executeScripts(container); 
+window.scrollTo({ top: 0, behavior: 'smooth' }); 
+if (addToHistory) { history.pushState({ page: page }, '', '#' + page); } 
+updateActiveNav(page); 
+}) 
+.catch(err => { 
+console.error('Page load error:', err); 
+container.innerHTML = ` <div style="text-align:center; padding:60px 20px;"> <h2>⚠️ Page Not Found</h2> <p style="color:var(--sub); margin:10px 0;">Unable to load ${page}</p> <button onclick="navigateTo('pages/01-feed.html')" style="background:var(--brand); color:#fff; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">Back to Feed</button> </div>`; 
+}) 
+.finally(() => { loader.style.display = 'none'; }); 
+} 
+window.refreshCurrentPage = function() { navigateTo(currentPage, false, true); showToast('Refreshed ✨'); }; 
+function loadComponent(containerId, file) { 
+const container = document.getElementById(containerId); 
+fetch(file) 
+.then(res => res.text()) 
+.then(html => { container.innerHTML = html; executeScripts(container); }) 
+.catch(err => console.error('Component load error:', err)); 
+} 
+function updateActiveNav(page) { 
+document.querySelectorAll('#bottom-nav-container [data-page]').forEach(el => { 
+el.classList.toggle('active', el.getAttribute('data-page') === page); 
+}); 
+} 
+window.toggleZenMode = function() { 
+const isZen = document.body.classList.toggle('zen-active'); 
+localStorage.setItem('autrobook_zen', isZen ? 'on' : 'off'); 
+showToast(isZen ? '🧘 Zen Mode Enabled' : 'Zen Mode Disabled'); 
+}; 
+window.toggleTheme = function() { 
+const isLight = document.body.classList.toggle('light'); 
+localStorage.setItem('theme', isLight ? 'light' : 'dark'); 
+showToast(isLight ? '☀️ Light Theme' : '🌙 Dark Green Theme'); 
+}; 
+window.logoutUser = function() { 
+if (!confirm('Are you sure you want to log out of Autrobook?')) return; 
+localStorage.removeItem('autrobook_user'); 
+window.location.replace('login.html'); 
+}; 
+window.playLikeSound = function() { 
+const audio = document.getElementById('like-sound'); 
+if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); } 
+}; 
+window.showToast = function(msg) { 
+const t = document.getElementById('global-toast'); 
+t.textContent = msg; 
+t.style.display = 'block'; 
+setTimeout(() => { t.style.display = 'none'; }, 2500); 
+}; 
+window.addEventListener('offline', () => { 
+const banner = document.getElementById('network-banner'); 
+banner.className = 'net-offline'; 
+banner.textContent = '⚠️ You are currently offline. Check your internet connection.'; 
+banner.style.display = 'block'; 
+}); 
+window.addEventListener('online', () => { 
+const banner = document.getElementById('network-banner'); 
+banner.className = 'net-online'; 
+banner.textContent = '✅ Back online!'; 
+banner.style.display = 'block'; 
+setTimeout(() => { banner.style.display = 'none'; }, 3000); 
+}); 
+window.addEventListener('popstate', (e) => { 
+if (e.state && e.state.page) { navigateTo(e.state.page, false); } 
+}); 
+window.onload = function() { 
+if (localStorage.getItem('theme') === 'light') document.body.classList.add('light'); 
+if (localStorage.getItem('autrobook_zen') === 'on') document.body.classList.add('zen-active'); 
+loadComponent('header-container', 'pages/47-header.html'); 
+loadComponent('bottom-nav-container', 'pages/48-bottom-nav.html'); 
+const initialPage = window.location.hash ? window.location.hash.substring(1) : 'pages/01-feed.html'; 
+navigateTo(initialPage, false); 
+}; 
+</script> 
+</body> 
 </html>
