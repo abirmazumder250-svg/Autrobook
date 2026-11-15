@@ -221,11 +221,10 @@ function login(){
   
   if(!email || !pass) return msg('msg1','Please fill all fields','error'); 
   
-  // We are not checking password yet, so we will verify with OTP
   resetEmail = email; 
   msg('msg1','Sending OTP...','success');
-  showStep('step2'); // Go to OTP page
-  requestOTP('resetEmail', 'msg2'); // Auto send OTP
+  showStep('step2'); 
+  requestOTP('resetEmail', 'msg2'); 
 }
 
 function selfieLogin(){
@@ -274,7 +273,6 @@ async function verifyFingerprint() {
   msg('msg2', 'Scanning fingerprint / face ID...', true);
 
   try {
-    // ডেমো বা স্যাম্পল রিকোয়েস্ট অপশন (ব্রাউজারের ফিঙ্গারপ্রিন্ট পপআপ ওপেন করার জন্য)
     const publicKey = {
       challenge: Uint8Array.from("autrobook_secure_challenge", c => c.charCodeAt(0)),
       rp: { name: "Autrobook" },
@@ -288,15 +286,12 @@ async function verifyFingerprint() {
       authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }
     };
 
-    // ডিভাইস থেকে ফিঙ্গারপ্রিন্ট পপআপ ট্রিগার করা
     await navigator.credentials.create({ publicKey });
     
-    // ফিঙ্গারপ্রিন্ট সফল হলে ক্যাপচার ভেরিফাইড ধরে সরাসরি ওটিপি পাঠানোর প্রসেস চালু করা বা স্টেপ ৩-এ নিয়ে যাওয়া
     captchaVerified = true;
     document.getElementById('sendOtpBtn').disabled = false;
     msg('msg2', 'Fingerprint Verified Successfully ✅', 'success');
     
-    // অটোমেটিক ওটিপি রিকোয়েস্ট পাঠানো বা সরাসরি ওটিপি স্টেপে যাওয়া
     setTimeout(() => {
       sendResetOTP();
     }, 1000);
@@ -318,9 +313,10 @@ async function requestOTP(emailFieldId, msgId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-  email: resetEmail,
-  recaptchaToken: grecaptcha.getResponse()
-})
+        email: resetEmail,
+        recaptchaToken: typeof grecaptcha !== "undefined" ? grecaptcha.getResponse() : ""
+      })
+    });
     
     const data = await response.json();
     if(response.ok) {
@@ -330,16 +326,16 @@ async function requestOTP(emailFieldId, msgId) {
     } else {
       msg(msgId, data.message || 'Failed to send OTP', 'error');
     }
-    } catch(e) {
-  console.error(e);
-  msg(msgId, 'Failed to send OTP. Please try again', 'error');
+  } catch(e) {
+    console.error(e);
+    msg(msgId, 'Failed to send OTP. Please try again', 'error');
   }
 }
 
 function sendResetOTP() {
-if(!captchaVerified) return msg(msg2, 'Please complete reCAPTCHA first', 'error');
-requestOTP('resetEmail', 'msg2');
-grecaptcha.reset(); // 
+  if(!captchaVerified) return msg('msg2', 'Please complete reCAPTCHA first', 'error');
+  requestOTP('resetEmail', 'msg2');
+  try { grecaptcha.reset(); } catch(e) {}
 }
 
 function resendOTP() {
@@ -351,19 +347,23 @@ async function verifyOTP(){
   if(!otp) return msg('msg3','Please enter OTP','error');
   msg('msg3','Verifying...', true);
   
-  const res = await fetch('/api/verify-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: resetEmail, otp })
-  })
-  const data = await res.json();
-  
-if(data.success){
-    msg('msg3','OTP Verified','success');
-    showStep('step4');
-    startCamera();
-  } else {
-    msg('msg3', data.message || 'Invalid OTP', 'error');
+  try {
+    const res = await fetch('/api/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail, otp })
+    });
+    const data = await res.json();
+    
+    if(data.success){
+      msg('msg3','OTP Verified','success');
+      showStep('step4');
+      startCamera();
+    } else {
+      msg('msg3', data.message || 'Invalid OTP', 'error');
+    }
+  } catch(e) {
+    msg('msg3', 'Server error during verification', 'error');
   }
 }
 
