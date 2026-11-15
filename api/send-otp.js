@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ফ্রন্টএন্ড থেকে পাঠানো ডেটাগুলো রিসিভ করা হচ্ছে (এর মধ্যে fingerprintVerified ও যুক্ত করা হয়েছে)
+    // Receiving data sent from the frontend (including fingerprintVerified)
     const { email, name, recaptchaToken, fingerprintVerified } = body || {};
 
     if (!email || !recaptchaToken) {
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     params.append('secret', secretKey);
     params.append('response', recaptchaToken);
 
-    // অ্যাক্সিওস রিকোয়েস্টে সঠিক হেডার যুক্ত করা হয়েছে
+    // Added proper headers to the axios request
     const recaptchaRes = await axios.post(
       'https://www.google.com/recaptcha/api/siteverify',
       params,
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 2. Generate a secure 6-digit OTP & set 5-minute expiry time (ISO string ফরম্যাট Supabase-এর জন্য নিরাপদ)
+    // 2. Generate a secure 6-digit OTP & set 5-minute expiry time (ISO string format safe for Supabase)
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiryTime = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
@@ -96,8 +96,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, message: 'Database error: ' + dbError.message });
     }
 
-    // Log security audit details
-    console.log(`[SECURITY AUDIT] OTP requested for: ${cleanEmail} | IP: ${clientIp} | UA: ${userAgent} | Biometric: ${fingerprintVerified}`);
+    // Log security audit details (Biometric status included)
+    console.log(`[SECURITY AUDIT] OTP requested for: ${cleanEmail} | IP: ${clientIp} | UA: ${userAgent} | Biometric Verified: ${fingerprintVerified}`);
 
     // 5. Configure Nodemailer and Send Email with Gmail
     const transporter = nodemailer.createTransport({
