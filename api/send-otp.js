@@ -27,7 +27,8 @@ export default async function handler(req, res) {
       }
     }
 
-    const { email, name, recaptchaToken } = body || {};
+    // ফ্রন্টএন্ড থেকে পাঠানো ডেটাগুলো রিসিভ করা হচ্ছে (এর মধ্যে fingerprintVerified ও যুক্ত করা হয়েছে)
+    const { email, name, recaptchaToken, fingerprintVerified } = body || {};
 
     if (!email || !recaptchaToken) {
       return res.status(400).json({ success: false, message: 'Email and reCAPTCHA token are required' });
@@ -41,13 +42,24 @@ export default async function handler(req, res) {
 
     // 1. Verify Google reCAPTCHA Token
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    if (!secretKey) {
+      console.error('RECAPTCHA_SECRET_KEY is missing in environment variables');
+      return res.status(500).json({ success: false, message: 'Server configuration error (reCAPTCHA)' });
+    }
+
     const params = new URLSearchParams();
     params.append('secret', secretKey);
     params.append('response', recaptchaToken);
 
+    // অ্যাক্সিওস রিকোয়েস্টে সঠিক হেডার যুক্ত করা হয়েছে
     const recaptchaRes = await axios.post(
       'https://www.google.com/recaptcha/api/siteverify',
-      params
+      params,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
     );
     
     if (!recaptchaRes.data.success) {
@@ -58,21 +70,24 @@ export default async function handler(req, res) {
       });
     }
 
-    // 2. Generate a secure 6-digit OTP & set 5-minute expiry time
+    // 2. Generate a secure 6-digit OTP & set 5-minute expiry time (ISO string ফরম্যাট Supabase-এর জন্য নিরাপদ)
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiryTime = Date.now() + 5 * 60 * 1000;
+    const expiryTime = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
     // 3. Hash the OTP securely using bcrypt before storing it in the database
     const hashedOtp = await bcrypt.hash(generatedOtp, 10);
 
     // 4. Save the hashed OTP to the Supabase 'otps' table (delete any previous OTP for this email first)
-    await supabase.from('otps').delete().eq('email', cleanEmail);
+    const { error: deleteError } = await supabase.from('otps').delete().eq('email', cleanEmail);
+    if (deleteError) {
+      console.error('Supabase Delete Error:', deleteError);
+    }
     
     const { error: dbError } = await supabase
       .from('otps')
       .insert([{ 
         email: cleanEmail, 
-        otp: hashedOtp, // Storing hashed OTP instead of plain text
+        otp: hashedOtp, 
         expiry: expiryTime 
       }]);
 
@@ -82,7 +97,7 @@ export default async function handler(req, res) {
     }
 
     // Log security audit details
-    console.log(`[SECURITY AUDIT] OTP requested for: ${cleanEmail} | IP: ${clientIp} | UA: ${userAgent}`);
+    console.log(`[SECURITY AUDIT] OTP requested for: ${cleanEmail} | IP: ${clientIp} | UA: ${userAgent} | Biometric: ${fingerprintVerified}`);
 
     // 5. Configure Nodemailer and Send Email with Gmail
     const transporter = nodemailer.createTransport({
