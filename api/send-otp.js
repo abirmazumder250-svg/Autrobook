@@ -115,7 +115,7 @@ export default async function handler(req, res) {
       html: `
         <div style="font-family: Arial, sans-serif; padding: 25px; max-width: 500px; margin: auto; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff;">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="https://autrobook.vercel.app/logo.png" alt="Autrobook Logo" width="70" style="border-radius: 10px; margin-bottom: 10px;" />
+            <img src="https://raw.githubusercontent.com/abirmazumder250-svg/Autrobook/main/logo.png" alt="Autrobook Logo" width="70" style="border-radius: 10px; margin-bottom: 10px;" />
             <h2 style="color: #111; margin: 0; font-size: 22px;">Autrobook</h2>
           </div>
           <h3 style="color: #333;">Hi ${name || 'User'},</h3>
@@ -138,4 +138,4 @@ export default async function handler(req, res) {
     console.error('Server Internal Error:', e);
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
   }
-}
+            }
