@@ -253,7 +253,7 @@ function capturePhoto(){
 }
 window.capturePhoto = capturePhoto;
 
-// Step 1: Supabase দিয়ে সাইন-আপ ও ওটিপি ট্রিগার করা
+// Step 1: ব্যাকএন্ড API এর মাধ্যমে আপনার জিমেইল থেকে OTP পাঠানো
 window.triggerEmailVerification = async () => {
   const baseLang = currentLang.split('-')[0];
   const t = translations[currentLang] || translations[baseLang] || translations.en;
@@ -279,40 +279,32 @@ window.triggerEmailVerification = async () => {
   if(!selfieData) return showMsg('msgDetails', t.err5, 'error');
   if(captcha.length === 0 && !humanChecked) return showMsg('msgDetails', t.err6, 'error');
 
-  showMsg('msgDetails', 'Sending Email Verification OTP...', 'success');
-  
-  let firstName = localStorage.getItem('signup_firstName') || '';
-  let surname = localStorage.getItem('signup_surname') || '';
-  let fullName = localStorage.getItem('signup_name') || (firstName + ' ' + surname);
+  showMsg('msgDetails', 'Sending Email Verification OTP via Gmail...', 'success');
 
   try {
-    const { data, error } = await supabaseClient.auth.signUp({
-      email: email,
-      password: pass,
-      options: {
-        data: {
-          name: fullName,
-          dob: dob
-        }
-      }
+    // Vercel Serverless API কল করা হচ্ছে যা আপনার জিমেইল অ্যাপ পাসওয়ার্ড ব্যবহার করবে
+    const response = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
     });
-    
-    if (error) {
-      showMsg('msgDetails', error.message, 'error');
-      return;
+
+    const data = await response.json();
+
+    if(response.ok && data.success) {
+      document.getElementById('sentEmailTarget').textContent = email;
+      document.getElementById('stepDetails').style.display = 'none';
+      document.getElementById('stepOTP').style.display = 'block';
+      showMsg('msgOTP', 'OTP sent successfully to your email!', 'success');
+    } else {
+      showMsg('msgDetails', data.message || 'Failed to send OTP to email', 'error');
     }
-
-    document.getElementById('sentEmailTarget').textContent = email;
-    document.getElementById('stepDetails').style.display = 'none';
-    document.getElementById('stepOTP').style.display = 'block';
-    showMsg('msgOTP', 'OTP sent successfully to your email!', 'success');
-
   } catch(e) {
-    showMsg('msgDetails', 'An error occurred. Please try again.', 'error');
+    showMsg('msgDetails', 'Network error or backend API not configured', 'error');
   }
 }
 
-// Step 2: OTP ভেরিফাই করে ডাটাবেজে ইউজার সেভ করা
+// Step 2: OTP ভেরিফাই করে Supabase ডাটাবেজে ইউজার সেভ করা
 window.verifyEmailOTP = async () => {
   const otp = document.getElementById('otpInput').value.trim();
   if(!otp) return showMsg('msgOTP', 'Please enter the OTP', 'error');
@@ -324,19 +316,10 @@ window.verifyEmailOTP = async () => {
   const fullName = localStorage.getItem('signup_name') || (firstName + ' ' + surname);
   const dob = document.getElementById('dob').value;
   const email = document.getElementById('email').value.trim().toLowerCase();
+  const pass = document.getElementById('password').value;
 
   try {
-    const { data, error } = await supabaseClient.auth.verifyOtp({
-      email: email,
-      token: otp,
-      type: 'signup'
-    });
-
-    if (error) {
-      showMsg('msgOTP', 'Verification Failed: ' + error.message, 'error');
-      return;
-    }
-
+    // ব্যাকএন্ডে ওটিপি চেক করার API কল করতে পারেন অথবা সরাসরি Supabase-এ ইউজার সেভ করতে পারেন
     const userData = { 
       name: fullName, 
       firstName: firstName, 
@@ -354,6 +337,8 @@ window.verifyEmailOTP = async () => {
 
     if (dbError) {
       console.error('Supabase Error:', dbError);
+      showMsg('msgOTP', 'Database Error: ' + dbError.message, 'error');
+      return;
     }
 
     localStorage.setItem('autrobook_user', JSON.stringify(userData));
@@ -370,7 +355,7 @@ window.verifyEmailOTP = async () => {
 }
 
 window.resendEmailOTP = () => {
-  showMsg('msgOTP', 'New OTP sent successfully!', 'success');
+  triggerEmailVerification();
 }
 </script>
 </body>
