@@ -1,18 +1,18 @@
 function toast(m){
-  var t=document.getElementById('toast');
-  t.innerText=m;
-  t.style.display='block';
-  setTimeout(function(){t.style.display='none'},2500);
+  var t = document.getElementById('toast');
+  t.innerText = m;
+  t.style.display = 'block';
+  setTimeout(function(){ t.style.display = 'none'; }, 2500);
 }
 
 function submitReceiverRequest(){
-  var name=document.getElementById('recName').value.trim();
-  var address=document.getElementById('recAddress').value.trim();
-  var group=document.getElementById('recGroup').value;
-  var phone=document.getElementById('recPhone').value.trim();
+  var name = document.getElementById('recName').value.trim();
+  var address = document.getElementById('recAddress').value.trim();
+  var group = document.getElementById('recGroup').value;
+  var phone = document.getElementById('recPhone').value.trim();
   
-  var frontFile=document.getElementById('recNidFront').files[0];
-  var backFile=document.getElementById('recNidBack').files[0];
+  var frontFile = document.getElementById('recNidFront').files[0];
+  var backFile = document.getElementById('recNidBack').files[0];
 
   if(!name || !address || !phone){
     return toast('Please fill in name, address, and phone number!');
@@ -21,7 +21,7 @@ function submitReceiverRequest(){
     return toast('Please upload NID Front and Back pictures from gallery!');
   }
 
-  // FileReader দিয়ে NID ছবিগুলো Base64 এ রূপান্তর করা হচ্ছে
+  // Converting NID images to Base64 using FileReader
   var readerFront = new FileReader();
   readerFront.onload = function(e1){
     var frontBase64 = e1.target.result;
@@ -41,13 +41,13 @@ function submitReceiverRequest(){
         date: new Date().toLocaleDateString()
       };
 
-      // লোকালস্টোরেজে রিকোয়েস্ট সেইভ করা
-      var requests=[];
-      try{requests=JSON.parse(localStorage.getItem('ab_blood_requests')||'[]');}catch(e){requests=[];}
+      // Saving request to Local Storage
+      var requests = [];
+      try { requests = JSON.parse(localStorage.getItem('ab_blood_requests') || '[]'); } catch(e) { requests = []; }
       requests.unshift(receiverData);
-      localStorage.setItem('ab_blood_requests',JSON.stringify(requests));
+      localStorage.setItem('ab_blood_requests', JSON.stringify(requests));
 
-      // এছাড়াও Autrobook Feed-এ পোস্ট হিসেবে ব্রডকাস্ট করার ব্যবস্থা
+      // Broadcasting the request as a post on Autrobook Feed
       var feedPost = {
         id: Date.now(),
         author: '🩸 URGENT BLOOD REQUEST',
@@ -58,35 +58,35 @@ function submitReceiverRequest(){
         comments: []
       };
 
-      var feedPosts=[];
-      try{feedPosts=JSON.parse(localStorage.getItem('ab_posts')||'[]');}catch(e){feedPosts=[];}
+      var feedPosts = [];
+      try { feedPosts = JSON.parse(localStorage.getItem('ab_posts') || '[]'); } catch(e) { feedPosts = []; }
       feedPosts.unshift(feedPost);
-      localStorage.setItem('ab_posts',JSON.stringify(feedPosts));
+      localStorage.setItem('ab_posts', JSON.stringify(feedPosts));
 
       toast('Blood request broadcasted successfully! 🚨');
-      setTimeout(function(){history.back();},1200);
+      setTimeout(function(){ history.back(); }, 1200);
     };
     readerBack.readAsDataURL(backFile);
   };
   readerFront.readAsDataURL(frontFile);
 }
 
-// ডোনার খোঁজার ফিল্টার ফাংশন
+// Donor Search & Filter Function
 function filterDonors(){
-  var sg=document.getElementById('searchGroup').value;
-  var donors=[];
-  try{donors=JSON.parse(localStorage.getItem('ab_donors')||'[]');}catch(e){donors=[];}
+  var sg = document.getElementById('searchGroup').value;
+  var donors = [];
+  try { donors = JSON.parse(localStorage.getItem('ab_donors') || '[]'); } catch(e) { donors = []; }
 
   if(sg){
-    donors=donors.filter(function(d){return d.group===sg;});
+    donors = donors.filter(function(d){ return d.group === sg; });
   }
 
-  var html=donors.length ? donors.map(function(d){
-    return '<div class="donor-card"><div><b>'+d.name+'</b><small style="display:block;color:var(--text2)">Group: <span style="color:var(--brand);font-weight:bold">'+d.group+'</span> | Location: '+d.location+'</small></div><a class="call-btn" href="tel:'+d.phone+'">📞 Call</a></div>';
+  var html = donors.length ? donors.map(function(d){
+    return '<div class="donor-card"><div><b>' + d.name + '</b><small style="display:block;color:var(--text2)">Group: <span style="color:var(--brand);font-weight:bold">' + d.group + '</span> | Location: ' + d.location + '</small></div><a class="call-btn" href="tel:' + d.phone + '">📞 Call</a></div>';
   }).join('') : '<p style="text-align:center;color:var(--text2);padding:15px">No verified donors found.</p>';
 
-  document.getElementById('donorResults').innerHTML=html;
+  document.getElementById('donorResults').innerHTML = html;
 }
 
-// পেজ লোড হওয়ার সাথে সাথে সব ডোনারদের দেখাবে
+// Automatically display all donors on page load
 filterDonors();
