@@ -39,44 +39,85 @@ export default async function handler(req) {
       );
     }
 
-    // Keep only the last 6 messages so slow mobile networks upload less data
+    // Keep only the last 6 messages for context to save bandwidth and tokens
     const recentHistory = history.slice(-6);
     const formattedContents = [
       ...recentHistory,
       { role: 'user', parts: [{ text: prompt }] },
     ];
 
-    // Full official Gemini 2.5 Flash endpoint
-    const apiUrl = 'https://googleapis.com';
+    // ⚡ Fastest Model Endpoint (Gemini 2.5 Flash)
+    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: formattedContents,
-        systemInstruction: {
-          parts: [
-            {
-              text: 'You are Autro AI, the helpful assistant for Autrobook. Your primary language is English, and you must always respond in the exact same language the user writes in. Keep answers clear and concise.',
-            },
-          ],
-        },
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 600,
-          thinkingConfig: {
-            thinkingBudget: 0, // Disables internal reasoning delay for instant replies
+    const requestBody = {
+      contents: formattedContents,
+      systemInstruction: {
+        parts: [
+          {
+            text: `You are Autro AI, the official AI assistant for Autrobook. 
+            Rules:
+            1. Always reply in the exact same language the user speaks in (Bengali, English, Hindi, Arabic, etc.).
+            2. Be polite, helpful, and friendly.
+            3. If someone asks about the Founder/Admin, you MUST reply with exactly these details:
+               - Name: Abir Mazumder
+               - University: Dhaka Central University
+               - Father: Babul Mazumder
+               - Mother: Manika Mitra
+               - Location: Dhaka, Bangladesh
+            4. Keep answers short, clear, and conversational (max 2-3 sentences).
+            5. Mention Autrobook features like Zen Mode, 18+ Guard, Blood Donation Hub, and AI Smart Reply if asked.`,
           },
+        ],
+      },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 600,
+        thinkingConfig: {
+          thinkingBudget: 0, // ⚡ Disables internal reasoning delay for INSTANT replies
         },
-      }),
-    });
+      },
+    };
+
+    let response;
+    let retries = 2; // Auto-retry logic if Google's server is busy
+
+    while (retries >= 0) {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      // If successful or a non-retryable error (like bad API key), break the loop
+      if (response.ok || response.status === 400 || response.status === 403) {
+        break;
+      }
+      
+      // If 429 (Rate Limit) or 503 (Server Busy), wait 1 second and retry
+      if (response.status === 429 || response.status === 503) {
+        retries--;
+        if (retries >= 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        }
+      } else {
+        break; // Other errors
+      }
+    }
 
     const data = await response.json();
 
     if (!response.ok) {
+      // Handle Rate Limiting specifically
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'AI is receiving too many messages right now. Please wait a few seconds and try again.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: data.error?.message || 'Google API returned an error.' }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -89,10 +130,11 @@ export default async function handler(req) {
       JSON.stringify({ reply }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error) {
     return new Response(
       JSON.stringify({ error: 'Server error: ' + error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-}
+          }
