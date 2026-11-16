@@ -20,7 +20,40 @@ let privacySettings = JSON.parse(localStorage.getItem('privacySettings')) || {
 };
 let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
 let currentFilter = 'all';
-let selectedPostImage = null; // For new post image
+let selectedPostImage = null;
+
+// ==================== SUPABASE IMAGE UPLOAD ====================
+async function uploadToSupabase(file) {
+  if (!file) return null;
+  
+  const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
+  
+  try {
+    const { data, error } = await supabaseClient.storage
+      .from('images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Supabase Upload Error:', error);
+      showToast('Image upload failed: ' + error.message);
+      return null;
+    }
+    
+    const { data: urlData } = supabaseClient.storage
+      .from('images')
+      .getPublicUrl(fileName);
+      
+    return urlData.publicUrl;
+    
+  } catch (err) {
+    console.error('Network or Server Error:', err);
+    showToast('Network error while uploading image.');
+    return null;
+  }
+}
 
 // ==================== THEME ====================
 function applyTheme(theme) {
@@ -124,7 +157,7 @@ function sosAlert() {
   supabaseClient.from('security_logs').insert({ event: 'SOS Activated', status: 'success' }).then();
 }
 
-// ==================== COMPOSER & POSTS ====================
+// ==================== COMPOSER ====================
 function previewPostImage(event) {
   const file = event.target.files[0];
   if (file) {
@@ -159,18 +192,8 @@ async function publishPost() {
     let imageUrl = null;
 
     if (selectedPostImage) {
-      const fileName = `post_${Date.now()}.jpg`;
-      const { error } = await supabaseClient.storage
-        .from('images')
-        .upload(`posts/${fileName}`, selectedPostImage);
-
-      if (error) throw error;
-
-      const { data: urlData } = supabaseClient.storage
-        .from('images')
-        .getPublicUrl(`posts/${fileName}`);
-      
-      imageUrl = urlData.publicUrl;
+      imageUrl = await uploadToSupabase(selectedPostImage);
+      if (!imageUrl) throw new Error("Image upload failed");
     }
 
     const post = {
@@ -703,6 +726,27 @@ window.addEventListener('load', () => {
       const brandName = this.parentElement.querySelector('.brand-name');
       if (brandName) brandName.style.marginLeft = '0';
     };
+  }
+
+  // ==================== PWA SERVICE WORKER ====================
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then((registration) => {
+        console.log('Service Worker registered with scope:', registration.scope);
+
+        // Notify user when a new update is available
+        registration.onupdatefound = () => {
+          const newWorker = registration.installing;
+          newWorker.onstatechange = () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showToast('🔄 New update available! Refresh the app.');
+            }
+          };
+        };
+      })
+      .catch((error) => {
+        console.error('Service Worker registration failed:', error);
+      });
   }
 });
 
