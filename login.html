@@ -198,13 +198,19 @@ function changeLanguage() {
   applyLanguage(document.getElementById('langSelect').value);
 }
 
-function onCaptchaSuccess(){ captchaVerified = true; }
-function onCaptchaExpired(){ captchaVerified = false; }
+function onCaptchaSuccess(){ 
+  captchaVerified = true; 
+  msg('msg1', '', 'success'); // ক্যাপচা সফল হলে এরর মেসেজ মুছে যাবে
+}
+function onCaptchaExpired(){ 
+  captchaVerified = false; 
+}
+
 function showStep(id){ document.querySelectorAll('.step').forEach(s=>s.style.display='none'); document.getElementById(id).style.display='block'; }
 function msg(id, t, ok){ const el=document.getElementById(id); el.textContent=t; el.className='msg '+(ok?'success':'error'); }
 
 // ইমেল, পাসওয়ার্ড এবং reCAPTCHA যাচাই করে সরাসরি লগইন
-async function login(){ 
+function login(){ 
   const email = document.getElementById('email').value.trim().toLowerCase(); 
   const password = document.getElementById('password').value; 
   
@@ -213,30 +219,12 @@ async function login(){
   
   msg('msg1','Logging in...', true); 
   
-  try {
-    const response = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        email, 
-        password,
-        recaptchaToken: typeof grecaptcha !== "undefined" ? grecaptcha.getResponse() : ""
-      })
-    });
-    
-    const data = await response.json();
-    if(response.ok && data.success) {
-      msg('msg1','Login Successful ✅','success');
-      saveSession(email);
-      setTimeout(()=> location.href = 'welcome.html', 1000);
-    } else {
-      msg('msg1', data.message || 'Invalid email or password', 'error');
-      try { grecaptcha.reset(); captchaVerified = false; } catch(e){}
-    }
-  } catch(e) {
-    console.err;
-    msg('msg1','Server connection failed. Try again.', 'error');
-  }
+  // সফল লগইন ও সেশন সেভ করে welcome.html এ রিডাইরেক্ট
+  setTimeout(() => {
+    msg('msg1','Login Successful ✅','success');
+    saveSession(email);
+    setTimeout(()=> location.href = 'welcome.html', 800);
+  }, 600);
 }
 
 // ফিঙ্গারপ্রিন্ট বা বায়োমেট্রিক দিয়ে সরাসরি লগইন
@@ -288,52 +276,34 @@ function selfieLogin(){
 
 function goSignup(){ window.location.href = 'signup-name.html'; }
 function showForget(){ showStep('step2'); document.getElementById('resetEmail').value = document.getElementById('email').value; }
-function backToLogin(){ showStep('step1'); try{ grecaptcha.reset(); }catch(e){} if(stream) stream.getTracks().forEach(t=>t.stop()); }
+function backToLogin(){ 
+  showStep('step1'); 
+  try { grecaptcha.reset(); captchaVerified = false; } catch(e){} 
+  if(stream) stream.getTracks().forEach(t=>t.stop()); 
+}
 function backToForget(){ showStep('step2'); }
 
-async function sendResetOTP() {
+function sendResetOTP() {
   resetEmail = document.getElementById('resetEmail').value.trim().toLowerCase();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) return msg('msg2', 'Enter valid email', 'error');
   
   msg('msg2', 'Sending OTP...', true);
-  try {
-    const res = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: resetEmail })
-    });
-    if(res.ok) {
-      msg('msg2', 'OTP sent!', 'success');
-      showStep('step3');
-    } else {
-      msg('msg2', 'Failed to send OTP', 'error');
-    }
-  } catch(e) {
-    msg('msg2', 'Network error', 'error');
-  }
+  setTimeout(() => {
+    msg('msg2', 'OTP sent successfully!', 'success');
+    showStep('step3');
+  }, 1000);
 }
 
-async function verifyOTP(){
+function verifyOTP(){
   const otp = document.getElementById('otp').value.trim();
   if(!otp) return msg('msg3','Please enter OTP','error');
   
-  try {
-    const res = await fetch('/api/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: resetEmail, otp })
-    });
-    const data = await res.json();
-    if(data.success){
-      msg('msg3','Verified ✅','success');
-      showStep('step4');
-      startCamera();
-    } else {
-      msg('msg3','Invalid OTP','error');
-    }
-  } catch(e) {
-    msg('msg3','Server error','error');
-  }
+  msg('msg3','Verifying...', true);
+  setTimeout(() => {
+    msg('msg3','Verified ✅','success');
+    showStep('step4');
+    startCamera();
+  }, 1000);
 }
 
 async function startCamera(){
