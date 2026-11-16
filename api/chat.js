@@ -1,5 +1,5 @@
 export const config = {
-  runtime: 'edge', // Runs globally with zero cold-start delay
+  runtime: 'edge',
 };
 
 export default async function handler(req) {
@@ -39,14 +39,12 @@ export default async function handler(req) {
       );
     }
 
-    // Keep only the last 6 messages for context to save bandwidth and tokens
     const recentHistory = history.slice(-6);
     const formattedContents = [
       ...recentHistory,
       { role: 'user', parts: [{ text: prompt }] },
     ];
 
-    // ⚡ Fastest Model Endpoint (Gemini 2.5 Flash)
     const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
     const requestBody = {
@@ -73,13 +71,13 @@ export default async function handler(req) {
         temperature: 0.7,
         maxOutputTokens: 600,
         thinkingConfig: {
-          thinkingBudget: 0, // ⚡ Disables internal reasoning delay for INSTANT replies
+          thinkingBudget: 0,
         },
       },
     };
 
     let response;
-    let retries = 2; // Auto-retry logic if Google's server is busy
+    let retries = 2;
 
     while (retries >= 0) {
       response = await fetch(apiUrl, {
@@ -91,26 +89,23 @@ export default async function handler(req) {
         body: JSON.stringify(requestBody),
       });
 
-      // If successful or a non-retryable error (like bad API key), break the loop
       if (response.ok || response.status === 400 || response.status === 403) {
         break;
       }
       
-      // If 429 (Rate Limit) or 503 (Server Busy), wait 1 second and retry
       if (response.status === 429 || response.status === 503) {
         retries--;
         if (retries >= 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       } else {
-        break; // Other errors
+        break;
       }
     }
 
     const data = await response.json();
 
     if (!response.ok) {
-      // Handle Rate Limiting specifically
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'AI is receiving too many messages right now. Please wait a few seconds and try again.' }),
@@ -137,4 +132,4 @@ export default async function handler(req) {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-          }
+}
