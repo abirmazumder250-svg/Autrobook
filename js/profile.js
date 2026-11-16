@@ -1,304 +1,729 @@
-/* ============================================================
-   AUTROBOOK - PROFILE PAGE JAVASCRIPT
-   ============================================================ */
+/* ==================================================================
+   AUTROBOOK — PROFILE PAGE SCRIPT
+   Handles: posts, tabs, modals, profile name/username editing (persisted)
+   ================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Set dynamic year (2026, 2027, etc.)
-  document.getElementById('dynamicYear').textContent = new Date().getFullYear();
-  
-  // Render Mock Profile Posts
-  renderProfilePosts();
-});
+// ==================== PROFILE STATE (NAME / USERNAME) ====================
+const PROFILE_STORAGE_KEY = 'autrobook_profile_v1';
 
-// ===== MOCK PROFILE POSTS DATA =====
-const mockProfilePosts = [
+const DEFAULT_PROFILE = {
+  name: 'Abir Mazumder',
+  username: 'abirmazumder'
+};
+
+let profileData = { ...DEFAULT_PROFILE };
+
+/** Load saved profile from localStorage (name + username) */
+function loadProfileFromStorage() {
+  try {
+    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      profileData = { ...DEFAULT_PROFILE, ...parsed };
+    }
+  } catch (err) {
+    profileData = { ...DEFAULT_PROFILE };
+  }
+  applyProfileToDOM();
+}
+
+/** Persist profile data to localStorage */
+function saveProfileToStorage() {
+  try {
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileData));
+  } catch (err) {
+    /* ignore quota errors */
+  }
+}
+
+/** Reflect profileData into visible DOM elements */
+function applyProfileToDOM() {
+  const nameEl = document.getElementById('profileName');
+  if (nameEl) nameEl.textContent = profileData.name;
+
+  const usernameEl = document.getElementById('profileUsername');
+  if (usernameEl) usernameEl.textContent = '@' + profileData.username;
+
+  const shareInput = document.getElementById('shareLinkInput');
+  if (shareInput) {
+    shareInput.value = `https://autrobook.com/u/${profileData.username}`;
+  }
+}
+
+// ==================== POSTS DATA ====================
+const postsData = [
   {
-    id: 'p1',
-    text: 'Just finished an amazing studio session! 🎶 New cover dropping soon.',
-    media: null,
-    time: Date.now() - 3600000,
-    reactions: { '👍': 1200, '❤️': 340, '🥰': 120 },
-    views: 25000,
-    viral: 14
+    id: 1,
+    author: 'Abir Mazumder',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80',
+    time: '2 hours ago',
+    text: 'Just finished recording my new single! 🎶 Can\'t wait for you all to hear it. #NewMusic #Autrobook',
+    media: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
+    likes: 234,
+    comments: 45,
+    shares: 12,
+    pinned: true,
+    reactions: { like: 120, love: 80, care: 20, haha: 8, wow: 4, sad: 2, angry: 0 },
+    userReaction: null
   },
   {
-    id: 'p2',
-    text: 'What a view today at Cox\'s Bazar! 🌊',
-    media: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
-    time: Date.now() - 86400000,
-    reactions: { '❤️': 856, '😮': 112 },
-    views: 18000,
-    viral: 8
+    id: 2,
+    author: 'Abir Mazumder',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80',
+    time: 'Yesterday at 8:30 PM',
+    text: 'Grateful for all the love and support. This journey has been incredible. 🙏❤️',
+    media: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=600&q=80',
+    likes: 567,
+    comments: 89,
+    shares: 34,
+    pinned: false,
+    reactions: { like: 300, love: 150, care: 60, haha: 20, wow: 25, sad: 10, angry: 2 },
+    userReaction: null
+  },
+  {
+    id: 3,
+    author: 'Abir Mazumder',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80',
+    time: '2 days ago',
+    text: 'Dhaka nights 🌙✨',
+    media: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=600&q=80',
+    likes: 189,
+    comments: 23,
+    shares: 5,
+    pinned: false,
+    reactions: { like: 100, love: 60, care: 10, haha: 5, wow: 12, sad: 2, angry: 0 },
+    userReaction: null
   }
 ];
 
-// ===== CHANGE PROFILE & COVER PHOTO =====
-function changeProfile(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      document.getElementById('mainProfileImg').src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-}
+// ==================== UI STATE ====================
+let currentTab = 'posts';
+let currentView = 'list';
+let currentPostFilter = 'recent';
+let searchQuery = '';
 
-function changeCover(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      document.getElementById('mainCoverImg').src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-}
-
-// ===== RENDER POSTS =====
-function renderProfilePosts() {
+// ==================== RENDER: POSTS ====================
+function renderPosts() {
   const container = document.getElementById('profileFeedContainer');
-  container.innerHTML = '';
+  if (!container) return;
 
-  mockProfilePosts.forEach(post => {
-    const postEl = document.createElement('div');
-    postEl.className = 'post';
-    
-    const totalReactions = Object.values(post.reactions).reduce((a, b) => a + b, 0);
-    const formattedViews = post.views >= 1000 ? (post.views / 1000).toFixed(1) + 'K' : post.views;
+  const filterEl = document.getElementById('postFilter');
+  const filter = filterEl ? filterEl.value : 'recent';
+  currentPostFilter = filter;
 
-    let reactionHTML = '';
-    let count = 0;
-    for (const [emoji] of Object.entries(post.reactions)) {
-      if (count >= 3) break;
-      reactionHTML += `<span>${emoji}</span>`;
-      count++;
-    }
+  let filtered = [...postsData];
 
-    postEl.innerHTML = `
-      <div class="post-header">
-        <div class="post-user">
-          <div class="avatar">A</div>
-          <div>
-            <div style="font-weight:600; font-size:15px;">Abir Mazumder</div>
-            <div class="post-meta live-time" data-time="${post.time}">Just now · <i class="fas fa-globe-americas"></i></div>
-          </div>
-        </div>
-        <button class="icon-btn" style="background:transparent; width:30px; height:30px;" onclick="openModal('mOwnPostMenu')"><i class="fas fa-ellipsis-h"></i></button>
-      </div>
-      <div class="post-text">${post.text}</div>
-      ${post.media ? `<img src="${post.media}" class="post-media" loading="lazy">` : ''}
-      
-      <div class="reactions-row">
-        <div class="reaction-stack" onclick="openVoiceComment()">
-          ${reactionHTML} <span>${totalReactions}</span>
-        </div>
-        <div class="insights">
-          <span><i class="fas fa-eye"></i> ${formattedViews} Views</span>
-          <span style="color:var(--success);"><i class="fas fa-chart-line"></i> ${post.viral}% Viral</span>
-        </div>
-      </div>
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(p =>
+      p.text.toLowerCase().includes(q) || p.author.toLowerCase().includes(q)
+    );
+  }
 
-      <div class="post-actions">
-        <div class="reaction-wrapper">
-          <button class="action-btn" onclick="toggleReactionPicker(this)"><i class="far fa-thumbs-up"></i> Like</button>
-          <div class="reaction-picker">
-            <span onclick="addReaction(this, '👍')">👍</span>
-            <span onclick="addReaction(this, '❤️')">❤️</span>
-            <span onclick="addReaction(this, '😆')">😆</span>
-            <span onclick="addReaction(this, '🥰')">🥰</span>
-            <span onclick="addReaction(this, '😮')">😮</span>
-            <span onclick="addReaction(this, '😢')">😢</span>
-            <span onclick="addReaction(this, '😠')">😠</span>
-          </div>
-        </div>
-        <button class="action-btn" onclick="openVoiceComment()"><i class="fas fa-microphone"></i> Voice</button>
-        <button class="action-btn"><i class="fas fa-share"></i> Share</button>
-      </div>
-    `;
-    container.appendChild(postEl);
-  });
+  if (filter === 'recent') {
+    filtered.sort((a, b) => b.id - a.id);
+  } else if (filter === 'popular') {
+    filtered.sort((a, b) => b.likes - a.likes);
+  } else if (filter === 'pinned') {
+    filtered.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  }
 
-  updateLiveTimes();
-  setInterval(updateLiveTimes, 60000);
+  if (filtered.length === 0) {
+    container.innerHTML =
+      '<div style="text-align:center;padding:40px;color:var(--muted);">No posts found</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(post => createPostHTML(post)).join('');
 }
 
-// ===== LIVE TIME UPDATER =====
-function updateLiveTimes() {
-  document.querySelectorAll('.live-time').forEach(el => {
-    const timeStr = el.getAttribute('data-time');
-    if (!timeStr) return;
-    
-    const diff = Date.now() - parseInt(timeStr);
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(mins / 60);
-    const days = Math.floor(hours / 24);
-    
-    let text = "";
-    if (mins < 1) text = "Just now";
-    else if (mins < 60) text = mins + "m ago";
-    else if (hours < 24) text = hours + "h ago";
-    else if (days < 7) text = days + "d ago";
-    else text = Math.floor(days / 7) + "w ago";
-    
-    el.innerHTML = `${text} · <i class="fas fa-globe-americas"></i>`;
-  });
-}
+function createPostHTML(post) {
+  const reactionEmojis = {
+    like: '👍', love: '❤️', care: '🥰', haha: '😂',
+    wow: '😮', sad: '😢', angry: '😡'
+  };
+  const reactionLabels = {
+    like: 'Like', love: 'Love', care: 'Care', haha: 'Haha',
+    wow: 'Wow', sad: 'Sad', angry: 'Angry'
+  };
 
-// ===== OVERLAY & MODAL CONTROLS =====
-function openEditProfile() { document.getElementById('editProfileOverlay').classList.add('open'); }
-function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  const totalReactions = Object.values(post.reactions).reduce((a, b) => a + b, 0);
 
-// ===== FOLLOWERS MODAL LOGIC (10K) =====
-const mockFollowers = [
-  { name: 'Mita Mitra', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80', bio: 'Travel Blogger', following: false },
-  { name: 'Tripurna Mazumder', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80', bio: 'Fashion Designer', following: true },
-  { name: 'Rahul Khan', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80', bio: 'Musician', following: false },
-  { name: 'Tech Chronicles', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=100&q=80', bio: 'Tech News', following: false },
-  { name: 'Daily Sports', img: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=100&q=80', bio: 'Sports Page', following: true },
-  { name: 'Foodie Finds', img: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=100&q=80', bio: 'Food Reviews', following: false },
-  { name: 'Nature Lovers', img: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=100&q=80', bio: 'Photography', following: false },
-  { name: 'Gaming Hub', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100&q=80', bio: 'Esports', following: false },
-  { name: 'Crypto Daily', img: 'https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=100&q=80', bio: 'Web3 Updates', following: false },
-  { name: 'Design Inspiration', img: 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=100&q=80', bio: 'UI/UX', following: true },
-  { name: 'Motivational Quotes', img: 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=100&q=80', bio: 'Daily Motivation', following: false },
-  { name: 'Photography Pro', img: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=100&q=80', bio: 'Visual Arts', following: false }
-];
-
-function openFollowersModal() {
-  const container = document.getElementById('followersListContainer');
-  container.innerHTML = '';
-
-  mockFollowers.forEach((user, index) => {
-    const item = document.createElement('div');
-    item.className = 'follower-item';
-    item.innerHTML = `
-      <div class="follower-info">
-        <img src="${user.img}" alt="${user.name}">
-        <div>
-          <h4>${user.name}</h4>
-          <p>${user.bio}</p>
-        </div>
-      </div>
-      <button class="btn-follow-small ${user.following ? 'following' : ''}" onclick="toggleFollowerFollow(this, ${index})">
-        ${user.following ? 'Following' : 'Follow'}
+  const reactionBarHTML = Object.entries(reactionEmojis).map(([key, emoji]) => {
+    const isActive = post.userReaction === key;
+    return `
+      <button class="reaction-btn ${isActive ? 'active' : ''}" onclick="handleReaction(${post.id}, '${key}')">
+        <span class="emoji">${emoji}</span> ${reactionLabels[key]}
       </button>
     `;
-    container.appendChild(item);
+  }).join('');
+
+  const mediaHTML = post.media
+    ? `<img src="${post.media}" class="post-media" alt="Post" loading="lazy">`
+    : '';
+  const pinnedHTML = post.pinned
+    ? '<span style="font-size:11px;color:var(--primary);font-weight:600;">📌 Pinned</span>'
+    : '';
+
+  return `
+    <div class="post-card" data-post-id="${post.id}">
+      <div class="post-header">
+        <img src="${post.avatar}" alt="${post.author}">
+        <div class="post-header-info">
+          <b>${post.author}</b>
+          <small>${post.time} ${pinnedHTML}</small>
+        </div>
+        <button class="post-more-btn" onclick="openPostMenu(${post.id})">
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+      </div>
+      <div class="post-text">${post.text}</div>
+      ${mediaHTML}
+      <div class="post-actions">
+        <button class="post-action-btn" onclick="toast('Liked!')">
+          <i class="far fa-thumbs-up"></i> Like
+        </button>
+        <button class="post-action-btn" onclick="toast('Comment opened')">
+          <i class="far fa-comment"></i> Comment
+        </button>
+        <button class="post-action-btn" onclick="toast('Share opened')">
+          <i class="fas fa-share"></i> Share
+        </button>
+      </div>
+      <div class="reaction-bar">${reactionBarHTML}</div>
+      <div class="reaction-count">
+        ${totalReactions} reactions · ${post.comments} comments · ${post.shares} shares
+      </div>
+    </div>
+  `;
+}
+
+function handleReaction(postId, reactionType) {
+  const post = postsData.find(p => p.id === postId);
+  if (!post) return;
+
+  if (post.userReaction === reactionType) {
+    post.reactions[reactionType] = Math.max(0, (post.reactions[reactionType] || 0) - 1);
+    post.userReaction = null;
+    post.likes = Math.max(0, post.likes - 1);
+    toast('Reaction removed');
+  } else {
+    if (post.userReaction) {
+      post.reactions[post.userReaction] = Math.max(
+        0,
+        (post.reactions[post.userReaction] || 0) - 1
+      );
+    } else {
+      post.likes += 1;
+    }
+    post.reactions[reactionType] = (post.reactions[reactionType] || 0) + 1;
+    post.userReaction = reactionType;
+    const emojis = {
+      like: '👍', love: '❤️', care: '🥰', haha: '😂',
+      wow: '😮', sad: '😢', angry: '😡'
+    };
+    toast(`Reacted with ${emojis[reactionType]}`);
+  }
+
+  renderPosts();
+}
+
+// ==================== UI HELPERS ====================
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+}
+
+function openOverlay(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function closeOverlay(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function openPostMenu(postId) { openModal('mOwnPostMenu'); }
+
+function savePost() { toast('Post saved'); }
+function pinPost() { toast('Post pinned to profile'); }
+function editPost() { toast('Edit post opened'); }
+function deletePost() { toast('Post deleted'); }
+
+function scrollToTab(tab) {
+  switchTab(tab);
+  const el = document.getElementById('tab-' + tab);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+  const target = document.getElementById('tab-' + tab);
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('.tab-btn').forEach(el => {
+    if (el.dataset.tab === tab) el.classList.add('active');
   });
+
+  if (tab === 'posts') renderPosts();
+  if (tab === 'photos') renderPhotos();
+  if (tab === 'reels') renderReels();
+  if (tab === 'events') renderEvents();
+  if (tab === 'about') renderAbout();
+  if (tab === 'badges') renderBadges();
+}
+
+function filterPosts(value) {
+  searchQuery = value;
+  renderPosts();
+}
+
+function toggleView() {
+  currentView = currentView === 'list' ? 'grid' : 'list';
+  const container = document.getElementById('profileFeedContainer');
+  if (container) container.classList.toggle('grid-view', currentView === 'grid');
+  const btn = document.getElementById('viewToggleBtn');
+  if (btn) {
+    btn.innerHTML = currentView === 'list'
+      ? '<i class="fas fa-th"></i>'
+      : '<i class="fas fa-list"></i>';
+  }
+}
+
+// ==================== RENDER: PHOTOS ====================
+function renderPhotos() {
+  const grid = document.getElementById('photosGrid');
+  if (!grid || grid.children.length > 0) return;
+  const images = [
+    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&q=80',
+    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80',
+    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&q=80',
+    'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=300&q=80',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80',
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&q=80',
+    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80'
+  ];
+  grid.innerHTML = images
+    .map(src => `<img src="${src}" alt="Photo" loading="lazy" onclick="toast('Photo opened')">`)
+    .join('');
+}
+
+// ==================== RENDER: REELS ====================
+function renderReels() {
+  const grid = document.getElementById('reelsGrid');
+  if (!grid || grid.children.length > 0) return;
+  const reels = [
+    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80',
+    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&q=80',
+    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80',
+    'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=300&q=80',
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&q=80',
+    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&q=80'
+  ];
+  grid.innerHTML = reels
+    .map(src => `<img src="${src}" alt="Reel" loading="lazy" onclick="toast('Reel playing...')">`)
+    .join('');
+}
+
+// ==================== RENDER: EVENTS ====================
+function renderEvents() {
+  const timeline = document.getElementById('eventsTimeline');
+  if (!timeline || timeline.children.length > 0) return;
+  const events = [
+    { icon: 'fa-briefcase', title: 'Started at Uttara High School', date: '2020' },
+    { icon: 'fa-graduation-cap', title: 'Joined Dhaka Central University', date: '2022' },
+    { icon: 'fa-music', title: 'Released first single', date: '2023' },
+    { icon: 'fa-award', title: 'Won Best New Artist', date: '2024' }
+  ];
+  timeline.innerHTML = events
+    .map(e => `
+      <div class="event-item">
+        <div class="event-icon"><i class="fas ${e.icon}"></i></div>
+        <div class="event-info">
+          <b>${e.title}</b>
+          <small>${e.date}</small>
+        </div>
+      </div>
+    `)
+    .join('');
+}
+
+// ==================== RENDER: ABOUT ====================
+function renderAbout() {
+  const grid = document.getElementById('aboutGrid');
+  if (!grid || grid.children.length > 0) return;
+  const items = [
+    { icon: 'fa-map-marker-alt', label: 'Lives in', value: 'Dhaka, Bangladesh' },
+    { icon: 'fa-briefcase', label: 'Works at', value: 'Uttara High School' },
+    { icon: 'fa-graduation-cap', label: 'Studied at', value: 'Dhaka Central University' },
+    { icon: 'fa-heart', label: 'Relationship', value: 'Single' },
+    { icon: 'fa-music', label: 'Genre', value: 'Hindi, Punjabi' },
+    { icon: 'fa-envelope', label: 'Contact', value: 'DM for collabs' }
+  ];
+  grid.innerHTML = items
+    .map(i => `
+      <div class="about-item">
+        <i class="fas ${i.icon}"></i>
+        <div><b>${i.label}</b><small>${i.value}</small></div>
+      </div>
+    `)
+    .join('');
+}
+
+// ==================== RENDER: BADGES ====================
+function renderBadges() {
+  const grid = document.getElementById('badgesGrid');
+  if (!grid || grid.children.length > 0) return;
+  const badges = [
+    { emoji: '⭐', name: 'Rising Star', desc: 'Top creator' },
+    { emoji: '🎵', name: 'Music Pro', desc: '100+ uploads' },
+    { emoji: '❤️', name: 'Heart Hero', desc: '10K likes' },
+    { emoji: '🔥', name: 'On Fire', desc: 'Viral post' },
+    { emoji: '🛡️', name: 'Verified', desc: 'ID verified' },
+    { emoji: '🌟', name: 'Early Bird', desc: 'Joined 2021' }
+  ];
+  grid.innerHTML = badges
+    .map(b => `
+      <div class="badge-item">
+        <span class="badge-emoji">${b.emoji}</span>
+        <b>${b.name}</b>
+        <small>${b.desc}</small>
+      </div>
+    `)
+    .join('');
+}
+
+// ==================== RENDER: HIGHLIGHTS ====================
+function renderHighlights() {
+  const scroll = document.getElementById('highlightsScroll');
+  if (!scroll) return;
+  const highlights = [
+    { name: 'Music', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100&q=80' },
+    { name: 'Travel', img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=100&q=80' },
+    { name: 'Concerts', img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&q=80' },
+    { name: 'Friends', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80' }
+  ];
+  scroll.innerHTML = highlights
+    .map(h => `
+      <div class="highlight-item" onclick="toast('Opening ${h.name} highlight')">
+        <div class="highlight-ring"><img src="${h.img}" alt="${h.name}"></div>
+        <span>${h.name}</span>
+      </div>
+    `)
+    .join('');
+}
+
+// ==================== FOLLOWERS ====================
+function openFollowers(type) {
+  const title = document.getElementById('followersModalTitle');
+  if (title) title.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+
+  const container = document.getElementById('followersListContainer');
+  if (!container) return;
+
+  const people = [
+    { name: 'Sadia Rahman', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80' },
+    { name: 'Tanvir Ahmed', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80' },
+    { name: 'Nusrat Jahan', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80' },
+    { name: 'Rafiul Islam', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&q=80' }
+  ];
+
+  container.innerHTML = people
+    .map(p => `
+      <div class="list-item" style="border:none;padding:10px 8px;">
+        <img src="${p.avatar}" class="mini-avatar">
+        <div class="list-text">${p.name}</div>
+        <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;">Follow</button>
+      </div>
+    `)
+    .join('');
 
   openModal('mFollowersList');
 }
 
-function toggleFollowerFollow(btn, index) {
-  const user = mockFollowers[index];
-  user.following = !user.following;
-  
-  if (user.following) {
-    btn.className = 'btn-follow-small following';
-    btn.innerText = 'Following';
-  } else {
-    btn.className = 'btn-follow-small';
-    btn.innerText = 'Follow';
+function filterFollowers(value) { /* simple filter placeholder */ }
+
+// ==================== MEDIA UPLOADS ====================
+function changeCover(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('mainCoverImg').src = e.target.result;
+      toast('Cover photo updated');
+    };
+    reader.readAsDataURL(file);
   }
 }
 
-// ===== REACTIONS LOGIC =====
-function toggleReactionPicker(btn) {
-  const picker = btn.nextElementSibling;
-  const isOpen = picker.style.display === 'flex';
-  document.querySelectorAll('.reaction-picker').forEach(p => p.style.display = 'none');
-  if (!isOpen) {
-    picker.style.display = 'flex';
-    picker.style.bottom = '100%';
-    picker.style.left = '50%';
-    picker.style.transform = 'translateX(-50%)';
-    picker.style.marginBottom = '5px';
+function changeProfile(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('mainProfileImg').src = e.target.result;
+      toast('Profile photo updated');
+    };
+    reader.readAsDataURL(file);
   }
 }
 
-function addReaction(emojiEl, emoji) {
-  emojiEl.closest('.reaction-picker').style.display = 'none';
-  
-  const btn = emojiEl.closest('.reaction-wrapper').querySelector('.action-btn');
-  btn.innerHTML = `<span>${emoji}</span> Reacted`;
-  btn.style.color = 'var(--primary)';
-  
-  const post = emojiEl.closest('.post');
-  const stack = post.querySelector('.reaction-stack');
-  let countSpan = stack.querySelector('span:last-child');
-  countSpan.innerText = parseInt(countSpan.innerText) + 1;
+// ==================== EDIT PROFILE: OPEN / SAVE ====================
+function openEditProfile() {
+  const nameInput = document.getElementById('editNameInput');
+  const userInput = document.getElementById('editUsernameInput');
+  if (nameInput) nameInput.value = profileData.name;
+  if (userInput) userInput.value = profileData.username;
+  openOverlay('editProfileOverlay');
 }
 
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.reaction-wrapper')) {
-    document.querySelectorAll('.reaction-picker').forEach(p => p.style.display = 'none');
+function saveProfileChanges() {
+  const nameInput = document.getElementById('editNameInput');
+  const userInput = document.getElementById('editUsernameInput');
+
+  const newName = nameInput ? nameInput.value.trim() : '';
+  const newUsername = userInput ? userInput.value.trim() : '';
+
+  // Validation
+  if (!newName) {
+    toast('Name cannot be empty');
+    if (nameInput) nameInput.focus();
+    return;
   }
-});
-
-// ===== EDIT PROFILE TOGGLES =====
-function toggleProfileGuard(el) {
-  const val = el.querySelector('.list-value');
-  val.textContent = val.textContent === 'Off' ? 'On' : 'Off';
-  val.style.color = val.textContent === 'On' ? 'var(--primary)' : 'var(--muted)';
-}
-
-function toggle18Guard(el) {
-  const val = el.querySelector('.list-value');
-  val.textContent = val.textContent === 'Off' ? 'On' : 'Off';
-  val.style.color = val.textContent === 'On' ? 'var(--error)' : 'var(--muted)';
-  if (val.textContent === 'On') {
-    alert("18+ Content Guard is now ON. Sensitive posts will be hidden.");
+  if (newName.length > 50) {
+    toast('Name is too long (max 50 characters)');
+    return;
   }
-}
-
-function toggleZenMode(el) {
-  const val = el.querySelector('.list-value');
-  val.textContent = val.textContent === 'Off' ? 'On' : 'Off';
-  document.body.style.background = val.textContent === 'On' ? '#000' : 'var(--bg)';
-  alert(val.textContent === 'On' ? "Zen Mode Activated. Distractions hidden." : "Zen Mode Off.");
-}
-
-function toggleLowerMode(el) {
-  const val = el.querySelector('.list-value');
-  val.textContent = val.textContent === 'Off' ? 'On' : 'Off';
-  if (val.textContent === 'On') {
-    alert("Lower Mode Activated. HD images will now load in SD to save data.");
+  if (!newUsername) {
+    toast('Username cannot be empty');
+    if (userInput) userInput.focus();
+    return;
   }
+  if (!/^[a-zA-Z0-9_]{3,30}$/.test(newUsername)) {
+    toast('Username: 3-30 chars, letters/numbers/underscores');
+    if (userInput) userInput.focus();
+    return;
+  }
+
+  // Save
+  profileData.name = newName;
+  profileData.username = newUsername;
+  saveProfileToStorage();
+  applyProfileToDOM();
+
+  closeOverlay('editProfileOverlay');
+  toast('Profile updated successfully');
 }
 
-// ===== VERIFICATION =====
+// ==================== MISC ACTIONS ====================
+function showVerifyInfo() { openModal('mVerification'); }
+
 function submitVerification() {
   closeModal('mVerification');
-  alert("Documents submitted successfully!\nYour Black Badge will be verified in 24-48 hours.");
+  toast('Verification submitted for review');
 }
 
-// ===== VOICE COMMENT =====
-let currentVoicePreset = 'Normal';
-function openVoiceComment() { openModal('mVoiceComment'); }
+function toggleMusic() { toast('Music toggled'); }
 
-function setVoicePreset(btn, preset) {
+function toggleGuard(key, el) {
+  const valueEl = el.querySelector('.list-value');
+  if (valueEl) {
+    const newVal = valueEl.textContent === 'Off' ? 'On' : 'Off';
+    valueEl.textContent = newVal;
+    toast(`${key} turned ${newVal.toLowerCase()}`);
+  }
+}
+
+function showBloodForm(type) {
+  const form = document.getElementById('bloodForm');
+  if (form) form.style.display = 'block';
+  toast(`Blood ${type} form opened`);
+}
+
+function setMood(mood) {
+  const moodEl = document.getElementById('moodStatus');
+  if (moodEl) moodEl.querySelector('span').textContent = mood;
+  closeModal('mMood');
+  toast('Mood updated');
+}
+
+function publishNote() {
+  const note = document.getElementById('noteText').value.trim();
+  if (note) {
+    toast('Note published!');
+    document.getElementById('noteText').value = '';
+  } else {
+    toast('Please write something');
+  }
+  closeModal('mNote');
+}
+
+function addHighlight() {
+  const name = document.getElementById('highlightName').value.trim();
+  if (name) {
+    toast(`Highlight "${name}" created`);
+    document.getElementById('highlightName').value = '';
+  } else {
+    toast('Please enter a name');
+  }
+  closeModal('mAddHighlight');
+}
+
+function setFrame(frame, el) {
+  toast(`Frame set to ${frame}`);
+  closeModal('mProfileFrame');
+}
+
+function setVoicePreset(btn, name) {
   document.querySelectorAll('.vp-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  currentVoicePreset = preset;
+  toast(`Voice preset: ${name}`);
 }
 
 function simulateRecording() {
   const status = document.getElementById('recStatus');
-  status.innerHTML = '🔴 Recording... (0:00)';
-  status.style.color = 'var(--error)';
-  
-  setTimeout(() => {
-    status.innerHTML = `✅ Recorded using ${currentVoicePreset} mode!`;
-    status.style.color = 'var(--success)';
-    setTimeout(() => closeModal('mVoiceComment'), 1500);
-  }, 2000);
+  if (status) {
+    status.textContent = 'Recording... (simulated)';
+    setTimeout(() => {
+      status.textContent = 'Tap to record';
+      toast('Voice comment recorded');
+    }, 2000);
+  }
 }
 
-// ===== BLOOD DONATION =====
-function showBloodForm(type) {
-  document.getElementById('bloodForm').style.display = 'block';
-  document.getElementById('bloodForm').querySelector('input').placeholder = `${type} Name`;
-                                            }
+function copyLink() {
+  const input = document.getElementById('shareLinkInput');
+  if (input) {
+    input.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    toast('Link copied!');
+  }
+}
+
+function shareTo(platform) {
+  toast(`Shared to ${platform}`);
+  closeModal('mShareProfile');
+}
+
+// ==================== QR CODE (simple visual) ====================
+function drawQRCode() {
+  const canvas = document.getElementById('qrCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const size = 160;
+  const cellSize = size / 21;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+
+  let seed = 42;
+  function rand() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  }
+
+  for (let y = 0; y < 21; y++) {
+    for (let x = 0; x < 21; x++) {
+      if (rand() > 0.5) {
+        ctx.fillStyle = '#1c1e21';
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+
+  function drawMarker(x, y) {
+    ctx.fillStyle = '#1c1e21';
+    ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
+    ctx.fillStyle = '#1c1e21';
+    ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
+  }
+
+  drawMarker(0, 0);
+  drawMarker(14, 0);
+  drawMarker(0, 14);
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  // Year
+  const yearEl = document.getElementById('dynamicYear');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // Load persisted profile (name + username)
+  loadProfileFromStorage();
+
+  // Initial render
+  renderPosts();
+  renderHighlights();
+  drawQRCode();
+
+  // Backdrop close
+  document.querySelectorAll('.modal-back').forEach(backdrop => {
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) backdrop.classList.remove('active');
+    });
+  });
+
+  // Mood default
+  const moodStatus = document.getElementById('moodStatus');
+  if (moodStatus) moodStatus.querySelector('span').textContent = 'Feeling motivated';
+
+  // Stats
+  const postsStat = document.querySelector('.stat-card:nth-child(1) b');
+  if (postsStat) postsStat.textContent = postsData.length;
+
+  // Enter key on username field -> save
+  const usernameInput = document.getElementById('editUsernameInput');
+  if (usernameInput) {
+    usernameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveProfileChanges();
+      }
+    });
+  }
+  const nameInput = document.getElementById('editNameInput');
+  if (nameInput) {
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveProfileChanges();
+      }
+    });
+  }
+
+  // Live username sanitation (lowercase, strip spaces)
+  const userInputLive = document.getElementById('editUsernameInput');
+  if (userInputLive) {
+    userInputLive.addEventListener('input', () => {
+      const start = userInputLive.selectionStart;
+      userInputLive.value = userInputLive.value.replace(/\s+/g, '').replace(/[^a-zA-Z0-9_]/g, '');
+      userInputLive.setSelectionRange(start, start);
+    });
+  }
+});
+
+// ==================== GLOBAL ERROR HANDLER ====================
+window.onerror = function () { return true; };
