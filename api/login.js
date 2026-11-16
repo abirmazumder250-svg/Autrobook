@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcrypt';
-import axios from 'axios';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -8,6 +7,7 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -24,25 +24,27 @@ export default async function handler(req, res) {
 
     const cleanEmail = String(email).trim().toLowerCase();
 
-    // 1. Verify reCAPTCHA
+    // 1. Verify reCAPTCHA using Google's siteverify API and native fetch
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     if (!secretKey) {
-      return res.status(500).json({ success: false, message: 'Server configuration error (reCAPTCHA)' });
+      console.error('RECAPTCHA_SECRET_KEY is missing in environment variables.');
+      return res.status(500).json({ success: false, message: 'Server configuration error (reCAPTCHA secret missing)' });
     }
 
-    const params = new URLSearchParams();
-    params.append('secret', secretKey);
-    params.append('response', recaptchaToken);
-
-    const recaptchaRes = await axios.post('https://www.google.com/recaptcha/api/siteverify', params, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
+    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptchaToken}`;
+    const recaptchaRes = await fetch(verifyUrl, { method: 'POST' });
+    const recaptchaData = await recaptchaRes.json();
     
-    if (!recaptchaRes.data.success) {
-      return res.status(400).json({ success: false, message: 'reCAPTCHA verification failed' });
+    // Log google response for debugging if it fails
+    if (!recaptchaData.success) {
+      console.error('Google reCAPTCHA verification failed response:', recaptchaData);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'reCAPTCHA verification failed. Please try again.' 
+      });
     }
 
-    // 2. Check User in Supabase (আপনার টেবিলের নাম 'users' না হয়ে অন্য কিছু হলে এখানে পরিবর্তন করে নিবেন)
+    // 2. Check User in Supabase 'users' table
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
@@ -62,7 +64,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: 'Login successful' });
 
   } catch (e) {
-    console.error('Login Server Error:', e);
+    console.error('Login Server Exception:', e);
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
   }
 }
