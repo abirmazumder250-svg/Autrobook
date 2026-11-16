@@ -43,7 +43,31 @@ input:focus{border-color:var(--brand-light);box-shadow:0 0 0 3px rgba(25,135,84,
 .checkbox-row input{width:auto;margin:0}
 .strength{font-size:12px;margin:-10px 0 12px;color:#aaa}
 .step{display:none}
-.otp-box{text-align:center;letter-spacing:10px;font-size:24px;font-weight:bold}
+
+/* Modern 6-Digit OTP Box Styling */
+.otp-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 20px 0;
+}
+.otp-digit {
+  width: 50px;
+  height: 55px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  border-radius: 12px;
+  border: 1px solid #555;
+  background: var(--card);
+  color: white;
+  outline: none;
+  margin-bottom: 0 !important;
+}
+.otp-digit:focus {
+  border-color: var(--brand-light);
+  box-shadow: 0 0 0 3px rgba(25,135,84,0.2);
+}
 </style>
 </head>
 <body>
@@ -101,11 +125,21 @@ input:focus{border-color:var(--brand-light);box-shadow:0 0 0 3px rgba(25,135,84,
 
   <!-- STEP 2 : ENTER EMAIL OTP -->
   <div id="stepOTP" class="step">
-    <div class="title">Verify Your Email</div>
-    <p style="text-align:center;font-size:13px;color:#aaa;margin-bottom:15px">Please enter the 6-digit OTP sent to <span id="sentEmailTarget" style="color:#4CAF50"></span></p>
-    <input type="text" id="otpInput" class="otp-box" placeholder="123456" maxlength="6">
+    <h2>Verify Your Email</h2>
+    <p style="font-size:13px;color:#aaa;margin-bottom:15px">Please enter the 6-digit OTP sent to <span id="sentEmailTarget" style="color:#4CAF50"></span></p>
+    
+    <!-- 6 Separate OTP Digit Input Boxes -->
+    <div class="otp-container">
+      <input type="text" maxlength="1" class="otp-digit" id="otp1" oninput="moveToNext(this, 'otp2')" onkeydown="moveToPrev(event, this, null)">
+      <input type="text" maxlength="1" class="otp-digit" id="otp2" oninput="moveToNext(this, 'otp3')" onkeydown="moveToPrev(event, this, 'otp1')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp3" oninput="moveToNext(this, 'otp4')" onkeydown="moveToPrev(event, this, 'otp2')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp4" oninput="moveToNext(this, 'otp5')" onkeydown="moveToPrev(event, this, 'otp3')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp5" oninput="moveToNext(this, 'otp6')" onkeydown="moveToPrev(event, this, 'otp4')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp6" oninput="moveToNext(this, null)" onkeydown="moveToPrev(event, this, 'otp5')">
+    </div>
+
     <button class="btn" onclick="verifyEmailOTP()">Verify & Create Account</button>
-    <button class="btn" id="resendBtn" onclick="resendEmailOTP()" style="background:#444; margin-top:8px;" disabled>Resend OTP</button>
+    <button class="btn" id="resendBtn" onclick="resendEmailOTP()" style="background:#444; margin-top:8px;">Resend OTP</button>
     <div class="msg" id="msgOTP"></div>
   </div>
 </div>
@@ -253,6 +287,19 @@ function capturePhoto(){
 }
 window.capturePhoto = capturePhoto;
 
+// OTP Box Navigation Helpers
+window.moveToNext = (current, nextFieldID) => {
+  if (current.value.length >= 1 && nextFieldID) {
+    document.getElementById(nextFieldID).focus();
+  }
+}
+
+window.moveToPrev = (event, current, prevFieldID) => {
+  if (event.key === 'Backspace' && current.value === '' && prevFieldID) {
+    document.getElementById(prevFieldID).focus();
+  }
+}
+
 // Step 1: ব্যাকএন্ড API এর মাধ্যমে আপনার জিমেইল অ্যাপ পাসওয়ার্ড দিয়ে ৬ ডিজিটের OTP পাঠানো
 window.triggerEmailVerification = async () => {
   const baseLang = currentLang.split('-')[0];
@@ -295,6 +342,7 @@ window.triggerEmailVerification = async () => {
       document.getElementById('stepDetails').style.display = 'none';
       document.getElementById('stepOTP').style.display = 'block';
       showMsg('msgOTP', '6-digit OTP sent successfully to your email!', 'success');
+      document.getElementById('otp1').focus();
     } else {
       showMsg('msgDetails', data.message || 'Failed to send OTP to email', 'error');
     }
@@ -303,10 +351,16 @@ window.triggerEmailVerification = async () => {
   }
 }
 
-// Step 2: OTP ভেরিফাই করে Supabase ডাটাবেজে ইউজার সেভ করা
+// Step 2: 6টি বক্স থেকে OTP সংগ্রহ করে ভেরিফাই ও সেভ করা
 window.verifyEmailOTP = async () => {
-  const otp = document.getElementById('otpInput').value.trim();
-  if(!otp) return showMsg('msgOTP', 'Please enter the 6-digit OTP', 'error');
+  const otp = document.getElementById('otp1').value +
+              document.getElementById('otp2').value +
+              document.getElementById('otp3').value +
+              document.getElementById('otp4').value +
+              document.getElementById('otp5').value +
+              document.getElementById('otp6').value;
+
+  if(otp.length < 6) return showMsg('msgOTP', 'Please enter the complete 6-digit OTP', 'error');
   
   showMsg('msgOTP', 'Verifying & Saving to Supabase...', 'success');
 
@@ -317,7 +371,6 @@ window.verifyEmailOTP = async () => {
   const email = document.getElementById('email').value.trim().toLowerCase();
 
   try {
-    // এখানে ব্যাকএন্ডে ওটিপি চেক করার এপিআই কল করতে পারেন অথবা সরাসরি ইউজার ডাটা সেভ করতে পারেন
     const userData = { 
       name: fullName, 
       firstName: firstName, 
