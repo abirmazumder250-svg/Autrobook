@@ -1,78 +1,430 @@
-// Vercel API - Verify Email OTP with Supabase
-import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcrypt'; // Required to compare hashed OTPs
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Autrobook - Sign Up (Contact & Security)</title>
+<!-- Google reCAPTCHA SDK -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
-);
+<style>
+:root{ --brand:#0f5132; --brand-light:#198754; --bg:#1c1c1e; --card:#2c2c2e; }
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:var(--bg);min-height:100vh;color:white}
+.top{padding:15px}
+.back{width:40px;height:40px;background:var(--card);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;user-select:none}
+.lang-select{text-align:center;margin:5px 0 25px;padding:0 20px}
+.lang-select select{padding:10px 14px;border-radius:10px;border:1px solid #555;background:var(--card);color:white;font-size:14px;font-weight:bold;cursor:pointer;width:100%;max-width:300px;outline:none}
+.logo{text-align:center;margin-bottom:30px}
+.logo img{width:80px;height:80px;border-radius:50%;object-fit:cover;background:var(--brand);box-shadow:0 4px 15px rgba(15,81,50,0.4)}
+.wrap{padding:0 20px 40px;max-width:450px;margin:0 auto}
+h2{font-size:22px;margin-bottom:6px}
+p.sub{color:#aaa;font-size:14px;margin-bottom:25px}
+label{font-size:14px;color:#aaa;margin-bottom:6px;display:block}
+input{width:100%;padding:16px;border-radius:15px;border:1px solid #555;background:transparent;color:white;font-size:16px;margin-bottom:15px;outline:none}
+input:focus{border-color:var(--brand-light);box-shadow:0 0 0 3px rgba(25,135,84,0.2)}
+.pass-wrap{position:relative}
+.eye{position:absolute;right:18px;top:16px;cursor:pointer;font-size:18px}
+.camera-box{border:2px dashed var(--brand-light);border-radius:15px;padding:15px;text-align:center;margin-bottom:15px;background:var(--card)}
+.camera-box video{width:100%;border-radius:10px;display:none;margin-bottom:10px}
+.camera-box img{width:80px;height:80px;border-radius:50%;object-fit:cover;margin:10px auto;display:none;border:2px solid var(--brand-light)}
+.camera-btn{padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-light));color:white;font-weight:bold;cursor:pointer;width:100%}
+.btn{width:100%;padding:16px;border:none;border-radius:30px;background:linear-gradient(135deg,var(--brand),var(--brand-light));color:white;font-size:18px;font-weight:bold;cursor:pointer;margin-top:10px}
+.btn:disabled{opacity:.6;background:#555}
+.msg{text-align:center;font-size:14px;min-height:20px;margin-top:10px}
+.msg.error{color:#ff8a8a}.msg.success{color:#8affa0}
+.progress{display:flex;gap:6px;max-width:450px;margin:0 auto 25px;padding:0 20px}
+.progress div{flex:1;height:5px;border-radius:10px;background:#333}
+.progress div.active{background:var(--brand-light)}
+.g-recaptcha{margin:15px 0;display:flex;justify-content:center;transform:scale(.95)}
+.checkbox-row{display:flex;gap:8px;align-items:center;font-size:13px;color:#aaa;margin:10px 0}
+.checkbox-row input{width:auto;margin:0}
+.strength{font-size:12px;margin:-10px 0 12px;color:#aaa}
+.step{display:none}
 
-export default async function handler(req, res) { 
-  // CORS Headers Configuration
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+/* Modern 6-Digit OTP Box Styling */
+.otp-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 20px 0;
+}
+.otp-digit {
+  width: 50px;
+  height: 55px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  border-radius: 12px;
+  border: 1px solid #555;
+  background: var(--card);
+  color: white;
+  outline: none;
+  margin-bottom: 0 !important;
+}
+.otp-digit:focus {
+  border-color: var(--brand-light);
+  box-shadow: 0 0 0 3px rgba(25,135,84,0.2);
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="back" onclick="location.href='signup-name.html'">←</div>
+</div>
+
+<div class="lang-select">
+<select id="langSelect" onchange="changeLanguage()">
+  <option value="en">English (United States)</option>
+  <option value="bn">Bengali (Bangladesh & India)</option>
+</select>
+</div>
+
+<div class="logo"><img src="logo.png" alt="Autrobook" onerror="this.style.display='none'"></div>
+<div class="progress"><div class="active"></div><div class="active"></div><div class="active"></div></div>
+
+<div class="wrap">
+  <!-- STEP 1 : DETAILS & SECURITY -->
+  <div id="stepDetails" class="step" style="display:block">
+    <h2 data-key="title">Secure Your Account</h2>
+    <p class="sub" data-key="subtitle">Enter your details and verify your identity</p>
+    <p id="namePreview" style="color:#4CAF50;font-size:14px;margin-bottom:12px"></p>
+
+    <label data-key="dob">Date of Birth</label>
+    <input type="date" id="dob">
+
+    <label data-key="email">Email Address</label>
+    <input type="email" id="email" data-placeholder="emailPlaceholder" autocomplete="email" placeholder="Enter your email">
+
+    <label data-key="password">Password</label>
+    <div class="pass-wrap">
+      <input type="password" id="password" data-placeholder="passPlaceholder" autocomplete="new-password" placeholder="Create a password" oninput="checkStrength()">
+      <span class="eye" onclick="togglePass()">👁️</span>
+    </div>
+    <div class="strength" id="strengthText"></div>
+
+    <label data-key="face">Face Verification (Live Selfie)</label>
+    <div class="camera-box">
+      <video id="video" autoplay playsinline></video>
+      <img id="photo" />
+      <button type="button" class="camera-btn" id="cameraBtn" onclick="startCamera()" data-key="cameraBtn">📷 Take Live Selfie</button>
+      <p style="color:#aaa;font-size:12px;margin-top:8px" data-key="faceNote">Selfie is strictly for security verification purposes.</p>
+    </div>
+
+    <div class="g-recaptcha" data-sitekey="6Leifx0uAAAAAP0vZ1H6sH9T7UfUH8lpyhWakTze" data-callback="enableBtn" data-expired-callback="disableBtn"></div>
+    <p style="font-size:12px;color:#aaa;text-align:center" data-key="captchaNote">If reCAPTCHA doesn't load, verify below</p>
+    <div class="checkbox-row"><input type="checkbox" id="humanCheck" onchange="manualCaptcha()"> <span data-key="human">I'm not a robot - Manual verification</span></div>
+
+    <div class="msg" id="msgDetails"></div>
+    <button type="button" class="btn" id="nextBtn" onclick="triggerEmailVerification()" disabled data-key="signup">Complete Sign Up</button>
+    <p style="text-align:center;margin-top:12px;font-size:13px;color:#aaa"><span data-key="haveAcc">Already have an account?</span> <a href="index.html" style="color:#4CAF50;font-weight:bold" data-key="loginLink">Login</a></p>
+  </div>
+
+  <!-- STEP 2 : ENTER EMAIL OTP -->
+  <div id="stepOTP" class="step">
+    <h2>Verify Your Email</h2>
+    <p style="font-size:13px;color:#aaa;margin-bottom:15px">Please enter the 6-digit OTP sent to <span id="sentEmailTarget" style="color:#4CAF50"></span></p>
+    
+    <!-- 6 Separate OTP Digit Input Boxes -->
+    <div class="otp-container">
+      <input type="text" maxlength="1" class="otp-digit" id="otp1" oninput="moveToNext(this, 'otp2')" onkeydown="moveToPrev(event, this, null)">
+      <input type="text" maxlength="1" class="otp-digit" id="otp2" oninput="moveToNext(this, 'otp3')" onkeydown="moveToPrev(event, this, 'otp1')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp3" oninput="moveToNext(this, 'otp4')" onkeydown="moveToPrev(event, this, 'otp2')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp4" oninput="moveToNext(this, 'otp5')" onkeydown="moveToPrev(event, this, 'otp3')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp5" oninput="moveToNext(this, 'otp6')" onkeydown="moveToPrev(event, this, 'otp4')">
+      <input type="text" maxlength="1" class="otp-digit" id="otp6" oninput="moveToNext(this, null)" onkeydown="moveToPrev(event, this, 'otp5')">
+    </div>
+
+    <button class="btn" onclick="verifyEmailOTP()">Verify & Create Account</button>
+    <button class="btn" id="resendBtn" onclick="resendEmailOTP()" style="background:#444; margin-top:8px;">Resend OTP</button>
+    <div class="msg" id="msgOTP"></div>
+  </div>
+</div>
+
+<script>
+// Supabase Configuration
+const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let selfieData = ""; 
+let stream = null;
+let currentLang = localStorage.getItem('lang') || 'en';
+
+const translations = {
+  en: { 
+    title: "Secure Your Account", 
+    subtitle: "Enter your details and verify your identity", 
+    dob: "Date of Birth", 
+    email: "Email Address", 
+    emailPlaceholder: "Enter your email", 
+    password: "Password", 
+    passPlaceholder: "Create a password", 
+    face: "Face Verification (Live Selfie)", 
+    cameraBtn: "📷 Take Live Selfie", 
+    faceNote: "Selfie is strictly for security verification purposes.", 
+    captchaNote: "If reCAPTCHA doesn't load, verify below", 
+    human: "I'm not a robot - Manual verification", 
+    signup: "Complete Sign Up", 
+    haveAcc: "Already have an account?", 
+    loginLink: "Login",
+    err1: "Please select your date of birth", 
+    errAge: "You must be at least 13 years old", 
+    err2: "Please enter your email address", 
+    err3: "Please enter a valid email address", 
+    err4: "Password must be at least 6 characters", 
+    err5: "Please take a live selfie for verification", 
+    err6: "Please verify you are not a robot", 
+    success: "✅ Account Created Successfully! Redirecting...", 
+    weak: "Weak password", 
+    medium: "Medium password", 
+    strong: "Strong password ✅" 
+  },
+  bn: { 
+    title: "অ্যাকাউন্ট সুরক্ষিত করুন", 
+    subtitle: "আপনার তথ্য দিন এবং পরিচয় নিশ্চিত করুন", 
+    dob: "জন্ম তারিখ", 
+    email: "ইমেইল ঠিকানা", 
+    emailPlaceholder: "আপনার ইমেইল লিখুন", 
+    password: "পাসওয়ার্ড", 
+    passPlaceholder: "একটি পাসওয়ার্ড তৈরি করুন", 
+    face: "ফেস ভেরিফিকেশন (লাইভ সেলফি)", 
+    cameraBtn: "📷 লাইভ সেলফি তুলুন", 
+    faceNote: "সেলফি শুধুমাত্র সিকিউরিটি ভেরিফিকেশনের জন্য ব্যবহৃত হবে।", 
+    captchaNote: "reCAPTCHA লোড না হলে নিচে টিক দিন", 
+    human: "আমি রোবট নই - ম্যানুয়াল ভেরিফিকেশন", 
+    signup: "সাইন আপ সম্পন্ন করুন", 
+    haveAcc: "আগেই অ্যাকাউন্ট আছে?", 
+    loginLink: "লগইন",
+    err1: "জন্ম তারিখ সিলেক্ট করুন", 
+    errAge: "আপনার বয়স কমপক্ষে ১৩ বছর হতে হবে", 
+    err2: "আপনার ইমেইল লিখুন", 
+    err3: "সঠিক ইমেইল ঠিকানা দিন", 
+    err4: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", 
+    err5: "অনুগ্রহ করে একটি সেলফি তুলুন", 
+    err6: "প্রমাণ করুন আপনি রোবট নন", 
+    success: "✅ সফলভাবে অ্যাকাউন্ট তৈরি হয়েছে! নিয়ে যাওয়া হচ্ছে...", 
+    weak: "দুর্বল পাসওয়ার্ড", medium: "মাঝারি পাসওয়ার্ড", strong: "শক্তিশালী পাসওয়ার্ড ✅" 
+  }
+};
+
+function applyLanguage(lang){
+  currentLang = lang; 
+  localStorage.setItem('lang', lang);
+  const baseLang = lang.split('-')[0];
+  const activeDict = translations[lang] || translations[baseLang] || translations.en;
   
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
+  document.body.style.direction = (baseLang === 'ar' || baseLang === 'he' || baseLang === 'ur' || baseLang === 'fa') ? 'rtl' : 'ltr';
+  
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const key = el.getAttribute('data-key');
+    if(activeDict && activeDict[key]){ el.innerText = activeDict[key]; }
+  });
+  document.querySelectorAll('[data-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-placeholder');
+    if(activeDict && activeDict[key]){ el.placeholder = activeDict[key]; }
+  });
+
+  let fullName = localStorage.getItem('signup_name') || '';
+  if(fullName) document.getElementById('namePreview').innerText = '👤 ' + fullName;
+}
+
+window.changeLanguage = () => { applyLanguage(document.getElementById('langSelect').value); }
+document.addEventListener('DOMContentLoaded', () => {
+  const selectEl = document.getElementById('langSelect');
+  if ([...selectEl.options].some(o => o.value === currentLang)) {
+    selectEl.value = currentLang;
+  }
+  applyLanguage(currentLang);
+  if(localStorage.getItem('signup_email')) document.getElementById('email').value = localStorage.getItem('signup_email');
+});
+
+window.enableBtn = () => { document.getElementById('nextBtn').disabled = false; }
+window.disableBtn = () => { if(!document.getElementById('humanCheck').checked) document.getElementById('nextBtn').disabled = true; }
+window.manualCaptcha = () => { document.getElementById('nextBtn').disabled = !document.getElementById('humanCheck').checked; }
+window.togglePass = () => { const p=document.getElementById('password'); p.type = p.type==='password' ? 'text' : 'password'; }
+
+window.checkStrength = () => {
+  const baseLang = currentLang.split('-')[0];
+  const t = translations[currentLang] || translations[baseLang] || translations.en;
+  const v = document.getElementById('password').value;
+  const el = document.getElementById('strengthText');
+  if(!v){ el.innerText=''; return; }
+  if(v.length < 6) el.innerText = '❌ ' + t.err4;
+  else if(v.length < 10) el.innerText = '🟡 ' + t.medium;
+  else el.innerText = '🟢 ' + t.strong;
+}
+
+function showMsg(id, t, type){ const el=document.getElementById(id); el.textContent=t; el.className='msg '+type; }
+
+window.startCamera = async () => {
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
+    const video = document.getElementById('video');
+    video.srcObject = stream; video.style.display = 'block';
+    document.getElementById('cameraBtn').innerText = '📸 Capture Photo';
+    document.getElementById('cameraBtn').onclick = capturePhoto;
+  }catch(e){ showMsg('msgDetails','Camera permission denied','error'); }
+}
+
+function capturePhoto(){
+  const video = document.getElementById('video');
+  if(!video.videoWidth) return showMsg('msgDetails','Wait for camera to load...','error');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  selfieData = canvas.toDataURL('image/jpeg', 0.8);
+  document.getElementById('photo').src = selfieData;
+  document.getElementById('photo').style.display = 'block';
+  video.style.display = 'none';
+  if(stream){ stream.getTracks().forEach(track => track.stop()); }
+  document.getElementById('cameraBtn').innerText = '🔄 Retake Selfie';
+  document.getElementById('cameraBtn').onclick = window.startCamera;
+  showMsg('msgDetails','Selfie captured successfully!','success');
+}
+window.capturePhoto = capturePhoto;
+
+// OTP Box Navigation Helpers
+window.moveToNext = (current, nextFieldID) => {
+  if (current.value.length >= 1 && nextFieldID) {
+    document.getElementById(nextFieldID).focus();
+  }
+}
+
+window.moveToPrev = (event, current, prevFieldID) => {
+  if (event.key === 'Backspace' && current.value === '' && prevFieldID) {
+    document.getElementById(prevFieldID).focus();
+  }
+}
+
+// Step 1: Send OTP via backend API
+window.triggerEmailVerification = async () => {
+  const baseLang = currentLang.split('-')[0];
+  const t = translations[currentLang] || translations[baseLang] || translations.en;
+  const dob = document.getElementById('dob').value;
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const pass = document.getElementById('password').value;
+  
+  let captcha = '';
+  try{ captcha = window.grecaptcha ? grecaptcha.getResponse() : ''; }catch(e){ captcha=''; }
+  const humanChecked = document.getElementById('humanCheck').checked;
+
+  if(!dob) return showMsg('msgDetails', t.err1, 'error');
+  const birth = new Date(dob); 
+  const today = new Date(); 
+  let age = today.getFullYear() - birth.getFullYear(); 
+  const m = today.getMonth() - birth.getMonth(); 
+  if(m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  
+  if(age < 13) return showMsg('msgDetails', t.errAge, 'error');
+  if(!email) return showMsg('msgDetails', t.err2, 'error');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showMsg('msgDetails', t.err3, 'error');
+  if(!pass || pass.length < 6) return showMsg('msgDetails', t.err4, 'error');
+  if(!selfieData) return showMsg('msgDetails', t.err5, 'error');
+  if(captcha.length === 0 && !humanChecked) return showMsg('msgDetails', t.err6, 'error');
+
+  showMsg('msgDetails', 'Sending 6-digit OTP via Gmail...', 'success');
 
   try {
-    let body = req.body;
-    if (typeof body === 'string') {
-      try { 
-        body = JSON.parse(body); 
-      } catch (e) { 
-        return res.status(400).json({ success: false, message: 'Invalid JSON payload' }); 
-      }
+    const response = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+
+    const data = await response.json();
+
+    if(response.ok && data.success) {
+      document.getElementById('sentEmailTarget').textContent = email;
+      document.getElementById('stepDetails').style.display = 'none';
+      document.getElementById('stepOTP').style.display = 'block';
+      showMsg('msgOTP', '6-digit OTP sent successfully to your email!', 'success');
+      document.getElementById('otp1').focus();
+    } else {
+      showMsg('msgDetails', data.message || 'Failed to send OTP to email', 'error');
     }
-    
-    const { email, otp } = body || {};
-    if (!email || !otp) {
-      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
-    }
-
-    const cleanEmail = String(email).trim().toLowerCase();
-
-    // Capture client IP and User-Agent for security audit logging
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const userAgent = req.headers['user-agent'];
-
-    // 1. Fetch OTP record from Supabase
-    const { data, error } = await supabase
-      .from('otps')
-      .select('*')
-      .eq('email', cleanEmail)
-      .single();
-
-    if (error || !data) {
-      return res.status(400).json({ success: false, message: 'OTP not found or already used' });
-    }
-
-    // 2. Check if the OTP has expired
-    if (Date.now() > data.expiry) {
-      // Automatically delete expired OTP from database
-      await supabase.from('otps').delete().eq('email', cleanEmail);
-      return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
-    }
-
-    // 3. Compare user-submitted OTP with the bcrypt hashed OTP stored in the database
-    const isMatch = await bcrypt.compare(String(otp), data.otp);
-
-    if (!isMatch) {
-      console.warn(`[SECURITY WARNING] Failed OTP verification attempt for: ${cleanEmail} | IP: ${clientIp}`);
-      return res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
-    }
-
-    // 4. Delete the OTP immediately after successful use to prevent reuse (Single-use token)
-    await supabase.from('otps').delete().eq('email', cleanEmail);
-
-    // Log successful verification audit
-    console.log(`[SECURITY AUDIT] OTP verified successfully for: ${cleanEmail} | IP: ${clientIp} | UA: ${userAgent}`);
-
-    return res.status(200).json({ success: true, message: 'OTP verified successfully' });
-
-  } catch (e) {
-    console.error('Verify Internal Error:', e);
-    return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
-  } 
+  } catch(e) {
+    showMsg('msgDetails', 'Network error or backend API not configured', 'error');
+  }
 }
+
+// Step 2: Verify OTP via Backend API & Save to Supabase
+window.verifyEmailOTP = async () => {
+  const otp = document.getElementById('otp1').value +
+              document.getElementById('otp2').value +
+              document.getElementById('otp3').value +
+              document.getElementById('otp4').value +
+              document.getElementById('otp5').value +
+              document.getElementById('otp6').value;
+
+  if(otp.length < 6) return showMsg('msgOTP', 'Please enter the complete 6-digit OTP', 'error');
+  
+  showMsg('msgOTP', 'Verifying OTP...', 'success');
+
+  const email = document.getElementById('email').value.trim().toLowerCase();
+
+  try {
+    // 1. Verify OTP with Backend API
+    const verifyResponse = await fetch('/api/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, otp: otp })
+    });
+
+    const verifyData = await verifyResponse.json();
+
+    if (!verifyResponse.ok || !verifyData.success) {
+      return showMsg('msgOTP', verifyData.message || 'Invalid OTP. Please try again.', 'error');
+    }
+
+    showMsg('msgOTP', 'OTP Verified! Saving account...', 'success');
+
+    // 2. Save User to Supabase Database
+    const firstName = localStorage.getItem('signup_firstName') || '';
+    const surname = localStorage.getItem('signup_surname') || '';
+    const fullName = localStorage.getItem('signup_name') || (firstName + ' ' + surname);
+    const dob = document.getElementById('dob').value;
+
+    const userData = { 
+      name: fullName, 
+      firstName: firstName, 
+      surname: surname, 
+      dob: dob, 
+      email: email, 
+      selfie: selfieData, 
+      lang: currentLang, 
+      createdAt: new Date().toISOString() 
+    };
+
+    const { error: dbError } = await supabaseClient
+      .from('users')
+      .insert([userData]);
+
+    if (dbError) {
+      console.error('Supabase Error:', dbError);
+      showMsg('msgOTP', 'Database Error: ' + dbError.message, 'error');
+      return;
+    }
+
+    localStorage.setItem('autrobook_user', JSON.stringify(userData));
+    localStorage.setItem('ab_logged_in', '1');
+    localStorage.setItem('signup_step', 'done');
+
+    showMsg('msgOTP', '✅ Account Created & Verified Successfully!', 'success');
+    setTimeout(() => { location.href = 'welcome.html'; }, 1200);
+
+  } catch (err) {
+    console.error('Registration Exception:', err);
+    showMsg('msgOTP', 'An error occurred. Please try again.', 'error');
+  }
+}
+
+window.resendEmailOTP = () => {
+  triggerEmailVerification();
+}
+</script>
+</body>
+</html>
