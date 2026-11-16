@@ -1,3 +1,8 @@
+// ==================== SUPABASE CONNECTION ====================
+const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ==================== GLOBAL STATE ====================
 let currentTheme = localStorage.getItem('theme') || 'light';
 let securityScore = 0;
@@ -114,6 +119,9 @@ function sosAlert() {
   }
   securityScore = Math.min(100, securityScore + 5);
   saveSecurityScore();
+  
+  // Log to Supabase
+  supabaseClient.from('security_logs').insert({ event: 'SOS Activated', status: 'success' }).then();
 }
 
 // ==================== COMPOSER ====================
@@ -241,30 +249,72 @@ function submitBloodRequest() {
   addNotification('Blood Request', `${group} needed at ${hospital}.`);
 }
 
-// ==================== NID VERIFICATION ====================
-function submitNID() {
+// ==================== NID VERIFICATION (SUPABASE UPLOAD) ====================
+async function submitNID() {
   const name = document.getElementById('verifyName').value.trim();
   const front = document.getElementById('nidFrontInput').files[0];
   const back = document.getElementById('nidBackInput').files[0];
   const selfie = document.getElementById('selfieInput').files[0];
+  const btn = document.getElementById('submitNidBtn');
 
   if (!name || !front || !selfie) {
     showToast('Please fill all required fields (*) and upload NID Front & Selfie.');
     return;
   }
 
-  nidData = { name, front: front.name, back: back ? back.name : null, selfie: selfie.name, time: new Date().toLocaleString() };
-  nidVerified = true;
-  localStorage.setItem('nidVerified', 'true');
-  localStorage.setItem('nidData', JSON.stringify(nidData));
+  try {
+    btn.textContent = 'Uploading...';
+    btn.disabled = true;
 
-  document.getElementById('submitNidBtn').textContent = '✅ Verified';
-  document.getElementById('submitNidBtn').style.background = '#2e7d32';
-  showToast('NID verification submitted successfully! You are now verified.');
-  securityScore = Math.min(100, securityScore + 20);
-  saveSecurityScore();
-  calculateSecurityScore();
-  addNotification('NID Verified', 'Your identity has been verified.');
+    // 1. Upload NID Front
+    const frontFileName = `front_${Date.now()}_${front.name}`;
+    const { error: err1 } = await supabaseClient.storage
+      .from('appeals-documents')
+      .upload(`nid/${frontFileName}`, front);
+    if (err1) throw err1;
+
+    // 2. Upload Selfie
+    const selfieFileName = `selfie_${Date.now()}_${selfie.name}`;
+    const { error: err2 } = await supabaseClient.storage
+      .from('appeals-documents')
+      .upload(`selfie/${selfieFileName}`, selfie);
+    if (err2) throw err2;
+
+    // 3. Upload NID Back (If provided)
+    let backFileName = null;
+    if (back) {
+      backFileName = `back_${Date.now()}_${back.name}`;
+      const { error: err3 } = await supabaseClient.storage
+        .from('appeals-documents')
+        .upload(`nid/${backFileName}`, back);
+      if (err3) throw err3;
+    }
+
+    // Save to LocalStorage
+    nidData = { name, front: frontFileName, back: backFileName, selfie: selfieFileName, time: new Date().toLocaleString() };
+    nidVerified = true;
+    localStorage.setItem('nidVerified', 'true');
+    localStorage.setItem('nidData', JSON.stringify(nidData));
+
+    // Save to Supabase Appeals Table
+    await supabaseClient.from('appeals').insert({ name: name, status: 'pending' });
+
+    btn.textContent = '✅ Verified';
+    btn.style.background = '#2e7d32';
+    btn.disabled = false;
+    
+    showToast('NID verification submitted successfully!');
+    securityScore = Math.min(100, securityScore + 20);
+    saveSecurityScore();
+    calculateSecurityScore();
+    addNotification('NID Verified', 'Your identity has been verified.');
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    showToast('❌ Upload failed: ' + error.message);
+    btn.textContent = 'Submit for Verification';
+    btn.disabled = false;
+  }
 }
 
 // ==================== BLOOD RECEIVER ====================
@@ -416,6 +466,9 @@ function triggerPanic() {
   securityScore = Math.min(100, securityScore + 5);
   saveSecurityScore();
   calculateSecurityScore();
+
+  // Log to Supabase
+  supabaseClient.from('security_logs').insert({ event: 'Panic Mode Triggered', status: 'success' }).then();
 }
 
 // ==================== NOTIFICATIONS ====================
