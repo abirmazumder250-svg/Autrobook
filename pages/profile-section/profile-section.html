@@ -1,83 +1,327 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="light dark">
-    <title>Profile - Autrobook</title>
-    <link rel="stylesheet" href="../../global/global.css">
-    <link rel="stylesheet" href="profile-section.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile - Normal Mode</title>
+  <link rel="stylesheet" href="profile-section.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
-<body>
+<body id="profileBody">
+  <!-- Screenshot Guard Overlay -->
+  <div id="screenshotGuardBanner" class="guard-banner hidden">
+    <i class="fa-solid fa-shield-halved"></i> Screenshot Guard Active: Screenshots & Screen Recording Restricted
+  </div>
 
-    <div class="profile-container">
-        <!-- Cover Photo & Profile Info -->
-        <div class="cover-section">
-            <div class="top-nav-icons">
-                <button onclick="openMenu()">⚙️</button>
-                <button onclick="toggleSearch()">🔍</button>
-                <button onclick="openThreeDots()">⋯</button>
-            </div>
-        </div>
+  <!-- View As / Visitor Simulation Bar -->
+  <div class="top-control-bar">
+    <span id="viewModeIndicator"><i class="fa-solid fa-user-check"></i> Viewing as: <strong>Owner (You)</strong></span>
+    <button class="btn-outline-sm" onclick="toggleViewAs()"><i class="fa-solid fa-eye"></i> Switch to Visitor View (View As)</button>
+  </div>
 
-        <div class="profile-header-card">
-            <div class="avatar-wrapper">
-                <img id="profileAvatar" src="https://via.placeholder.com/150" alt="Profile Picture">
-                <span id="guardBadge" class="guard-shield" style="display:none;">🛡️</span>
-            </div>
-            <h2 id="profileName">Abir Mazumder <span id="verifiedTick" class="black-tick" style="display:none;">✔</span></h2>
-            <p class="followers-count">166 followers · 0 following</p>
-            <p class="bio-text">Official Hindi, Punjabi Singer and Dancer | DM For Collabs ❤️</p>
-
-            <!-- Normal Profile Action Buttons -->
-            <div class="action-buttons">
-                <button class="primary-btn" onclick="openAddStory()">+ Add to Story</button>
-                <button class="secondary-btn" onclick="location.href='profile-section-edit.html'">Edit Profile</button>
-            </div>
-        </div>
-
-        <!-- Personal Details -->
-        <div class="card details-card">
-            <h3>Personal Details</h3>
-            <p>📍 Lives in Dhaka, Bangladesh</p>
-            <p>🎓 Uttara High School & College</p>
-            <p>❤️ Single</p>
-        </div>
-
-        <!-- Live Feed Section -->
-        <div class="card post-card">
-            <div class="post-header">
-                <h4>Abir Mazumder updated his profile picture.</h4>
-                <span class="timestamp" data-time="1730000000000">Just now</span>
-            </div>
-            <div class="post-content">
-                <p>Hlw Abirians ✨</p>
-            </div>
-            <!-- Reactions & Counter -->
-            <div class="reactions-bar">
-                <span id="reactCount">👍❤️🥰😆😠😢😮 52</span>
-                <span>40 comments · 207 views</span>
-            </div>
-            <div class="post-actions">
-                <button class="interaction-btn" onmousedown="startReactPress(event)" onmouseup="endReactPress()">👍 Like</button>
-                <button class="interaction-btn" onclick="toggleCommentBox()">💬 Comment</button>
-                <button class="interaction-btn" onclick="openPostMenu()">⋯ Share/Copy</button>
-            </div>
-            <!-- Voice Comment Box (30s) -->
-            <div id="commentSection" class="comment-section" style="display:none;">
-                <div class="voice-comment-bar">
-                    <select id="voiceEffect">
-                        <option value="normal">Normal Voice</option>
-                        <option value="eco">Echo Effect</option>
-                        <option value="deep">Deep Voice</option>
-                    </select>
-                    <button class="primary-btn" onclick="recordVoiceComment()">🎙️ Record (30s)</button>
-                </div>
-                <input type="text" placeholder="Write a comment...">
-            </div>
-        </div>
+  <div class="profile-container" id="captureProtectedArea">
+    <!-- Cover Photo Section -->
+    <div class="cover-wrapper">
+      <img id="coverImg" src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80" alt="Cover Photo" />
+      <label for="coverInput" class="camera-btn cover-cam owner-only" title="Update Cover Photo">
+        <i class="fa-solid fa-camera"></i>
+      </label>
+      <input type="file" id="coverInput" accept="image/*" hidden onchange="openImageReview(event, 'cover')" />
     </div>
 
-    <script src="profile-section.js"></script>
+    <!-- Profile Header Info -->
+    <div class="profile-header">
+      <div class="avatar-wrapper" id="avatarWrapper">
+        <img id="profileImg" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80" alt="Profile Photo" />
+        <div id="profileGuardShield" class="profile-guard-badge" title="Profile Picture Guard Active">
+          <i class="fa-solid fa-shield"></i>
+        </div>
+        <label for="profileInput" class="camera-btn avatar-cam owner-only" title="Update Profile Picture">
+          <i class="fa-solid fa-camera"></i>
+        </label>
+        <input type="file" id="profileInput" accept="image/*" hidden onchange="openImageReview(event, 'profile')" />
+      </div>
+
+      <div class="name-row">
+        <h1 id="displayName">Abir Mazumder</h1>
+        <span id="blackBadge" class="black-tick" title="Verified Account"><i class="fa-solid fa-circle-check"></i></span>
+      </div>
+
+      <p class="friends-count" id="friendsCountText">1.2K friends • 166 followers</p>
+      <p class="bio-text" id="displayBio">Creator & Developer | Building the future 🚀</p>
+
+      <!-- Profile Locked Banner (Shown to Visitors when Locked) -->
+      <div id="lockedProfileNotice" class="locked-notice hidden">
+        <i class="fa-solid fa-lock"></i>
+        <div>
+          <strong>Abir locked his profile</strong>
+          <p id="lockedCustomHint">Only selected details are visible to visitors.</p>
+        </div>
+      </div>
+
+      <!-- Primary Action Buttons (Normal ID: Add Story, Edit Profile, 3-Dot) -->
+      <div class="action-buttons-row owner-only">
+        <button class="btn-dark-green" onclick="triggerGalleryUpload('story')"><i class="fa-solid fa-plus"></i> Add to story</button>
+        <a href="profile-section-edit/profile-section-edit.html" class="btn-dark-green"><i class="fa-solid fa-pen"></i> Edit profile</a>
+        <div class="dropdown-wrapper">
+          <button class="btn-icon-green" onclick="toggleThreeDotMenu()"><i class="fa-solid fa-ellipsis"></i></button>
+          <div id="threeDotMenu" class="dropdown-menu hidden">
+            <button onclick="openModal('proModeModal')"><i class="fa-solid fa-briefcase"></i> Turn on Professional Mode</button>
+            <button onclick="openModal('lockProfileModal')"><i class="fa-solid fa-lock"></i> Lock Profile & Visibility</button>
+            <button onclick="toggleScreenshotGuard()"><i class="fa-solid fa-mobile-screen"></i> Screenshot Guard: <span id="ssGuardStatus">ON</span></button>
+            <button onclick="toggleProfileGuard()"><i class="fa-solid fa-user-shield"></i> Profile Pic Guard: <span id="ppGuardStatus">ON</span></button>
+            <button onclick="openModal('securityModal')"><i class="fa-solid fa-shield-virus"></i> Check Security</button>
+            <button onclick="openModal('activityLogModal')"><i class="fa-solid fa-clock-rotate-left"></i> Activity Log & Trash</button>
+            <button onclick="toggleViewAs()"><i class="fa-solid fa-eye"></i> View As</button>
+            <button onclick="copyProfileLink()"><i class="fa-solid fa-link"></i> Copy Profile Link</button>
+            <button onclick="shareProfileLink()"><i class="fa-solid fa-share-nodes"></i> Share Profile Link</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visitor Action Buttons (Shown in View As / Visitor Mode) -->
+      <div class="action-buttons-row visitor-only hidden">
+        <button class="btn-dark-green" onclick="alert('Friend Request Sent!')"><i class="fa-solid fa-user-plus"></i> Add Friend</button>
+        <button id="visitorFollowBtn" class="btn-secondary hidden" onclick="toggleFollowVisitor()"><i class="fa-solid fa-rss"></i> Follow</button>
+        <button class="btn-secondary" onclick="sendPoke()"><i class="fa-solid fa-hand-point-right"></i> Poke</button>
+        <div class="dropdown-wrapper">
+          <button class="btn-icon-green" onclick="toggleVisitorMenu()"><i class="fa-solid fa-ellipsis"></i></button>
+          <div id="visitorThreeDotMenu" class="dropdown-menu hidden">
+            <button onclick="sendPoke()"><i class="fa-solid fa-hand-point-right"></i> Poke Abir</button>
+            <button onclick="copyProfileLink()"><i class="fa-solid fa-link"></i> Copy Profile Link</button>
+            <button onclick="shareProfileLink()"><i class="fa-solid fa-share-nodes"></i> Share Profile</button>
+            <button class="text-danger" onclick="openModal('reportProfileModal')"><i class="fa-solid fa-flag"></i> Report Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Highlights Section -->
+    <div class="card-section" id="section-highlights">
+      <h3>Highlights</h3>
+      <div class="highlights-row" id="highlightsContainer">
+        <div class="highlight-item add-highlight owner-only" onclick="triggerGalleryUpload('highlight')">
+          <div class="highlight-circle"><i class="fa-solid fa-plus"></i></div>
+          <span>New</span>
+        </div>
+        <div class="highlight-item">
+          <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80" alt="Highlight" />
+          <span>Memories</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- About / Personal Details Section -->
+    <div class="card-section" id="section-about">
+      <div class="section-header-flex">
+        <h3>Details</h3>
+        <a href="profile-section-edit/profile-section-edit.html" class="link-green owner-only">Edit</a>
+      </div>
+      <ul class="details-list" id="aboutDetailsList">
+        <li data-privacy="education"><i class="fa-solid fa-graduation-cap"></i> Studied at <strong>Dhaka Central University</strong></li>
+        <li data-privacy="school"><i class="fa-solid fa-school"></i> Went to <strong>Uttara High School & College</strong></li>
+        <li data-privacy="city"><i class="fa-solid fa-location-dot"></i> Lives in <strong>Dhaka, Bangladesh</strong></li>
+        <li data-privacy="relationship"><i class="fa-solid fa-heart"></i> <strong>Single</strong></li>
+        <li data-privacy="family"><i class="fa-solid fa-people-roof"></i> Family: <strong>Babul Kumar Mazumder (Father)</strong></li>
+        <li data-privacy="phone"><i class="fa-solid fa-phone"></i> <strong>+880 1700-000000</strong></li>
+        <li data-privacy="dob"><i class="fa-solid fa-cake-candles"></i> Born on <strong>May 15, 2002</strong></li>
+        <li data-privacy="following"><i class="fa-solid fa-user-check"></i> Followed by <strong>166 people</strong></li>
+      </ul>
+    </div>
+
+    <!-- Create Post Box (Owner Only) -->
+    <div class="card-section owner-only" id="createPostCard">
+      <div class="create-post-top">
+        <img id="miniAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="User" />
+        <input type="text" id="postTextInput" placeholder="What's on your mind, Abir?" />
+      </div>
+      <div class="create-post-actions">
+        <button onclick="triggerGalleryUpload('postPhoto')"><i class="fa-solid fa-image"></i> Photo/Video</button>
+        <button onclick="openModal('postPrivacyModal')"><i class="fa-solid fa-globe"></i> Audience: <span id="currentPostAudience">Public</span></button>
+        <button class="btn-dark-green btn-sm" onclick="publishPost()">Post</button>
+      </div>
+      <input type="file" id="galleryPicker" accept="image/*,video/*" hidden onchange="handleGallerySelected(event)" />
+    </div>
+
+    <!-- Posts Feed -->
+    <div id="postsFeedContainer"></div>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Image Review Modal (Mandatory review before saving Profile/Cover) -->
+  <div id="imageReviewModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Review Selected Photo</h3>
+      <p>Preview how your photo looks before updating.</p>
+      <div class="review-preview-box">
+        <img id="reviewPreviewImg" src="" alt="Preview" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('imageReviewModal')">Cancel</button>
+        <button class="btn-dark-green" onclick="confirmImageUpdate()">Save & Publish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lock Profile & Granular Visibility Modal -->
+  <div id="lockProfileModal" class="modal hidden">
+    <div class="modal-content">
+      <h3><i class="fa-solid fa-lock"></i> Lock Profile & Visibility</h3>
+      <label class="switch-row">
+        <span>Enable Profile Lock</span>
+        <input type="checkbox" id="profileLockToggle" onchange="toggleProfileLockState()" />
+      </label>
+      <p class="sub-hint">Choose what others can see (Select <strong>None</strong> to hide everything from visitors):</p>
+      <div class="privacy-grid">
+        <div class="priv-item">
+          <span>Who can see your posts</span>
+          <select id="visPosts" onchange="saveVisibilityRules()">
+            <option value="public">Public</option>
+            <option value="friends">Friends</option>
+            <option value="none">None (Hide All)</option>
+          </select>
+        </div>
+        <div class="priv-item">
+          <span>Who can follow you</span>
+          <select id="visFollow" onchange="saveVisibilityRules()">
+            <option value="public">Public</option>
+            <option value="friends">Friends</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="priv-item">
+          <span>Who can see your contacts & phone</span>
+          <select id="visPhone" onchange="saveVisibilityRules()">
+            <option value="friends">Friends</option>
+            <option value="public">Public</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="priv-item">
+          <span>Who can see your date of birth</span>
+          <select id="visDob" onchange="saveVisibilityRules()">
+            <option value="friends">Friends</option>
+            <option value="public">Public</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="priv-item">
+          <span>Who can see groups & pages you follow</span>
+          <select id="visFollowing" onchange="saveVisibilityRules()">
+            <option value="public">Public</option>
+            <option value="friends">Friends</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="priv-item">
+          <span>Allow others to copy/share profile link</span>
+          <select id="allowLinkShare" onchange="saveVisibilityRules()">
+            <option value="yes">Allowed</option>
+            <option value="no">Disabled (Block Copy/Share)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="setAllVisibilityNone()">Select None (Hide Everything)</button>
+        <button class="btn-dark-green" onclick="closeModal('lockProfileModal')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Professional Mode Switch Confirmation -->
+  <div id="proModeModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Turn on Professional Mode?</h3>
+      <ul class="feature-bullets">
+        <li><i class="fa-solid fa-chart-line"></i> Access Professional Dashboard & Post Insights</li>
+        <li><i class="fa-solid fa-sack-dollar"></i> Unlock Monetization tools (1,000 followers + 1 yr account)</li>
+        <li><i class="fa-solid fa-user-plus"></i> Let anyone follow your public updates</li>
+      </ul>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('proModeModal')">Cancel</button>
+        <a href="professional-type-profile-section.html" class="btn-dark-green">Turn On & Switch</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security Checkup Modal -->
+  <div id="securityModal" class="modal hidden">
+    <div class="modal-content">
+      <h3><i class="fa-solid fa-shield-halved"></i> Account Security Checkup</h3>
+      <div id="securityStatusBox" class="security-alert warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+          <strong>Action Needed!</strong>
+          <p id="securityIssueDesc">Unrecognized backup email detected & Password older than 90 days.</p>
+        </div>
+      </div>
+      <ul class="security-checklist" id="securityChecklist">
+        <li id="secPassItem"><i class="fa-solid fa-circle-xmark text-danger"></i> Password Strength: Needs Update <button class="btn-xs" onclick="fixSecurityIssue('password')">Fix this problem</button></li>
+        <li id="secEmailItem"><i class="fa-solid fa-circle-xmark text-danger"></i> Recovery Email: Unknown email linked <button class="btn-xs" onclick="fixSecurityIssue('email')">Fix this problem</button></li>
+        <li id="sec2faItem"><i class="fa-solid fa-circle-check text-green"></i> Two-Factor Authentication: Active</li>
+      </ul>
+      <div class="modal-actions">
+        <button class="btn-dark-green" onclick="closeModal('securityModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post Comment Control Modal (Owner Only) -->
+  <div id="commentControlModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Who can comment on your post?</h3>
+      <select id="commentAudienceSelect" onchange="toggleFriendSelector()">
+        <option value="public">Public (Anyone)</option>
+        <option value="friends">Friends</option>
+        <option value="specific_friends">Specific Friends Only</option>
+        <option value="off">Turn Off Comments</option>
+      </select>
+      <div id="specificFriendsBox" class="specific-friends hidden">
+        <p>Select allowed friends:</p>
+        <label><input type="checkbox" value="Aovijit Halder" checked /> Aovijit Halder</label>
+        <label><input type="checkbox" value="Arnab Mandal" checked /> Arnab Mandal</label>
+        <label><input type="checkbox" value="Rama Mitra" /> Rama Mitra</label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-dark-green" onclick="savePostCommentSetting()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Log & Trash Modal -->
+  <div id="activityLogModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Activity Log & Trash</h3>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchLogTab('activity')">Activity Log</button>
+        <button class="tab-btn" onclick="switchLogTab('trash')">Trash (<span id="trashCount">0</span>)</button>
+      </div>
+      <div id="activityLogList" class="log-list"></div>
+      <div id="trashPostList" class="log-list hidden"></div>
+      <div class="modal-actions">
+        <button class="btn-dark-green" onclick="closeModal('activityLogModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Modal (Visitor Only) -->
+  <div id="reportProfileModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Report Content / Profile</h3>
+      <select id="reportReason">
+        <option>Fake Account / Impersonation</option>
+        <option>Harassment or Bullying</option>
+        <option>Spam or Misleading Content</option>
+        <option>Intellectual Property Violation</option>
+      </select>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('reportProfileModal')">Cancel</button>
+        <button class="btn-dark-green" onclick="submitReport()">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="profile-section.js"></script>
 </body>
 </html>
