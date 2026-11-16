@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <title>Autrobook - Login</title>
 <!-- Google reCAPTCHA SDK -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script src="https://www.google.com/recaptcha/api.js?onload=renderRecaptcha&render=explicit" async defer></script>
 
 <style>
 :root{ color-scheme: light dark; --brand-green: #0f5132; }
@@ -60,7 +60,7 @@ input:focus{border-color:var(--brand-green)}
 .face-frame{ position:absolute; inset:15% 15%; border:2px dashed #198754; border-radius:50%; pointer-events:none }
 canvas{display:none}
 .back-link{text-align:center;color:var(--brand-green);margin-top:15px;cursor:pointer;font-size:14px}
-.g-recaptcha{margin:10px 0;display:flex;justify-content:center;transform:scale(0.9)}
+.recaptcha-container{margin:10px 0;display:flex;justify-content:center;transform:scale(0.9);transform-origin:0 0;width:100%;}
 
 /* Fingerprint Option CSS */
 .verification-options {
@@ -123,7 +123,7 @@ canvas{display:none}
     
     <!-- reCAPTCHA & Fingerprint Integration on Login -->
     <div class="verification-options">
-      <div class="g-recaptcha" data-sitekey="6Leifx0uAAAAAP0vZ1H6sH9T7UfUH8lpyhWakTze" data-callback="onCaptchaSuccess" data-expired-callback="onCaptchaExpired"></div>
+      <div id="recaptcha-element" class="recaptcha-container"></div>
       
       <div class="or-divider">OR LOGIN WITH</div>
       
@@ -179,11 +179,26 @@ canvas{display:none}
 let resetEmail = "";
 let stream = null;
 let captchaVerified = false;
+let recaptchaWidgetId = null;
 
 const translations = {
   en: { loginTitle: "Please Login", emailLabel: "Email Address :", passLabel: "Password :", loginBtn: "Login", signupText: "Signup New Account", selfieText: "Live Selfie Verification" },
   bn: { loginTitle: "দয়া করে লগইন করুন", emailLabel: "ইমেইল ঠিকানা :", passLabel: "পাসওয়ার্ড :", loginBtn: "লগইন", signupText: "নতুন অ্যাকাউন্ট তৈরি করুন", selfieText: "লাইভ সেলফি ভেরিফিকেশন" }
 };
+
+function renderRecaptcha() {
+  if (typeof grecaptcha !== 'undefined' && document.getElementById('recaptcha-element')) {
+    try {
+      recaptchaWidgetId = grecaptcha.render('recaptcha-element', {
+        'sitekey': '6Leifx0uAAAAAP0vZ1H6sH9T7UfUH8lpyhWakTze',
+        'callback': onCaptchaSuccess,
+        'expired-callback': onCaptchaExpired
+      });
+    } catch(e) {
+      console.error(e);
+    }
+  }
+}
 
 function applyLanguage(lang){
   if(translations[lang]) {
@@ -200,13 +215,20 @@ function changeLanguage() {
 
 function onCaptchaSuccess(){ 
   captchaVerified = true; 
-  msg('msg1', '', 'success'); // ক্যাপচা সফল হলে এরর মেসেজ মুছে যাবে
+  msg('msg1', '', 'success');
 }
 function onCaptchaExpired(){ 
   captchaVerified = false; 
 }
 
-function showStep(id){ document.querySelectorAll('.step').forEach(s=>s.style.display='none'); document.getElementById(id).style.display='block'; }
+function showStep(id){ 
+  document.querySelectorAll('.step').forEach(s=>s.style.display='none'); 
+  document.getElementById(id).style.display='block';
+  if(id === 'step1' && recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
+    try { grecaptcha.reset(recaptchaWidgetId); captchaVerified = false; } catch(e){}
+  }
+}
+
 function msg(id, t, ok){ const el=document.getElementById(id); el.textContent=t; el.className='msg '+(ok?'success':'error'); }
 
 // ইমেল, পাসওয়ার্ড এবং reCAPTCHA যাচাই করে সরাসরি লগইন
@@ -219,7 +241,6 @@ function login(){
   
   msg('msg1','Logging in...', true); 
   
-  // সফল লগইন ও সেশন সেভ করে welcome.html এ রিডাইরেক্ট
   setTimeout(() => {
     msg('msg1','Login Successful ✅','success');
     saveSession(email);
@@ -278,7 +299,6 @@ function goSignup(){ window.location.href = 'signup-name.html'; }
 function showForget(){ showStep('step2'); document.getElementById('resetEmail').value = document.getElementById('email').value; }
 function backToLogin(){ 
   showStep('step1'); 
-  try { grecaptcha.reset(); captchaVerified = false; } catch(e){} 
   if(stream) stream.getTracks().forEach(t=>t.stop()); 
 }
 function backToForget(){ showStep('step2'); }
