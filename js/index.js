@@ -20,6 +20,7 @@ let privacySettings = JSON.parse(localStorage.getItem('privacySettings')) || {
 };
 let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
 let currentFilter = 'all';
+let selectedPostImage = null; // For new post image
 
 // ==================== THEME ====================
 function applyTheme(theme) {
@@ -120,38 +121,90 @@ function sosAlert() {
   securityScore = Math.min(100, securityScore + 5);
   saveSecurityScore();
   
-  // Log to Supabase
   supabaseClient.from('security_logs').insert({ event: 'SOS Activated', status: 'success' }).then();
 }
 
-// ==================== COMPOSER ====================
+// ==================== COMPOSER & POSTS ====================
+function previewPostImage(event) {
+  const file = event.target.files[0];
+  if (file) {
+    selectedPostImage = file;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = document.getElementById('postImagePreview');
+      img.src = e.target.result;
+      img.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
 function attachType(type) {
-  if (type === 'photo') showToast('📷 Photo attachment — feature coming soon!');
   if (type === 'location') showToast('📍 Location attachment — feature coming soon!');
 }
 
-function publishPost() {
+async function publishPost() {
   const text = document.getElementById('postText').value.trim();
-  if (!text) {
-    showToast('Please write something before publishing.');
+  const btn = document.querySelector('#mComposer .btn-primary');
+  
+  if (!text && !selectedPostImage) {
+    showToast('Please write something or add a photo.');
     return;
   }
-  const post = {
-    id: Date.now(),
-    text: text,
-    time: new Date().toLocaleString(),
-    author: 'Abir Mazumder',
-    type: 'post'
-  };
-  userPosts.unshift(post);
-  savePosts();
-  renderFeed();
-  document.getElementById('postText').value = '';
-  closeModal('mComposer');
-  showToast('Post published successfully!');
-  securityScore = Math.min(100, securityScore + 2);
-  saveSecurityScore();
-  addNotification('Post Published', 'Your post is now live.');
+
+  try {
+    btn.textContent = 'Publishing...';
+    btn.disabled = true;
+
+    let imageUrl = null;
+
+    if (selectedPostImage) {
+      const fileName = `post_${Date.now()}.jpg`;
+      const { error } = await supabaseClient.storage
+        .from('images')
+        .upload(`posts/${fileName}`, selectedPostImage);
+
+      if (error) throw error;
+
+      const { data: urlData } = supabaseClient.storage
+        .from('images')
+        .getPublicUrl(`posts/${fileName}`);
+      
+      imageUrl = urlData.publicUrl;
+    }
+
+    const post = {
+      id: Date.now(),
+      text: text,
+      imageUrl: imageUrl,
+      time: new Date().toLocaleString(),
+      author: 'Abir Mazumder',
+      type: 'post'
+    };
+
+    userPosts.unshift(post);
+    savePosts();
+    renderFeed();
+    
+    document.getElementById('postText').value = '';
+    document.getElementById('postImagePreview').style.display = 'none';
+    selectedPostImage = null;
+    btn.textContent = 'Publish Post';
+    btn.disabled = false;
+    
+    closeModal('mComposer');
+    showToast('Post published successfully!');
+    
+    securityScore = Math.min(100, securityScore + 2);
+    saveSecurityScore();
+    addNotification('Post Published', 'Your post is now live.');
+
+  } catch (error) {
+    console.error(error);
+    showToast('❌ Failed to publish: ' + error.message);
+    btn.textContent = 'Publish Post';
+    btn.disabled = false;
+  }
 }
 
 // ==================== MISSING PERSON ====================
@@ -249,7 +302,7 @@ function submitBloodRequest() {
   addNotification('Blood Request', `${group} needed at ${hospital}.`);
 }
 
-// ==================== NID VERIFICATION (SUPABASE UPLOAD) ====================
+// ==================== NID VERIFICATION ====================
 async function submitNID() {
   const name = document.getElementById('verifyName').value.trim();
   const front = document.getElementById('nidFrontInput').files[0];
@@ -266,21 +319,18 @@ async function submitNID() {
     btn.textContent = 'Uploading...';
     btn.disabled = true;
 
-    // 1. Upload NID Front
     const frontFileName = `front_${Date.now()}_${front.name}`;
     const { error: err1 } = await supabaseClient.storage
       .from('appeals-documents')
       .upload(`nid/${frontFileName}`, front);
     if (err1) throw err1;
 
-    // 2. Upload Selfie
     const selfieFileName = `selfie_${Date.now()}_${selfie.name}`;
     const { error: err2 } = await supabaseClient.storage
       .from('appeals-documents')
       .upload(`selfie/${selfieFileName}`, selfie);
     if (err2) throw err2;
 
-    // 3. Upload NID Back (If provided)
     let backFileName = null;
     if (back) {
       backFileName = `back_${Date.now()}_${back.name}`;
@@ -290,13 +340,11 @@ async function submitNID() {
       if (err3) throw err3;
     }
 
-    // Save to LocalStorage
     nidData = { name, front: frontFileName, back: backFileName, selfie: selfieFileName, time: new Date().toLocaleString() };
     nidVerified = true;
     localStorage.setItem('nidVerified', 'true');
     localStorage.setItem('nidData', JSON.stringify(nidData));
 
-    // Save to Supabase Appeals Table
     await supabaseClient.from('appeals').insert({ name: name, status: 'pending' });
 
     btn.textContent = '✅ Verified';
@@ -467,7 +515,6 @@ function triggerPanic() {
   saveSecurityScore();
   calculateSecurityScore();
 
-  // Log to Supabase
   supabaseClient.from('security_logs').insert({ event: 'Panic Mode Triggered', status: 'success' }).then();
 }
 
@@ -562,11 +609,25 @@ function renderPostHTML(post) {
     cls += ' is-blood';
     badge = ' <span style="background:#c0392b;color:white;font-size:0.65rem;padding:2px 6px;border-radius:10px;margin-left:6px;">BLOOD</span>';
   }
+
+  const imageHTML = post.imageUrl ? `<img src="${post.imageUrl}" class="post-image" alt="Post Image">` : '';
+
   return `
     <div class="${cls}">
-      <h4>${post.author || 'User'}${badge}</h4>
-      <p>${post.text}</p>
-      <div class="post-meta"><i class="fas fa-clock"></i> ${post.time || 'Just now'}</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+        <div class="avatar" style="width:40px; height:40px; font-size:16px;"><i class="fas fa-user"></i></div>
+        <div>
+          <h4 style="margin:0;">${post.author || 'User'}${badge}</h4>
+          <small style="color:var(--muted); font-size:0.75rem;">${post.time || 'Just now'} • <i class="fas fa-globe"></i></small>
+        </div>
+      </div>
+      <p style="margin-bottom:10px;">${post.text}</p>
+      ${imageHTML}
+      <div class="post-actions">
+        <button><i class="far fa-thumbs-up"></i> Like</button>
+        <button><i class="far fa-comment"></i> Comment</button>
+        <button><i class="fas fa-share"></i> Share</button>
+      </div>
     </div>
   `;
 }
@@ -635,7 +696,6 @@ window.addEventListener('load', () => {
     localStorage.setItem('visited', 'true');
   }
 
-  // Logo fallback
   const logoImg = document.querySelector('.logo-img');
   if (logoImg) {
     logoImg.onerror = function () {
@@ -652,6 +712,7 @@ window.closeModal = closeModal;
 window.toggleTheme = toggleTheme;
 window.sosAlert = sosAlert;
 window.publishPost = publishPost;
+window.previewPostImage = previewPostImage;
 window.submitMissing = submitMissing;
 window.submitBloodRequest = submitBloodRequest;
 window.submitNID = submitNID;
