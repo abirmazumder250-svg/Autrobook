@@ -9,8 +9,8 @@
 <link rel="stylesheet" href="css/welcome.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/otpauth@9.1.1/dist/otpauth.min.js"></script>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <script>
-  // If already logged in, go straight to Feed (like Facebook)
   if (localStorage.getItem('autro_logged_in') === '1' && localStorage.getItem('isLoggedIn') === 'true') {
     window.location.href = 'index.html';
   }
@@ -32,7 +32,7 @@
       <div><i class="fas fa-users"></i> Friends, Groups, Games</div>
       <div><i class="fas fa-video"></i> Reels, Stories, Live</div>
       <div><i class="fas fa-robot"></i> Autro AI Assistant</div>
-      <div><i class="fas fa-shield-alt"></i> 2FA, Passkey, AI Security</div>
+      <div><i class="fas fa-shield-alt"></i> reCAPTCHA + 2FA + Fingerprint + AI Security</div>
     </div>
   </div>
 
@@ -43,13 +43,26 @@
         <button id="tabSignup" class="tab" onclick="switchTab('signup')">Create Account</button>
       </div>
 
-      <!-- SIGNUP NAME - Hidden on Login -->
       <div id="signupNameWrap" style="display:none">
         <input type="text" id="authName" placeholder="Full Name">
       </div>
       <input type="email" id="authEmail" placeholder="Email address">
       <input type="password" id="authPassword" placeholder="Password">
+
+      <!-- REAL GOOGLE reCAPTCHA -->
+      <div class="captcha-box">
+        <div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d" data-callback="onCaptchaSuccess" data-expired-callback="onCaptchaExpired"></div>
+        <p class="captcha-note">Protected by Google reCAPTCHA • Prove you are human</p>
+      </div>
+
       <button class="btn-login" id="authSubmitBtn" onclick="submitAuth()">Log In</button>
+
+      <!-- GOOGLE BIOMETRIC - FINGERPRINT / FACE ID -->
+      <button class="btn-fingerprint" id="fingerprintBtn" onclick="loginWithFingerprint()">
+        <i class="fas fa-fingerprint"></i> Log in with Fingerprint / Face ID
+      </button>
+      <p class="fp-note" id="fpNote">Use your device fingerprint if Passkey is set in Settings.</p>
+
       <a class="forgot" href="#" onclick="forgotPassword();return false;">Forgotten password?</a>
       <hr>
       <button class="btn-create" onclick="switchTab('signup')">Create new account</button>
@@ -57,16 +70,27 @@
       <p class="guest-note">Guest can only view. Login to Like, Comment, Post, Share.</p>
     </div>
 
-    <!-- 2FA MODAL - Facebook Style -->
+    <!-- 2FA MODAL -->
     <div class="modal-back" id="m2FAVerify" style="display:none">
       <div class="modal">
         <h3><i class="fas fa-shield-alt" style="color:var(--primary)"></i> Two-Factor Authentication</h3>
         <p class="modal-sub">Open <b>Google Authenticator</b> and enter the 6-digit code for Autrobook.</p>
         <input type="text" id="login2FACode" placeholder="000 000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-        <p class="modal-sub" id="twoFactorHint" style="font-size:12px;color:var(--muted)">Code changes every 30 seconds.</p>
+        <p class="modal-sub" style="font-size:12px;color:var(--muted)">Code changes every 30 seconds.</p>
         <button class="btn-login" onclick="verifyLogin2FA()">Verify & Log In</button>
         <button class="btn-gray" onclick="cancel2FA()">Cancel</button>
         <p class="modal-sub" style="margin-top:10px;font-size:12px">Lost your Authenticator? <a href="#" onclick="useBackupCode();return false;">Use backup / Contact Support</a></p>
+      </div>
+    </div>
+
+    <!-- FINGERPRINT SETUP MODAL - After First Login -->
+    <div class="modal-back" id="mSetupPasskey" style="display:none">
+      <div class="modal" style="text-align:center">
+        <div style="font-size:48px">👆</div>
+        <h3>Enable Fingerprint Login?</h3>
+        <p class="modal-sub">Next time you can login with just your Fingerprint / Face ID. No password needed.</p>
+        <button class="btn-login" onclick="setupPasskeyFromWelcome()">Enable Fingerprint Now</button>
+        <button class="btn-gray" onclick="closePasskeyModal()">Skip for Now</button>
       </div>
     </div>
 
@@ -76,150 +100,6 @@
 
 <div class="theme-float"><button onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i> Theme</button></div>
 <div id="toast" class="toast"></div>
-
-<script>
-const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let authMode = "login";
-let pendingUser = null;
-let pendingEmail = "";
-let pendingName = "";
-
-function toast(msg){
-  const t=document.getElementById("toast");
-  t.textContent=msg; t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),3000);
-}
-function applyTheme(){
-  const s=localStorage.getItem("autro_theme");
-  document.body.classList.remove("theme-dark","theme-light");
-  if(s) document.body.classList.add("theme-"+s);
-  const icon=document.getElementById("themeIcon");
-  if(icon){ const dark=s? s==="dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; icon.className=dark?"fas fa-sun":"fas fa-moon"; }
-}
-function toggleTheme(){
-  const s=localStorage.getItem("autro_theme");
-  const sys=window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const cur=s? s==="dark" : sys;
-  localStorage.setItem("autro_theme", cur?"light":"dark");
-  applyTheme();
-}
-applyTheme();
-
-function switchTab(mode){
-  authMode=mode;
-  document.getElementById("tabLogin").classList.toggle("active", mode==="login");
-  document.getElementById("tabSignup").classList.toggle("active", mode==="signup");
-  document.getElementById("signupNameWrap").style.display = mode==="signup" ? "block" : "none";
-  document.getElementById("authSubmitBtn").textContent = mode==="signup" ? "Create Account" : "Log In";
-}
-
-function saveLoginSession(user, email, name){
-  localStorage.removeItem("autro_guest");
-  localStorage.setItem("autro_logged_in","1");
-  localStorage.setItem("isLoggedIn","true");
-  localStorage.setItem("autro_user_name", name);
-  localStorage.setItem("autro_user_email", email);
-  if(user && user.created_at) localStorage.setItem("autro_account_created", user.created_at);
-  localStorage.setItem("currentUser", JSON.stringify({ email, user_metadata:{full_name:name}, created_at: user?user.created_at:"" }));
-}
-function finishLogin(user, email, name){
-  saveLoginSession(user, email, name);
-  toast("✅ Welcome back, " + name);
-  setTimeout(()=>{ window.location.href="index.html"; }, 600);
-}
-
-async function submitAuth(){
-  const email=document.getElementById("authEmail").value.trim();
-  const pass=document.getElementById("authPassword").value.trim();
-  const nameEl=document.getElementById("authName");
-  const name=nameEl? nameEl.value.trim() : "";
-  if(!email || email.indexOf("@")===-1){ toast("Enter a valid email"); return; }
-  if(pass.length<6){ toast("Password must be 6+ characters"); return; }
-  if(authMode==="signup" && !name){ toast("Enter your full name"); return; }
-  const btn=document.getElementById("authSubmitBtn");
-  btn.textContent="Please wait..."; btn.disabled=true;
-  try{
-    if(authMode==="signup"){
-      const { data, error } = await supabaseClient.auth.signUp({ email, password: pass, options:{ data:{ full_name:name } } });
-      if(error) throw error;
-      try{ await fetch("/api/welcome",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name,email}) }); }catch(e){}
-      toast("✅ Account created! You can login now.");
-      switchTab("login");
-    } else {
-      // LOGIN - Facebook Style
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
-      if(error) throw error;
-      const user=data.user;
-      const userName=(user.user_metadata && user.user_metadata.full_name) || email.split("@")[0];
-      pendingUser=user; pendingEmail=email; pendingName=userName;
-
-      // === 2FA CHECK - Facebook Style ===
-      const is2FAOn = localStorage.getItem("autro_2fa_enabled")==="1";
-      const secret = localStorage.getItem("autro_2fa_secret");
-      if(is2FAOn && secret){
-        // Show 2FA Modal, do NOT login yet
-        document.getElementById("m2FAVerify").style.display="flex";
-        document.getElementById("login2FACode").value="";
-        document.getElementById("login2FACode").focus();
-        toast("🔐 Enter your 6-digit Authenticator code");
-      } else {
-        finishLogin(user, email, userName);
-      }
-    }
-    document.getElementById("authPassword").value="";
-  } catch(err){ toast(err.message || "Auth failed"); }
-  btn.textContent = authMode==="signup" ? "Create Account" : "Log In";
-  btn.disabled=false;
-}
-
-// === VERIFY 2FA CODE ON LOGIN ===
-function verifyLogin2FA(){
-  const code=document.getElementById("login2FACode").value.trim();
-  if(code.length!==6){ toast("Enter 6-digit code"); return; }
-  const secret=localStorage.getItem("autro_2fa_secret");
-  if(!secret){ toast("2FA secret not found"); return; }
-  try{
-    const totp=new OTPAuth.TOTP({ issuer:"Autrobook", label:pendingEmail, algorithm:"SHA1", digits:6, period:30, secret: OTPAuth.Secret.fromBase32(secret) });
-    const delta=totp.validate({ token:code, window:1 });
-    if(delta===null){
-      toast("❌ Wrong code. Try again.");
-      document.getElementById("login2FACode").value="";
-      return;
-    }
-    // Code Correct - Login Success
-    document.getElementById("m2FAVerify").style.display="none";
-    finishLogin(pendingUser, pendingEmail, pendingName);
-  } catch(e){ toast("Verification failed. Try again."); }
-}
-function cancel2FA(){
-  document.getElementById("m2FAVerify").style.display="none";
-  pendingUser=null; pendingEmail=""; pendingName="";
-  supabaseClient.auth.signOut();
-  toast("Login cancelled. 2FA required.");
-}
-function useBackupCode(){
-  toast("Contact autrobooksupport@gmail.com with your NID to reset 2FA.");
-}
-
-// Enter key = Verify 2FA
-document.getElementById("login2FACode").addEventListener("keydown", (e)=>{ if(e.key==="Enter") verifyLogin2FA(); });
-
-async function forgotPassword(){
-  const email=document.getElementById("authEmail").value.trim();
-  if(!email){ toast("Enter your email first"); return; }
-  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + "/reset.html" });
-  if(error) toast(error.message); else toast("📧 Reset email sent from autrobooksupport@gmail.com");
-}
-function continueAsGuest(){
-  localStorage.setItem("autro_guest","1");
-  localStorage.setItem("currentUser", JSON.stringify({ email:"guest@autrobook.com", user_metadata:{full_name:"Guest User"} }));
-  localStorage.setItem("autro_user_name","Guest User");
-  localStorage.setItem("autro_user_email","guest@autrobook.com");
-  toast("👀 Guest Mode - View Only");
-  setTimeout(()=>{ window.location.href="index.html"; }, 500);
-}
-</script>
+<script src="js/welcome.js"></script>
 </body>
-  </html>
+</html>
