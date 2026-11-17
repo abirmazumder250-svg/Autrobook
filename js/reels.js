@@ -1,197 +1,256 @@
-const currentSessionUser = "Abir Mazumder";
-
-let systemReelsDataset = [
-  { id: 101, author: "Abir Mazumder", caption: "Uploading my development workflows in clean 16K stream layer! 🚀", resolution: "16K Neural", views: 245300, reacts: 999, userReacted: false, soundEnhanced: false, isFollowing: false },
-  { id: 102, author: "Sarah Jenkins", caption: "Testing systemic matrix loops with AI resolution scaler configurations.", resolution: "4K Quad", views: 12400, reacts: 1420, userReacted: false, soundEnhanced: false, isFollowing: false }
-];
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (localStorage.getItem("theme") === "dark") document.body.classList.add("dark-theme");
-  initializeReelDisplayGrid();
-});
-
-function initializeReelDisplayGrid() {
-  const container = document.getElementById("reelsContainer");
-  if (!container) return;
-  container.innerHTML = "";
-
-  systemReelsDataset.forEach(reel => {
-    const isOwnReel = reel.author === currentSessionUser;
-    const card = document.createElement("div");
-    card.className = "reel-viewport";
-    card.innerHTML = `
-      <div class="reel-video-placeholder">
-        <i class="fas fa-clapperboard"></i>
-        <span>Active Media Playback Segment</span>
-        <div class="ai-badge-indicator" id="resolutionTag-${reel.id}"><i class="fas fa-microchip"></i> AI Enhanced (${reel.resolution})</div>
-      </div>
-      
-      <div class="reel-overlay">
-        <div class="reel-profile">
-          <div class="avatar"><i class="fas fa-user"></i></div>
-          <span class="reel-username">${reel.author}</span>
-          ${!isOwnReel ? `<button class="follow-btn ${reel.isFollowing ? 'following' : ''}" onclick="toggleFollowState(${reel.id}, this)">${reel.isFollowing ? 'Following' : 'Follow'}</button>` : ''}
-        </div>
-        <div class="reel-caption">${reel.caption}</div>
-        <div class="views-hud-tag"><i class="fas fa-eye"></i> ${formatMetricDisplay(reel.views)} views</div>
-      </div>
-      
-      <div class="reel-actions-sidebar">
-        <div class="action-item" onclick="processIncrementalReact(${reel.id}, this)">
-          <button style="color: ${reel.userReacted ? '#0b5d3b' : '#fff'}">
-            <i class="${reel.userReacted ? 'fas' : 'far'} fa-thumbs-up"></i>
-          </button>
-          <span class="react-counter-label">${formatMetricDisplay(reel.reacts)}</span>
-        </div>
-        
-        <div class="action-item" onclick="triggerAiDownload(${reel.id})">
-          <button><i class="fas fa-cloud-arrow-down"></i></button>
-          <span>Download</span>
-        </div>
-        
-        <div class="action-item" onclick="openOptionsContextLayer(${reel.id})">
-          <button><i class="fas fa-ellipsis-h"></i></button>
-          <span>Options</span>
-        </div>
-      </div>
-    `;
-    container.appendChild(card);
-  });
+.reels-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+  height: calc(100vh - 56px);
+  width: 100%;
 }
 
-function formatMetricDisplay(count) {
-  if (count >= 1000) {
-    return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-  }
-  return count.toString();
+.reels-container {
+  width: 100%;
+  max-width: 420px;
+  height: 100%;
+  position: relative;
+  background: #111;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
 }
 
-function toggleFollowState(id, btnElement) {
-  const reel = systemReelsDataset.find(r => r.id === id);
-  if (!reel) return;
-  
-  reel.isFollowing = !reel.isFollowing;
-  if (reel.isFollowing) {
-    btnElement.classList.add("following");
-    btnElement.textContent = "Following";
-    displayToast(`You started following ${reel.author}`);
-  } else {
-    btnElement.classList.remove("following");
-    btnElement.textContent = "Follow";
-    displayToast(`Unfollowed ${reel.author}`);
-  }
+.reels-container::-webkit-scrollbar {
+  display: none;
 }
 
-function processIncrementalReact(id, targetElement) {
-  const reel = systemReelsDataset.find(r => r.id === id);
-  if (!reel) return;
-
-  if (reel.userReacted) {
-    reel.reacts -= 1;
-    reel.userReacted = false;
-  } else {
-    reel.reacts += 1;
-    reel.userReacted = true;
-  }
-
-  const label = targetElement.querySelector(".react-counter-label");
-  const button = targetElement.querySelector("button");
-  const icon = targetElement.querySelector("i");
-
-  label.textContent = formatMetricDisplay(reel.reacts);
-  button.style.color = reel.userReacted ? '#0b5d3b' : '#fff';
-  icon.className = `${reel.userReacted ? 'fas' : 'far'} fa-thumbs-up`;
+.reel-viewport {
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  flex-shrink: 0;
 }
 
-let activeContextReelId = null;
-
-function openOptionsContextLayer(id) {
-  activeContextReelId = id;
-  const reel = systemReelsDataset.find(r => r.id === id);
-  if (!reel) return;
-
-  document.getElementById("resolutionScaler").value = reel.resolution.includes("16K") ? "16K" : (reel.resolution.includes("8K") ? "8K" : "4K");
-  document.getElementById("soundEnhanceToggle").checked = reel.soundEnhanced;
-
-  const menu = document.getElementById("reelActionsMenu");
-  menu.innerHTML = "";
-
-  if (reel.author === currentSessionUser) {
-    menu.innerHTML = `
-      <button class="menu-action-row" onclick="executeMockAction('Shared with Friends successfully')"><i class="fas fa-user-group"></i> Share with Friends</button>
-      <button class="menu-action-row" onclick="executeMockAction('Saved to Collection database')"><i class="fas fa-bookmark"></i> Save</button>
-      <button class="menu-action-row" onclick="executeMockAction('Edit module layer initialized')"><i class="fas fa-pen"></i> Edit</button>
-      <button class="menu-action-row danger" onclick="deleteReelInstance(${reel.id})"><i class="fas fa-trash-can"></i> Delete</button>
-    `;
-  } else {
-    menu.innerHTML = `
-      <button class="menu-action-row" onclick="executeMockAction('Link forwarded directly to network contacts')"><i class="fas fa-share"></i> Share with Friends</button>
-      <button class="menu-action-row" onclick="executeMockAction('Saved to Collection database')"><i class="fas fa-bookmark"></i> Save</button>
-      <button class="menu-action-row danger" onclick="invokeReportMatrix()"><i class="fas fa-triangle-exclamation"></i> Report</button>
-    `;
-  }
-  openModal("mReelOptions");
+.reel-video-container {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  position: relative;
 }
 
-function changeResolutionProfile() {
-  const select = document.getElementById("resolutionScaler");
-  const reel = systemReelsDataset.find(r => r.id === activeContextReelId);
-  if (!reel) return;
-
-  reel.resolution = select.value === "16K" ? "16K Neural" : (select.value === "8K" ? "8K Cinema" : "4K Quad");
-  const tag = document.getElementById(`resolutionTag-${reel.id}`);
-  if (tag) tag.innerHTML = `<i class="fas fa-microchip"></i> AI Enhanced (${reel.resolution})`;
-  displayToast(`Resolution scaled to ${reel.resolution} profile dynamically.`);
+.reel-video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-function toggleSoundEnhancement() {
-  const toggle = document.getElementById("soundEnhanceToggle");
-  const reel = systemReelsDataset.find(r => r.id === activeContextReelId);
-  if (!reel) return;
-
-  reel.soundEnhanced = toggle.checked;
-  displayToast(reel.soundEnhanced ? "Enhance Sound set to 200% (On)" : "Enhance Sound restored to 100% (Off)");
+.ai-badge-indicator {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(11, 93, 59, 0.85);
+  border: 1px solid #2ecc71;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-function executeMockAction(msg) {
-  closeModal("mReelOptions");
-  displayToast(msg);
+.reel-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 70px 24px 20px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.95));
+  color: #fff;
+  z-index: 10;
+  pointer-events: none;
 }
 
-function deleteReelInstance(id) {
-  systemReelsDataset = systemReelsDataset.filter(r => r.id !== id);
-  closeModal("mReelOptions");
-  initializeReelDisplayGrid();
-  displayToast("Reel deleted permanently");
+.reel-profile, .views-hud-tag, .reel-caption {
+  pointer-events: auto;
 }
 
-function invokeReportMatrix() {
-  closeModal("mReelOptions");
-  openModal("mReelReport");
+.reel-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-function submitReelReport() {
-  const reason = document.getElementById("reelReportReason").value;
-  closeModal("mReelReport");
-  displayToast("Report standard log routed to audit. Review verification completes within 24-48 hrs.");
-  localStorage.setItem(`reported_reel_reason_${activeContextReelId}`, reason);
+.reel-username {
+  font-weight: 600;
+  font-size: 15px;
 }
 
-function triggerAiUpload() {
-  displayToast("Processing payload: Upscaling and enhancing target file matching 4K-16K limits...");
+.follow-btn {
+  background: #0b5d3b;
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-function triggerAiDownload(id) {
-  displayToast("Downloading AI Enhanced media stream tracking asset components...");
+.follow-btn.following {
+  background: rgba(255, 255, 255, 0.2);
+  color: #e4e6eb;
 }
 
-function displayToast(msg) {
-  const container = document.getElementById("toast");
-  if (!container) return;
-  container.textContent = msg;
-  container.classList.add("show");
-  setTimeout(() => container.classList.remove("show"), 3500);
+.reel-caption {
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0.95;
 }
 
-function openModal(id) { document.getElementById(id)?.classList.add("active"); }
-function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }
+.views-hud-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.4);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+  color: #fff;
+}
+
+.reel-actions-sidebar {
+  position: absolute;
+  right: 16px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  z-index: 20;
+}
+
+.action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  cursor: pointer;
+}
+
+.action-item button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-item button:hover {
+  transform: scale(1.1);
+  background: #0b5d3b;
+}
+
+.action-item span {
+  font-size: 12px;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.enhance-menu-section {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.enhance-menu-section h4 {
+  font-size: 14px;
+  color: #0b5d3b;
+  margin-bottom: 10px;
+}
+
+.enhance-control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.enhance-control-row select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-dark);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 24px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px; width: 16px;
+  left: 4px; bottom: 4px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider { background-color: #0b5d3b; }
+input:checked + .slider:before { transform: translateX(16px); }
+
+.modal-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-action-row {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-main);
+  border: none;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-action-row:hover { background: var(--bg-hover); }
+.menu-action-row.danger { color: var(--error); }
