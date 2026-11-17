@@ -1,9 +1,29 @@
-// ========== Account Switcher Logic ==========
+// ========== Supabase Config ==========
+const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Load accounts when page loads
-document.addEventListener('DOMContentLoaded', loadAccounts);
+// Page Load
+document.addEventListener('DOMContentLoaded', init);
 
-// Load saved accounts and show in UI
+async function init(){
+  await checkActiveSession(); // Check if already logged in
+  loadAccounts();
+}
+
+// Check if user has active session
+async function checkActiveSession(){
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if(session){
+    // Session exists = Go directly to home
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('current_user', session.user.email);
+    window.location.href = 'index.html';
+  }
+}
+
+// Load saved accounts from localStorage
 function loadAccounts(){
   const accounts = JSON.parse(localStorage.getItem('autro_saved_accounts') || '[]');
   const list = document.getElementById('accountsList');
@@ -25,19 +45,10 @@ function loadAccounts(){
   `).join('');
 }
 
-// Quick Login - When you click on account card
-function quickLogin(email){
-  // Later you can check Token from Supabase here
-  // For now it directly goes to index.html
-  
-  // Set current user
-  localStorage.setItem('current_user', email);
-  localStorage.setItem('isLoggedIn', 'true');
-  
-  // Add to login history
-  addAccountToHistory(email);
-  
-  window.location.href = 'index.html';
+// Quick Login - Click on account card
+async function quickLogin(email){
+  // No session, go to login page with email prefilled
+  window.location.href = `login.html?email=${encodeURIComponent(email)}`;
 }
 
 // "Use another profile" button
@@ -60,43 +71,27 @@ function closeSheet(){
   }, 300);
 }
 
-// Remove All Profiles
-function removeAllAccounts(){
+// Remove All - Only removes from device, NOT from Supabase
+async function removeAllAccounts(){
   if(confirm('Remove all saved profiles from this device?')){
+    // 1. Sign out from Supabase - ends session only
+    await supabase.auth.signOut();
+    
+    // 2. Clear local storage
     localStorage.removeItem('autro_saved_accounts');
     localStorage.removeItem('current_user');
+    localStorage.removeItem('isLoggedIn');
+    
     loadAccounts(); // Refresh UI
     closeSheet();
   }
 }
 
-// ========== Helper Functions ==========
-
-// Call this after successful login from login.html
+// Call this from login.html after successful login
 function addAccountToHistory(email, name = "User", avatar = "logo.png"){
   let accounts = JSON.parse(localStorage.getItem('autro_saved_accounts') || '[]');
-  
-  // Remove if already exists
   accounts = accounts.filter(acc => acc.email !== email);
-  
-  // Add new account to top
   accounts.unshift({name, email, avatar});
-  
-  // Keep max 5 accounts
   if(accounts.length > 5) accounts.pop();
-  
   localStorage.setItem('autro_saved_accounts', JSON.stringify(accounts));
-}
-
-// ========== Demo Data - For Testing ==========
-// Enable this line once for testing, then comment it out
-
-function addDemoAccount(){
-  const demo = [
-    {name: "Abir Mazumder", email: "abir1@mail.com", avatar: "logo.png"},
-    {name: "Abir Mazumder", email: "abir2@mail.com", avatar: "logo.png", notif: 7}
-  ];
-  localStorage.setItem('autro_saved_accounts', JSON.stringify(demo));
-}
-
-// addDemoAccount(); // <-- Enable this only for first test
+                                                                }
