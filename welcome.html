@@ -2,104 +2,228 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#043D22">
-<title>Autrobook - Log in or Sign up</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="css/welcome.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/otpauth@9.1.1/dist/otpauth.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-<script>
-  if (localStorage.getItem('autro_logged_in') === '1' && localStorage.getItem('isLoggedIn') === 'true') {
-    window.location.href = 'index.html';
-  }
-  if (localStorage.getItem('autro_guest') === '1') {
-    window.location.href = 'index.html';
-  }
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/otpauth@9.2.2/dist/otpauth.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f0f2f5;--card:#fff;--text:#050505;--muted:#65676b;--border:#ccd0d5;--green:#043D22}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body.theme-dark{--bg:#18191a;--card:#242526;--text:#e4e6eb;--muted:#b0b3b8;--border:#3a3b3c;--green:#0a5a34}
+.wrap{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding:24px 20px 18px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.08);border:none;cursor:pointer;color:var(--text);font-size:15px}
+body.theme-dark .icon-btn{background:#3a3b3c}
+#backBtn{display:none}
+.lang{text-align:center;color:var(--muted);font-size:14px;margin-top:8px;cursor:pointer}
+.logo{text-align:center;margin:26px 0 32px}
+.logo img{width:72px;height:72px;border-radius:18px;object-fit:cover}
+.logo h1{font-size:34px;font-weight:800;color:var(--green);margin-top:8px}
+.logo p{color:var(--muted);font-size:13px;margin-top:4px}
+.profile{display:flex;align-items:center;gap:14px;width:100%;border:1px solid var(--border);border-radius:20px;padding:10px 14px 10px 10px;margin-bottom:12px;cursor:pointer;background:transparent;color:var(--text);text-align:left}
+.profile img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.profile b{font-size:17px;display:block}
+.profile span{font-size:13px;color:var(--muted)}
+.profile .dot{color:#ff3b30}
+.profile .arr{margin-left:auto;color:var(--muted)}
+.use-another{width:100%;padding:14px;border:none;border-radius:24px;background:rgba(0,0,0,.08);font-size:16px;font-weight:600;color:var(--text);cursor:pointer}
+body.theme-dark .use-another{background:#3a3b3c}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1;padding:10px;border:none;border-radius:16px;background:rgba(0,0,0,.06);font-weight:700;cursor:pointer;color:var(--muted)}
+.tabs button.active{background:var(--green);color:#fff}
+body.theme-dark .tabs button{background:#3a3b3c}
+.input{width:100%;padding:16px 18px;border:1px solid var(--border);border-radius:22px;font-size:16px;outline:none;background:var(--card);color:var(--text);margin-bottom:12px}
+.input:focus{border-color:var(--green)}
+.btn-login{width:100%;padding:15px;border:none;border-radius:24px;background:var(--green);color:#fff;font-size:17px;font-weight:700;cursor:pointer}
+.btn-create{width:100%;padding:14px;background:transparent;border:1.5px solid var(--green);border-radius:24px;color:var(--green);font-size:16px;font-weight:700;cursor:pointer}
+body.theme-dark .btn-create{color:#4ade80;border-color:#4ade80}
+.link{display:block;text-align:center;color:var(--text);font-size:15px;margin:16px 0;text-decoration:none;cursor:pointer}
+.fp{width:100%;padding:12px;background:transparent;border:1px solid var(--border);border-radius:22px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);margin:8px 0}
+.note{text-align:center;font-size:12px;color:var(--muted)}
+.spacer{flex:1}
+.footer{text-align:center;margin-top:20px}
+.footer-small{margin-top:14px;font-size:11px;line-height:1.5;color:var(--muted)}
+.footer-small b{font-size:11px;color:var(--muted);font-weight:600}
+.captcha{display:flex;justify-content:center;margin:10px 0}
+#toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;display:none;z-index:999;max-width:90%;text-align:center}
+#toast.show{display:block}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:1000}
+.modal-card{background:var(--card);border-radius:18px;padding:20px;width:100%;max-width:360px;text-align:center}
+.modal-card input{width:100%;padding:14px;border:1px solid var(--border);border-radius:14px;margin:12px 0;font-size:18px;text-align:center;letter-spacing:4px;background:var(--card);color:var(--text)}
+/* LANGUAGE MODAL */
+.lang-modal .modal-card{max-width:400px;max-height:80vh;display:flex;flex-direction:column;text-align:left;padding:0;overflow:hidden}
+.lang-head{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.lang-head b{font-size:17px}
+.lang-head button{border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--text)}
+.lang-search{padding:12px;border-bottom:1px solid var(--border)}
+.lang-search input{width:100%;padding:11px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text);outline:none}
+.lang-list{overflow-y:auto;max-height:55vh}
+.lang-item{display:flex;justify-content:space-between;align-items:center;width:100%;padding:13px 16px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;text-align:left;font-size:15px}
+.lang-item small{color:var(--muted)}
+.lang-item.active{background:rgba(4,61,34,.08);font-weight:700}
+</style>
 </head>
 <body>
-<div class="welcome-wrap">
-  <div class="left">
-    <div class="brand">
-      <img src="logo.png" alt="Autrobook" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <span class="logo-fallback" style="display:none">A</span>
-      <h1>Autrobook</h1>
-    </div>
-    <p class="tagline">Connect with friends and the world around you on Autrobook. Safe • Mindful • Ad-free.</p>
-    <div class="fb-features">
-      <div><i class="fas fa-users"></i> Friends, Groups, Games</div>
-      <div><i class="fas fa-video"></i> Reels, Stories, Live</div>
-      <div><i class="fas fa-robot"></i> Autro AI Assistant</div>
-      <div><i class="fas fa-shield-alt"></i> reCAPTCHA + 2FA + Fingerprint + AI Security</div>
-    </div>
-  </div>
+<div class="wrap">
+<div class="top">
+<button class="icon-btn" id="backBtn" onclick="showProfiles()"><i class="fas fa-arrow-left"></i></button><span></span>
+<button class="icon-btn" onclick="toggleTheme()"><i id="themeIcon" class="fas fa-moon"></i></button>
+</div>
+<div class="lang" onclick="openLang()"><span id="langLabel">English (US)</span> <i class="fas fa-chevron-down" style="font-size:11px"></i></div>
 
-  <div class="right">
-    <div class="auth-card">
-      <div class="auth-tabs">
-        <button id="tabLogin" class="tab active" onclick="switchTab('login')">Log In</button>
-        <button id="tabSignup" class="tab" onclick="switchTab('signup')">Create Account</button>
-      </div>
-
-      <div id="signupNameWrap" style="display:none">
-        <input type="text" id="authName" placeholder="Full Name">
-      </div>
-      <input type="email" id="authEmail" placeholder="Email address">
-      <input type="password" id="authPassword" placeholder="Password">
-
-      <!-- REAL GOOGLE reCAPTCHA -->
-      <div class="captcha-box">
-        <div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d" data-callback="onCaptchaSuccess" data-expired-callback="onCaptchaExpired"></div>
-        <p class="captcha-note">Protected by Google reCAPTCHA • Prove you are human</p>
-      </div>
-
-      <button class="btn-login" id="authSubmitBtn" onclick="submitAuth()">Log In</button>
-
-      <!-- GOOGLE BIOMETRIC - FINGERPRINT / FACE ID -->
-      <button class="btn-fingerprint" id="fingerprintBtn" onclick="loginWithFingerprint()">
-        <i class="fas fa-fingerprint"></i> Log in with Fingerprint / Face ID
-      </button>
-      <p class="fp-note" id="fpNote">Use your device fingerprint if Passkey is set in Settings.</p>
-
-      <a class="forgot" href="#" onclick="forgotPassword();return false;">Forgotten password?</a>
-      <hr>
-      <button class="btn-create" onclick="switchTab('signup')">Create new account</button>
-      <button class="btn-guest" onclick="continueAsGuest()">👀 Continue as Guest - View Only</button>
-      <p class="guest-note">Guest can only view. Login to Like, Comment, Post, Share.</p>
-    </div>
-
-    <!-- 2FA MODAL -->
-    <div class="modal-back" id="m2FAVerify" style="display:none">
-      <div class="modal">
-        <h3><i class="fas fa-shield-alt" style="color:var(--primary)"></i> Two-Factor Authentication</h3>
-        <p class="modal-sub">Open <b>Google Authenticator</b> and enter the 6-digit code for Autrobook.</p>
-        <input type="text" id="login2FACode" placeholder="000 000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-        <p class="modal-sub" style="font-size:12px;color:var(--muted)">Code changes every 30 seconds.</p>
-        <button class="btn-login" onclick="verifyLogin2FA()">Verify & Log In</button>
-        <button class="btn-gray" onclick="cancel2FA()">Cancel</button>
-        <p class="modal-sub" style="margin-top:10px;font-size:12px">Lost your Authenticator? <a href="#" onclick="useBackupCode();return false;">Use backup / Contact Support</a></p>
-      </div>
-    </div>
-
-    <!-- FINGERPRINT SETUP MODAL - After First Login -->
-    <div class="modal-back" id="mSetupPasskey" style="display:none">
-      <div class="modal" style="text-align:center">
-        <div style="font-size:48px">👆</div>
-        <h3>Enable Fingerprint Login?</h3>
-        <p class="modal-sub">Next time you can login with just your Fingerprint / Face ID. No password needed.</p>
-        <button class="btn-login" onclick="setupPasskeyFromWelcome()">Enable Fingerprint Now</button>
-        <button class="btn-gray" onclick="closePasskeyModal()">Skip for Now</button>
-      </div>
-    </div>
-
-    <p class="create-page"><b>Create a Page</b> for a celebrity, brand or business.</p>
-  </div>
+<div class="logo">
+<img src="logo.png" alt="Autrobook">
+<h1>Autrobook</h1>
+<p data-i18n="tagline">Connect with friends • Safe • Mindful • Ad-free</p>
 </div>
 
-<div class="theme-float"><button onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i> Theme</button></div>
-<div id="toast" class="toast"></div>
+<div id="profileScreen">
+<div id="profileList"></div>
+<button class="use-another" data-i18n="use_another" onclick="showLogin(true)">Use another profile</button>
+</div>
+
+<div id="loginScreen" style="display:none">
+<div class="tabs">
+<button id="tabLogin" class="active" data-i18n="login_tab" onclick="switchTab('login')">Log In</button>
+<button id="tabSignup" data-i18n="signup_tab" onclick="switchTab('signup')">Create Account</button>
+</div>
+<div id="signupNameWrap" style="display:none"><input class="input" id="authName" type="text" data-i18n-ph="fullname" placeholder="Full Name"></div>
+<input class="input" id="authEmail" type="email" data-i18n-ph="email" placeholder="Mobile number or email">
+<input class="input" id="authPassword" type="password" data-i18n-ph="password" placeholder="Password">
+<div class="captcha"><div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d" data-callback="onCaptchaSuccess" data-expired-callback="onCaptchaExpired"></div></div>
+<p class="note" data-i18n="recaptcha">Protected by Google reCAPTCHA</p><br>
+<button class="btn-login" id="authSubmitBtn" data-i18n="login_btn" onclick="submitAuth()">Log in</button>
+<a class="link" data-i18n="forgot" onclick="forgotPassword()">Forgot password?</a>
+<button class="fp" id="fingerprintBtn" onclick="loginWithFingerprint()">� fingerprint <span data-i18n="fingerprint">Log in with Fingerprint / Face ID</span></button>
+<p class="note" id="fpNote"></p>
+<a class="link" data-i18n="guest" onclick="continueAsGuest()">Continue as Guest 👀</a>
+</div>
+
+<div class="spacer"></div>
+<div class="footer">
+<button class="btn-create" data-i18n="create_new" onclick="showLogin();switchTab('signup')">Create new account</button>
+<div class="footer-small"><b data-i18n="footer1">18+ Free Social Media Platform</b><br><span data-i18n="footer2">Stay Safe</span></div>
+</div>
+</div>
+
+<!-- LANGUAGE MODAL -->
+<div class="modal lang-modal" id="langModal"><div class="modal-card">
+<div class="lang-head"><b data-i18n="choose_lang">Choose Language</b><button onclick="closeLang()">×</button></div>
+<div class="lang-search"><input id="langSearch" placeholder="Search country / language..." oninput="filterLang()"></div>
+<div class="lang-list" id="langList"></div>
+</div></div>
+
+<div class="modal" id="m2FAVerify"><div class="modal-card"><h3>🔐 2FA Code</h3><p class="note" style="margin-top:6px">Enter 6-digit Authenticator code</p><input id="login2FACode" maxlength="6" inputmode="numeric" placeholder="000000"><button class="btn-login" onclick="verifyLogin2FA()">Verify</button><a class="link" onclick="cancel2FA()">Cancel</a></div></div>
+<div class="modal" id="mSetupPasskey"><div class="modal-card"><h3>👆 Enable Fingerprint?</h3><p class="note" style="margin-top:6px">Next time login with Fingerprint / Face ID</p><button class="btn-login" onclick="setupPasskeyFromWelcome()">Enable</button><a class="link" onclick="closePasskeyModal()">Skip for now</a></div></div>
+<div id="toast"></div>
+
+<script>
+/* ========== LANGUAGES - ALL COUNTRIES ========== */
+const LANGS=[
+{id:'en',label:'English (US)',country:'United States 🇺🇸'},
+{id:'bn',label:'বাংলা (Bangladesh)',country:'Bangladesh 🇧🇩'},
+{id:'hi',label:'हिन्दी (India)',country:'India 🇮🇳'},
+{id:'ur',label:'اردو (Pakistan)',country:'Pakistan 🇵🇰'},
+{id:'ar',label:'العربية',country:'Saudi Arabia / UAE 🇸🇦'},
+{id:'es',label:'Español',country:'Spain / Mexico 🇪🇸'},
+{id:'fr',label:'Français',country:'France 🇫🇷'},
+{id:'de',label:'Deutsch',country:'Germany 🇩🇪'},
+{id:'pt',label:'Português',country:'Brazil / Portugal 🇧🇷'},
+{id:'ru',label:'Русский',country:'Russia 🇷🇺'},
+{id:'zh',label:'中文',country:'China 🇨🇳'},
+{id:'ja',label:'日本語',country:'Japan 🇯🇵'},
+{id:'ko',label:'한국어',country:'South Korea 🇰🇷'},
+{id:'tr',label:'Türkçe',country:'Turkey 🇹🇷'},
+{id:'id',label:'Bahasa Indonesia',country:'Indonesia 🇮🇩'},
+{id:'th',label:'ไทย',country:'Thailand 🇹🇭'},
+{id:'vi',label:'Tiếng Việt',country:'Vietnam 🇻🇳'},
+{id:'ms',label:'Bahasa Melayu',country:'Malaysia 🇲🇾'},
+{id:'ta',label:'தமிழ்',country:'Tamil Nadu 🇮🇳'},
+{id:'te',label:'తెలుగు',country:'Andhra Pradesh 🇮🇳'},
+{id:'mr',label:'मराठी',country:'Maharashtra 🇮🇳'},
+{id:'pa',label:'ਪੰਜਾਬੀ',country:'Punjab 🇮🇳'},
+{id:'ne',label:'नेपाली',country:'Nepal 🇳🇵'},
+{id:'si',label:'සිංහල',country:'Sri Lanka 🇱🇰'},
+{id:'my',label:'မြန်မာ',country:'Myanmar 🇲🇲'},
+{id:'kh',label:'ខ្មែរ',country:'Cambodia 🇰🇭'},
+{id:'lo',label:'ລາວ',country:'Laos 🇱🇦'},
+{id:'fa',label:'فارسی',country:'Iran 🇮🇷'},
+{id:'it',label:'Italiano',country:'Italy 🇮🇹'},
+{id:'nl',label:'Nederlands',country:'Netherlands 🇳🇱'},
+{id:'pl',label:'Polski',country:'Poland 🇵🇱'},
+{id:'uk',label:'Українська',country:'Ukraine 🇺🇦'},
+{id:'sw',label:'Kiswahili',country:'Kenya / Tanzania 🇰🇪'},
+{id:'am',label:'አማርኛ',country:'Ethiopia 🇪🇹'},
+{id:'ha',label:'Hausa',country:'Nigeria 🇳🇬'},
+{id:'yo',label:'Yorùbá',country:'Nigeria 🇳🇬'},
+{id:'fil',label:'Filipino',country:'Philippines 🇵🇭'},
+{id:'en_gb',label:'English (UK)',country:'United Kingdom 🇬🇧'},
+{id:'en_au',label:'English (Australia)',country:'Australia 🇦🇺'},
+{id:'en_ca',label:'English (Canada)',country:'Canada 🇨🇦'},
+];
+
+const T={
+en:{tagline:"Connect with friends • Safe • Mindful • Ad-free",use_another:"Use another profile",login_tab:"Log In",signup_tab:"Create Account",fullname:"Full Name",email:"Mobile number or email",password:"Password",recaptcha:"Protected by Google reCAPTCHA",login_btn:"Log in",forgot:"Forgot password?",fingerprint:"Log in with Fingerprint / Face ID",guest:"Continue as Guest 👀",create_new:"Create new account",footer1:"18+ Free Social Media Platform",footer2:"Stay Safe",choose_lang:"Choose Language"},
+bn:{tagline:"বন্ধুদের সাথে যুক্ত হোন • নিরাপদ • সচেতন • বিজ্ঞাপনমুক্ত",use_another:"অন্য প্রোফাইল ব্যবহার করুন",login_tab:"লগ ইন",signup_tab:"অ্যাকাউন্ট তৈরি করুন",fullname:"পুরো নাম",email:"মোবাইল নম্বর বা ইমেইল",password:"পাসওয়ার্ড",recaptcha:"Google reCAPTCHA দ্বারা সুরক্ষিত",login_btn:"লগ ইন",forgot:"পাসওয়ার্ড ভুলে গেছেন?",fingerprint:"ফিঙ্গারপ্রিন্ট / ফেস আইডি দিয়ে লগ ইন",guest:"অতিথি হিসেবে চালিয়ে যান 👀",create_new:"নতুন অ্যাকাউন্ট তৈরি করুন",footer1:"১৮+ ফ্রি সোশ্যাল মিডিয়া প্ল্যাটফর্ম",footer2:"নিরাপদ থাকুন",choose_lang:"ভাষা বেছে নিন"},
+hi:{tagline:"दोस्तों से जुड़ें • सुरक्षित • सचेत • विज्ञापन-मुक्त",use_another:"दूसरी प्रोफ़ाइल का उपयोग करें",login_tab:"लॉग इन",signup_tab:"खाता बनाएं",fullname:"पूरा नाम",email:"मोबाइल नंबर या ईमेल",password:"पासवर्ड",recaptcha:"Google reCAPTCHA द्वारा सुरक्षित",login_btn:"लॉग इन",forgot:"पासवर्ड भूल गए?",fingerprint:"फिंगरप्रिंट / फेस आईडी से लॉग इन करें",guest:"अतिथि के रूप में जारी रखें 👀",create_new:"नया खाता बनाएं",footer1:"18+ मुफ़्त सोशल मीडिया प्लेटफ़ॉर्म",footer2:"सुरक्षित रहें",choose_lang:"भाषा चुनें"},
+ur:{tagline:"دوستوں سے جڑیں • محفوظ • باخبر • اشتہار سے پاک",use_another:"دوسری پروفائل استعمال کریں",login_tab:"لاگ ان",signup_tab:"اکاؤنٹ بنائیں",fullname:"پورا نام",email:"موبائل نمبر یا ای میل",password:"پاس ورڈ",recaptcha:"Google reCAPTCHA سے محفوظ",login_btn:"لاگ ان",forgot:"پاس ورڈ بھول گئے؟",fingerprint:"فنگر پرنٹ / فیس آئی ڈی سے لاگ ان",guest:"مہمان کے طور پر جاری رکھیں 👀",create_new:"نیا اکاؤنٹ بنائیں",footer1:"18+ مفت سوشل میڈیا پلیٹ فارم",footer2:"محفوظ رہیں",choose_lang:"زبان منتخب کریں"},
+ar:{tagline:"تواصل مع الأصدقاء • آمن • واعي • بدون إعلانات",use_another:"استخدم ملفًا آخر",login_tab:"تسجيل الدخول",signup_tab:"إنشاء حساب",fullname:"الاسم الكامل",email:"رقم الجوال أو البريد",password:"كلمة المرور",recaptcha:"محمي بواسطة Google reCAPTCHA",login_btn:"تسجيل الدخول",forgot:"نسيت كلمة المرور؟",fingerprint:"الدخول ببصمة / Face ID",guest:"المتابعة كضيف 👀",create_new:"إنشاء حساب جديد",footer1:"منصة تواصل اجتماعي مجانية +18",footer2:"ابق آمنًا",choose_lang:"اختر اللغة"},
+es:{tagline:"Conéctate con amigos • Seguro • Consciente • Sin anuncios",use_another:"Usar otro perfil",login_tab:"Iniciar sesión",signup_tab:"Crear cuenta",fullname:"Nombre completo",email:"Número móvil o correo",password:"Contraseña",recaptcha:"Protegido por Google reCAPTCHA",login_btn:"Iniciar sesión",forgot:"¿Olvidaste tu contraseña?",fingerprint:"Iniciar con Huella / Face ID",guest:"Continuar como invitado 👀",create_new:"Crear cuenta nueva",footer1:"Plataforma social gratuita +18",footer2:"Mantente seguro",choose_lang:"Elige idioma"},
+fr:{tagline:"Connectez-vous • Sûr • Conscient • Sans pub",use_another:"Utiliser un autre profil",login_tab:"Connexion",signup_tab:"Créer un compte",fullname:"Nom complet",email:"Numéro ou e-mail",password:"Mot de passe",recaptcha:"Protégé par Google reCAPTCHA",login_btn:"Connexion",forgot:"Mot de passe oublié ?",fingerprint:"Connexion par empreinte / Face ID",guest:"Continuer en invité 👀",create_new:"Créer un nouveau compte",footer1:"Plateforme sociale gratuite 18+",footer2:"Restez en sécurité",choose_lang:"Choisir la langue"},
+de:{tagline:"Verbinde dich • Sicher • Achtsam • Werbefrei",use_another:"Anderes Profil nutzen",login_tab:"Anmelden",signup_tab:"Konto erstellen",fullname:"Vollständiger Name",email:"Handynummer oder E-Mail",password:"Passwort",recaptcha:"Geschützt durch Google reCAPTCHA",login_btn:"Anmelden",forgot:"Passwort vergessen?",fingerprint:"Mit Fingerabdruck / Face ID anmelden",guest:"Als Gast fortfahren 👀",create_new:"Neues Konto erstellen",footer1:"Kostenlose Social-Media-Plattform 18+",footer2:"Bleib sicher",choose_lang:"Sprache wählen"},
+pt:{tagline:"Conecte-se • Seguro • Consciente • Sem anúncios",use_another:"Usar outro perfil",login_tab:"Entrar",signup_tab:"Criar conta",fullname:"Nome completo",email:"Celular ou e-mail",password:"Senha",recaptcha:"Protegido pelo Google reCAPTCHA",login_btn:"Entrar",forgot:"Esqueceu a senha?",fingerprint:"Entrar com Digital / Face ID",guest:"Continuar como visitante 👀",create_new:"Criar nova conta",footer1:"Plataforma social gratuita 18+",footer2:"Fique seguro",choose_lang:"Escolher idioma"},
+ru:{tagline:"Общайтесь • Безопасно • Осознанно • Без рекламы",use_another:"Использовать другой профиль",login_tab:"Войти",signup_tab:"Создать аккаунт",fullname:"Полное имя",email:"Номер или email",password:"Пароль",recaptcha:"Защищено Google reCAPTCHA",login_btn:"Войти",forgot:"Забыли пароль?",fingerprint:"Войти по отпечатку / Face ID",guest:"Продолжить как гость 👀",create_new:"Создать новый аккаунт",footer1:"Бесплатная соцсеть 18+",footer2:"Будьте в безопасности",choose_lang:"Выбрать язык"},
+zh:{tagline:"与朋友联系 • 安全 • 正念 • 无广告",use_another:"使用其他个人主页",login_tab:"登录",signup_tab:"创建账号",fullname:"全名",email:"手机号或邮箱",password:"密码",recaptcha:"受 Google reCAPTCHA 保护",login_btn:"登录",forgot:"忘记密码？",fingerprint:"指纹 / 面容 ID 登录",guest:"以访客身份继续 👀",create_new:"创建新账号",footer1:"18+ 免费社交媒体平台",footer2:"注意安全",choose_lang:"选择语言"},
+ja:{tagline:"友達とつながる • 安全 • マインドフル • 広告なし",use_another:"別のプロフィールを使う",login_tab:"ログイン",signup_tab:"アカウント作成",fullname:"フルネーム",email:"携帯番号またはメール",password:"パスワード",recaptcha:"Google reCAPTCHA で保護",login_btn:"ログイン",forgot:"パスワードを忘れた？",fingerprint:"指紋 / Face ID でログイン",guest:"ゲストとして続ける 👀",create_new:"新しいアカウントを作成",footer1:"18+ 無料SNSプラットフォーム",footer2:"安全に",choose_lang:"言語を選ぶ"},
+ko:{tagline:"친구와 연결 • 안전 • 마인드풀 • 광고 없음",use_another:"다른 프로필 사용",login_tab:"로그인",signup_tab:"계정 만들기",fullname:"전체 이름",email:"휴대폰 번호 또는 이메일",password:"비밀번호",recaptcha:"Google reCAPTCHA 보호",login_btn:"로그인",forgot:"비밀번호를 잊으셨나요?",fingerprint:"지문 / Face ID 로그인",guest:"게스트로 계속 👀",create_new:"새 계정 만들기",footer1:"18+ 무료 소셜 미디어 플랫폼",footer2:"안전하게",choose_lang:"언어 선택"},
+tr:{tagline:"Arkadaşlarla bağlan • Güvenli • Farkında • Reklamsız",use_another:"Başka profil kullan",login_tab:"Giriş Yap",signup_tab:"Hesap Oluştur",fullname:"Tam Ad",email:"Cep numarası veya e-posta",password:"Şifre",recaptcha:"Google reCAPTCHA ile korunuyor",login_btn:"Giriş Yap",forgot:"Şifreni mi unuttun?",fingerprint:"Parmak İzi / Face ID ile giriş",guest:"Misafir olarak devam et 👀",create_new:"Yeni hesap oluştur",footer1:"18+ Ücretsiz Sosyal Medya Platformu",footer2:"Güvende Kal",choose_lang:"Dil Seç"},
+id:{tagline:"Terhubung • Aman • Sadar • Bebas Iklan",use_another:"Gunakan profil lain",login_tab:"Masuk",signup_tab:"Buat Akun",fullname:"Nama Lengkap",email:"Nomor HP atau email",password:"Kata Sandi",recaptcha:"Dilindungi Google reCAPTCHA",login_btn:"Masuk",forgot:"Lupa kata sandi?",fingerprint:"Masuk dengan Sidik Jari / Face ID",guest:"Lanjut sebagai Tamu 👀",create_new:"Buat akun baru",footer1:"Platform Media Sosial Gratis 18+",footer2:"Tetap Aman",choose_lang:"Pilih Bahasa"},
+th:{tagline:"เชื่อมต่อกับเพื่อน • ปลอดภัย • มีสติ • ไม่มีโฆษณา",use_another:"ใช้โปรไฟล์อื่น",login_tab:"เข้าสู่ระบบ",signup_tab:"สร้างบัญชี",fullname:"ชื่อเต็ม",email:"เบอร์มือถือหรืออีเมล",password:"รหัสผ่าน",recaptcha:"ป้องกันโดย Google reCAPTCHA",login_btn:"เข้าสู่ระบบ",forgot:"ลืมรหัสผ่าน?",fingerprint:"เข้าสู่ระบบด้วยลายนิ้วมือ / Face ID",guest:"ดำเนินการต่อในฐานะแขก 👀",create_new:"สร้างบัญชีใหม่",footer1:"แพลตฟอร์มโซเชียลฟรี 18+",footer2:"ปลอดภัยไว้",choose_lang:"เลือกภาษา"},
+vi:{tagline:"Kết nối bạn bè • An toàn • Tỉnh thức • Không quảng cáo",use_another:"Dùng hồ sơ khác",login_tab:"Đăng nhập",signup_tab:"Tạo tài khoản",fullname:"Họ tên",email:"Số điện thoại hoặc email",password:"Mật khẩu",recaptcha:"Được bảo vệ bởi Google reCAPTCHA",login_btn:"Đăng nhập",forgot:"Quên mật khẩu?",fingerprint:"Đăng nhập bằng Vân tay / Face ID",guest:"Tiếp tục với tư cách Khách 👀",create_new:"Tạo tài khoản mới",footer1:"Nền tảng mạng xã hội miễn phí 18+",footer2:"Giữ an toàn",choose_lang:"Chọn ngôn ngữ"},
+};
+// fallback: যেসব ভাষার full translate নাই, English দেখাবে
+function getT(lang){ return T[lang] || T.en; }
+
+let currentLang = localStorage.getItem('autro_lang') || 'en';
+
+function applyLang(){
+  const t = getT(currentLang);
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.dataset.i18n; if(t[k]) el.textContent=t[k]; });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ const k=el.dataset.i18nPh; if(t[k]) el.placeholder=t[k]; });
+  const found = LANGS.find(l=>l.id===currentLang);
+  document.getElementById('langLabel').textContent = found ? found.label : 'English (US)';
+  document.documentElement.lang = currentLang;
+}
+function openLang(){ renderLangList(); document.getElementById('langModal').style.display='flex'; }
+function closeLang(){ document.getElementById('langModal').style.display='none'; }
+function renderLangList(filter=''){
+  const list=document.getElementById('langList');
+  list.innerHTML='';
+  LANGS.filter(l=>(l.label+' '+l.country).toLowerCase().includes(filter.toLowerCase())).forEach(l=>{
+    const b=document.createElement('button'); b.className='lang-item'+(l.id===currentLang?' active':'');
+    b.innerHTML=`<span>${l.label}<br><small>${l.country}</small></span><span>${l.id===currentLang?'✓':''}</span>`;
+    b.onclick=()=>{ currentLang=l.id; localStorage.setItem('autro_lang',l.id); applyLang(); closeLang(); };
+    list.appendChild(b);
+  });
+}
+function filterLang(){ renderLangList(document.getElementById('langSearch').value); }
+
+function showLogin(clearFields){document.getElementById('profileScreen').style.display='none';document.getElementById('loginScreen').style.display='block';document.getElementById('backBtn').style.display='block'; if(clearFields){document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';document.getElementById('authEmail').focus();}}
+function showProfiles(){
+if(!localStorage.getItem('autro_user_email')||localStorage.getItem('autro_user_email')==='guest@autrobook.com'){showLogin();document.getElementById('backBtn').style.display='none';return;}
+document.getElementById('profileScreen').style.display='block';document.getElementById('loginScreen').style.display='none';document.getElementById('backBtn').style.display='none';}
+function renderProfiles(){
+const email=localStorage.getItem('autro_user_email');const name=localStorage.getItem('autro_user_name')||'Abir Mazumder';
+if(email&&email!=='guest@autrobook.com'){
+document.getElementById('profileList').innerHTML=`
+<button class="profile" onclick="showLogin()"><img src="https://i.pravatar.cc/100?img=12"><span><b>${name}</b><span><span class="dot">●</span> 7 notifications</span></span><span class="arr"><i class="fas fa-chevron-right"></i></span></button>
+<button class="profile" onclick="showLogin()"><img src="logo.png"><span><b>${name}</b></span><span class="arr"><i class="fas fa-chevron-right"></i></span></button>`;
+showProfiles();}else{showLogin();}}
+document.addEventListener('DOMContentLoaded',()=>{ applyLang(); renderProfiles(); });
+</script>
 <script src="js/welcome.js"></script>
 </body>
-</html>
+                                                                                                                                                                                                                                                       </html>
