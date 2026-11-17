@@ -9,14 +9,26 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/index.css">
 <script>
-  // AUTH GUARD - If not logged in, go to welcome.html
-  // If logged in, stay on index.html directly
-  if (localStorage.getItem('isLoggedIn') !== 'true') {
+  // AUTH GUARD - Allow Real User OR Guest. Block only if no one.
+  // Real User: autro_logged_in = '1' OR isLoggedIn = 'true'
+  // Guest: autro_guest = '1' (View Only)
+  if (localStorage.getItem('autro_logged_in') !== '1' && localStorage.getItem('isLoggedIn') !== 'true' && localStorage.getItem('autro_guest') !== '1') {
     window.location.href = 'welcome.html';
   }
 </script>
+<style>
+  /* GUEST MODE BANNER */
+  #guestBanner{display:none;background:#fef3c7;color:#92400e;text-align:center;padding:10px 14px;font-size:13px;font-weight:700;border-bottom:1px solid #fde68a;position:sticky;top:0;z-index:100}
+  #guestBanner button{background:#043D22;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-weight:700;margin-left:8px;cursor:pointer}
+  /* GUEST LOCKED - Dim create area */
+  body.guest-mode .composer{opacity:.6;pointer-events:none}
+  body.guest-mode .composer::after{content:"Login to Post • View Only Mode";display:block;text-align:center;font-size:12px;color:#92400e;padding:6px}
+</style>
 </head>
 <body>
+
+<!-- GUEST BANNER - Only for Guest -->
+<div id="guestBanner">👀 You are in Guest Mode - View Only. You can only view posts, photos & videos. <button onclick="window.location.href='welcome.html'">Login to Unlock All</button></div>
 
 <!-- TOPBAR -->
 <header class="topbar">
@@ -281,33 +293,138 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/index.js"></script>
 <script>
-  // UPDATE UI AFTER LOGIN - Show real user, hide Login button
+  // ===== GUEST MODE + AUTH LOGIC - ALL IN ENGLISH =====
+  function isGuest() { return localStorage.getItem('autro_guest') === '1'; }
+  function isLoggedInUser() { return localStorage.getItem('autro_logged_in') === '1' || localStorage.getItem('isLoggedIn') === 'true'; }
+
+  // If guest tries any locked action, ask to login
+  function requireLogin(actionName) {
+    if (isGuest()) {
+      if (confirm('Please login to ' + (actionName || 'use this feature') + '. Go to Login?')) {
+        window.location.href = 'welcome.html';
+      }
+      return false;
+    }
+    return true;
+  }
+
+  // Wrap locked functions from js/index.js - Guest cannot call them
+  function lockFunction(fnName, actionName) {
+    var original = window[fnName];
+    if (typeof original === 'function') {
+      window[fnName] = function() {
+        if (!requireLogin(actionName)) return;
+        return original.apply(this, arguments);
+      };
+    } else {
+      window[fnName] = function() { requireLogin(actionName); };
+    }
+  }
+
+  // UPDATE UI AFTER LOGIN
   document.addEventListener('DOMContentLoaded', function() {
-    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    var user = null;
+    try { user = JSON.parse(localStorage.getItem('currentUser') || 'null'); } catch(e) {}
+    if (!user && localStorage.getItem('autro_user_email')) {
+      user = { email: localStorage.getItem('autro_user_email'), user_metadata: { full_name: localStorage.getItem('autro_user_name') || 'User' } };
+    }
+
+    // GUEST MODE UI
+    if (isGuest()) {
+      document.body.classList.add('guest-mode');
+      var banner = document.getElementById('guestBanner');
+      if (banner) banner.style.display = 'block';
+      var sidebarName = document.getElementById('sidebarUserName');
+      if (sidebarName) sidebarName.textContent = 'Guest User';
+      var sidebarEmail = document.getElementById('sidebarUserEmail');
+      if (sidebarEmail) sidebarEmail.textContent = 'View Only Mode';
+      var composerName = document.getElementById('composerUserName');
+      if (composerName) composerName.textContent = 'Login to post...';
+      var authBtnText = document.getElementById('authBtnText');
+      if (authBtnText) authBtnText.textContent = 'Login';
+      var authBtn = document.getElementById('authBtn');
+      if (authBtn) authBtn.onclick = function() { window.location.href = 'welcome.html'; };
+      var sidebarAuthBtn = document.getElementById('sidebarAuthBtn');
+      if (sidebarAuthBtn) { sidebarAuthBtn.style.display = 'block'; sidebarAuthBtn.textContent = 'Login to Unlock All Features'; sidebarAuthBtn.onclick = function() { window.location.href = 'welcome.html'; }; }
+      var sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+      if (sidebarLogoutBtn) { sidebarLogoutBtn.style.display = 'block'; sidebarLogoutBtn.textContent = 'Exit Guest Mode'; }
+
+      // Lock all action functions for guest
+      lockFunction('publishPost', 'create a post');
+      lockFunction('publishStoryReel', 'create a story or reel');
+      lockFunction('sendComment', 'comment');
+      lockFunction('sendPhotoComment', 'comment with photo');
+      lockFunction('createType', 'create');
+      lockFunction('openCreateMenu', 'create');
+      lockFunction('startLive', 'go live');
+      lockFunction('toggleVoiceRecording', 'send voice comment');
+      lockFunction('sosAlert', 'use SOS');
+      lockFunction('openShield', 'open My Shield');
+      lockFunction('submitReport', 'report');
+      lockFunction('submitCommentReport', 'report comment');
+      lockFunction('viewStory', 'view story');
+      lockFunction('openModal', 'open this');
+
+      // Allow only view: block navigation to other pages for guest (except index/feed)
+      document.addEventListener('click', function(e) {
+        var el = e.target.closest('[onclick], a');
+        if (!el) return;
+        var onclickText = el.getAttribute('onclick') || '';
+        var href = el.getAttribute('href') || '';
+        // Allow: close buttons, filter, theme, scroll, guest banner login button
+        if (el.closest('#guestBanner')) return;
+        if (onclickText.includes('closeModal') || onclickText.includes('filterFeed') || onclickText.includes('toggleTheme') || onclickText.includes('scrollTopPage')) return;
+        // Block: any navigation to other html pages
+        if ((onclickText.includes("location.href") && !onclickText.includes("welcome.html")) || (href && href.endsWith('.html') && href !== 'index.html')) {
+          e.preventDefault(); e.stopPropagation();
+          requireLogin('open this page');
+          return false;
+        }
+      }, true);
+
+      // Block Like / React / Comment buttons inside feed for guest (but allow image/video view)
+      var feed = document.getElementById('feedContainer');
+      if (feed) {
+        feed.addEventListener('click', function(e) {
+          var target = e.target;
+          // Allow IMG / VIDEO click (view only)
+          if (target.tagName === 'IMG' || target.tagName === 'VIDEO' || target.closest('img, video')) return;
+          // Block all buttons inside post cards
+          if (target.closest('button')) {
+            e.preventDefault(); e.stopPropagation();
+            requireLogin('like, comment or share');
+          }
+        }, true);
+      }
+      return;
+    }
+
+    // REAL USER UI
     if (user) {
-      const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-      const userEmail = user.email || '';
-      const sidebarName = document.getElementById('sidebarUserName');
-      if (sidebarName) sidebarName.textContent = userName;
-      const sidebarEmail = document.getElementById('sidebarUserEmail');
-      if (sidebarEmail) sidebarEmail.textContent = userEmail;
-      const profileName = document.getElementById('profileUserName');
-      if (profileName) profileName.textContent = userName;
-      const profileEmail = document.getElementById('profileUserEmail');
-      if (profileEmail) profileEmail.textContent = userEmail;
-      const composerName = document.getElementById('composerUserName');
-      if (composerName) composerName.textContent = "What's on your mind, " + userName + "?";
-      const authBtnText = document.getElementById('authBtnText');
-      if (authBtnText) authBtnText.textContent = 'Logout';
-      const authBtn = document.getElementById('authBtn');
-      if (authBtn) authBtn.onclick = function() { logoutUser(); };
-      const sidebarAuthBtn = document.getElementById('sidebarAuthBtn');
-      if (sidebarAuthBtn) sidebarAuthBtn.style.display = 'none';
-      const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
-      if (sidebarLogoutBtn) sidebarLogoutBtn.style.display = 'block';
+      var userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+      var userEmail = user.email || '';
+      var sName = document.getElementById('sidebarUserName');
+      if (sName) sName.textContent = userName;
+      var sEmail = document.getElementById('sidebarUserEmail');
+      if (sEmail) sEmail.textContent = userEmail;
+      var pName = document.getElementById('profileUserName');
+      if (pName) pName.textContent = userName;
+      var pEmail = document.getElementById('profileUserEmail');
+      if (pEmail) pEmail.textContent = userEmail;
+      var cName = document.getElementById('composerUserName');
+      if (cName) cName.textContent = "What's on your mind, " + userName + "?";
+      var aText = document.getElementById('authBtnText');
+      if (aText) aText.textContent = 'Logout';
+      var aBtn = document.getElementById('authBtn');
+      if (aBtn) aBtn.onclick = function() { logoutUser(); };
+      var sAuth = document.getElementById('sidebarAuthBtn');
+      if (sAuth) sAuth.style.display = 'none';
+      var sLogout = document.getElementById('sidebarLogoutBtn');
+      if (sLogout) sLogout.style.display = 'block';
     }
   });
-  // LOGOUT FUNCTION - Clear all and go to welcome.html
+
+  // LOGOUT - Clear ALL keys (Real User + Guest) and go to welcome.html
   async function logoutUser() {
     try {
       if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
@@ -316,8 +433,12 @@
     } catch (e) {}
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('autro_logged_in');
+    localStorage.removeItem('autro_user_email');
+    localStorage.removeItem('autro_user_name');
+    localStorage.removeItem('autro_guest');
     window.location.href = 'welcome.html';
   }
 </script>
 </body>
-                                                                           </html>
+        </html>
