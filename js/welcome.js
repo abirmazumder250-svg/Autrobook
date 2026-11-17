@@ -1,4 +1,4 @@
-// js/welcome.js - FULL - reCAPTCHA + Google Biometric Fingerprint + 2FA
+// js/welcome.js - FULL - FIXED - reCAPTCHA + Google Biometric Fingerprint + 2FA + System Theme
 const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -10,22 +10,38 @@ let captchaToken = "";
 
 function toast(msg){
   const t=document.getElementById("toast");
+  if(!t) return;
   t.textContent=msg; t.classList.add("show");
   setTimeout(()=>t.classList.remove("show"),3000);
 }
+
+// ===== THEME - System Default + Manual Toggle - FIXED =====
 function applyTheme(){
-  const s=localStorage.getItem("autro_theme");
-  document.body.classList.remove("theme-dark","theme-light");
-  if(s) document.body.classList.add("theme-"+s);
-  const icon=document.getElementById("themeIcon");
-  if(icon){ const dark=s? s==="dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; icon.className=dark?"fas fa-sun":"fas fa-moon"; }
+  const saved = localStorage.getItem("autro_theme");
+  const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = saved ? saved === "dark" : sysDark;
+
+  document.body.classList.remove("theme-dark", "theme-light");
+  document.body.classList.add(isDark ? "theme-dark" : "theme-light");
+  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+
+  const icon = document.getElementById("themeIcon");
+  if(icon) icon.className = isDark ? "fas fa-sun" : "fas fa-moon";
 }
+
 function toggleTheme(){
-  const s=localStorage.getItem("autro_theme");
-  const sys=window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const cur=s? s==="dark" : sys;
-  localStorage.setItem("autro_theme", cur?"light":"dark");
+  const saved = localStorage.getItem("autro_theme");
+  const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const curDark = saved ? saved === "dark" : sysDark;
+  localStorage.setItem("autro_theme", curDark ? "light" : "dark");
   applyTheme();
+}
+
+// System theme বদলালে Auto বদলাবে - যদি User নিজে কিছু সেট না করে থাকে
+if(window.matchMedia){
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if(!localStorage.getItem("autro_theme")) applyTheme();
+  });
 }
 applyTheme();
 
@@ -74,7 +90,6 @@ function saveLoginSession(user, email, name){
 }
 function finishLogin(user, email, name){
   saveLoginSession(user, email, name);
-  // If no Passkey yet, ask to setup Fingerprint (like Facebook)
   if(!localStorage.getItem("autro_passkey_id")){
     setTimeout(()=>{
       const m=document.getElementById("mSetupPasskey");
