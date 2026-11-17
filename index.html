@@ -8,6 +8,13 @@
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/index.css">
+<script>
+  // AUTH GUARD - If not logged in, go to welcome.html
+  // If logged in, stay on index.html directly
+  if (localStorage.getItem('isLoggedIn') !== 'true') {
+    window.location.href = 'welcome.html';
+  }
+</script>
 </head>
 <body>
 
@@ -273,5 +280,44 @@
 <!-- SUPABASE CDN - MUST BE BEFORE index.js -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/index.js"></script>
+<script>
+  // UPDATE UI AFTER LOGIN - Show real user, hide Login button
+  document.addEventListener('DOMContentLoaded', function() {
+    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    if (user) {
+      const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+      const userEmail = user.email || '';
+      const sidebarName = document.getElementById('sidebarUserName');
+      if (sidebarName) sidebarName.textContent = userName;
+      const sidebarEmail = document.getElementById('sidebarUserEmail');
+      if (sidebarEmail) sidebarEmail.textContent = userEmail;
+      const profileName = document.getElementById('profileUserName');
+      if (profileName) profileName.textContent = userName;
+      const profileEmail = document.getElementById('profileUserEmail');
+      if (profileEmail) profileEmail.textContent = userEmail;
+      const composerName = document.getElementById('composerUserName');
+      if (composerName) composerName.textContent = "What's on your mind, " + userName + "?";
+      const authBtnText = document.getElementById('authBtnText');
+      if (authBtnText) authBtnText.textContent = 'Logout';
+      const authBtn = document.getElementById('authBtn');
+      if (authBtn) authBtn.onclick = function() { logoutUser(); };
+      const sidebarAuthBtn = document.getElementById('sidebarAuthBtn');
+      if (sidebarAuthBtn) sidebarAuthBtn.style.display = 'none';
+      const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+      if (sidebarLogoutBtn) sidebarLogoutBtn.style.display = 'block';
+    }
+  });
+  // LOGOUT FUNCTION - Clear all and go to welcome.html
+  async function logoutUser() {
+    try {
+      if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+        await supabaseClient.auth.signOut();
+      }
+    } catch (e) {}
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('currentUser');
+    window.location.href = 'welcome.html';
+  }
+</script>
 </body>
-                                                                                    </html>
+                                                                           </html>
