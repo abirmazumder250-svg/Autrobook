@@ -116,10 +116,11 @@ async function checkActiveSession(){
   }
 }
 
-// Load saved accounts
+// Load saved accounts from localStorage
 function loadAccounts(){
   const accounts = JSON.parse(localStorage.getItem('autro_saved_accounts') || '[]');
   const list = document.getElementById('accountsList');
+  
   if(accounts.length === 0){ 
     list.innerHTML = ''; 
     return; 
@@ -137,17 +138,17 @@ function loadAccounts(){
   `).join('');
 }
 
-// Quick Login
+// Quick Login - Click on account card
 async function quickLogin(email){
   window.location.href = `login.html?email=${encodeURIComponent(email)}`;
 }
 
-// Use another profile
+// "Use another profile" button
 function goToLogin(){
   window.location.href = 'login.html';
 }
 
-// Bottom Sheet
+// ========== Bottom Sheet Logic ==========
 function openSheet(){ 
   document.getElementById('overlay').style.display='block';
   setTimeout(() => {
@@ -162,20 +163,24 @@ function closeSheet(){
   }, 300);
 }
 
-// Remove All
+// Remove All - Only removes from device, NOT from Supabase
 async function removeAllAccounts(){
   const t = translations[currentLang];
   if(confirm(t.confirmRemove)){
+    // 1. Sign out from Supabase - ends session only
     await supabase.auth.signOut();
+    
+    // 2. Clear local storage
     localStorage.removeItem('autro_saved_accounts');
     localStorage.removeItem('current_user');
     localStorage.removeItem('isLoggedIn');
-    loadAccounts();
+    
+    loadAccounts(); // Refresh UI
     closeSheet();
   }
 }
 
-// Save account after login
+// Call this from login.html after successful login
 function addAccountToHistory(email, name = "User", avatar = "logo.png"){
   let accounts = JSON.parse(localStorage.getItem('autro_saved_accounts') || '[]');
   accounts = accounts.filter(acc => acc.email !== email);
