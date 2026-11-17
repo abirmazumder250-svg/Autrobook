@@ -1,5 +1,6 @@
 // ===== AUTROBOOK - js/index.js - FULL - PERMANENT PHOTO + VOICE =====
 // Supabase + Auth + Posts + Comments + Reactions + Voice Effect + Storage
+// Language: English - All Features Working
 
 // ===== 1. CONFIG =====
 const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
@@ -93,8 +94,21 @@ function canGoLive() {
   if (!myAccountCreated) return false;
   return getAccountAgeDays() >= 90;
 }
+function isGuestMode() {
+  return localStorage.getItem("autro_guest") === "1";
+}
 function isLoggedIn() {
-  return myName && myName !== "Guest User" && myEmail !== "";
+  if (isGuestMode()) return false;
+  return myName && myName !== "Guest User" && myEmail !== "" && myEmail !== "guest@autrobook.com";
+}
+// Guest Guard - Returns true if blocked, shows login prompt
+function blockGuest(actionName) {
+  if (isGuestMode()) {
+    showToast("Please login to " + (actionName || "use this feature"));
+    setTimeout(() => { window.location.href = "welcome.html"; }, 800);
+    return true;
+  }
+  return false;
 }
 function scrollTopPage() { window.scrollTo({ top: 0, behavior: "smooth" }); }
 function handleSearch(e) {
@@ -104,6 +118,16 @@ function handleSearch(e) {
   let filtered = allPosts.filter(p => (p.text || "").toLowerCase().includes(q) || (p.user_name || "").toLowerCase().includes(q));
   renderFeed(filtered);
   showToast("Found " + filtered.length + " results");
+}
+// Logo fallback - If logo.png fails, show fallback letter
+function initLogo() {
+  document.querySelectorAll(".logo-img").forEach(img => {
+    img.onerror = function() {
+      this.style.display = "none";
+      let fb = this.nextElementSibling;
+      if (fb && fb.classList.contains("logo-fallback")) fb.style.display = "inline-flex";
+    };
+  });
 }
 
 // ===== 3B. STORAGE UPLOAD - PERMANENT URL =====
@@ -121,29 +145,47 @@ async function uploadImageFile(file) {
   return await uploadToStorage("posts", file, fileName);
 }
 
-// ===== 4. THEME =====
-function toggleTheme() {
-  let isDark = document.body.classList.contains("theme-dark");
-  if (isDark) {
-    document.body.classList.remove("theme-dark");
-    document.body.classList.add("theme-light");
-    localStorage.setItem("autro_theme", "light");
-    let ic = document.getElementById("themeIcon"); if (ic) ic.className = "fas fa-moon";
-  } else {
-    document.body.classList.remove("theme-light");
+// ===== 4. THEME - SYSTEM DEFAULT =====
+function applySystemTheme() {
+  const saved = localStorage.getItem("autro_theme");
+  document.body.classList.remove("theme-dark", "theme-light");
+  const icon = document.getElementById("themeIcon");
+  if (saved === "dark") {
     document.body.classList.add("theme-dark");
-    localStorage.setItem("autro_theme", "dark");
-    let ic = document.getElementById("themeIcon"); if (ic) ic.className = "fas fa-sun";
+    if (icon) icon.className = "fas fa-sun";
+  } else if (saved === "light") {
+    document.body.classList.add("theme-light");
+    if (icon) icon.className = "fas fa-moon";
+  } else {
+    // System Default - CSS prefers-color-scheme handles it, no class needed
+    const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (icon) icon.className = systemDark ? "fas fa-sun" : "fas fa-moon";
   }
 }
+function toggleTheme() {
+  const saved = localStorage.getItem("autro_theme");
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const currentlyDark = saved ? (saved === "dark") : systemDark;
+  const next = currentlyDark ? "light" : "dark";
+  localStorage.setItem("autro_theme", next);
+  applySystemTheme();
+}
 function initTheme() {
-  let saved = localStorage.getItem("autro_theme");
-  if (saved === "dark") document.body.classList.add("theme-dark");
-  if (saved === "light") document.body.classList.add("theme-light");
+  applySystemTheme();
+  // Auto update when system theme changes and user has not chosen manually
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (!localStorage.getItem("autro_theme")) applySystemTheme();
+    });
+  }
 }
 
 // ===== 5. MODAL =====
 function openModal(id) {
+  if (isGuestMode() && (id === "mProfile" || id === "mComposer" || id === "mCreateMenu" || id === "mLive" || id === "mStoryReel")) {
+    blockGuest("open this");
+    return;
+  }
   let el = document.getElementById(id);
   if (el) el.classList.add("show");
 }
@@ -159,6 +201,19 @@ document.addEventListener("click", function (e) {
 
 // ===== 6. USER UI =====
 function updateUserUI() {
+  if (isGuestMode()) {
+    myName = "Guest User";
+    myEmail = "guest@autrobook.com";
+    let sn = document.getElementById("sidebarUserName"); if (sn) sn.textContent = "Guest User";
+    let se = document.getElementById("sidebarUserEmail"); if (se) se.textContent = "View Only Mode";
+    let cu = document.getElementById("composerUserName"); if (cu) cu.textContent = "Login to post...";
+    let ab = document.getElementById("authBtnText"); if (ab) ab.textContent = "Login";
+    let sab = document.getElementById("sidebarAuthBtn"); if (sab) { sab.style.display = "block"; sab.textContent = "Login to Unlock All Features"; }
+    let slb = document.getElementById("sidebarLogoutBtn"); if (slb) { slb.style.display = "block"; slb.textContent = "Exit Guest Mode"; }
+    let abtn = document.getElementById("authBtn"); if (abtn) abtn.onclick = () => { window.location.href = "welcome.html"; };
+    updateLiveUI();
+    return;
+  }
   let sn = document.getElementById("sidebarUserName"); if (sn) sn.textContent = myName;
   let se = document.getElementById("sidebarUserEmail"); if (se) se.textContent = myEmail || "Guest User";
   let sa = document.getElementById("sidebarAvatar"); if (sa) sa.src = myAvatar;
@@ -195,7 +250,10 @@ function updateLiveUI() {
 
 // ===== 7. AUTH =====
 var authMode = "login";
-function openAuthModal() { openModal("mAuth"); }
+function openAuthModal() {
+  if (isGuestMode()) { window.location.href = "welcome.html"; return; }
+  openModal("mAuth");
+}
 function switchAuthTab(mode) {
   authMode = mode;
   let loginBtn = document.getElementById("tabLogin");
@@ -211,6 +269,16 @@ function switchAuthTab(mode) {
     loginBtn.style.background = "var(--input-bg)"; loginBtn.style.color = "var(--text)";
     nameWrap.style.display = "block"; submitBtn.textContent = "Create Account";
   }
+}
+function saveLoginSession(user, email, name) {
+  // Clear Guest Mode on real login
+  localStorage.removeItem("autro_guest");
+  localStorage.setItem("autro_logged_in", "1");
+  localStorage.setItem("isLoggedIn", "true");
+  localStorage.setItem("autro_user_name", name);
+  localStorage.setItem("autro_user_email", email);
+  if (user && user.created_at) localStorage.setItem("autro_account_created", user.created_at);
+  localStorage.setItem("currentUser", JSON.stringify({ email: email, user_metadata: { full_name: name }, created_at: user ? user.created_at : "" }));
 }
 async function submitAuth() {
   let email = document.getElementById("authEmail").value.trim();
@@ -236,9 +304,7 @@ async function submitAuth() {
       let user = data.user;
       myName = (user.user_metadata && user.user_metadata.full_name) || email.split("@")[0];
       myEmail = email; myAccountCreated = user.created_at; myIsOwner = email.toLowerCase().indexOf("abir") !== -1;
-      localStorage.setItem("autro_user_name", myName);
-      localStorage.setItem("autro_user_email", myEmail);
-      localStorage.setItem("autro_account_created", myAccountCreated);
+      saveLoginSession(user, email, myName);
       updateUserUI();
       showToast("✅ Welcome back, " + myName);
       closeModal("mAuth");
@@ -250,9 +316,12 @@ async function submitAuth() {
 }
 async function logoutUser() {
   if (supabaseClient) await supabaseClient.auth.signOut();
+  // Clear ALL login keys - Real User + Guest
   localStorage.removeItem("autro_user_name"); localStorage.removeItem("autro_user_email"); localStorage.removeItem("autro_account_created");
+  localStorage.removeItem("autro_logged_in"); localStorage.removeItem("isLoggedIn"); localStorage.removeItem("currentUser"); localStorage.removeItem("autro_guest");
   myName = "Guest User"; myEmail = ""; myAccountCreated = ""; myIsOwner = false;
   updateUserUI(); showToast("Logged out");
+  setTimeout(() => { window.location.href = "welcome.html"; }, 500);
 }
 async function forgotPassword() {
   let email = document.getElementById("authEmail").value.trim();
@@ -262,15 +331,14 @@ async function forgotPassword() {
   if (error) showToast(error.message); else showToast("📧 Reset email sent from autrobooksupport@gmail.com");
 }
 async function initAuth() {
+  if (isGuestMode()) { updateUserUI(); return; }
   if (!supabaseClient) { updateUserUI(); return; }
   let { data } = await supabaseClient.auth.getSession();
   if (data && data.session && data.session.user) {
     let user = data.session.user;
     myName = (user.user_metadata && user.user_metadata.full_name) || user.email.split("@")[0];
     myEmail = user.email; myAccountCreated = user.created_at; myIsOwner = user.email.toLowerCase().indexOf("abir") !== -1;
-    localStorage.setItem("autro_user_name", myName);
-    localStorage.setItem("autro_user_email", myEmail);
-    localStorage.setItem("autro_account_created", myAccountCreated);
+    saveLoginSession(user, myEmail, myName);
   }
   updateUserUI();
 }
@@ -300,12 +368,12 @@ function renderFeed(list) {
   container.innerHTML = posts.map(p => `
     <div class="post-card">
       <div class="post-head">
-        <img src="${escapeHtml(p.user_avatar || myAvatar)}" class="post-avatar">
+        <img src="${escapeHtml(p.user_avatar || myAvatar)}" class="post-avatar" draggable="false" oncontextmenu="return false">
         <div><b>${escapeHtml(p.user_name || "User")}</b><small>${timeAgo(p.created_at)} • ${escapeHtml(p.type || "posts")}</small></div>
         <span class="dots" onclick="openReportPost('${p.id}')">⋯</span>
       </div>
       <div class="post-text">${escapeHtml(p.text || "")}</div>
-      ${p.img ? `<img src="${escapeHtml(p.img)}" class="post-img">` : ""}
+      ${p.img ? `<img src="${escapeHtml(p.img)}" class="post-img" draggable="false" oncontextmenu="return false">` : ""}
       <div class="post-actions">
         <button onclick="likePost('${p.id}', this)">❤️ Like (${p.likes || 0})</button>
         <button onclick="openComments('${p.id}')">💬 Comment</button>
@@ -315,6 +383,7 @@ function renderFeed(list) {
   `).join("");
 }
 async function likePost(postId, btn) {
+  if (blockGuest("like")) return;
   if (!isLoggedIn()) { showToast("Please login to like"); openAuthModal(); return; }
   let post = allPosts.find(p => String(p.id) === String(postId));
   if (!post) return;
@@ -327,10 +396,12 @@ async function likePost(postId, btn) {
 
 // ===== 9. CREATE - POST / STORY / REEL / LIVE =====
 function openCreateMenu() {
+  if (blockGuest("create")) return;
   if (!isLoggedIn()) { showToast("Please login to create"); openAuthModal(); return; }
   updateLiveUI(); openModal("mCreateMenu");
 }
 function createType(type) {
+  if (blockGuest("create")) return;
   currentCreateType = type;
   closeModal("mCreateMenu");
   if (type === "post") { openModal("mComposer"); return; }
@@ -343,6 +414,7 @@ function createType(type) {
   openModal("mStoryReel");
 }
 async function publishPost() {
+  if (blockGuest("create a post")) return;
   let text = document.getElementById("postText").value.trim();
   let fileInput = document.getElementById("postFile");
   if (!text && (!fileInput.files || fileInput.files.length === 0)) { showToast("Write something or add photo"); return; }
@@ -369,6 +441,7 @@ async function publishPost() {
   showToast("✅ Post published!");
 }
 async function publishStoryReel() {
+  if (blockGuest("create a story or reel")) return;
   let text = document.getElementById("storyReelText").value.trim();
   let fileInput = document.getElementById("storyReelFile");
   if (!text && (!fileInput.files || fileInput.files.length === 0)) { showToast("Add text or photo"); return; }
@@ -384,17 +457,22 @@ async function publishStoryReel() {
   showToast("✅ " + currentCreateType + " published!");
 }
 function startLive() {
+  if (blockGuest("go live")) return;
   let title = document.getElementById("liveTitleInput").value.trim() || "Live in Tongi";
   closeModal("mLive"); showToast("🔴 You are LIVE: " + title);
   let v = document.getElementById("liveViewers"); if (v) v.textContent = Math.floor(10 + Math.random() * 50);
 }
-function sosAlert() { showToast("🚨 SOS sent! Location shared with emergency contacts."); }
-function openShield() { showToast("🛡️ My Shield: Your account is protected. Report: autrobooksupport@gmail.com"); }
-function viewStory(name) { showToast("Viewing story: " + name); }
+function sosAlert() { if (blockGuest("use SOS")) return; showToast("🚨 SOS sent! Location shared with emergency contacts."); }
+function openShield() { if (blockGuest("open My Shield")) return; showToast("🛡️ My Shield: Your account is protected. Report: autrobooksupport@gmail.com"); }
+function viewStory(name) { if (blockGuest("view story")) return; showToast("Viewing story: " + name); }
 function sharePost(id) {
+  if (blockGuest("share")) return;
   if (navigator.share) navigator.share({ title: "Autrobook", text: "Check this post on Autrobook" }).catch(() => {});
   else showToast("Link copied! Share it with friends.");
 }
+function copyPostLink(id) { if (blockGuest("copy post link")) return; showToast("Link copied!"); }
+function copyProfileLink() { if (blockGuest("copy profile link")) return; showToast("Profile link copied!"); }
+function shareProfile() { if (blockGuest("share profile")) return; showToast("Profile shared!"); }
 
 // ===== 10. VOICE EFFECT - REAL NORMAL / ECHO / DEEP =====
 async function applyVoiceEffect(blob, effect) {
@@ -454,6 +532,7 @@ function bufferToWav(buffer) {
 
 // ===== 11. COMMENTS =====
 async function openComments(postId) {
+  if (blockGuest("comment")) return;
   currentPostId = postId;
   let post = allPosts.find(p => String(p.id) === String(postId));
   let preview = document.getElementById("commentPostPreview");
@@ -507,6 +586,7 @@ function renderCommentCard(c) {
   </div>`;
 }
 async function sendComment() {
+  if (blockGuest("comment")) return;
   let input = document.getElementById("commentInput");
   let text = input.value.trim();
   if (!text && !audioBlob && !commentPhotoBlob) { showToast("Write a comment, add photo or record voice"); return; }
@@ -541,6 +621,7 @@ async function sendComment() {
   showToast("✅ Comment posted - saved forever!");
 }
 function sendPhotoComment(input) {
+  if (blockGuest("comment with photo")) return;
   if (!input.files || !input.files[0]) return;
   commentPhotoBlob = input.files[0];
   document.getElementById("commentInput").value = "📷 Photo ready";
@@ -548,10 +629,12 @@ function sendPhotoComment(input) {
   input.value = "";
 }
 function insertEmoji(e) {
+  if (blockGuest("use emoji")) return;
   let input = document.getElementById("commentInput");
   input.value += e; input.focus();
 }
 function replyToComment(commentId, name) {
+  if (blockGuest("reply")) return;
   let input = document.getElementById("commentInput");
   input.value = "@" + name + " "; input.focus();
 }
@@ -565,6 +648,7 @@ function selectVoiceEffect(effect, btn) {
   if (label) label.textContent = effect.charAt(0).toUpperCase() + effect.slice(1) + " • Ready to send";
 }
 async function toggleVoiceRecording() {
+  if (blockGuest("send voice comment")) return;
   if (mediaRecorder && mediaRecorder.state === "recording") { stopVoiceRecording(); return; }
   try {
     let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -610,6 +694,7 @@ function cancelVoiceRecording() {
 
 // ===== 13. COMMENT REACTIONS =====
 function showReactionPicker(event, commentId) {
+  if (blockGuest("react")) return;
   document.querySelectorAll(".reaction-picker").forEach(p => p.remove());
   let picker = document.createElement("div"); picker.className = "reaction-picker";
   picker.innerHTML = REACTIONS.map(r => `<span onclick="reactToComment('${commentId}', '${r.id}')">${r.emoji}</span>`).join("");
@@ -618,6 +703,7 @@ function showReactionPicker(event, commentId) {
   event.stopPropagation();
 }
 async function reactToComment(commentId, reaction) {
+  if (blockGuest("react")) return;
   if (!isLoggedIn()) { showToast("Please login to react"); openAuthModal(); return; }
   document.querySelectorAll(".reaction-picker").forEach(p => p.remove());
   let existing = (commentReactionsCache[commentId] || []).find(r => r.user_name === myName);
@@ -646,14 +732,16 @@ function openReactionsList(commentId) {
 
 // ===== 14. REPORTS =====
 let currentReportPostId = null;
-function openReportPost(postId) { currentReportPostId = postId; openModal("mReport"); }
+function openReportPost(postId) { if (blockGuest("report")) return; currentReportPostId = postId; openModal("mReport"); }
 function submitReport() {
+  if (blockGuest("report")) return;
   let reason = document.getElementById("reportReason").value;
   showToast("✅ Post reported. Team will review in 24-48h. Email: autrobooksupport@gmail.com");
   closeModal("mReport");
   if (supabaseClient) { supabaseClient.from("reports").insert([{ type: "post", post_id: String(currentReportPostId), reporter_name: myName, reporter_email: myEmail, reason: reason, reason_label: reason, status: "under_review" }]).then(() => {}); }
 }
 function openReportComment(commentId, commentText, reportedUser) {
+  if (blockGuest("report comment")) return;
   currentCommentId = commentId;
   let preview = document.getElementById("reportCommentPreview");
   if (preview) preview.innerHTML = "<b>" + escapeHtml(reportedUser) + "</b> — " + escapeHtml(commentText);
@@ -668,6 +756,7 @@ function selectReportReason(id, el) {
   if (el) el.classList.add("selected");
 }
 async function submitCommentReport() {
+  if (blockGuest("report")) return;
   if (!selectedReportReason) { showToast("Select a reason"); return; }
   let details = document.getElementById("reportDetails").value.trim();
   let email = document.getElementById("reportEmail").value.trim() || myEmail;
@@ -688,10 +777,14 @@ function loadSidebarPeople() {
     { name: "Sumi Akter", img: "https://i.pravatar.cc/60?img=47" },
     { name: "Tanvir Ahmed", img: "https://i.pravatar.cc/60?img=14" }
   ];
-  el.innerHTML = people.map(p => `<div class="people-row"><img src="${p.img}"><div><b>${p.name}</b><br><small style="color:var(--muted)">Mutual friend</small></div><button onclick="showToast('Friend request sent to ${p.name}')">Add</button></div>`).join("");
+  el.innerHTML = people.map(p => `<div class="people-row"><img src="${p.img}"><div><b>${p.name}</b><br><small style="color:var(--muted)">Mutual friend</small></div><button onclick="addFriend('${p.name}')">Add</button></div>`).join("");
+}
+function addFriend(name) {
+  if (blockGuest("add friend")) return;
+  showToast("Friend request sent to " + name);
 }
 
 // ===== 16. INIT =====
 document.addEventListener("DOMContentLoaded", async function () {
-  initTheme(); loadSidebarPeople(); await initAuth(); await loadPosts();
+  initTheme(); initLogo(); loadSidebarPeople(); await initAuth(); await loadPosts();
 });
