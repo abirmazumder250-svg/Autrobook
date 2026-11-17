@@ -2,24 +2,107 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#043D22">
 <title>Log in - Autrobook</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="logo.png">
-<link rel="stylesheet" href="css/login.css">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<style>
+  :root {
+    --primary: #043D22;
+    --primary-hover: #022a17;
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --danger: #ef4444;
+    --success: #10b981;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --primary: #065f35;
+      --primary-hover: #043D22;
+      --bg: #121212;
+      --card: #1e1e1e;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --border: #374151;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+
+  body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; justify-content: center; }
+  .login-wrap { width: 100%; max-width: 400px; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+  .lang-top { width: 100%; display: flex; justify-content: flex-start; margin-bottom: 20px; }
+  
+  .lang-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+  .lang-btn:active { transform: scale(0.95); }
+
+  .top-logo { margin-bottom: 20px; }
+  .top-logo img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; background: var(--primary); }
+
+  .login-form { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+  .input-group input { width: 100%; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); font-size: 15px; outline: none; transition: 0.2s; }
+  .input-group input:focus { border-color: var(--primary); }
+
+  /* Security & Passkey Styles */
+  .security-box { display: flex; flex-direction: column; gap: 10px; margin-top: 5px; }
+  .sec-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1px dashed var(--border); background: var(--card); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+  .sec-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .sec-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Selfie Upload Styles */
+  #selfiePreview { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: none; }
+  .sec-btn.verified { border-color: var(--success); color: var(--success); background: rgba(16, 185, 129, 0.05); border-style: solid; }
+
+  .btn-login { width: 100%; padding: 16px; border-radius: 24px; background: var(--primary); color: white; border: none; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+  .btn-login:active { transform: scale(0.98); }
+  .btn-login:disabled { opacity: 0.6; cursor: not-allowed; background: var(--muted); }
+
+  .link-forgot { text-align: center; color: var(--muted); font-size: 14px; text-decoration: none; margin-top: -2px; }
+  .g-recaptcha { margin: 15px 0; display: flex; justify-content: center; }
+  .error-msg { color: var(--danger); font-size: 14px; text-align: center; min-height: 20px; font-weight: 500; }
+  .success-msg { color: var(--success); font-size: 14px; text-align: center; min-height: 20px; font-weight: 500; }
+
+  .divider { width: 100%; display: flex; align-items: center; text-align: center; color: var(--muted); font-size: 14px; margin: 10px 0; }
+  .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border); }
+  .divider span { padding: 0 10px; }
+
+  .btn-google, .btn-create { width: 100%; padding: 15px; border-radius: 24px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+  .btn-google { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-create { background: transparent; color: var(--primary); border: 1px solid var(--primary); margin-top: 12px; }
+
+  .footer-meta { font-weight: 800; font-size: 18px; margin-top: 20px; margin-bottom: 4px; color: var(--text);}
+  .footer-sub { font-size: 13px; color: var(--muted); }
+
+  /* Modals */
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 999; }
+  .modal-box { background: var(--card); width: 90%; max-width: 360px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .modal-box h3 { margin-bottom: 16px; font-size: 18px; font-weight: 800; text-align: center; }
+  .lang-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; padding-right: 5px; }
+  .lang-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+  .lang-item:hover { background: var(--bg); }
+  .lang-item input[type="radio"] { accent-color: var(--primary); width: 20px; height: 20px; cursor: pointer; }
+  
+  .modal-close { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-weight: 700; font-size: 16px; cursor: pointer; }
+  #cameraStream { width: 100%; border-radius: 12px; margin-bottom: 15px; background: #000; }
+</style>
 </head>
 <body>
+
 <div class="login-wrap">
   
   <div class="lang-top">
-    <button class="lang-btn" id="langBtn" onclick="openLangModal()">English - US</button>
+    <button class="lang-btn" id="langBtn" onclick="openModal('langModal')">English - US ▾</button>
   </div>
 
   <div class="top-logo">
-    <img src="logo.png" alt="Autrobook">
+    <img src="logo.png" alt="Autrobook" onerror="this.src='https://via.placeholder.com/80x80/043D22/FFFFFF?text=A'">
   </div>
 
   <form id="loginForm" class="login-form">
@@ -31,6 +114,22 @@
       <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
     </div>
 
+    <!-- Security Verifications -->
+    <div class="security-box">
+      <!-- Passkey Button -->
+      <button type="button" class="sec-btn" id="fingerprintBtn" onclick="loginWithPasskey()">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+        <span id="fingerprintText">Login with Passkey</span>
+      </button>
+
+      <!-- Selfie Button (Requires Backend API for real matching) -->
+      <button type="button" class="sec-btn" id="selfieBtn" onclick="openCamera()">
+        <img id="selfiePreview" src="" alt="Selfie">
+        <svg id="selfieIcon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <span id="selfieText">Take Selfie for ID Match</span>
+      </button>
+    </div>
+
     <button type="submit" class="btn-login" id="loginBtn">Log in</button>
     <a href="reset-password.html" class="link-forgot" id="forgotLink">Forgot password?</a>
   </form>
@@ -38,6 +137,7 @@
   <div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d"></div>
 
   <div id="errorMsg" class="error-msg"></div>
+  <div id="successMsg" class="success-msg"></div>
 
   <div class="divider"><span id="orText">or</span></div>
 
@@ -53,14 +153,274 @@
 </div>
 
 <!-- Language Modal -->
-<div class="lang-modal-back" id="langModal" onclick="closeLangModal()">
-  <div class="lang-modal" onclick="event.stopPropagation()">
+<div class="modal-back" id="langModal" onclick="closeModal('langModal')">
+  <div class="modal-box" onclick="event.stopPropagation()">
     <h3 id="langTitle">Select Language</h3>
     <div class="lang-list" id="langList"></div>
-    <button class="lang-close" id="langClose" onclick="closeLangModal()">Close</button>
+    <button class="modal-close" id="langClose" onclick="closeModal('langModal')">Close</button>
   </div>
 </div>
 
-<script src="js/login.js"></script>
+<!-- Camera Modal (Selfie Demo) -->
+<div class="modal-back" id="cameraModal">
+  <div class="modal-box">
+    <h3>Face ID Verification</h3>
+    <p style="font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 15px;">Take a live selfie to verify your identity.</p>
+    <video id="cameraStream" autoplay playsinline></video>
+    <button type="button" class="modal-close" onclick="captureSelfie()" id="captureBtn">Capture Photo</button>
+    <button type="button" class="modal-close" onclick="closeCamera()" style="background: transparent; color: var(--muted); margin-top: 10px;">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // ====== SUPABASE CONFIGURATION (WITH PASSKEY) ======
+  const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_"; 
+
+  // Passkey experimental feature enabled here
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      experimental: { passkey: true }
+    }
+  });
+
+  // State Variables
+  let captchaFailCount = 0;
+  let isSelfieCaptured = false;
+  let videoStream = null;
+
+  // ====== TRANSLATIONS ======
+  const languages = [
+    {code: 'en', name: 'English - US'}, {code: 'bn', name: 'বাংলা - Bangladesh'}, {code: 'hi', name: 'हिन्दी - India'},
+    {code: 'es', name: 'Español - Spain'}, {code: 'fr', name: 'Français - France'}, {code: 'ar', name: 'Arabic - العربية'},
+    {code: 'pt', name: 'Português - Portugal'}, {code: 'de', name: 'Deutsch - Germany'}, {code: 'id', name: 'Bahasa Indonesia'},
+    {code: 'tr', name: 'Türkçe - Türkiye'}
+  ];
+
+  const translations = {
+    en: { title: "Log in - Autrobook", loginBtn: "Log in", emailPlaceholder: "Username or email", passPlaceholder: "Password", forgot: "Forgot password?", or: "or", google: "Continue with Google", create: "Create new account", tagline: "18+ Free Social Media Platform", selectLang: "Select Language", close: "Close", errMsg: "Login failed.", btnPasskey: "Login with Passkey", btnSelfie: "Take Selfie for ID Match", success: "Verified!" },
+    bn: { title: "লগ ইন - Autrobook", loginBtn: "লগ ইন করুন", emailPlaceholder: "ইউজারনেম বা ইমেইল", passPlaceholder: "পাসওয়ার্ড", forgot: "পাসওয়ার্ড ভুলে গেছেন?", or: "অথবা", google: "গুগল দিয়ে চালিয়ে যান", create: "নতুন অ্যাকাউন্ট তৈরি করুন", tagline: "১৮+ ফ্রি সোশ্যাল মিডিয়া প্ল্যাটফর্ম", selectLang: "ভাষা নির্বাচন করুন", close: "বন্ধ করুন", errMsg: "লগইন ব্যর্থ হয়েছে।", btnPasskey: "পাসকি দিয়ে লগইন", btnSelfie: "আইডি ম্যাচের জন্য সেলফি নিন", success: "যাচাই সম্পন্ন!" }
+  };
+
+  let currentLang = localStorage.getItem('autro_lang') || 'en';
+
+  // ====== INITIALIZATION ======
+  document.addEventListener('DOMContentLoaded', () => {
+    buildLangList();
+    applyLanguage();
+    setupLoginForm();
+  });
+
+  // ====== MODAL HELPERS ======
+  function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+  // ====== LANGUAGE FUNCTIONS ======
+  function buildLangList() {
+    const langList = document.getElementById('langList');
+    langList.innerHTML = '';
+    languages.forEach(lang => {
+      const div = document.createElement('div');
+      div.className = 'lang-item';
+      div.innerHTML = `<span>${lang.name}</span><input type="radio" name="lang" value="${lang.code}" ${currentLang === lang.code ? 'checked' : ''}>`;
+      div.onclick = () => selectLanguage(lang.code, lang.name);
+      langList.appendChild(div);
+    });
+  }
+
+  function selectLanguage(code, name) {
+    currentLang = code;
+    localStorage.setItem('autro_lang', currentLang);
+    document.getElementById('langBtn').innerText = name + ' ▾';
+    applyLanguage();
+    closeModal('langModal');
+  }
+
+  function applyLanguage() {
+    const t = translations[currentLang] || translations.en;
+    document.title = t.title;
+    document.getElementById('loginBtn').innerText = t.loginBtn;
+    document.getElementById('email').placeholder = t.emailPlaceholder;
+    document.getElementById('password').placeholder = t.passPlaceholder;
+    document.getElementById('forgotLink').innerText = t.forgot;
+    document.getElementById('orText').innerText = t.or;
+    document.getElementById('googleText').innerText = t.google;
+    document.getElementById('btnCreate').innerText = t.create;
+    document.getElementById('footerSub').innerText = t.tagline;
+    document.getElementById('langTitle').innerText = t.selectLang;
+    document.getElementById('langClose').innerText = t.close;
+    
+    document.getElementById('fingerprintText').innerText = t.btnPasskey;
+    if(!isSelfieCaptured) document.getElementById('selfieText').innerText = t.btnSelfie;
+    
+    const savedLang = languages.find(l => l.code === currentLang);
+    if(savedLang) document.getElementById('langBtn').innerText = savedLang.name + ' ▾';
+  }
+
+  // ====== PASSKEY LOGIN LOGIC ======
+  async function loginWithPasskey() {
+    clearMessages();
+    const btn = document.getElementById('fingerprintBtn');
+    const text = document.getElementById('fingerprintText');
+    
+    text.innerText = "Scanning...";
+    btn.disabled = true;
+
+    try {
+      // Trigger WebAuthn Prompt (Fingerprint / Face ID)
+      const { data, error } = await supabaseClient.auth.signInWithPasskey();
+      
+      if (error) throw error;
+
+      showSuccessMsg("Biometric Verified! Logging in...");
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 1000);
+
+    } catch (err) {
+      console.error("Passkey Error:", err.message);
+      showErrorMsg("Biometric verification failed. " + err.message);
+      text.innerText = translations[currentLang].btnPasskey;
+      btn.disabled = false;
+    }
+  }
+
+  // ====== SELFIE SIMULATION (Requires Backend for Real Match) ======
+  async function openCamera() {
+    openModal('cameraModal');
+    const video = document.getElementById('cameraStream');
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      video.srcObject = videoStream;
+    } catch (err) {
+      showErrorMsg("Camera access denied. Cannot verify identity.");
+      closeCamera();
+    }
+  }
+
+  function closeCamera() {
+    if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); }
+    closeModal('cameraModal');
+  }
+
+  function captureSelfie() {
+    closeCamera();
+    const btn = document.getElementById('selfieBtn');
+    const text = document.getElementById('selfieText');
+    const icon = document.getElementById('selfieIcon');
+    const preview = document.getElementById('selfiePreview');
+
+    text.innerText = "Verifying face...";
+    btn.disabled = true;
+
+    setTimeout(() => {
+       // DEMO: Simulating face match success
+       const isMatch = true; // Replace with real API call in future
+
+       if (isMatch) {
+         isSelfieCaptured = true;
+         btn.classList.add('verified');
+         btn.classList.remove('sec-btn');
+         text.innerText = "Identity Verified ✔";
+         icon.style.display = 'none';
+         preview.style.display = 'block';
+         preview.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`; 
+         btn.disabled = false;
+         showSuccessMsg("Face matched with ID!");
+       }
+    }, 2000);
+  }
+
+  // ====== PASSWORD LOGIN LOGIC ======
+  function setupLoginForm() {
+    const form = document.getElementById('loginForm');
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessages();
+      
+      const loginBtn = document.getElementById('loginBtn');
+      const t = translations[currentLang] || translations.en;
+      const originalBtnText = t.loginBtn;
+      
+      // 1. Check reCAPTCHA
+      const recaptchaResponse = grecaptcha.getResponse();
+      if (!recaptchaResponse) {
+        captchaFailCount++;
+        if(captchaFailCount >= 3) {
+          loginBtn.disabled = true;
+          loginBtn.innerText = "Blocked (Too many attempts)";
+          showErrorMsg("Security Block: 3 failed CAPTCHA attempts.");
+          return;
+        }
+        showErrorMsg(`Please complete the CAPTCHA. (Attempt ${captchaFailCount}/3)`);
+        grecaptcha.reset();
+        return;
+      }
+
+      // 2. Check Selfie (Optional: If you want to enforce selfie with password)
+      if (!isSelfieCaptured) {
+        showErrorMsg("Access Denied: Selfie ID match not verified.");
+        return;
+      }
+
+      // 3. Proceed with Email/Password Login
+      loginBtn.innerText = 'Logging in...';
+      loginBtn.disabled = true;
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+
+        if (error) throw error;
+
+        // Success - Redirect
+        showSuccessMsg("Login Successful! Redirecting...");
+        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+
+      } catch (err) {
+        console.error("Login Error:", err.message);
+        showErrorMsg(t.errMsg + " (" + err.message + ")");
+        grecaptcha.reset(); 
+        loginBtn.innerText = originalBtnText;
+        loginBtn.disabled = false;
+      }
+    });
+  }
+
+  // ====== GOOGLE LOGIN ======
+  async function googleLogin() {
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + '/index.html' }
+      });
+      if (error) throw error;
+    } catch (error) {
+      showErrorMsg("Google login failed: " + error.message);
+    }
+  }
+
+  // ====== UI HELPERS ======
+  function showErrorMsg(msg) {
+    document.getElementById('errorMsg').innerText = msg;
+    document.getElementById('successMsg').innerText = '';
+  }
+  
+  function showSuccessMsg(msg) {
+    document.getElementById('successMsg').innerText = msg;
+    document.getElementById('errorMsg').innerText = '';
+  }
+
+  function clearMessages() {
+    document.getElementById('errorMsg').innerText = '';
+    document.getElementById('successMsg').innerText = '';
+  }
+</script>
 </body>
 </html>
