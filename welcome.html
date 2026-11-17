@@ -6,6 +6,13 @@
 <title>Welcome to Autrobook</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script>
+  // AUTO LOGIN CHECK - If already logged in, go directly to index.html
+  // Guest mode also goes to index.html, but with locked features
+  if (localStorage.getItem('autro_logged_in') === '1' || localStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('autro_guest') === '1') {
+    window.location.href = 'index.html';
+  }
+</script>
 <style>
 :root{
   --primary:#043D22;
@@ -60,7 +67,6 @@ body{
   position:relative;
   overflow-x:hidden;
 }
-/* Floating decorative blobs */
 body::before,body::after{
   content:"";
   position:fixed;
@@ -113,8 +119,6 @@ body::after{
   0%{background-position:0% 50%}
   100%{background-position:200% 50%}
 }
-
-/* Logo */
 .logo-wrap{
   display:flex;
   align-items:center;
@@ -171,8 +175,6 @@ h1 .brand-badge{
   margin-bottom:26px;
   line-height:1.5;
 }
-
-/* Labels */
 label{
   display:block;
   font-size:12px;
@@ -182,8 +184,6 @@ label{
   text-transform:uppercase;
   letter-spacing:.5px;
 }
-
-/* Input fields */
 .field{
   display:flex;
   align-items:center;
@@ -229,8 +229,6 @@ label{
   transition:color .2s;
 }
 .field .toggle-pass:hover{color:var(--primary)}
-
-/* Forgot link */
 .forgot-row{
   display:flex;
   justify-content:flex-end;
@@ -247,8 +245,6 @@ label{
   transition:opacity .2s;
 }
 .forgot:hover{opacity:.75;text-decoration:underline}
-
-/* Buttons */
 .btn{
   width:100%;
   background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);
@@ -270,7 +266,6 @@ label{
 .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px var(--primary-glow)}
 .btn:active:not(:disabled){transform:translateY(0)}
 .btn:disabled{opacity:.65;cursor:not-allowed}
-
 .btn-outline{
   width:100%;
   background:transparent;
@@ -290,8 +285,6 @@ label{
 }
 .btn-outline:hover{background:var(--primary);color:#fff}
 .btn-outline:active{transform:scale(.99)}
-
-/* Divider */
 .divider{
   display:flex;
   align-items:center;
@@ -309,8 +302,6 @@ label{
   height:1px;
   background:var(--border);
 }
-
-/* Messages */
 .msg{
   display:none;
   padding:12px 14px;
@@ -325,8 +316,6 @@ label{
 }
 .msg.err{display:flex;background:var(--error-bg);color:var(--error);border:1px solid rgba(220,38,38,.2)}
 .msg.ok{display:flex;background:var(--success-bg);color:var(--success);border:1px solid rgba(5,150,105,.2)}
-
-/* Captcha */
 .captcha-box{
   margin-top:18px;
   display:flex;
@@ -334,8 +323,6 @@ label{
   transform-origin:center;
   min-height:78px;
 }
-
-/* Links */
 .links{
   text-align:center;
   margin-top:20px;
@@ -352,8 +339,6 @@ label{
   transition:opacity .2s;
 }
 .links a:hover{opacity:.75;text-decoration:underline}
-
-/* Modal */
 .modal{
   display:none;
   position:fixed;
@@ -419,8 +404,6 @@ label{
   line-height:1;
 }
 .close:hover{background:var(--error-bg);color:var(--error);transform:rotate(90deg)}
-
-/* Footer */
 .footer-note{
   text-align:center;
   margin-top:24px;
@@ -432,8 +415,6 @@ label{
   gap:6px;
 }
 .footer-note i{color:var(--primary);font-size:12px}
-
-/* Responsive */
 @media (max-width:480px){
   .card{padding:28px 22px 24px;border-radius:20px}
   h1{font-size:23px}
@@ -446,8 +427,6 @@ label{
 
 <div class="wrap">
   <div class="card">
-
-    <!-- LOGO -->
     <div class="logo-wrap">
       <img src="logo.png" alt="Autrobook" class="logo-img"
            onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">
@@ -458,7 +437,6 @@ label{
     <p class="sub">Connect. Create. Play. Mindfully.</p>
 
     <form onsubmit="doLogin(event)">
-
       <label>Email or Username</label>
       <div class="field">
         <i class="fas fa-user"></i>
@@ -503,10 +481,11 @@ label{
     </button>
 
     <div class="links">
-      <a href="index.html">
+      <a href="javascript:void(0)" onclick="continueAsGuest()">
         <i class="fas fa-arrow-right"></i>
-        Continue as Guest
+        Continue as Guest - View Only
       </a>
+      <p style="font-size:12px;margin-top:6px;color:var(--muted)">Guest can only view posts, photos & videos. All other features are locked.</p>
     </div>
 
   </div>
@@ -644,11 +623,27 @@ function doLogin(e) {
 }
 
 function loginSuccess(email, name) {
+  // Clear guest mode on real login - Guest becomes full user
+  localStorage.removeItem('autro_guest');
   localStorage.setItem('autro_logged_in', '1');
   localStorage.setItem('autro_user_email', email);
   localStorage.setItem('autro_user_name', name);
+  localStorage.setItem('isLoggedIn', 'true');
+  localStorage.setItem('currentUser', JSON.stringify({ email: email, user_metadata: { full_name: name } }));
   showMsg('Login successful! Redirecting...', false);
   setTimeout(function () { window.location.href = 'index.html'; }, 700);
+}
+
+function continueAsGuest() {
+  // GUEST MODE - View Only
+  // Guest can ONLY view posts, photos, videos. All other features locked in index.html
+  localStorage.setItem('autro_guest', '1');
+  localStorage.removeItem('autro_logged_in');
+  localStorage.removeItem('isLoggedIn');
+  localStorage.setItem('autro_user_email', 'guest@autrobook.com');
+  localStorage.setItem('autro_user_name', 'Guest User');
+  localStorage.setItem('currentUser', JSON.stringify({ email: 'guest@autrobook.com', user_metadata: { full_name: 'Guest User' } }));
+  window.location.href = 'index.html';
 }
 
 function openForgot() {
@@ -706,7 +701,6 @@ function resetPassword() {
   }, 1000);
 }
 
-/* ---------- Fingerprint / Passkey ---------- */
 function bufToB64(b) { return btoa(String.fromCharCode(...new Uint8Array(b))); }
 function b64ToBuf(b64) {
   var s = atob(b64);
