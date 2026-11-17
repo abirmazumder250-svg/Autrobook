@@ -1,298 +1,378 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0b5d3b">
-  <title>Autrobook — Safety First Social</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="css/index.css">
-</head>
-<body>
+// Global State
+let currentUser = {
+  name: "Abir Mazumder",
+  isVerified: true, // Black verified
+  avatar: "fa-user"
+};
 
-<!-- TOPBAR -->
-<header class="topbar">
-  <div class="brand" onclick="scrollTopPage()">
-    <img src="logo.png" alt="Autrobook" class="logo-img" onerror="this.style.display='none'">
-    <span class="brand-name">Autrobook</span>
-    <span class="vbadge" title="Official"><i class="fas fa-check"></i></span>
-  </div>
-  <div class="search">
-    <i class="fas fa-search" style="color:var(--muted)"></i>
-    <input placeholder="Search Autrobook..." aria-label="Search" id="globalSearch" onkeyup="handleSearch(event)">
-  </div>
-  <div class="top-actions">
-    <button class="icon-btn" onclick="openModal('mNotifications')" title="Notifications">
-      <i class="fas fa-bell"></i><span class="notif-dot" id="notifDot"></span>
-    </button>
-    <button class="icon-btn" onclick="toggleTheme()" title="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
-    <button class="icon-btn" onclick="openModal('mSettings')" title="Settings"><i class="fas fa-cog"></i></button>
-  </div>
-</header>
+// Mock Database
+let posts = [
+  {
+    id: 1,
+    author: "Autrobook Official",
+    isOfficial: true,
+    time: Date.now() - 5000,
+    content: "Welcome to Autrobook Social! A safety-first social network built for community protection and instant emergency dispatch.",
+    reactions: { "❤️": 1200, "👍": 850, "😮": 15 },
+    userReaction: null,
+    comments: [
+      {
+        id: 101,
+        author: "Rafiq Hasan",
+        text: "Great initiative! Stay safe everyone.",
+        time: Date.now() - 20000,
+        reactions: { "👍": 12 },
+        userReaction: null,
+        replies: []
+      }
+    ]
+  }
+];
 
-<div class="app">
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="side-card profile-mini">
-      <div class="pm-row">
-        <div class="avatar"><i class="fas fa-user"></i></div>
-        <div class="pm-info">
-          <div class="pm-name"><span>Abir Mazumder</span> <span class="vbadge"><i class="fas fa-check"></i></span></div>
-          <div class="pm-sub" onclick="openModal('mProfile')">View profile →</div>
-        </div>
-      </div>
-    </div>
-    <div class="side-card">
-      <div class="nav-item active" onclick="filterFeed('all')"><i class="fas fa-newspaper"></i> News Feed</div>
-      <div class="nav-item" onclick="openModal('mMissing')"><i class="fas fa-user-magnifying-glass"></i> Missing Alerts</div>
-      <div class="nav-item" onclick="openModal('mBlood')"><i class="fas fa-droplet"></i> Blood Donors</div>
-      <div class="nav-item" onclick="openShield()"><i class="fas fa-shield-halved"></i> My Shield</div>
-      <div class="nav-item" onclick="openModal('mSafetyTips')"><i class="fas fa-lightbulb"></i> Safety Tips</div>
-      <div class="nav-item" onclick="openModal('mEmergencyContacts')"><i class="fas fa-address-book"></i> Emergency Contacts</div>
-    </div>
-    <div class="side-card sos-card" onclick="sosAlert()">
-      <i class="fas fa-triangle-exclamation"></i>
-      <div><b>Emergency SOS</b><br><small>Share live location</small></div>
-    </div>
-  </aside>
+// --- UTILITIES ---
+function formatCount(num) {
+  if (num >= 1000) return (num / 1000).toFixed(1).replace('.0', '') + 'k';
+  return num;
+}
 
-  <!-- FEED -->
-  <main class="feed">
-    <div class="stories-bar" id="storiesBar">
-      <div class="story-card create-story" onclick="openModal('mComposer')">
-        <div class="story-avatar-wrap"><i class="fas fa-plus"></i></div>
-        <span>Create Reel</span>
-      </div>
-      <div class="story-card" onclick="viewStory('Abir')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Abir M.</span></div>
-      <div class="story-card" onclick="viewStory('Rafiq')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Rafiq H.</span></div>
-      <div class="story-card" onclick="viewStory('Sumaiya')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Sumaiya K.</span></div>
-      <div class="story-card" onclick="viewStory('Tanvir')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Tanvir A.</span></div>
-    </div>
+function timeAgo(timestamp) {
+  const diff = Math.floor((Date.now() - timestamp) / 1000);
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+  return Math.floor(diff / 86400) + "d ago";
+}
 
-    <section class="safety-hub">
-      <div class="safety-grid">
-        <div class="safety-card" onclick="openModal('mMissing')">
-          <div class="sc-top"><i class="fas fa-user-magnifying-glass sc-icon"></i> Missing Person</div>
-          <div class="sc-body">Report an alert</div>
-        </div>
-        <div class="safety-card" onclick="openModal('mBlood')">
-          <div class="sc-top"><i class="fas fa-droplet sc-icon blood-icon"></i> Blood Donor</div>
-          <div class="sc-body">Find donors nearby</div>
-        </div>
-        <div class="safety-card" onclick="openModal('mSafetyTips')">
-          <div class="sc-top"><i class="fas fa-lightbulb sc-icon" style="color:#e6a017;"></i> Safety Tips</div>
-          <div class="sc-body">Daily safety advice</div>
-        </div>
-        <div class="safety-card" onclick="openModal('mEmergencyContacts')">
-          <div class="sc-top"><i class="fas fa-address-book sc-icon" style="color:#8e44ad;"></i> Emergency</div>
-          <div class="sc-body">Important numbers</div>
-        </div>
-      </div>
-    </section>
+// Live Time Counter
+setInterval(() => {
+  document.querySelectorAll('.live-time').forEach(el => {
+    const timestamp = parseInt(el.getAttribute('data-time'));
+    el.innerText = timeAgo(timestamp);
+  });
+}, 60000);
 
-    <div class="composer">
-      <div class="composer-row" onclick="openModal('mComposer')">
-        <div class="avatar"><i class="fas fa-user"></i></div>
-        <div class="composer-input">What's on your mind, Abir?</div>
-      </div>
-      <div class="composer-actions">
-        <button onclick="openModal('mComposer')"><i class="fas fa-video" style="color:#e74c3c;"></i> Live/Reel</button>
-        <button onclick="openModal('mComposer')"><i class="fas fa-images" style="color:#2ecc71;"></i> Photo/Video</button>
-        <button onclick="openModal('mMissing')"><i class="fas fa-triangle-exclamation" style="color:#f39c12;"></i> Safety Alert</button>
-      </div>
-    </div>
+// --- RENDER FEED ---
+function renderFeed() {
+  const container = document.getElementById('feedContainer');
+  container.innerHTML = '';
 
-    <div class="filter-bar" id="filterBar">
-      <button class="filter-btn active" onclick="filterFeed('all', this)">All</button>
-      <button class="filter-btn" onclick="filterFeed('posts', this)">Posts</button>
-      <button class="filter-btn" onclick="filterFeed('missing', this)">Missing</button>
-      <button class="filter-btn" onclick="filterFeed('blood', this)">Blood</button>
-    </div>
-
-    <div id="feedContainer">
-      <div class="post" data-type="posts">
-        <div class="post-header">
-          <div class="avatar sm"><i class="fas fa-user"></i></div>
+  posts.forEach(post => {
+    const postEl = document.createElement('div');
+    postEl.className = 'post';
+    postEl.innerHTML = `
+      <div class="post-header">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="avatar sm"><i class="fas ${post.isOfficial ? 'fa-shield-halved' : 'fa-user'}"></i></div>
           <div>
-            <div class="post-author">Autrobook Official <span class="vbadge"><i class="fas fa-check"></i></span></div>
-            <div class="post-meta"><i class="fas fa-clock"></i> Just now • Public</div>
+            <div class="post-author">${post.author} ${post.isOfficial ? '<span class="vbadge"><i class="fas fa-check"></i></span>' : ''}</div>
+            <div class="post-meta"><i class="far fa-clock"></i> <span class="live-time" data-time="${post.time}">${timeAgo(post.time)}</span> • Public</div>
           </div>
         </div>
-        <h4 style="margin-top:10px;">Welcome to Autrobook Social!</h4>
-        <p>A safety-first social network built for community protection, missing person alerts, urgent blood matching, and instant emergency dispatch.</p>
-        <div class="post-actions-bar">
-          <button onclick="likePost(this)"><i class="far fa-thumbs-up"></i> Like</button>
-          <button onclick="toggleComments(this)"><i class="far fa-comment"></i> Comment</button>
-          <button onclick="sharePost()"><i class="far fa-share-from-square"></i> Share</button>
+        <div style="position: relative;">
+          <button class="post-menu-btn" onclick="togglePostMenu(${post.id})"><i class="fas fa-ellipsis-h"></i></button>
+          <div class="dropdown-menu" id="menu-${post.id}">
+            <div class="dropdown-item" onclick="savePost(${post.id})"><i class="fas fa-bookmark"></i> Save Post</div>
+            <div class="dropdown-item" onclick="sharePost()"><i class="fas fa-share"></i> Share Post</div>
+            ${!post.isOfficial ? `<div class="dropdown-item" style="color:red;" onclick="openReportModal()"><i class="fas fa-flag"></i> Report</div>` : ''}
+          </div>
+        </div>
+      </div>
+      
+      <div class="post-content">${post.content}</div>
+      
+      <div class="post-stats">
+        <div class="reaction-summary">
+          ${Object.entries(post.reactions).map(([emoji, count]) => count > 0 ? emoji : '').join('')} 
+          ${formatCount(Object.values(post.reactions).reduce((a, b) => a + b, 0))}
+        </div>
+        <div class="comment-summary" onclick="toggleComments(${post.id})">
+          ${post.comments.length} Comments
+        </div>
+      </div>
+
+      <div class="post-actions-bar">
+        <div class="action-btn" onmouseleave="hideReactionPopup(${post.id})">
+          <div class="reaction-popup" id="reaction-popup-${post.id}">
+            <span class="reaction-icon" onclick="reactToPost(${post.id}, '❤️')">❤️</span>
+            <span class="reaction-icon" onclick="reactToPost(${post.id}, '👍')">👍</span>
+            <span class="reaction-icon" onclick="reactToPost(${post.id}, '😆')">😆</span>
+            <span class="reaction-icon" onclick="reactToPost(${post.id}, '😮')">😮</span>
+            <span class="reaction-icon" onclick="reactToPost(${post.id}, '😢')">😢</span>
+            <span class="reaction-icon" onclick="reactToPost(${post.id}, '😠')">😠</span>
+          </div>
+          <div onmouseenter="showReactionPopup(${post.id})" onclick="reactToPost(${post.id}, '👍')" id="main-react-${post.id}" style="display:flex; align-items:center; gap:8px; ${post.userReaction ? 'color:var(--primary);' : ''}">
+            ${post.userReaction ? post.userReaction : '<i class="far fa-thumbs-up"></i>'} 
+            ${post.userReaction ? 'Reacted' : 'Like'}
+          </div>
+        </div>
+        <button class="action-btn" onclick="toggleComments(${post.id})"><i class="far fa-comment"></i> Comment</button>
+        <button class="action-btn" onclick="sharePost()"><i class="far fa-share-from-square"></i> Share</button>
+      </div>
+
+      <div class="comments-section" id="comments-${post.id}">
+        <div class="comment-box">
+          <div class="avatar sm"><i class="fas fa-user"></i></div>
+          <div class="comment-input-wrapper">
+            <input type="text" id="comment-input-${post.id}" placeholder="Write a comment..." onkeypress="handleCommentEnter(event, ${post.id})">
+            <button class="voice-btn" onclick="toggleVoiceRecord(this, ${post.id})" title="Record Voice"><i class="fas fa-microphone"></i></button>
+            <button class="send-btn" onclick="addTextComment(${post.id})"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+        <div id="comments-list-${post.id}">
+          ${renderComments(post.comments, post.id)}
+        </div>
+      </div>
+    `;
+    container.appendChild(postEl);
+  });
+}
+
+function renderComments(comments, postId) {
+  return comments.map(comment => `
+    <div class="comment-item">
+      <div class="avatar sm"><i class="fas fa-user"></i></div>
+      <div class="comment-content">
+        <div class="comment-bubble">
+          <div class="comment-author">${comment.author}</div>
+          <div class="comment-text">${comment.text}</div>
+        </div>
+        <div class="comment-actions">
+          <span onclick="likeComment(${postId}, ${comment.id})" style="${comment.userReaction ? 'color:var(--primary);' : ''}">
+            ${comment.userReaction ? comment.userReaction : 'Like'} (${formatCount(Object.values(comment.reactions).reduce((a,b)=>a+b,0))})
+          </span>
+          <span onclick="toggleReplyInput(${postId}, ${comment.id})">Reply</span>
+          <span>Report</span>
+        </div>
+        <!-- Reply Input -->
+        <div id="reply-input-${comment.id}" style="display:none; margin-top:8px;" class="comment-box">
+          <div class="comment-input-wrapper">
+            <input type="text" id="reply-text-${comment.id}" placeholder="Write a reply...">
+            <button class="send-btn" onclick="addReply(${postId}, ${comment.id})"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+        <!-- Nested Replies -->
+        <div class="replies-container" id="replies-${comment.id}">
+          ${comment.replies.map(reply => `
+            <div class="comment-item" style="margin-top:10px;">
+              <div class="avatar sm" style="width:24px; height:24px; font-size:10px;"><i class="fas fa-user"></i></div>
+              <div class="comment-content">
+                <div class="comment-bubble">
+                  <div class="comment-author">${reply.author}</div>
+                  <div class="comment-text">${reply.text}</div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
         </div>
       </div>
     </div>
-  </main>
-</div>
+  `).join('');
+}
 
-<!-- BOTTOM NAV -->
-<nav class="bottom-nav">
-  <div class="bn-item active" onclick="filterFeed('all')"><i class="fas fa-home"></i></div>
-  <div class="bn-item" onclick="openModal('mMissing')"><i class="fas fa-user-magnifying-glass"></i></div>
-  <div class="bn-item" onclick="openModal('mComposer')"><i class="fas fa-plus-circle"></i></div>
-  <div class="bn-item" onclick="openModal('mBlood')"><i class="fas fa-droplet"></i></div>
-  <div class="bn-item" onclick="openShield()"><i class="fas fa-shield-halved"></i></div>
-</nav>
+// --- INTERACTIONS ---
+function publishPost() {
+  const text = document.getElementById('postText').value;
+  if (!text.trim()) return alert("Post cannot be empty!");
 
-<!-- MODALS -->
-<div class="modal-back" id="mComposer">
-  <div class="modal">
-    <h3>Create Post &amp; Reels <i class="fas fa-times close-x" onclick="closeModal('mComposer')"></i></h3>
-    <textarea id="postText" placeholder="What's on your mind?"></textarea>
-    <img id="postImagePreview" class="post-image" alt="" style="display:none; max-height:200px; object-fit:cover;">
-    <input type="file" id="postImageInput" accept="image/*,video/*" style="display:none;" onchange="previewPostImage(event)">
-    <div style="margin:10px 0; display:flex; gap:10px;">
-      <button class="btn" style="flex:1" onclick="document.getElementById('postImageInput').click()"><i class="fas fa-image" style="color:#2ecc71;"></i> Photo / Reel</button>
-      <button class="btn" style="flex:1" onclick="attachLocation()"><i class="fas fa-location-dot" style="color:#e74c3c;"></i> Location</button>
-    </div>
-    <button class="btn btn-primary w-100" onclick="publishPost()">Publish Post</button>
-  </div>
-</div>
+  posts.unshift({
+    id: Date.now(),
+    author: currentUser.name,
+    isOfficial: false,
+    time: Date.now(),
+    content: text,
+    reactions: { "❤️": 0, "👍": 0, "😆": 0, "😮": 0, "😢": 0, "😠": 0 },
+    userReaction: null,
+    comments: []
+  });
 
-<div class="modal-back" id="mMissing">
-  <div class="modal">
-    <h3>Report Missing Person <i class="fas fa-times close-x" onclick="closeModal('mMissing')"></i></h3>
-    <div class="form-group"><label>Full Name *</label><input id="miName" placeholder="e.g. Rafiq Hasan"></div>
-    <div class="form-group"><label>Last Seen Location *</label><input id="miLastSeen" placeholder="Mirpur 10, Dhaka"></div>
-    <div class="form-group"><label>Contact Number *</label><input id="miPhone" placeholder="+8801XXXXXXXXX"></div>
-    <div class="form-group"><label>Description / Clothing</label><textarea id="miDesc" placeholder="Wearing blue shirt, 5'8&quot; height..."></textarea></div>
-    <button class="btn btn-primary w-100" onclick="submitMissing()">Publish Alert</button>
-  </div>
-</div>
+  document.getElementById('postText').value = '';
+  closeModal('mComposer');
+  renderFeed();
+}
 
-<div class="modal-back" id="mBlood">
-  <div class="modal">
-    <h3>Blood Donor Request <i class="fas fa-times close-x" onclick="closeModal('mBlood')"></i></h3>
-    <div class="form-group"><label>Patient Name *</label><input id="blPatient" placeholder="Patient name"></div>
-    <div class="form-group"><label>Blood Group *</label>
-      <select id="blGroup"><option>A+</option><option>B+</option><option>O+</option><option>AB+</option><option>A-</option><option>B-</option><option>O-</option><option>AB-</option></select>
-    </div>
-    <div class="form-group"><label>Hospital *</label><input id="blHospital" placeholder="Dhaka Medical"></div>
-    <div class="form-group"><label>Contact Number *</label><input id="blPhone" placeholder="+8801XXXXXXXXX"></div>
-    <div class="form-group"><label>Urgency</label>
-      <select id="blUrgency"><option>Normal</option><option>Urgent</option><option>Critical</option></select>
-    </div>
-    <button class="btn btn-primary w-100" onclick="submitBloodRequest()">Publish Request</button>
-  </div>
-</div>
+function showReactionPopup(postId) {
+  document.getElementById(`reaction-popup-${postId}`).style.display = 'flex';
+}
 
-<div class="modal-back" id="mSettings">
-  <div class="modal">
-    <h3>Settings <i class="fas fa-times close-x" onclick="closeModal('mSettings')"></i></h3>
-    <div class="mm-tabs">
-      <button class="mm-tab active" onclick="mmTab(this,'stVerify')">NID Verification</button>
-      <button class="mm-tab" onclick="mmTab(this,'stReceiver')">Blood Receiver</button>
-      <button class="mm-tab" onclick="mmTab(this,'stPrivacy')">Privacy</button>
-    </div>
-    <div id="stVerify" class="mm-pane active">
-      <div class="form-group"><label>Full Name *</label><input type="text" id="verifyName" placeholder="Your full name"></div>
-      <div class="form-group"><label>NID Front *</label><input type="file" id="nidFrontInput" accept="image/*"></div>
-      <div class="form-group"><label>NID Back</label><input type="file" id="nidBackInput" accept="image/*"></div>
-      <div class="form-group"><label>Selfie *</label><input type="file" id="selfieInput" accept="image/*"></div>
-      <button class="btn btn-primary w-100" id="submitNidBtn" onclick="submitNID()">Submit for Verification</button>
-    </div>
-    <div id="stReceiver" class="mm-pane">
-      <div class="form-group"><label>Full Name *</label><input type="text" id="rcName" placeholder="Receiver name"></div>
-      <div class="form-group"><label>Blood Group *</label>
-        <select id="rcGroup"><option>A+</option><option>B+</option><option>O+</option><option>AB+</option><option>A-</option><option>B-</option><option>O-</option><option>AB-</option></select>
-      </div>
-      <div class="form-group"><label>Address *</label><input type="text" id="rcAddress" placeholder="Area, City"></div>
-      <div class="form-group"><label>Phone *</label><input type="text" id="rcPhone" placeholder="+8801XXXXXXXXX"></div>
-      <button class="btn btn-primary w-100" onclick="submitReceiver()">Register as Receiver</button>
-    </div>
-    <div id="stPrivacy" class="mm-pane">
-      <div class="form-group"><label>Profile Visibility</label>
-        <select id="privacyLevel"><option value="public">Public</option><option value="friends">Friends Only</option><option value="private">Private</option></select>
-      </div>
-      <div class="form-group"><label>Show Location in Alerts</label>
-        <select id="privacyLocation"><option value="yes">Yes</option><option value="no">No</option></select>
-      </div>
-      <div class="form-group"><label>Allow Blood Requests from</label>
-        <select id="privacyBlood"><option value="all">Everyone</option><option value="nearby">Nearby Only</option><option value="none">No One</option></select>
-      </div>
-      <button class="btn btn-primary w-100" onclick="savePrivacy()">Save Privacy Settings</button>
-    </div>
-  </div>
-</div>
+function hideReactionPopup(postId) {
+  setTimeout(() => {
+    document.getElementById(`reaction-popup-${postId}`).style.display = 'none';
+  }, 500);
+}
 
-<div class="modal-back" id="mShield">
-  <div class="modal">
-    <h3>My Shield <i class="fas fa-times close-x" onclick="closeModal('mShield')"></i></h3>
-    <div style="text-align:center; margin-bottom:15px;">
-      <i class="fas fa-shield-halved" style="font-size:50px; color:var(--primary);" id="shieldIcon"></i>
-      <h2 style="margin:10px 0;" id="securityScore">75/100</h2>
-      <p style="color:var(--muted); margin-bottom:10px;">Security Score</p>
-      <div style="background:var(--border); height:8px; border-radius:4px; overflow:hidden;">
-        <div id="scoreBar" style="width:75%; background:var(--primary); height:100%;"></div>
-      </div>
-      <p id="scoreMsg" style="font-size:12px; color:var(--primary); margin-top:5px;">Good Safety Standing</p>
-    </div>
-    <div class="form-group">
-      <label>Add Trusted Contact (For Panic Mode)</label>
-      <input id="tcName" placeholder="Contact Name" style="margin-bottom:6px;">
-      <input id="tcPhone" placeholder="Phone Number" style="margin-bottom:6px;">
-      <button class="btn btn-primary w-100" onclick="addTrustedContact()">Add Contact</button>
-    </div>
-    <div id="trustedList" class="trusted-list"></div>
-    <button class="btn w-100" style="margin-top:15px; background:#e74c3c; color:#fff;" onclick="triggerPanic()">ACTIVATE PANIC MODE</button>
-  </div>
-</div>
+function reactToPost(postId, emoji) {
+  const post = posts.find(p => p.id === postId);
+  
+  // Undo Feature
+  if (post.userReaction === emoji) {
+    post.reactions[emoji]--;
+    post.userReaction = null;
+  } else {
+    // Remove previous reaction if exists
+    if (post.userReaction) post.reactions[post.userReaction]--;
+    // Add new reaction
+    post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
+    post.userReaction = emoji;
+  }
+  renderFeed();
+}
 
-<div class="modal-back" id="mNotifications">
-  <div class="modal">
-    <h3>Notifications <i class="fas fa-times close-x" onclick="closeModal('mNotifications')"></i></h3>
-    <div id="notifList"><p style="text-align:center; color:var(--muted); padding:20px 0;">No new notifications.</p></div>
-  </div>
-</div>
+function togglePostMenu(postId) {
+  const menu = document.getElementById(`menu-${postId}`);
+  const isShown = menu.classList.contains('show');
+  
+  // Close all menus
+  document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+  
+  if (!isShown) menu.classList.add('show');
+}
 
-<div class="modal-back" id="mSafetyTips">
-  <div class="modal">
-    <h3>Safety Tips <i class="fas fa-times close-x" onclick="closeModal('mSafetyTips')"></i></h3>
-    <div style="display:flex; flex-direction:column; gap:10px;">
-      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Share your live location with trusted contacts when traveling alone.</div>
-      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Verify NID to get a verified badge and higher security score.</div>
-      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Keep emergency numbers saved and accessible offline.</div>
-      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Use strong passwords and enable two-factor authentication.</div>
-    </div>
-  </div>
-</div>
+function savePost(postId) {
+  showToast("Post saved successfully!");
+}
 
-<div class="modal-back" id="mEmergencyContacts">
-  <div class="modal">
-    <h3>Emergency Contacts <i class="fas fa-times close-x" onclick="closeModal('mEmergencyContacts')"></i></h3>
-    <div style="display:flex; flex-direction:column; gap:8px;">
-      <div class="emergency-item"><i class="fas fa-phone"></i> <span><b>National Emergency:</b> 999</span></div>
-    </div>
-  </div>
-</div>
+function sharePost() {
+  showToast("Post shared to your timeline!");
+}
 
-<div class="modal-back" id="mProfile">
-  <div class="modal">
-    <h3>My Profile <i class="fas fa-times close-x" onclick="closeModal('mProfile')"></i></h3>
-    <div style="text-align:center;">
-      <div class="avatar" style="width:70px; height:70px; margin:0 auto 10px; font-size:30px;"><i class="fas fa-user"></i></div>
-      <h4>Abir Mazumder <span class="vbadge"><i class="fas fa-check"></i></span></h4>
-      <p style="color:var(--muted); font-size:13px;">Joined Autrobook • Safety Member</p>
-      <div class="profile-stats" style="display:flex; margin:15px 0; background:var(--bg); padding:10px; border-radius:8px;">
-        <div><b id="statPosts">1</b><br><small>Posts</small></div>
-        <div><b id="statAlerts">0</b><br><small>Alerts</small></div>
-        <div><b id="statScore">75</b><br><small>Score</small></div>
-      </div>
-    </div>
-  </div>
-</div>
+function openReportModal() {
+  document.getElementById('mReport').classList.add('show');
+}
 
-<div id="toast" class="toast" style="position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:9999; font-size:14px;"></div>
+function submitReport() {
+  closeModal('mReport');
+  showToast("Report submitted. Thank you for keeping the community safe.");
+}
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/app.js"></script>
-</body>
-</html>
+// --- COMMENTS LOGIC ---
+function toggleComments(postId) {
+  const section = document.getElementById(`comments-${postId}`);
+  section.classList.toggle('show');
+}
+
+function handleCommentEnter(e, postId) {
+  if (e.key === 'Enter') addTextComment(postId);
+}
+
+function addTextComment(postId) {
+  const input = document.getElementById(`comment-input-${postId}`);
+  const text = input.value.trim();
+  if (!text) return;
+
+  const post = posts.find(p => p.id === postId);
+  post.comments.push({
+    id: Date.now(),
+    author: currentUser.name,
+    text: text,
+    time: Date.now(),
+    reactions: {},
+    userReaction: null,
+    replies: []
+  });
+
+  input.value = '';
+  renderFeed();
+  document.getElementById(`comments-${postId}`).classList.add('show');
+}
+
+function toggleReplyInput(postId, commentId) {
+  const replyBox = document.getElementById(`reply-input-${commentId}`);
+  replyBox.style.display = replyBox.style.display === 'none' ? 'flex' : 'none';
+}
+
+function addReply(postId, commentId) {
+  const input = document.getElementById(`reply-text-${commentId}`);
+  const text = input.value.trim();
+  if (!text) return;
+
+  const post = posts.find(p => p.id === postId);
+  const comment = post.comments.find(c => c.id === commentId);
+  
+  comment.replies.push({
+    author: currentUser.name,
+    text: text
+  });
+
+  renderFeed();
+  document.getElementById(`comments-${postId}`).classList.add('show');
+}
+
+function likeComment(postId, commentId) {
+  const post = posts.find(p => p.id === postId);
+  const comment = post.comments.find(c => c.id === commentId);
+  
+  if (comment.userReaction) {
+    comment.reactions[comment.userReaction]--;
+    comment.userReaction = null;
+  } else {
+    comment.userReaction = "❤️";
+    comment.reactions["❤️"] = (comment.reactions["❤️"] || 0) + 1;
+  }
+  renderFeed();
+  document.getElementById(`comments-${postId}`).classList.add('show');
+}
+
+// --- VOICE COMMENT LOGIC ---
+let recordingTimers = {};
+
+function toggleVoiceRecord(btn, postId) {
+  const isRecording = btn.classList.contains('recording');
+
+  if (isRecording) {
+    // Stop recording
+    clearTimeout(recordingTimers[postId]);
+    btn.classList.remove('recording');
+    btn.innerHTML = '<i class="fas fa-microphone"></i>';
+    
+    // Simulate sending voice message
+    const post = posts.find(p => p.id === postId);
+    post.comments.push({
+      id: Date.now(),
+      author: currentUser.name,
+      text: "🎤 Voice Message",
+      time: Date.now(),
+      reactions: {},
+      userReaction: null,
+      replies: []
+    });
+    renderFeed();
+    document.getElementById(`comments-${postId}`).classList.add('show');
+  } else {
+    // Start recording
+    btn.classList.add('recording');
+    btn.innerHTML = '<i class="fas fa-stop"></i>';
+    
+    // Duration: 1 min (60000ms) for black verified, 30s (30000ms) for others
+    const maxTime = currentUser.isVerified ? 60000 : 30000; 
+    
+    showToast(currentUser.isVerified ? "Recording (Max 1 min)..." : "Recording (Max 30s)...");
+
+    recordingTimers[postId] = setTimeout(() => {
+      if (btn.classList.contains('recording')) {
+        toggleVoiceRecord(btn, postId); // Auto stop and send
+      }
+    }, maxTime);
+  }
+}
+
+// --- UTILS ---
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.innerText = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+// Close dropdowns on outside click
+window.addEventListener('click', function(e) {
+  if (!e.target.matches('.post-menu-btn') && !e.target.matches('.post-menu-btn i')) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+  }
+});
+
+// Init
+window.onload = () => {
+  renderFeed();
+};
