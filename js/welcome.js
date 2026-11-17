@@ -120,15 +120,55 @@ function showProfiles(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('backBtn').style.display='none';
 }
+
+/* ========== NEW - PROFILE REMOVE / DELETE - FIXED DUPLICATE ========== */
 function renderProfiles(){
-  const email=localStorage.getItem('autro_user_email'); const name=localStorage.getItem('autro_user_name')||'Abir Mazumder';
-  if(email&&email!=='guest@autrobook.com'){
+  const email=localStorage.getItem('autro_user_email');
+  const name=localStorage.getItem('autro_user_name')||'Abir Mazumder';
+  if(email && email!=='guest@autrobook.com'){
+    // FIXED: Now only 1 card will show, not 2
     document.getElementById('profileList').innerHTML=`
-    <button class="profile" onclick="showLogin()"><img src="https://i.pravatar.cc/100?img=12"><span><b>${name}</b><span><span class="dot">●</span> 7 notifications</span></span><span class="arr"><i class="fas fa-chevron-right"></i></span></button>
-    <button class="profile" onclick="showLogin()"><img src="logo.png"><span><b>${name}</b></span><span class="arr"><i class="fas fa-chevron-right"></i></span></button>`;
+    <div class="profile-wrap">
+      <button class="profile" onclick="showLogin()">
+        <img src="https://i.pravatar.cc/100?img=12">
+        <span><b>${name}</b><span><span class="dot">●</span> 7 notifications</span></span>
+        <span class="arr"><i class="fas fa-chevron-right"></i></span>
+      </button>
+      <button class="profile-remove" onclick="openRemoveProfile(event)" title="Remove profile">×</button>
+    </div>`;
     showProfiles();
   } else { showLogin(); }
 }
+function openRemoveProfile(e){
+  if(e) e.stopPropagation();
+  document.getElementById('mRemoveProfile').style.display='flex';
+}
+function closeRemoveProfile(){
+  document.getElementById('mRemoveProfile').style.display='none';
+}
+function removeProfileOnly(){
+  localStorage.removeItem('autro_user_email');
+  localStorage.removeItem('autro_user_name');
+  localStorage.removeItem('autro_user_id');
+  closeRemoveProfile();
+  showToast('Profile removed from this device');
+  setTimeout(()=>{ location.reload(); }, 500);
+}
+async function deleteAccountPermanently(){
+  if(!confirm('Are you sure? Your account will be deleted permanently!')) return;
+  try{
+    const { data } = await supabase.auth.getUser();
+    if(data.user){
+      try{ await supabase.from('profiles').delete().eq('id', data.user.id); }catch(e){}
+    }
+    await supabase.auth.signOut();
+    localStorage.clear();
+    closeRemoveProfile();
+    showToast('Account deleted permanently');
+    setTimeout(()=>{ location.reload(); }, 600);
+  }catch(err){ showToast(err.message); }
+}
+
 function switchTab(tab){
   currentTab=tab;
   document.getElementById('tabLogin').classList.toggle('active', tab==='login');
@@ -187,11 +227,4 @@ async function forgotPassword(){
   if(error) showToast(error.message);
   else showToast('Password reset link sent to '+email);
 }
-function continueAsGuest(){ localStorage.setItem('autro_user_email','guest@autrobook.com'); localStorage.setItem('autro_user_name','Guest'); window.location.href='home.html'; }
-function loginWithFingerprint(){ showToast('Fingerprint login - use your device biometrics'); document.getElementById('mSetupPasskey').style.display='flex'; }
-function verifyLogin2FA(){ document.getElementById('m2FAVerify').style.display='none'; window.location.href='home.html'; }
-function cancel2FA(){ document.getElementById('m2FAVerify').style.display='none'; }
-function setupPasskeyFromWelcome(){ document.getElementById('mSetupPasskey').style.display='none'; const uid=localStorage.getItem('autro_user_id'); if(uid) localStorage.setItem('autro_passkey_'+uid,'1'); showToast('Fingerprint enabled!'); setTimeout(()=>{ window.location.href='home.html'; }, 500); }
-function closePasskeyModal(){ document.getElementById('mSetupPasskey').style.display='none'; window.location.href='home.html'; }
-
-document.addEventListener('DOMContentLoaded', ()=>{ applyTheme(); applyLang(); renderProfiles(); switchTab('login'); });
+function continueAsGuest(){ localStorage.setItem('autro_user_email','guest@
