@@ -1,175 +1,298 @@
-// ---------- Helpers ----------
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b5d3b">
+  <title>Autrobook — Safety First Social</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
 
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3000);
-}
-function toggleTheme() {
-  document.body.classList.toggle('dark-theme');
-  const icon = document.getElementById('themeIcon');
-  icon.classList.toggle('fa-moon');
-  icon.classList.toggle('fa-sun');
-}
-function scrollTopPage() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="brand" onclick="scrollTopPage()">
+    <img src="logo.png" alt="Autrobook" class="logo-img" onerror="this.style.display='none'">
+    <span class="brand-name">Autrobook</span>
+    <span class="vbadge" title="Official"><i class="fas fa-check"></i></span>
+  </div>
+  <div class="search">
+    <i class="fas fa-search" style="color:var(--muted)"></i>
+    <input placeholder="Search Autrobook..." aria-label="Search" id="globalSearch" onkeyup="handleSearch(event)">
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" onclick="openModal('mNotifications')" title="Notifications">
+      <i class="fas fa-bell"></i><span class="notif-dot" id="notifDot"></span>
+    </button>
+    <button class="icon-btn" onclick="toggleTheme()" title="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
+    <button class="icon-btn" onclick="openModal('mSettings')" title="Settings"><i class="fas fa-cog"></i></button>
+  </div>
+</header>
 
-// ---------- Feed ----------
-function filterFeed(type, btn) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  else if (type === 'all') {
-    const first = document.querySelector('.filter-btn');
-    if (first) first.classList.add('active');
-  }
-  document.querySelectorAll('#feedContainer .post').forEach(p => {
-    p.style.display = (type === 'all' || p.dataset.type === type) ? '' : 'none';
-  });
-}
-
-function addPost(type, authorLine, bodyHtml) {
-  const post = document.createElement('div');
-  post.className = 'post';
-  post.dataset.type = type;
-  post.innerHTML = `
-    <div class="post-header">
-      <div class="avatar sm"><i class="fas fa-user"></i></div>
-      <div>
-        <div class="post-author">Abir Mazumder <span class="vbadge"><i class="fas fa-check"></i></span></div>
-        <div class="post-meta"><i class="fas fa-clock"></i> Just now ${authorLine}</div>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="side-card profile-mini">
+      <div class="pm-row">
+        <div class="avatar"><i class="fas fa-user"></i></div>
+        <div class="pm-info">
+          <div class="pm-name"><span>Abir Mazumder</span> <span class="vbadge"><i class="fas fa-check"></i></span></div>
+          <div class="pm-sub" onclick="openModal('mProfile')">View profile →</div>
+        </div>
       </div>
     </div>
-    ${bodyHtml}
-    <div class="post-actions-bar">
-      <button onclick="likePost(this)"><i class="far fa-thumbs-up"></i> Like</button>
-      <button onclick="toggleComments(this)"><i class="far fa-comment"></i> Comment</button>
-      <button onclick="sharePost()"><i class="far fa-share-from-square"></i> Share</button>
-    </div>`;
-  document.getElementById('feedContainer').prepend(post);
-  return post;
-}
+    <div class="side-card">
+      <div class="nav-item active" onclick="filterFeed('all')"><i class="fas fa-newspaper"></i> News Feed</div>
+      <div class="nav-item" onclick="openModal('mMissing')"><i class="fas fa-user-magnifying-glass"></i> Missing Alerts</div>
+      <div class="nav-item" onclick="openModal('mBlood')"><i class="fas fa-droplet"></i> Blood Donors</div>
+      <div class="nav-item" onclick="openShield()"><i class="fas fa-shield-halved"></i> My Shield</div>
+      <div class="nav-item" onclick="openModal('mSafetyTips')"><i class="fas fa-lightbulb"></i> Safety Tips</div>
+      <div class="nav-item" onclick="openModal('mEmergencyContacts')"><i class="fas fa-address-book"></i> Emergency Contacts</div>
+    </div>
+    <div class="side-card sos-card" onclick="sosAlert()">
+      <i class="fas fa-triangle-exclamation"></i>
+      <div><b>Emergency SOS</b><br><small>Share live location</small></div>
+    </div>
+  </aside>
 
-function previewPostImage(event) {
-  const file = event.target.files[0];
-  if (!file || !file.type.startsWith('image/')) { showToast('Video preview is not shown here'); return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const out = document.getElementById('postImagePreview');
-    out.src = reader.result;
-    out.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
+  <!-- FEED -->
+  <main class="feed">
+    <div class="stories-bar" id="storiesBar">
+      <div class="story-card create-story" onclick="openModal('mComposer')">
+        <div class="story-avatar-wrap"><i class="fas fa-plus"></i></div>
+        <span>Create Reel</span>
+      </div>
+      <div class="story-card" onclick="viewStory('Abir')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Abir M.</span></div>
+      <div class="story-card" onclick="viewStory('Rafiq')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Rafiq H.</span></div>
+      <div class="story-card" onclick="viewStory('Sumaiya')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Sumaiya K.</span></div>
+      <div class="story-card" onclick="viewStory('Tanvir')"><div class="story-ring"><div class="avatar sm"><i class="fas fa-user"></i></div></div><span>Tanvir A.</span></div>
+    </div>
 
-function publishPost() {
-  const text = document.getElementById('postText').value;
-  if (!text.trim()) { showToast('Please enter something to post!'); return; }
-  const img = document.getElementById('postImagePreview');
-  const imgHtml = img.style.display !== 'none' && img.src
-    ? `<img class="post-image" alt="" src="${img.src}">` : '';
-  addPost('posts', '• Public', `<p>${esc(text)}</p>${imgHtml}`);
-  document.getElementById('postText').value = '';
-  img.style.display = 'none';
-  img.removeAttribute('src');
-  closeModal('mComposer');
-  const n = document.getElementById('statPosts');
-  n.textContent = (parseInt(n.textContent, 10) || 0) + 1;
-  showToast('Post published!');
-}
+    <section class="safety-hub">
+      <div class="safety-grid">
+        <div class="safety-card" onclick="openModal('mMissing')">
+          <div class="sc-top"><i class="fas fa-user-magnifying-glass sc-icon"></i> Missing Person</div>
+          <div class="sc-body">Report an alert</div>
+        </div>
+        <div class="safety-card" onclick="openModal('mBlood')">
+          <div class="sc-top"><i class="fas fa-droplet sc-icon blood-icon"></i> Blood Donor</div>
+          <div class="sc-body">Find donors nearby</div>
+        </div>
+        <div class="safety-card" onclick="openModal('mSafetyTips')">
+          <div class="sc-top"><i class="fas fa-lightbulb sc-icon" style="color:#e6a017;"></i> Safety Tips</div>
+          <div class="sc-body">Daily safety advice</div>
+        </div>
+        <div class="safety-card" onclick="openModal('mEmergencyContacts')">
+          <div class="sc-top"><i class="fas fa-address-book sc-icon" style="color:#8e44ad;"></i> Emergency</div>
+          <div class="sc-body">Important numbers</div>
+        </div>
+      </div>
+    </section>
 
-function submitMissing() {
-  const name = document.getElementById('miName').value.trim();
-  const place = document.getElementById('miLastSeen').value.trim();
-  const phone = document.getElementById('miPhone').value.trim();
-  const desc = document.getElementById('miDesc').value.trim();
-  if (!name || !place || !phone) { showToast('Fill name, last seen location and contact number'); return; }
-  addPost('missing', '• Missing alert', `
-    <h4 style="margin-top:10px;color:#e74c3c;"><i class="fas fa-user-magnifying-glass"></i> Missing: ${esc(name)}</h4>
-    <p><b>Last seen:</b> ${esc(place)}<br><b>Contact:</b> ${esc(phone)}${desc ? '<br>' + esc(desc) : ''}</p>`);
-  ['miName','miLastSeen','miPhone','miDesc'].forEach(id => document.getElementById(id).value = '');
-  closeModal('mMissing');
-  const a = document.getElementById('statAlerts');
-  a.textContent = (parseInt(a.textContent, 10) || 0) + 1;
-  showToast('Alert added to your feed (not saved to a server yet)');
-}
+    <div class="composer">
+      <div class="composer-row" onclick="openModal('mComposer')">
+        <div class="avatar"><i class="fas fa-user"></i></div>
+        <div class="composer-input">What's on your mind, Abir?</div>
+      </div>
+      <div class="composer-actions">
+        <button onclick="openModal('mComposer')"><i class="fas fa-video" style="color:#e74c3c;"></i> Live/Reel</button>
+        <button onclick="openModal('mComposer')"><i class="fas fa-images" style="color:#2ecc71;"></i> Photo/Video</button>
+        <button onclick="openModal('mMissing')"><i class="fas fa-triangle-exclamation" style="color:#f39c12;"></i> Safety Alert</button>
+      </div>
+    </div>
 
-function submitBloodRequest() {
-  const patient = document.getElementById('blPatient').value.trim();
-  const hospital = document.getElementById('blHospital').value.trim();
-  const phone = document.getElementById('blPhone').value.trim();
-  const group = document.getElementById('blGroup').value;
-  const urgency = document.getElementById('blUrgency').value;
-  if (!patient || !hospital || !phone) { showToast('Fill patient, hospital and contact number'); return; }
-  addPost('blood', '• Blood request', `
-    <h4 style="margin-top:10px;color:#e74c3c;"><i class="fas fa-droplet"></i> ${esc(group)} needed — ${esc(urgency)}</h4>
-    <p><b>Patient:</b> ${esc(patient)}<br><b>Hospital:</b> ${esc(hospital)}<br><b>Contact:</b> ${esc(phone)}</p>`);
-  ['blPatient','blHospital','blPhone'].forEach(id => document.getElementById(id).value = '');
-  closeModal('mBlood');
-  showToast('Request added to your feed (not saved to a server yet)');
-}
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-btn active" onclick="filterFeed('all', this)">All</button>
+      <button class="filter-btn" onclick="filterFeed('posts', this)">Posts</button>
+      <button class="filter-btn" onclick="filterFeed('missing', this)">Missing</button>
+      <button class="filter-btn" onclick="filterFeed('blood', this)">Blood</button>
+    </div>
 
-// ---------- Settings ----------
-function submitNID() {
-  const name = document.getElementById('verifyName').value.trim();
-  const front = document.getElementById('nidFrontInput').files.length;
-  const selfie = document.getElementById('selfieInput').files.length;
-  if (!name || !front || !selfie) { showToast('Add your name, NID front and selfie'); return; }
-  showToast('Not uploaded yet: connect a private storage first');
-}
-function submitReceiver() {
-  const ok = ['rcName','rcAddress','rcPhone'].every(id => document.getElementById(id).value.trim());
-  if (!ok) { showToast('Fill all required fields'); return; }
-  showToast('Saved on this device only');
-  closeModal('mSettings');
-}
-function savePrivacy() {
-  showToast('Privacy settings saved on this device only');
-  closeModal('mSettings');
-}
-function mmTab(btn, paneId) {
-  document.querySelectorAll('.mm-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.mm-pane').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById(paneId).classList.add('active');
-}
+    <div id="feedContainer">
+      <div class="post" data-type="posts">
+        <div class="post-header">
+          <div class="avatar sm"><i class="fas fa-user"></i></div>
+          <div>
+            <div class="post-author">Autrobook Official <span class="vbadge"><i class="fas fa-check"></i></span></div>
+            <div class="post-meta"><i class="fas fa-clock"></i> Just now • Public</div>
+          </div>
+        </div>
+        <h4 style="margin-top:10px;">Welcome to Autrobook Social!</h4>
+        <p>A safety-first social network built for community protection, missing person alerts, urgent blood matching, and instant emergency dispatch.</p>
+        <div class="post-actions-bar">
+          <button onclick="likePost(this)"><i class="far fa-thumbs-up"></i> Like</button>
+          <button onclick="toggleComments(this)"><i class="far fa-comment"></i> Comment</button>
+          <button onclick="sharePost()"><i class="far fa-share-from-square"></i> Share</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
 
-// ---------- Shield ----------
-function openShield() { openModal('mShield'); }
-function addTrustedContact() {
-  const name = document.getElementById('tcName').value.trim();
-  const phone = document.getElementById('tcPhone').value.trim();
-  if (!name || !phone) { showToast('Fill contact details'); return; }
-  const item = document.createElement('p');
-  item.innerHTML = `<i class="fas fa-user-shield"></i> ${esc(name)} (${esc(phone)})`;
-  document.getElementById('trustedList').appendChild(item);
-  document.getElementById('tcName').value = '';
-  document.getElementById('tcPhone').value = '';
-  showToast('Trusted contact added');
-}
-function triggerPanic() {
-  if (confirm('Trigger PANIC MODE?')) showToast('Demo only: no alert was sent. Call 999 in an emergency.');
-}
-function sosAlert() {
-  if (confirm('Trigger Emergency SOS?')) showToast('Demo only: no alert was sent. Call 999 in an emergency.');
-}
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bn-item active" onclick="filterFeed('all')"><i class="fas fa-home"></i></div>
+  <div class="bn-item" onclick="openModal('mMissing')"><i class="fas fa-user-magnifying-glass"></i></div>
+  <div class="bn-item" onclick="openModal('mComposer')"><i class="fas fa-plus-circle"></i></div>
+  <div class="bn-item" onclick="openModal('mBlood')"><i class="fas fa-droplet"></i></div>
+  <div class="bn-item" onclick="openShield()"><i class="fas fa-shield-halved"></i></div>
+</nav>
 
-// ---------- Misc ----------
-function viewStory(name) { showToast('Reel by ' + name); }
-function likePost(btn) {
-  const on = btn.classList.toggle('liked');
-  btn.style.color = on ? 'var(--primary)' : '';
-  btn.querySelector('i').className = on ? 'fas fa-thumbs-up' : 'far fa-thumbs-up';
-}
-function toggleComments() { showToast('Comments coming soon'); }
-function sharePost() { showToast('Sharing coming soon'); }
-function attachLocation() { showToast('Location attach coming soon'); }
-function handleSearch(e) {
-  if (e.key === 'Enter') showToast('Searching for: ' + e.target.value);
-  }
+<!-- MODALS -->
+<div class="modal-back" id="mComposer">
+  <div class="modal">
+    <h3>Create Post &amp; Reels <i class="fas fa-times close-x" onclick="closeModal('mComposer')"></i></h3>
+    <textarea id="postText" placeholder="What's on your mind?"></textarea>
+    <img id="postImagePreview" class="post-image" alt="" style="display:none; max-height:200px; object-fit:cover;">
+    <input type="file" id="postImageInput" accept="image/*,video/*" style="display:none;" onchange="previewPostImage(event)">
+    <div style="margin:10px 0; display:flex; gap:10px;">
+      <button class="btn" style="flex:1" onclick="document.getElementById('postImageInput').click()"><i class="fas fa-image" style="color:#2ecc71;"></i> Photo / Reel</button>
+      <button class="btn" style="flex:1" onclick="attachLocation()"><i class="fas fa-location-dot" style="color:#e74c3c;"></i> Location</button>
+    </div>
+    <button class="btn btn-primary w-100" onclick="publishPost()">Publish Post</button>
+  </div>
+</div>
+
+<div class="modal-back" id="mMissing">
+  <div class="modal">
+    <h3>Report Missing Person <i class="fas fa-times close-x" onclick="closeModal('mMissing')"></i></h3>
+    <div class="form-group"><label>Full Name *</label><input id="miName" placeholder="e.g. Rafiq Hasan"></div>
+    <div class="form-group"><label>Last Seen Location *</label><input id="miLastSeen" placeholder="Mirpur 10, Dhaka"></div>
+    <div class="form-group"><label>Contact Number *</label><input id="miPhone" placeholder="+8801XXXXXXXXX"></div>
+    <div class="form-group"><label>Description / Clothing</label><textarea id="miDesc" placeholder="Wearing blue shirt, 5'8&quot; height..."></textarea></div>
+    <button class="btn btn-primary w-100" onclick="submitMissing()">Publish Alert</button>
+  </div>
+</div>
+
+<div class="modal-back" id="mBlood">
+  <div class="modal">
+    <h3>Blood Donor Request <i class="fas fa-times close-x" onclick="closeModal('mBlood')"></i></h3>
+    <div class="form-group"><label>Patient Name *</label><input id="blPatient" placeholder="Patient name"></div>
+    <div class="form-group"><label>Blood Group *</label>
+      <select id="blGroup"><option>A+</option><option>B+</option><option>O+</option><option>AB+</option><option>A-</option><option>B-</option><option>O-</option><option>AB-</option></select>
+    </div>
+    <div class="form-group"><label>Hospital *</label><input id="blHospital" placeholder="Dhaka Medical"></div>
+    <div class="form-group"><label>Contact Number *</label><input id="blPhone" placeholder="+8801XXXXXXXXX"></div>
+    <div class="form-group"><label>Urgency</label>
+      <select id="blUrgency"><option>Normal</option><option>Urgent</option><option>Critical</option></select>
+    </div>
+    <button class="btn btn-primary w-100" onclick="submitBloodRequest()">Publish Request</button>
+  </div>
+</div>
+
+<div class="modal-back" id="mSettings">
+  <div class="modal">
+    <h3>Settings <i class="fas fa-times close-x" onclick="closeModal('mSettings')"></i></h3>
+    <div class="mm-tabs">
+      <button class="mm-tab active" onclick="mmTab(this,'stVerify')">NID Verification</button>
+      <button class="mm-tab" onclick="mmTab(this,'stReceiver')">Blood Receiver</button>
+      <button class="mm-tab" onclick="mmTab(this,'stPrivacy')">Privacy</button>
+    </div>
+    <div id="stVerify" class="mm-pane active">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="verifyName" placeholder="Your full name"></div>
+      <div class="form-group"><label>NID Front *</label><input type="file" id="nidFrontInput" accept="image/*"></div>
+      <div class="form-group"><label>NID Back</label><input type="file" id="nidBackInput" accept="image/*"></div>
+      <div class="form-group"><label>Selfie *</label><input type="file" id="selfieInput" accept="image/*"></div>
+      <button class="btn btn-primary w-100" id="submitNidBtn" onclick="submitNID()">Submit for Verification</button>
+    </div>
+    <div id="stReceiver" class="mm-pane">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="rcName" placeholder="Receiver name"></div>
+      <div class="form-group"><label>Blood Group *</label>
+        <select id="rcGroup"><option>A+</option><option>B+</option><option>O+</option><option>AB+</option><option>A-</option><option>B-</option><option>O-</option><option>AB-</option></select>
+      </div>
+      <div class="form-group"><label>Address *</label><input type="text" id="rcAddress" placeholder="Area, City"></div>
+      <div class="form-group"><label>Phone *</label><input type="text" id="rcPhone" placeholder="+8801XXXXXXXXX"></div>
+      <button class="btn btn-primary w-100" onclick="submitReceiver()">Register as Receiver</button>
+    </div>
+    <div id="stPrivacy" class="mm-pane">
+      <div class="form-group"><label>Profile Visibility</label>
+        <select id="privacyLevel"><option value="public">Public</option><option value="friends">Friends Only</option><option value="private">Private</option></select>
+      </div>
+      <div class="form-group"><label>Show Location in Alerts</label>
+        <select id="privacyLocation"><option value="yes">Yes</option><option value="no">No</option></select>
+      </div>
+      <div class="form-group"><label>Allow Blood Requests from</label>
+        <select id="privacyBlood"><option value="all">Everyone</option><option value="nearby">Nearby Only</option><option value="none">No One</option></select>
+      </div>
+      <button class="btn btn-primary w-100" onclick="savePrivacy()">Save Privacy Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="mShield">
+  <div class="modal">
+    <h3>My Shield <i class="fas fa-times close-x" onclick="closeModal('mShield')"></i></h3>
+    <div style="text-align:center; margin-bottom:15px;">
+      <i class="fas fa-shield-halved" style="font-size:50px; color:var(--primary);" id="shieldIcon"></i>
+      <h2 style="margin:10px 0;" id="securityScore">75/100</h2>
+      <p style="color:var(--muted); margin-bottom:10px;">Security Score</p>
+      <div style="background:var(--border); height:8px; border-radius:4px; overflow:hidden;">
+        <div id="scoreBar" style="width:75%; background:var(--primary); height:100%;"></div>
+      </div>
+      <p id="scoreMsg" style="font-size:12px; color:var(--primary); margin-top:5px;">Good Safety Standing</p>
+    </div>
+    <div class="form-group">
+      <label>Add Trusted Contact (For Panic Mode)</label>
+      <input id="tcName" placeholder="Contact Name" style="margin-bottom:6px;">
+      <input id="tcPhone" placeholder="Phone Number" style="margin-bottom:6px;">
+      <button class="btn btn-primary w-100" onclick="addTrustedContact()">Add Contact</button>
+    </div>
+    <div id="trustedList" class="trusted-list"></div>
+    <button class="btn w-100" style="margin-top:15px; background:#e74c3c; color:#fff;" onclick="triggerPanic()">ACTIVATE PANIC MODE</button>
+  </div>
+</div>
+
+<div class="modal-back" id="mNotifications">
+  <div class="modal">
+    <h3>Notifications <i class="fas fa-times close-x" onclick="closeModal('mNotifications')"></i></h3>
+    <div id="notifList"><p style="text-align:center; color:var(--muted); padding:20px 0;">No new notifications.</p></div>
+  </div>
+</div>
+
+<div class="modal-back" id="mSafetyTips">
+  <div class="modal">
+    <h3>Safety Tips <i class="fas fa-times close-x" onclick="closeModal('mSafetyTips')"></i></h3>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Share your live location with trusted contacts when traveling alone.</div>
+      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Verify NID to get a verified badge and higher security score.</div>
+      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Keep emergency numbers saved and accessible offline.</div>
+      <div class="tip-item"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Use strong passwords and enable two-factor authentication.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="mEmergencyContacts">
+  <div class="modal">
+    <h3>Emergency Contacts <i class="fas fa-times close-x" onclick="closeModal('mEmergencyContacts')"></i></h3>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div class="emergency-item"><i class="fas fa-phone"></i> <span><b>National Emergency:</b> 999</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="mProfile">
+  <div class="modal">
+    <h3>My Profile <i class="fas fa-times close-x" onclick="closeModal('mProfile')"></i></h3>
+    <div style="text-align:center;">
+      <div class="avatar" style="width:70px; height:70px; margin:0 auto 10px; font-size:30px;"><i class="fas fa-user"></i></div>
+      <h4>Abir Mazumder <span class="vbadge"><i class="fas fa-check"></i></span></h4>
+      <p style="color:var(--muted); font-size:13px;">Joined Autrobook • Safety Member</p>
+      <div class="profile-stats" style="display:flex; margin:15px 0; background:var(--bg); padding:10px; border-radius:8px;">
+        <div><b id="statPosts">1</b><br><small>Posts</small></div>
+        <div><b id="statAlerts">0</b><br><small>Alerts</small></div>
+        <div><b id="statScore">75</b><br><small>Score</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" style="position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:9999; font-size:14px;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
