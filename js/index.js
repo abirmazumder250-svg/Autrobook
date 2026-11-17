@@ -1,773 +1,175 @@
-// ==================== SUPABASE CONNECTION ====================
-const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ==================== GLOBAL STATE ====================
-let currentTheme = localStorage.getItem('theme') || 'light';
-let securityScore = 0;
-let trustedContacts = JSON.parse(localStorage.getItem('trustedContacts')) || [];
-let userPosts = JSON.parse(localStorage.getItem('userPosts')) || [];
-let missingAlerts = JSON.parse(localStorage.getItem('missingAlerts')) || [];
-let bloodRequests = JSON.parse(localStorage.getItem('bloodRequests')) || [];
-let receiverData = JSON.parse(localStorage.getItem('receiverData')) || null;
-let nidVerified = localStorage.getItem('nidVerified') === 'true';
-let nidData = JSON.parse(localStorage.getItem('nidData')) || {};
-let privacySettings = JSON.parse(localStorage.getItem('privacySettings')) || {
-  profile: 'public',
-  location: 'yes',
-  blood: 'all'
-};
-let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
-let currentFilter = 'all';
-let selectedPostImage = null;
-
-// ==================== SUPABASE IMAGE UPLOAD ====================
-async function uploadToSupabase(file) {
-  if (!file) return null;
-  
-  const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
-  
-  try {
-    const { data, error } = await supabaseClient.storage
-      .from('images')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (error) {
-      console.error('Supabase Upload Error:', error);
-      showToast('Image upload failed: ' + error.message);
-      return null;
-    }
-    
-    const { data: urlData } = supabaseClient.storage
-      .from('images')
-      .getPublicUrl(fileName);
-      
-    return urlData.publicUrl;
-    
-  } catch (err) {
-    console.error('Network or Server Error:', err);
-    showToast('Network error while uploading image.');
-    return null;
-  }
+// ---------- Helpers ----------
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-// ==================== THEME ====================
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  const icon = document.getElementById('themeIcon');
-  if (icon) {
-    icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-  }
-  localStorage.setItem('theme', theme);
-  currentTheme = theme;
-}
-
-function toggleTheme() {
-  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-  applyTheme(newTheme);
-}
-
-// ==================== MODALS ====================
-function openModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.classList.add('active');
-  if (id === 'mShield') calculateSecurityScore();
-  if (id === 'mNotifications') renderNotifications();
-  if (id === 'mProfile') renderProfile();
-  if (id === 'mSettings') {
-    renderReceiverFields();
-    renderPrivacyFields();
-  }
-}
-
-function closeModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.classList.remove('active');
-}
-
-document.querySelectorAll('.modal-back').forEach(back => {
-  back.addEventListener('click', (e) => {
-    if (e.target === back) back.classList.remove('active');
-  });
-});
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-back.active').forEach(m => m.classList.remove('active'));
-  }
-});
-
-// ==================== TOAST ====================
+let toastTimer;
 function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  clearTimeout(window.toastTimer);
-  window.toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3000);
 }
-
-// ==================== SCROLL ====================
-function scrollTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+function toggleTheme() {
+  document.body.classList.toggle('dark-theme');
+  const icon = document.getElementById('themeIcon');
+  icon.classList.toggle('fa-moon');
+  icon.classList.toggle('fa-sun');
 }
+function scrollTopPage() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-// ==================== SEARCH ====================
-function handleSearch(e) {
-  const query = e.target.value.toLowerCase().trim();
-  const container = document.getElementById('feedContainer');
-  if (!query) {
-    renderFeed();
-    return;
+// ---------- Feed ----------
+function filterFeed(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else if (type === 'all') {
+    const first = document.querySelector('.filter-btn');
+    if (first) first.classList.add('active');
   }
-  const filtered = getAllPosts().filter(p =>
-    p.text.toLowerCase().includes(query) || (p.author || '').toLowerCase().includes(query)
-  );
-  if (filtered.length === 0) {
-    container.innerHTML = `<div class="post"><p class="text-muted" style="text-align:center;">No results found for "${query}"</p></div>`;
-  } else {
-    container.innerHTML = filtered.map(p => renderPostHTML(p)).join('');
-  }
+  document.querySelectorAll('#feedContainer .post').forEach(p => {
+    p.style.display = (type === 'all' || p.dataset.type === type) ? '' : 'none';
+  });
 }
 
-// ==================== SOS ====================
-function sosAlert() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        showToast(`🚨 SOS! Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} — sent to trusted contacts.`);
-        addNotification('SOS Activated', 'Your live location was shared with trusted contacts.');
-      },
-      () => {
-        showToast('🚨 SOS activated! Could not get location. Sharing alert to contacts.');
-        addNotification('SOS Activated', 'Location unavailable. Alert sent to contacts.');
-      }
-    );
-  } else {
-    showToast('🚨 SOS activated! Sharing alert to trusted contacts.');
-    addNotification('SOS Activated', 'Alert sent to trusted contacts.');
-  }
-  securityScore = Math.min(100, securityScore + 5);
-  saveSecurityScore();
-  
-  supabaseClient.from('security_logs').insert({ event: 'SOS Activated', status: 'success' }).then();
+function addPost(type, authorLine, bodyHtml) {
+  const post = document.createElement('div');
+  post.className = 'post';
+  post.dataset.type = type;
+  post.innerHTML = `
+    <div class="post-header">
+      <div class="avatar sm"><i class="fas fa-user"></i></div>
+      <div>
+        <div class="post-author">Abir Mazumder <span class="vbadge"><i class="fas fa-check"></i></span></div>
+        <div class="post-meta"><i class="fas fa-clock"></i> Just now ${authorLine}</div>
+      </div>
+    </div>
+    ${bodyHtml}
+    <div class="post-actions-bar">
+      <button onclick="likePost(this)"><i class="far fa-thumbs-up"></i> Like</button>
+      <button onclick="toggleComments(this)"><i class="far fa-comment"></i> Comment</button>
+      <button onclick="sharePost()"><i class="far fa-share-from-square"></i> Share</button>
+    </div>`;
+  document.getElementById('feedContainer').prepend(post);
+  return post;
 }
 
-// ==================== COMPOSER ====================
 function previewPostImage(event) {
   const file = event.target.files[0];
-  if (file) {
-    selectedPostImage = file;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = document.getElementById('postImagePreview');
-      img.src = e.target.result;
-      img.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-  }
+  if (!file || !file.type.startsWith('image/')) { showToast('Video preview is not shown here'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const out = document.getElementById('postImagePreview');
+    out.src = reader.result;
+    out.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
 }
 
-function attachType(type) {
-  if (type === 'location') showToast('📍 Location attachment — feature coming soon!');
+function publishPost() {
+  const text = document.getElementById('postText').value;
+  if (!text.trim()) { showToast('Please enter something to post!'); return; }
+  const img = document.getElementById('postImagePreview');
+  const imgHtml = img.style.display !== 'none' && img.src
+    ? `<img class="post-image" alt="" src="${img.src}">` : '';
+  addPost('posts', '• Public', `<p>${esc(text)}</p>${imgHtml}`);
+  document.getElementById('postText').value = '';
+  img.style.display = 'none';
+  img.removeAttribute('src');
+  closeModal('mComposer');
+  const n = document.getElementById('statPosts');
+  n.textContent = (parseInt(n.textContent, 10) || 0) + 1;
+  showToast('Post published!');
 }
 
-async function publishPost() {
-  const text = document.getElementById('postText').value.trim();
-  const btn = document.querySelector('#mComposer .btn-primary');
-  
-  if (!text && !selectedPostImage) {
-    showToast('Please write something or add a photo.');
-    return;
-  }
-
-  try {
-    btn.textContent = 'Publishing...';
-    btn.disabled = true;
-
-    let imageUrl = null;
-
-    if (selectedPostImage) {
-      imageUrl = await uploadToSupabase(selectedPostImage);
-      if (!imageUrl) throw new Error("Image upload failed");
-    }
-
-    const post = {
-      id: Date.now(),
-      text: text,
-      imageUrl: imageUrl,
-      time: new Date().toLocaleString(),
-      author: 'Abir Mazumder',
-      type: 'post'
-    };
-
-    userPosts.unshift(post);
-    savePosts();
-    renderFeed();
-    
-    document.getElementById('postText').value = '';
-    document.getElementById('postImagePreview').style.display = 'none';
-    selectedPostImage = null;
-    btn.textContent = 'Publish Post';
-    btn.disabled = false;
-    
-    closeModal('mComposer');
-    showToast('Post published successfully!');
-    
-    securityScore = Math.min(100, securityScore + 2);
-    saveSecurityScore();
-    addNotification('Post Published', 'Your post is now live.');
-
-  } catch (error) {
-    console.error(error);
-    showToast('❌ Failed to publish: ' + error.message);
-    btn.textContent = 'Publish Post';
-    btn.disabled = false;
-  }
-}
-
-// ==================== MISSING PERSON ====================
 function submitMissing() {
   const name = document.getElementById('miName').value.trim();
-  const location = document.getElementById('miLastSeen').value.trim();
+  const place = document.getElementById('miLastSeen').value.trim();
   const phone = document.getElementById('miPhone').value.trim();
   const desc = document.getElementById('miDesc').value.trim();
-
-  if (!name || !location || !phone) {
-    showToast('Please fill all required fields (*).');
-    return;
-  }
-
-  const alert = {
-    id: Date.now(),
-    name,
-    location,
-    phone,
-    desc,
-    time: new Date().toLocaleString()
-  };
-
-  missingAlerts.unshift(alert);
-  localStorage.setItem('missingAlerts', JSON.stringify(missingAlerts));
-
-  const post = {
-    id: Date.now() + 1,
-    text: `🔍 MISSING PERSON ALERT: ${name} was last seen at ${location}. ${desc ? 'Details: ' + desc + '. ' : ''}Contact: ${phone}`,
-    time: new Date().toLocaleString(),
-    author: 'Alert System',
-    type: 'missing'
-  };
-  userPosts.unshift(post);
-  savePosts();
-  renderFeed();
-
-  document.getElementById('miName').value = '';
-  document.getElementById('miLastSeen').value = '';
-  document.getElementById('miPhone').value = '';
-  document.getElementById('miDesc').value = '';
+  if (!name || !place || !phone) { showToast('Fill name, last seen location and contact number'); return; }
+  addPost('missing', '• Missing alert', `
+    <h4 style="margin-top:10px;color:#e74c3c;"><i class="fas fa-user-magnifying-glass"></i> Missing: ${esc(name)}</h4>
+    <p><b>Last seen:</b> ${esc(place)}<br><b>Contact:</b> ${esc(phone)}${desc ? '<br>' + esc(desc) : ''}</p>`);
+  ['miName','miLastSeen','miPhone','miDesc'].forEach(id => document.getElementById(id).value = '');
   closeModal('mMissing');
-  showToast('Missing person alert published!');
-  securityScore = Math.min(100, securityScore + 3);
-  saveSecurityScore();
-  addNotification('Missing Alert', `Alert for ${name} published.`);
+  const a = document.getElementById('statAlerts');
+  a.textContent = (parseInt(a.textContent, 10) || 0) + 1;
+  showToast('Alert added to your feed (not saved to a server yet)');
 }
 
-// ==================== BLOOD REQUEST ====================
 function submitBloodRequest() {
   const patient = document.getElementById('blPatient').value.trim();
-  const group = document.getElementById('blGroup').value;
   const hospital = document.getElementById('blHospital').value.trim();
   const phone = document.getElementById('blPhone').value.trim();
+  const group = document.getElementById('blGroup').value;
   const urgency = document.getElementById('blUrgency').value;
-
-  if (!patient || !hospital || !phone) {
-    showToast('Please fill all required fields (*).');
-    return;
-  }
-
-  const request = {
-    id: Date.now(),
-    patient,
-    group,
-    hospital,
-    phone,
-    urgency,
-    time: new Date().toLocaleString()
-  };
-
-  bloodRequests.unshift(request);
-  localStorage.setItem('bloodRequests', JSON.stringify(bloodRequests));
-
-  const post = {
-    id: Date.now() + 2,
-    text: `🩸 BLOOD REQUEST (${urgency}): Patient ${patient} needs ${group} blood at ${hospital}. Contact: ${phone}`,
-    time: new Date().toLocaleString(),
-    author: 'Blood Bank',
-    type: 'blood'
-  };
-  userPosts.unshift(post);
-  savePosts();
-  renderFeed();
-
-  document.getElementById('blPatient').value = '';
-  document.getElementById('blGroup').value = 'A+';
-  document.getElementById('blHospital').value = '';
-  document.getElementById('blPhone').value = '';
-  document.getElementById('blUrgency').value = 'Normal';
+  if (!patient || !hospital || !phone) { showToast('Fill patient, hospital and contact number'); return; }
+  addPost('blood', '• Blood request', `
+    <h4 style="margin-top:10px;color:#e74c3c;"><i class="fas fa-droplet"></i> ${esc(group)} needed — ${esc(urgency)}</h4>
+    <p><b>Patient:</b> ${esc(patient)}<br><b>Hospital:</b> ${esc(hospital)}<br><b>Contact:</b> ${esc(phone)}</p>`);
+  ['blPatient','blHospital','blPhone'].forEach(id => document.getElementById(id).value = '');
   closeModal('mBlood');
-  showToast('Blood request published!');
-  securityScore = Math.min(100, securityScore + 3);
-  saveSecurityScore();
-  addNotification('Blood Request', `${group} needed at ${hospital}.`);
+  showToast('Request added to your feed (not saved to a server yet)');
 }
 
-// ==================== NID VERIFICATION ====================
-async function submitNID() {
+// ---------- Settings ----------
+function submitNID() {
   const name = document.getElementById('verifyName').value.trim();
-  const front = document.getElementById('nidFrontInput').files[0];
-  const back = document.getElementById('nidBackInput').files[0];
-  const selfie = document.getElementById('selfieInput').files[0];
-  const btn = document.getElementById('submitNidBtn');
-
-  if (!name || !front || !selfie) {
-    showToast('Please fill all required fields (*) and upload NID Front & Selfie.');
-    return;
-  }
-
-  try {
-    btn.textContent = 'Uploading...';
-    btn.disabled = true;
-
-    const frontFileName = `front_${Date.now()}_${front.name}`;
-    const { error: err1 } = await supabaseClient.storage
-      .from('appeals-documents')
-      .upload(`nid/${frontFileName}`, front);
-    if (err1) throw err1;
-
-    const selfieFileName = `selfie_${Date.now()}_${selfie.name}`;
-    const { error: err2 } = await supabaseClient.storage
-      .from('appeals-documents')
-      .upload(`selfie/${selfieFileName}`, selfie);
-    if (err2) throw err2;
-
-    let backFileName = null;
-    if (back) {
-      backFileName = `back_${Date.now()}_${back.name}`;
-      const { error: err3 } = await supabaseClient.storage
-        .from('appeals-documents')
-        .upload(`nid/${backFileName}`, back);
-      if (err3) throw err3;
-    }
-
-    nidData = { name, front: frontFileName, back: backFileName, selfie: selfieFileName, time: new Date().toLocaleString() };
-    nidVerified = true;
-    localStorage.setItem('nidVerified', 'true');
-    localStorage.setItem('nidData', JSON.stringify(nidData));
-
-    await supabaseClient.from('appeals').insert({ name: name, status: 'pending' });
-
-    btn.textContent = '✅ Verified';
-    btn.style.background = '#2e7d32';
-    btn.disabled = false;
-    
-    showToast('NID verification submitted successfully!');
-    securityScore = Math.min(100, securityScore + 20);
-    saveSecurityScore();
-    calculateSecurityScore();
-    addNotification('NID Verified', 'Your identity has been verified.');
-
-  } catch (error) {
-    console.error('Upload error:', error);
-    showToast('❌ Upload failed: ' + error.message);
-    btn.textContent = 'Submit for Verification';
-    btn.disabled = false;
-  }
+  const front = document.getElementById('nidFrontInput').files.length;
+  const selfie = document.getElementById('selfieInput').files.length;
+  if (!name || !front || !selfie) { showToast('Add your name, NID front and selfie'); return; }
+  showToast('Not uploaded yet: connect a private storage first');
 }
-
-// ==================== BLOOD RECEIVER ====================
 function submitReceiver() {
-  const name = document.getElementById('rcName').value.trim();
-  const group = document.getElementById('rcGroup').value;
-  const address = document.getElementById('rcAddress').value.trim();
-  const phone = document.getElementById('rcPhone').value.trim();
-
-  if (!name || !address || !phone) {
-    showToast('Please fill all required fields (*).');
-    return;
-  }
-
-  receiverData = { name, group, address, phone, time: new Date().toLocaleString() };
-  localStorage.setItem('receiverData', JSON.stringify(receiverData));
-  showToast('Registered as blood receiver successfully!');
-  securityScore = Math.min(100, securityScore + 10);
-  saveSecurityScore();
-  calculateSecurityScore();
-  addNotification('Blood Receiver', 'You are registered as a blood receiver.');
-  renderReceiverFields();
+  const ok = ['rcName','rcAddress','rcPhone'].every(id => document.getElementById(id).value.trim());
+  if (!ok) { showToast('Fill all required fields'); return; }
+  showToast('Saved on this device only');
+  closeModal('mSettings');
 }
-
-// ==================== PRIVACY ====================
 function savePrivacy() {
-  privacySettings = {
-    profile: document.getElementById('privacyLevel').value,
-    location: document.getElementById('privacyLocation').value,
-    blood: document.getElementById('privacyBlood').value
-  };
-  localStorage.setItem('privacySettings', JSON.stringify(privacySettings));
-  showToast('Privacy settings saved.');
-  addNotification('Privacy Updated', 'Your privacy preferences were saved.');
+  showToast('Privacy settings saved on this device only');
+  closeModal('mSettings');
 }
-
-function renderPrivacyFields() {
-  document.getElementById('privacyLevel').value = privacySettings.profile;
-  document.getElementById('privacyLocation').value = privacySettings.location;
-  document.getElementById('privacyBlood').value = privacySettings.blood;
-}
-
-// ==================== SHIELD / SECURITY SCORE ====================
-function saveSecurityScore() {
-  localStorage.setItem('securityScore', securityScore);
-}
-
-function loadSecurityScore() {
-  const saved = localStorage.getItem('securityScore');
-  if (saved) securityScore = parseInt(saved, 10) || 0;
-}
-
-function calculateSecurityScore() {
-  let score = 0;
-  if (nidVerified) score += 40;
-  score += Math.min(30, trustedContacts.length * 10);
-  if (receiverData) score += 15;
-  if (userPosts.length > 0) score += 15;
-  securityScore = Math.min(100, score);
-  saveSecurityScore();
-
-  const scoreEl = document.getElementById('securityScore');
-  const barEl = document.getElementById('scoreBar');
-  const msgEl = document.getElementById('scoreMsg');
-  const shieldIcon = document.getElementById('shieldIcon');
-
-  if (scoreEl) scoreEl.textContent = `${securityScore}/100`;
-  if (barEl) barEl.style.width = `${securityScore}%`;
-
-  if (msgEl) {
-    if (securityScore >= 80) {
-      msgEl.textContent = 'Excellent! Your account is highly secure.';
-      msgEl.style.color = '#2e7d32';
-      if (shieldIcon) shieldIcon.style.color = '#2e7d32';
-    } else if (securityScore >= 50) {
-      msgEl.textContent = 'Good, but you can improve by verifying NID or adding contacts.';
-      msgEl.style.color = '#e6a017';
-      if (shieldIcon) shieldIcon.style.color = '#e6a017';
-    } else {
-      msgEl.textContent = 'Low security. Complete your profile and add trusted contacts.';
-      msgEl.style.color = '#d42b2b';
-      if (shieldIcon) shieldIcon.style.color = '#d42b2b';
-    }
-  }
-  renderTrustedList();
-}
-
-// ==================== TRUSTED CONTACTS ====================
-function addTrustedContact() {
-  const name = document.getElementById('tcName').value.trim();
-  const phone = document.getElementById('tcPhone').value.trim();
-  if (!name || !phone) {
-    showToast('Please enter both name and phone number.');
-    return;
-  }
-  trustedContacts.push({ name, phone });
-  localStorage.setItem('trustedContacts', JSON.stringify(trustedContacts));
-  document.getElementById('tcName').value = '';
-  document.getElementById('tcPhone').value = '';
-  showToast(`Trusted contact "${name}" added.`);
-  securityScore = Math.min(100, securityScore + 10);
-  saveSecurityScore();
-  calculateSecurityScore();
-  addNotification('Contact Added', `${name} is now a trusted contact.`);
-}
-
-function removeTrustedContact(index) {
-  const removed = trustedContacts.splice(index, 1)[0];
-  localStorage.setItem('trustedContacts', JSON.stringify(trustedContacts));
-  showToast(`Removed ${removed.name}.`);
-  calculateSecurityScore();
-}
-
-function renderTrustedList() {
-  const list = document.getElementById('trustedList');
-  if (!list) return;
-  if (trustedContacts.length === 0) {
-    list.innerHTML = '<p class="text-muted" style="text-align:center;font-size:0.8rem;">No trusted contacts added yet.</p>';
-    return;
-  }
-  list.innerHTML = trustedContacts.map((c, i) =>
-    `<div class="trusted-item"><span><i class="fas fa-user-shield" style="color:var(--primary);margin-right:6px;"></i>${c.name} — ${c.phone}</span><i class="fas fa-trash" onclick="removeTrustedContact(${i})"></i></div>`
-  ).join('');
-}
-
-// ==================== PANIC MODE ====================
-function triggerPanic() {
-  if (trustedContacts.length === 0) {
-    showToast('⚠️ Please add at least one trusted contact before using Panic Mode.');
-    return;
-  }
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        showToast(`🚨 PANIC MODE ACTIVATED! Live location sent to ${trustedContacts.length} trusted contact(s).`);
-        addNotification('Panic Mode', `Live location shared with ${trustedContacts.length} contact(s).`);
-        console.log('Panic alert:', trustedContacts, 'Location:', latitude, longitude);
-      },
-      () => {
-        showToast(`🚨 PANIC MODE ACTIVATED! Alert sent to ${trustedContacts.length} contact(s).`);
-        addNotification('Panic Mode', `Alert sent to ${trustedContacts.length} contact(s).`);
-      }
-    );
-  } else {
-    showToast(`🚨 PANIC MODE ACTIVATED! Alert sent to ${trustedContacts.length} contact(s).`);
-    addNotification('Panic Mode', `Alert sent to ${trustedContacts.length} contact(s).`);
-  }
-  securityScore = Math.min(100, securityScore + 5);
-  saveSecurityScore();
-  calculateSecurityScore();
-
-  supabaseClient.from('security_logs').insert({ event: 'Panic Mode Triggered', status: 'success' }).then();
-}
-
-// ==================== NOTIFICATIONS ====================
-function addNotification(title, body) {
-  notifications.unshift({
-    id: Date.now(),
-    title,
-    body,
-    time: new Date().toLocaleString(),
-    read: false
-  });
-  localStorage.setItem('notifications', JSON.stringify(notifications));
-  updateNotifDot();
-}
-
-function updateNotifDot() {
-  const dot = document.getElementById('notifDot');
-  const unread = notifications.filter(n => !n.read).length;
-  if (dot) dot.classList.toggle('show', unread > 0);
-}
-
-function renderNotifications() {
-  const list = document.getElementById('notifList');
-  if (!list) return;
-  if (notifications.length === 0) {
-    list.innerHTML = '<p style="text-align:center; color:var(--muted); padding:20px 0;">No new notifications.</p>';
-    return;
-  }
-  list.innerHTML = notifications.slice(0, 20).map(n => `
-    <div class="trusted-item" style="flex-direction:column; align-items:flex-start; gap:4px; ${n.read ? 'opacity:0.6;' : ''}">
-      <div style="display:flex; justify-content:space-between; width:100%;">
-        <b style="color:var(--primary); font-size:0.9rem;">${n.title}</b>
-        <small style="color:var(--muted); font-size:0.7rem;">${n.time}</small>
-      </div>
-      <span style="font-size:0.85rem;">${n.body}</span>
-    </div>
-  `).join('');
-  notifications = notifications.map(n => ({ ...n, read: true }));
-  localStorage.setItem('notifications', JSON.stringify(notifications));
-  updateNotifDot();
-}
-
-// ==================== PROFILE ====================
-function renderProfile() {
-  document.getElementById('statPosts').textContent = userPosts.filter(p => p.type === 'post').length;
-  document.getElementById('statAlerts').textContent = userPosts.filter(p => p.type === 'missing' || p.type === 'blood').length;
-  document.getElementById('statScore').textContent = securityScore;
-
-  const nidBadge = document.getElementById('badgeNid');
-  nidBadge.innerHTML = `NID: <span style="color:${nidVerified ? 'var(--success)' : 'var(--danger)'};">${nidVerified ? 'Verified' : 'Unverified'}</span>`;
-
-  const bloodBadge = document.getElementById('badgeBlood');
-  bloodBadge.innerHTML = `Blood: <span style="color:${receiverData ? 'var(--success)' : 'var(--muted)'};">${receiverData ? receiverData.group : 'Not Set'}</span>`;
-}
-
-// ==================== RECEIVER FIELDS ====================
-function renderReceiverFields() {
-  if (receiverData) {
-    document.getElementById('rcName').value = receiverData.name || '';
-    document.getElementById('rcGroup').value = receiverData.group || 'A+';
-    document.getElementById('rcAddress').value = receiverData.address || '';
-    document.getElementById('rcPhone').value = receiverData.phone || '';
-  }
-}
-
-// ==================== TABS ====================
 function mmTab(btn, paneId) {
   document.querySelectorAll('.mm-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.mm-pane').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
-  const pane = document.getElementById(paneId);
-  if (pane) pane.classList.add('active');
+  document.getElementById(paneId).classList.add('active');
 }
 
-// ==================== FEED RENDERING ====================
-function savePosts() {
-  localStorage.setItem('userPosts', JSON.stringify(userPosts));
+// ---------- Shield ----------
+function openShield() { openModal('mShield'); }
+function addTrustedContact() {
+  const name = document.getElementById('tcName').value.trim();
+  const phone = document.getElementById('tcPhone').value.trim();
+  if (!name || !phone) { showToast('Fill contact details'); return; }
+  const item = document.createElement('p');
+  item.innerHTML = `<i class="fas fa-user-shield"></i> ${esc(name)} (${esc(phone)})`;
+  document.getElementById('trustedList').appendChild(item);
+  document.getElementById('tcName').value = '';
+  document.getElementById('tcPhone').value = '';
+  showToast('Trusted contact added');
+}
+function triggerPanic() {
+  if (confirm('Trigger PANIC MODE?')) showToast('Demo only: no alert was sent. Call 999 in an emergency.');
+}
+function sosAlert() {
+  if (confirm('Trigger Emergency SOS?')) showToast('Demo only: no alert was sent. Call 999 in an emergency.');
 }
 
-function getAllPosts() {
-  return [...userPosts].sort((a, b) => b.id - a.id);
+// ---------- Misc ----------
+function viewStory(name) { showToast('Reel by ' + name); }
+function likePost(btn) {
+  const on = btn.classList.toggle('liked');
+  btn.style.color = on ? 'var(--primary)' : '';
+  btn.querySelector('i').className = on ? 'fas fa-thumbs-up' : 'far fa-thumbs-up';
 }
-
-function renderPostHTML(post) {
-  let cls = 'post';
-  let badge = '';
-  if (post.type === 'missing') {
-    cls += ' is-missing';
-    badge = ' <span style="background:#e6a017;color:white;font-size:0.65rem;padding:2px 6px;border-radius:10px;margin-left:6px;">MISSING</span>';
-  } else if (post.type === 'blood') {
-    cls += ' is-blood';
-    badge = ' <span style="background:#c0392b;color:white;font-size:0.65rem;padding:2px 6px;border-radius:10px;margin-left:6px;">BLOOD</span>';
+function toggleComments() { showToast('Comments coming soon'); }
+function sharePost() { showToast('Sharing coming soon'); }
+function attachLocation() { showToast('Location attach coming soon'); }
+function handleSearch(e) {
+  if (e.key === 'Enter') showToast('Searching for: ' + e.target.value);
   }
-
-  const imageHTML = post.imageUrl ? `<img src="${post.imageUrl}" class="post-image" alt="Post Image">` : '';
-
-  return `
-    <div class="${cls}">
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-        <div class="avatar" style="width:40px; height:40px; font-size:16px;"><i class="fas fa-user"></i></div>
-        <div>
-          <h4 style="margin:0;">${post.author || 'User'}${badge}</h4>
-          <small style="color:var(--muted); font-size:0.75rem;">${post.time || 'Just now'} • <i class="fas fa-globe"></i></small>
-        </div>
-      </div>
-      <p style="margin-bottom:10px;">${post.text}</p>
-      ${imageHTML}
-      <div class="post-actions">
-        <button><i class="far fa-thumbs-up"></i> Like</button>
-        <button><i class="far fa-comment"></i> Comment</button>
-        <button><i class="fas fa-share"></i> Share</button>
-      </div>
-    </div>
-  `;
-}
-
-function renderFeed() {
-  const container = document.getElementById('feedContainer');
-  if (!container) return;
-
-  let posts = getAllPosts();
-
-  if (currentFilter !== 'all') {
-    if (currentFilter === 'posts') posts = posts.filter(p => p.type === 'post');
-    if (currentFilter === 'missing') posts = posts.filter(p => p.type === 'missing');
-    if (currentFilter === 'blood') posts = posts.filter(p => p.type === 'blood');
-  }
-
-  if (posts.length === 0) {
-    container.innerHTML = `
-      <div class="post">
-        <h4>Welcome to Autrobook!</h4>
-        <p>Try creating a post, reporting an alert, or uploading your NID in settings.</p>
-        <div class="post-meta"><i class="fas fa-clock"></i> Just now</div>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = posts.map(p => renderPostHTML(p)).join('');
-}
-
-function filterFeed(type, btn) {
-  currentFilter = type;
-  if (btn) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-  renderFeed();
-}
-
-// ==================== INITIALIZATION ====================
-window.addEventListener('load', () => {
-  applyTheme(currentTheme);
-  loadSecurityScore();
-  renderFeed();
-  calculateSecurityScore();
-  updateNotifDot();
-
-  if (nidVerified) {
-    const btn = document.getElementById('submitNidBtn');
-    if (btn) {
-      btn.textContent = '✅ Verified';
-      btn.style.background = '#2e7d32';
-    }
-    if (nidData.name) {
-      const nameInput = document.getElementById('verifyName');
-      if (nameInput) nameInput.value = nidData.name;
-    }
-  }
-
-  renderReceiverFields();
-  renderPrivacyFields();
-  renderTrustedList();
-
-  if (!localStorage.getItem('visited')) {
-    showToast('Welcome to Autrobook! Complete your profile to boost your safety score.');
-    localStorage.setItem('visited', 'true');
-  }
-
-  const logoImg = document.querySelector('.logo-img');
-  if (logoImg) {
-    logoImg.onerror = function () {
-      this.style.display = 'none';
-      const brandName = this.parentElement.querySelector('.brand-name');
-      if (brandName) brandName.style.marginLeft = '0';
-    };
-  }
-
-  // ==================== PWA SERVICE WORKER ====================
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then((registration) => {
-        console.log('Service Worker registered with scope:', registration.scope);
-
-        // Notify user when a new update is available
-        registration.onupdatefound = () => {
-          const newWorker = registration.installing;
-          newWorker.onstatechange = () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              showToast('🔄 New update available! Refresh the app.');
-            }
-          };
-        };
-      })
-      .catch((error) => {
-        console.error('Service Worker registration failed:', error);
-      });
-  }
-});
-
-// ==================== EXPOSE GLOBAL FUNCTIONS ====================
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.toggleTheme = toggleTheme;
-window.sosAlert = sosAlert;
-window.publishPost = publishPost;
-window.previewPostImage = previewPostImage;
-window.submitMissing = submitMissing;
-window.submitBloodRequest = submitBloodRequest;
-window.submitNID = submitNID;
-window.submitReceiver = submitReceiver;
-window.addTrustedContact = addTrustedContact;
-window.removeTrustedContact = removeTrustedContact;
-window.triggerPanic = triggerPanic;
-window.mmTab = mmTab;
-window.openShield = () => openModal('mShield');
-window.scrollTop = scrollTop;
-window.handleSearch = handleSearch;
-window.filterFeed = filterFeed;
-window.attachType = attachType;
-window.savePrivacy = savePrivacy;
