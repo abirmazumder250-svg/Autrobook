@@ -2,8 +2,8 @@
 // Supabase + Auth + Posts + Comments + Reactions + Voice + Live Lock + Reports
 
 // ===== 1. CONFIG - PUT YOUR SUPABASE KEYS HERE =====
-const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
 
 let supabaseClient = null;
 if (window.supabase && SUPABASE_URL.indexOf("YOUR-PROJECT") === -1) {
@@ -450,7 +450,6 @@ async function loadComments(postId) {
     list.innerHTML = '<div class="empty-comment">No comments yet. Be the first! 💬</div>';
     return;
   }
-  // Load reactions for these comments
   for (let c of comments) {
     if (supabaseClient) {
       try {
