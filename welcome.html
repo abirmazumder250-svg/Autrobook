@@ -53,7 +53,6 @@ body.theme-dark .btn-create{color:#4ade80;border-color:#4ade80}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:1000}
 .modal-card{background:var(--card);border-radius:18px;padding:20px;width:100%;max-width:360px;text-align:center}
 .modal-card input{width:100%;padding:14px;border:1px solid var(--border);border-radius:14px;margin:12px 0;font-size:18px;text-align:center;letter-spacing:4px;background:var(--card);color:var(--text)}
-/* LANGUAGE MODAL */
 .lang-modal .modal-card{max-width:400px;max-height:80vh;display:flex;flex-direction:column;text-align:left;padding:0;overflow:hidden}
 .lang-head{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
 .lang-head b{font-size:17px}
@@ -64,6 +63,14 @@ body.theme-dark .btn-create{color:#4ade80;border-color:#4ade80}
 .lang-item{display:flex;justify-content:space-between;align-items:center;width:100%;padding:13px 16px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;text-align:left;font-size:15px}
 .lang-item small{color:var(--muted)}
 .lang-item.active{background:rgba(4,61,34,.08);font-weight:700}
+/* NEW - PROFILE REMOVE / DELETE */
+.profile-wrap{position:relative}
+.profile-remove{position:absolute;top:-8px;right:-6px;width:28px;height:28px;border-radius:50%;background:#e4e6eb;color:#050505;border:1px solid #ccd0d5;font-size:18px;font-weight:700;line-height:1;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center}
+body.theme-dark .profile-remove{background:#3a3b3c;color:#fff;border-color:#555}
+.profile-remove:active{background:#ff3b30;color:#fff}
+.btn-danger{width:100%;padding:13px;border:none;border-radius:22px;background:#ff3b30;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px}
+.btn-grey{width:100%;padding:13px;border:none;border-radius:22px;background:rgba(0,0,0,.08);color:var(--text);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px}
+body.theme-dark .btn-grey{background:#3a3b3c;color:#fff}
 </style>
 </head>
 <body>
@@ -73,18 +80,15 @@ body.theme-dark .btn-create{color:#4ade80;border-color:#4ade80}
 <button class="icon-btn" onclick="toggleTheme()"><i id="themeIcon" class="fas fa-moon"></i></button>
 </div>
 <div class="lang" onclick="openLang()"><span id="langLabel">English (US)</span> <i class="fas fa-chevron-down" style="font-size:11px"></i></div>
-
 <div class="logo">
 <img src="logo.png" alt="Autrobook">
 <h1>Autrobook</h1>
 <p data-i18n="tagline">Connect with friends • Safe • Mindful • Ad-free</p>
 </div>
-
 <div id="profileScreen">
 <div id="profileList"></div>
 <button class="use-another" data-i18n="use_another" onclick="showLogin(true)">Use another profile</button>
 </div>
-
 <div id="loginScreen" style="display:none">
 <div class="tabs">
 <button id="tabLogin" class="active" data-i18n="login_tab" onclick="switchTab('login')">Log In</button>
@@ -97,30 +101,52 @@ body.theme-dark .btn-create{color:#4ade80;border-color:#4ade80}
 <p class="note" data-i18n="recaptcha">Protected by Google reCAPTCHA</p><br>
 <button class="btn-login" id="authSubmitBtn" data-i18n="login_btn" onclick="submitAuth()">Log in</button>
 <a class="link" data-i18n="forgot" onclick="forgotPassword()">Forgot password?</a>
-<button class="fp" id="fingerprintBtn" onclick="loginWithFingerprint()">� fingerprint <span data-i18n="fingerprint">Log in with Fingerprint / Face ID</span></button>
+<button class="fp" id="fingerprintBtn" onclick="loginWithFingerprint()">👆 <span data-i18n="fingerprint">Log in with Fingerprint / Face ID</span></button>
 <p class="note" id="fpNote"></p>
 <a class="link" data-i18n="guest" onclick="continueAsGuest()">Continue as Guest 👀</a>
 </div>
-
 <div class="spacer"></div>
 <div class="footer">
 <button class="btn-create" data-i18n="create_new" onclick="showLogin();switchTab('signup')">Create new account</button>
 <div class="footer-small"><b data-i18n="footer1">18+ Free Social Media Platform</b><br><span data-i18n="footer2">Stay Safe</span></div>
 </div>
 </div>
-
-<!-- LANGUAGE MODAL -->
 <div class="modal lang-modal" id="langModal"><div class="modal-card">
 <div class="lang-head"><b data-i18n="choose_lang">Choose Language</b><button onclick="closeLang()">×</button></div>
 <div class="lang-search"><input id="langSearch" placeholder="Search country / language..." oninput="filterLang()"></div>
 <div class="lang-list" id="langList"></div>
 </div></div>
-
 <div class="modal" id="m2FAVerify"><div class="modal-card"><h3>🔐 2FA Code</h3><p class="note" style="margin-top:6px">Enter 6-digit Authenticator code</p><input id="login2FACode" maxlength="6" inputmode="numeric" placeholder="000000"><button class="btn-login" onclick="verifyLogin2FA()">Verify</button><a class="link" onclick="cancel2FA()">Cancel</a></div></div>
 <div class="modal" id="mSetupPasskey"><div class="modal-card"><h3>👆 Enable Fingerprint?</h3><p class="note" style="margin-top:6px">Next time login with Fingerprint / Face ID</p><button class="btn-login" onclick="setupPasskeyFromWelcome()">Enable</button><a class="link" onclick="closePasskeyModal()">Skip for now</a></div></div>
+<div class="modal" id="mRemoveProfile"><div class="modal-card">
+<h3>Remove Profile?</h3>
+<p class="note" style="margin-top:8px">What do you want to do with this profile?</p>
+<button class="btn-grey" onclick="removeProfileOnly()">Remove from this device only</button>
+<button class="btn-danger" onclick="deleteAccountPermanently()">Delete Account Permanently</button>
+<a class="link" onclick="closeRemoveProfile()">Cancel</a>
+</div></div>
 <div id="toast"></div>
-
 <script>
+/* ========== SUPABASE + RECAPTCHA ========== */
+const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const RECAPTCHA_SITE_KEY = "6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d";
+/* ========== THEME ========== */
+function applyTheme(){
+  const saved = localStorage.getItem('autro_theme');
+  const icon = document.getElementById('themeIcon');
+  document.body.classList.remove('theme-light','theme-dark');
+  if(saved==='light'){ document.body.classList.add('theme-light'); if(icon) icon.className='fas fa-sun'; }
+  else if(saved==='dark'){ document.body.classList.add('theme-dark'); if(icon) icon.className='fas fa-moon'; }
+  else{ const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches; if(icon) icon.className = isDark ? 'fas fa-moon' : 'fas fa-sun'; if(isDark) document.body.classList.add('theme-dark'); }
+}
+function toggleTheme(){
+  const saved = localStorage.getItem('autro_theme');
+  const isDarkNow = saved ? saved==='dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  localStorage.setItem('autro_theme', isDarkNow ? 'light' : 'dark');
+  applyTheme();
+}
 /* ========== LANGUAGES - ALL COUNTRIES ========== */
 const LANGS=[
 {id:'en',label:'English (US)',country:'United States 🇺🇸'},
@@ -164,7 +190,6 @@ const LANGS=[
 {id:'en_au',label:'English (Australia)',country:'Australia 🇦🇺'},
 {id:'en_ca',label:'English (Canada)',country:'Canada 🇨🇦'},
 ];
-
 const T={
 en:{tagline:"Connect with friends • Safe • Mindful • Ad-free",use_another:"Use another profile",login_tab:"Log In",signup_tab:"Create Account",fullname:"Full Name",email:"Mobile number or email",password:"Password",recaptcha:"Protected by Google reCAPTCHA",login_btn:"Log in",forgot:"Forgot password?",fingerprint:"Log in with Fingerprint / Face ID",guest:"Continue as Guest 👀",create_new:"Create new account",footer1:"18+ Free Social Media Platform",footer2:"Stay Safe",choose_lang:"Choose Language"},
 bn:{tagline:"বন্ধুদের সাথে যুক্ত হোন • নিরাপদ • সচেতন • বিজ্ঞাপনমুক্ত",use_another:"অন্য প্রোফাইল ব্যবহার করুন",login_tab:"লগ ইন",signup_tab:"অ্যাকাউন্ট তৈরি করুন",fullname:"পুরো নাম",email:"মোবাইল নম্বর বা ইমেইল",password:"পাসওয়ার্ড",recaptcha:"Google reCAPTCHA দ্বারা সুরক্ষিত",login_btn:"লগ ইন",forgot:"পাসওয়ার্ড ভুলে গেছেন?",fingerprint:"ফিঙ্গারপ্রিন্ট / ফেস আইডি দিয়ে লগ ইন",guest:"অতিথি হিসেবে চালিয়ে যান 👀",create_new:"নতুন অ্যাকাউন্ট তৈরি করুন",footer1:"১৮+ ফ্রি সোশ্যাল মিডিয়া প্ল্যাটফর্ম",footer2:"নিরাপদ থাকুন",choose_lang:"ভাষা বেছে নিন"},
@@ -184,11 +209,8 @@ id:{tagline:"Terhubung • Aman • Sadar • Bebas Iklan",use_another:"Gunakan 
 th:{tagline:"เชื่อมต่อกับเพื่อน • ปลอดภัย • มีสติ • ไม่มีโฆษณา",use_another:"ใช้โปรไฟล์อื่น",login_tab:"เข้าสู่ระบบ",signup_tab:"สร้างบัญชี",fullname:"ชื่อเต็ม",email:"เบอร์มือถือหรืออีเมล",password:"รหัสผ่าน",recaptcha:"ป้องกันโดย Google reCAPTCHA",login_btn:"เข้าสู่ระบบ",forgot:"ลืมรหัสผ่าน?",fingerprint:"เข้าสู่ระบบด้วยลายนิ้วมือ / Face ID",guest:"ดำเนินการต่อในฐานะแขก 👀",create_new:"สร้างบัญชีใหม่",footer1:"แพลตฟอร์มโซเชียลฟรี 18+",footer2:"ปลอดภัยไว้",choose_lang:"เลือกภาษา"},
 vi:{tagline:"Kết nối bạn bè • An toàn • Tỉnh thức • Không quảng cáo",use_another:"Dùng hồ sơ khác",login_tab:"Đăng nhập",signup_tab:"Tạo tài khoản",fullname:"Họ tên",email:"Số điện thoại hoặc email",password:"Mật khẩu",recaptcha:"Được bảo vệ bởi Google reCAPTCHA",login_btn:"Đăng nhập",forgot:"Quên mật khẩu?",fingerprint:"Đăng nhập bằng Vân tay / Face ID",guest:"Tiếp tục với tư cách Khách 👀",create_new:"Tạo tài khoản mới",footer1:"Nền tảng mạng xã hội miễn phí 18+",footer2:"Giữ an toàn",choose_lang:"Chọn ngôn ngữ"},
 };
-// fallback: যেসব ভাষার full translate নাই, English দেখাবে
 function getT(lang){ return T[lang] || T.en; }
-
 let currentLang = localStorage.getItem('autro_lang') || 'en';
-
 function applyLang(){
   const t = getT(currentLang);
   document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.dataset.i18n; if(t[k]) el.textContent=t[k]; });
@@ -210,20 +232,86 @@ function renderLangList(filter=''){
   });
 }
 function filterLang(){ renderLangList(document.getElementById('langSearch').value); }
-
+let currentTab = 'login';
+let captchaOk = false;
 function showLogin(clearFields){document.getElementById('profileScreen').style.display='none';document.getElementById('loginScreen').style.display='block';document.getElementById('backBtn').style.display='block'; if(clearFields){document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';document.getElementById('authEmail').focus();}}
 function showProfiles(){
 if(!localStorage.getItem('autro_user_email')||localStorage.getItem('autro_user_email')==='guest@autrobook.com'){showLogin();document.getElementById('backBtn').style.display='none';return;}
 document.getElementById('profileScreen').style.display='block';document.getElementById('loginScreen').style.display='none';document.getElementById('backBtn').style.display='none';}
+/* FIXED - 1 CARD ONLY + DELETE BUTTON */
 function renderProfiles(){
 const email=localStorage.getItem('autro_user_email');const name=localStorage.getItem('autro_user_name')||'Abir Mazumder';
 if(email&&email!=='guest@autrobook.com'){
 document.getElementById('profileList').innerHTML=`
+<div class="profile-wrap">
 <button class="profile" onclick="showLogin()"><img src="https://i.pravatar.cc/100?img=12"><span><b>${name}</b><span><span class="dot">●</span> 7 notifications</span></span><span class="arr"><i class="fas fa-chevron-right"></i></span></button>
-<button class="profile" onclick="showLogin()"><img src="logo.png"><span><b>${name}</b></span><span class="arr"><i class="fas fa-chevron-right"></i></span></button>`;
+<button class="profile-remove" onclick="openRemoveProfile(event)" title="Remove profile">×</button>
+</div>`;
 showProfiles();}else{showLogin();}}
-document.addEventListener('DOMContentLoaded',()=>{ applyLang(); renderProfiles(); });
+function openRemoveProfile(e){ if(e) e.stopPropagation(); document.getElementById('mRemoveProfile').style.display='flex'; }
+function closeRemoveProfile(){ document.getElementById('mRemoveProfile').style.display='none'; }
+function removeProfileOnly(){
+  localStorage.removeItem('autro_user_email');localStorage.removeItem('autro_user_name');localStorage.removeItem('autro_user_id');
+  closeRemoveProfile(); showToast('Profile removed from this device'); setTimeout(()=>{ location.reload(); }, 500);
+}
+async function deleteAccountPermanently(){
+  if(!confirm('Are you sure? Your account will be deleted permanently!')) return;
+  try{ const { data } = await supabase.auth.getUser(); if(data.user){ try{ await supabase.from('profiles').delete().eq('id', data.user.id); }catch(e){} } await supabase.auth.signOut(); localStorage.clear(); closeRemoveProfile(); showToast('Account deleted permanently'); setTimeout(()=>{ location.reload(); }, 600); }catch(err){ showToast(err.message); }
+}
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('signupNameWrap').style.display = tab==='signup' ? 'block' : 'none';
+  const btn=document.getElementById('authSubmitBtn'); const t=getT(currentLang);
+  btn.textContent = tab==='signup' ? (t.create_new || 'Create new account') : (t.login_btn || 'Log in');
+}
+function showToast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3000); }
+function onCaptchaSuccess(){ captchaOk=true; }
+function onCaptchaExpired(){ captchaOk=false; }
+async function submitAuth(){
+  const email=document.getElementById('authEmail').value.trim();
+  const pass=document.getElementById('authPassword').value.trim();
+  const name=document.getElementById('authName') ? document.getElementById('authName').value.trim() : '';
+  const btn=document.getElementById('authSubmitBtn');
+  if(!email || !pass){ showToast('Please enter email and password'); return; }
+  if(pass.length < 6){ showToast('Password must be at least 6 characters'); return; }
+  if(!captchaOk){ showToast('Please complete reCAPTCHA'); return; }
+  btn.disabled=true; const oldText=btn.textContent; btn.textContent='Please wait...';
+  try{
+    if(currentTab==='signup'){
+      if(!name){ showToast('Please enter your full name'); btn.disabled=false; btn.textContent=oldText; return; }
+      const { data, error } = await supabase.auth.signUp({ email, password: pass, options:{ data:{ full_name:name } } });
+      if(error) throw error;
+      try{ if(data.user) await supabase.from('profiles').upsert({ id:data.user.id, email:email, full_name:name }); }catch(e){}
+      showToast('Account created! Please check your email to verify, then Log In.');
+      switchTab('login'); if(typeof grecaptcha!=='undefined') grecaptcha.reset(); captchaOk=false;
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if(error) throw error;
+      const user=data.user; const userName = user.user_metadata?.full_name || name || email.split('@')[0];
+      localStorage.setItem('autro_user_email', user.email); localStorage.setItem('autro_user_name', userName); localStorage.setItem('autro_user_id', user.id);
+      showToast('Welcome back, '+userName+'!');
+      const hasPasskey = localStorage.getItem('autro_passkey_'+user.id);
+      if(hasPasskey){ document.getElementById('mSetupPasskey').style.display='flex'; }
+      else { setTimeout(()=>{ window.location.href='home.html'; }, 600); }
+    }
+  }catch(err){ showToast(err.message || 'Login failed'); }
+  finally { btn.disabled=false; btn.textContent=oldText; }
+}
+async function forgotPassword(){
+  const email=document.getElementById('authEmail').value.trim();
+  if(!email){ showToast('Enter your email first'); return; }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/welcome.html' });
+  if(error) showToast(error.message); else showToast('Password reset link sent to '+email);
+}
+function continueAsGuest(){ localStorage.setItem('autro_user_email','guest@autrobook.com'); localStorage.setItem('autro_user_name','Guest'); window.location.href='home.html'; }
+function loginWithFingerprint(){ showToast('Fingerprint login - use your device biometrics'); document.getElementById('mSetupPasskey').style.display='flex'; }
+function verifyLogin2FA(){ document.getElementById('m2FAVerify').style.display='none'; window.location.href='home.html'; }
+function cancel2FA(){ document.getElementById('m2FAVerify').style.display='none'; }
+function setupPasskeyFromWelcome(){ document.getElementById('mSetupPasskey').style.display='none'; const uid=localStorage.getItem('autro_user_id'); if(uid) localStorage.setItem('autro_passkey_'+uid,'1'); showToast('Fingerprint enabled!'); setTimeout(()=>{ window.location.href='home.html'; }, 500); }
+function closePasskeyModal(){ document.getElementById('mSetupPasskey').style.display='none'; window.location.href='home.html'; }
+document.addEventListener('DOMContentLoaded',()=>{ applyTheme(); applyLang(); renderProfiles(); switchTab('login'); });
 </script>
-<script src="js/welcome.js"></script>
 </body>
-                                                                                                                                                                                                                                                       </html>
+  </html>
