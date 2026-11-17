@@ -26,6 +26,7 @@
     <button class="icon-btn" onclick="window.location.href='notification.html'" title="Notifications"><i class="fas fa-bell"></i><span class="notif-dot" id="notifDot"></span></button>
     <button class="icon-btn" onclick="toggleTheme()" title="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
     <button class="icon-btn" onclick="window.location.href='shortcut.html'" title="Menu / Shortcuts"><i class="fas fa-bars"></i></button>
+    <button class="icon-btn" id="authBtn" onclick="openAuthModal()" title="Login / Signup" style="width:auto;padding:0 14px;border-radius:20px;font-size:14px;font-weight:700;background:var(--primary);color:#fff"><span id="authBtnText">Login</span></button>
   </div>
 </header>
 
@@ -34,12 +35,15 @@
   <aside class="sidebar">
     <div class="side-card profile-mini">
       <div class="pm-row">
-        <img src="https://i.pravatar.cc/100?img=12" class="post-avatar" style="width:48px;height:48px">
+        <img src="https://i.pravatar.cc/100?img=12" class="post-avatar" id="sidebarAvatar" style="width:48px;height:48px">
         <div class="pm-info">
-          <div class="pm-name"><span>Abir Mazumder</span> <span class="vbadge" style="background:#000;color:#fff"><i class="fas fa-check"></i></span></div>
+          <div class="pm-name"><span id="sidebarUserName">Abir Mazumder</span> <span class="vbadge" style="background:#000;color:#fff"><i class="fas fa-check"></i></span></div>
           <div class="pm-sub" onclick="openModal('mProfile')">View profile →</div>
+          <div class="pm-sub" id="sidebarUserEmail" style="font-size:12px">Guest User</div>
         </div>
       </div>
+      <button class="btn btn-primary w-100" id="sidebarAuthBtn" onclick="openAuthModal()" style="margin-top:10px">Login / Create Account</button>
+      <button class="btn w-100" id="sidebarLogoutBtn" onclick="logoutUser()" style="margin-top:8px;background:var(--input-bg);color:var(--text);display:none">Logout</button>
     </div>
     <div class="side-card">
       <div class="nav-item active" onclick="filterFeed('all')"><i class="fas fa-newspaper"></i> News Feed</div>
@@ -73,8 +77,8 @@
     <!-- COMPOSER -->
     <div class="composer">
       <div class="composer-row" onclick="openCreateMenu()">
-        <img src="https://i.pravatar.cc/60?img=12" class="post-avatar">
-        <div class="composer-input">What's on your mind, Abir?</div>
+        <img src="https://i.pravatar.cc/60?img=12" class="post-avatar" id="composerAvatar">
+        <div class="composer-input" id="composerUserName">What's on your mind, Abir?</div>
       </div>
       <div class="composer-actions">
         <button onclick="createType('live')"><i class="fas fa-video" style="color:#e74c3c;"></i> Live</button>
@@ -122,6 +126,26 @@
 
 <!-- MODALS -->
 <div class="modal-back" id="mComposer"><div class="modal"><h3>Create Post <i class="fas fa-times close-x" onclick="closeModal('mComposer')"></i></h3><textarea id="postText" placeholder="What's on your mind?"></textarea><input type="file" id="postFile" accept="image/*,video/*" style="margin-bottom:12px;width:100%"><button class="btn btn-primary w-100" onclick="publishPost()">Publish Post</button></div></div>
+
+<!-- AUTH MODAL - LOGIN / SIGNUP - SUPABASE -->
+<div class="modal-back" id="mAuth">
+  <div class="modal">
+    <h3 id="authTitle">Welcome to Autrobook <i class="fas fa-times close-x" onclick="closeModal('mAuth')"></i></h3>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:14px" id="authSub">Login to post, comment, react & go live.</p>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-primary w-100" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
+      <button class="btn w-100" id="tabSignup" onclick="switchAuthTab('signup')" style="background:var(--input-bg);color:var(--text)">Sign Up</button>
+    </div>
+    <div id="signupNameWrap" style="display:none">
+      <input type="text" id="authName" placeholder="Full Name - e.g. Abir Mazumder" class="live-input">
+    </div>
+    <input type="email" id="authEmail" placeholder="Email - e.g. you@gmail.com" class="live-input">
+    <input type="password" id="authPassword" placeholder="Password - min 6 characters" class="live-input">
+    <button class="btn btn-primary w-100" id="authSubmitBtn" onclick="submitAuth()">Login</button>
+    <button class="btn w-100" onclick="forgotPassword()" style="background:transparent;color:var(--primary);margin-top:8px">Forgot Password?</button>
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px">By continuing, you agree to Autrobook Safety Policy.<br>Welcome email will be sent from autrobooksupport@gmail.com</p>
+  </div>
+</div>
 
 <!-- CREATE MENU -->
 <div class="modal-back" id="mCreateMenu">
@@ -241,11 +265,13 @@
 </div>
 
 <div class="modal-back" id="mReport"><div class="modal"><h3>Report Post <i class="fas fa-times close-x" onclick="closeModal('mReport')"></i></h3><div class="form-group"><label>Select a reason</label><select id="reportReason"><option value="spam">Spam or Fake Account</option><option value="harassment">Harassment or Bullying</option><option value="misinformation">False Information</option><option value="violence">Violence or Dangerous Organizations</option></select></div><button class="btn btn-primary w-100" onclick="submitReport()">Submit Report</button></div></div>
-<div class="modal-back" id="mProfile"><div class="modal"><h3>My Profile <i class="fas fa-times close-x" onclick="closeModal('mProfile')"></i></h3><div style="text-align:center"><img src="https://i.pravatar.cc/100?img=12" style="width:70px;height:70px;border-radius:50%"><h4 style="margin-top:8px">Abir Mazumder <span class="vbadge" style="background:#000;color:#fff"><i class="fas fa-check"></i></span></h4><p style="color:var(--muted);font-size:13px">Joined Autrobook • Safety Member</p></div></div></div>
+<div class="modal-back" id="mProfile"><div class="modal"><h3>My Profile <i class="fas fa-times close-x" onclick="closeModal('mProfile')"></i></h3><div style="text-align:center"><img src="https://i.pravatar.cc/100?img=12" style="width:70px;height:70px;border-radius:50%" id="profileAvatar"><h4 style="margin-top:8px"><span id="profileUserName">Abir Mazumder</span> <span class="vbadge" style="background:#000;color:#fff"><i class="fas fa-check"></i></span></h4><p style="color:var(--muted);font-size:13px" id="profileUserEmail">Joined Autrobook • Safety Member</p><p style="color:var(--muted);font-size:12px;margin-top:6px" id="profileAccountAge"></p><button class="btn btn-primary w-100" onclick="closeModal('mProfile');openAuthModal()" style="margin-top:12px">Switch Account</button></div></div></div>
 <div class="modal-back" id="mMissing"><div class="modal"><h3>Missing Alerts <i class="fas fa-times close-x" onclick="closeModal('mMissing')"></i></h3><p style="color:var(--muted);font-size:14px;line-height:1.6">Missing Person: Sakib, Age 12, Last Seen: Tongi.<br>Please share. If you see him, contact us.</p><button class="btn btn-primary w-100" onclick="closeModal('mMissing');location.href='missing.html'">Report / Help</button></div></div>
 <div class="modal-back" id="mBlood"><div class="modal"><h3>Blood Donors <i class="fas fa-times close-x" onclick="closeModal('mBlood')"></i></h3><p style="color:var(--muted);font-size:14px;line-height:1.6">O+ 2 Bags needed - Dhaka Medical.<br>Be a hero. Donate blood.</p><button class="btn btn-primary w-100" onclick="closeModal('mBlood');location.href='blood.html'">I Can Donate</button></div></div>
 
 <div id="toast" class="toast">Message sent!</div>
+<!-- SUPABASE CDN - MUST BE BEFORE index.js -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/index.js"></script>
 </body>
-  </html>
+                                                                                    </html>
