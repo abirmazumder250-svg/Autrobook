@@ -1,6 +1,6 @@
-# Autrobook — Safety First Social
+# Autrobook — Safety First Social Media Platform
 
-Autrobook is a safety-focused social networking web application designed to keep users connected while prioritizing their security. It combines standard social media features with emergency response tools, making it a reliable platform for personal safety.
+Autrobook is a safety-focused social medianetworking web application designed to keep users connected while prioritizing their security. It combines standard social media features with emergency response tools, making it a reliable platform for personal safety.
 
 ## 🚀 Key Features
 
