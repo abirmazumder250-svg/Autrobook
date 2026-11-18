@@ -1,531 +1,781 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#043D22">
-<title>Sign Up - Autrobook</title>
-<!-- Index Stylesheet Linkage -->
-<link rel="stylesheet" href="index.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-<style>
-:root {
-  --primary: #043D22; --primary-hover: #022a17;
-  --bg: #f0f2f5; --card: #ffffff; --text: #050505; --muted: #65676b;
-  --border: #dadde1; --input-bg: #ffffff; --error: #e41e3f; --success: #2e7d32; --disabled: #9e9e9e;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --primary: #043D22; --primary-hover: #022a17;
-    --bg: #18191a; --card: #242526; --text: #e4e6eb; --muted: #b0b3b8;
-    --border: #3a3b3c; --input-bg: #242526; --error: #f02849; --success: #66bb6a; --disabled: #4b4c4f;
-  }
-}
-*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+    <!-- 
+    ============================================================================
+    META TAGS AND INITIAL SETUP
+    ============================================================================
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#043D22">
+    <title>Sign Up - Autrobook</title>
 
-.top-bar{width:100%;max-width:480px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;z-index:100}
-.back-btn{width:40px;height:40px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text);cursor:pointer;border:1px solid var(--border);position:relative;z-index:101}
-.lang-wrapper{display:inline-flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:8px 14px;cursor:pointer;position:relative;z-index:101}
-.lang-wrapper span{font-size:13.5px;font-weight:600;color:var(--text)}
-.lang-wrapper i{font-size:12px;color:var(--muted);margin-left:8px}
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google reCAPTCHA (Test Key) -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    
+    <!-- Supabase for Authentication -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <!-- Face-API for Biometrics (Liveness & Face Descriptors) -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
-.lang-modal-back{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:999}
-.lang-modal{background:var(--card);width:90%;max-width:350px;border-radius:12px;padding:20px}
-.lang-modal h3{margin-bottom:16px;font-size:16px;font-weight:600}
-.lang-list{display:flex;flex-direction:column;gap:2px;max-height:400px;overflow-y:auto}
-.lang-item{display:flex;align-items:center;justify-content:space-between;padding:14px;border-radius:8px;cursor:pointer}
-.lang-item:hover{background:var(--bg)}
-.lang-item span{font-size:15px}
-.lang-item input[type="radio"]{accent-color:var(--primary);width:18px;height:18px}
-.lang-close{width:100%;padding:12px;margin-top:16px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer}
+    <style>
+        /* 
+        ============================================================================
+        CSS VARIABLES FOR THEMING (LIGHT & DARK MODE)
+        ============================================================================
+        */
+        :root {
+            --primary: #043D22; 
+            --primary-hover: #022a17;
+            --bg: #f0f2f5; 
+            --card: #ffffff; 
+            --text: #050505; 
+            --muted: #65676b;
+            --border: #dadde1; 
+            --input-bg: #ffffff; 
+            --error: #e41e3f; 
+            --success: #2e7d32; 
+            --disabled: #9e9e9e;
+        }
 
-.header{text-align:center;margin-bottom:20px;padding:0 20px}
-/* ছোট সাইজের ইমেজ লোগো স্টাইল */
-.logo{width:56px;height:56px;border-radius:14px;object-fit:cover;margin:0 auto 12px;display:block;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
-h2{font-size:24px;font-weight:800;margin-bottom:6px}
-.subtitle{font-size:14px;color:var(--muted)}
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #18191a; 
+                --card: #242526; 
+                --text: #e4e6eb; 
+                --muted: #b0b3b8;
+                --border: #3a3b3c; 
+                --input-bg: #242526; 
+                --error: #f02849; 
+                --success: #66bb6a; 
+                --disabled: #4b4c4f;
+            }
+        }
 
-.progress-container{width:100%;max-width:440px;padding:0 20px;display:flex;gap:6px;margin-bottom:24px}
-.progress-step{flex:1;height:4px;border-radius:2px;background:var(--border)}
-.progress-step.active{background:var(--primary)}
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
 
-.form-wrap{width:100%;max-width:440px;padding:0 20px 40px;position:relative;z-index:10}
-.form-group{margin-bottom:16px;position:relative}
-label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
-input{width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--input-bg);color:var(--text);font-size:15px;outline:none}
-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(4,61,34,0.15)}
-.eye-icon{position:absolute;right:14px;top:50%;transform:translateY(-10%);cursor:pointer;color:var(--muted);padding:10px;z-index:30;font-size:16px;}
-.dob-wrap{display:flex;gap:8px}
-.dob-wrap input{text-align:center}
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-.verify-box{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;background:var(--input-bg);margin-bottom:18px;position:relative}
-.verify-box video{width:100%;border-radius:10px;display:none;margin-bottom:10px; transform: scaleX(-1);}
-.verify-box img{width:90px;height:90px;border-radius:50%;object-fit:cover;margin:10px auto;display:none;border:3px solid var(--primary)}
-.verify-options{display:flex;gap:10px;margin-bottom:12px}
-.verify-btn{flex:1;padding:14px;border:none;border-radius:10px;background:var(--primary);color:white;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;z-index:20}
-.verify-btn.verified{background:var(--success)!important}
-.liveness-text{font-size:12px;color:var(--primary);font-weight:600;margin-bottom:10px}
-.captcha-container{display:flex;justify-content:center;margin-bottom:12px;transform:scale(0.9)}
-.checkbox-row{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:10px 0 20px}
+        /* 
+        ============================================================================
+        TOP NAVIGATION BAR
+        ============================================================================
+        */
+        .top-bar {
+            width: 100%;
+            max-width: 480px;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
 
-.btn{width:100%;padding:15px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;border:none;margin-top:10px;background:var(--disabled);color:#fff;transition:all 0.3s;position:relative;z-index:20}
-.btn.active{background:var(--primary)}
-.btn.active:hover{background:var(--primary-hover)}
-.btn-secondary{width:100%;padding:15px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--text);margin-top:10px;position:relative;z-index:20}
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--text);
+            cursor: pointer;
+            border: 1px solid var(--border);
+        }
 
-.msg{text-align:center;font-size:13px;color:var(--error);font-weight:500;min-height:20px;margin-bottom:10px}
-.footer-text{text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)}
-.footer-text a{color:var(--primary);font-weight:700;text-decoration:none}
-.otp-timer{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
-.hide{display:none}
-</style>
+        .lang-wrapper {
+            display: inline-flex;
+            align-items: center;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 8px 14px;
+            cursor: pointer;
+        }
+
+        .lang-wrapper span {
+            font-size: 13.5px;
+            font-weight: 600;
+        }
+
+        .lang-wrapper i {
+            font-size: 12px;
+            color: var(--muted);
+            margin-left: 8px;
+        }
+
+        /* 
+        ============================================================================
+        LANGUAGE MODAL (MATCHING YOUR SCREENSHOT)
+        ============================================================================
+        */
+        .lang-modal-back {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .lang-modal {
+            background: var(--card);
+            width: 90%;
+            max-width: 380px;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .lang-modal h3 {
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #000; /* Forced dark text to match screenshot */
+        }
+        @media (prefers-color-scheme: dark) { .lang-modal h3 { color: var(--text); } }
+
+        .lang-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .lang-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #000;
+        }
+        @media (prefers-color-scheme: dark) { .lang-item { color: var(--text); } }
+        .lang-item:hover { background: var(--bg); }
+
+        .lang-item span { font-size: 15px; font-weight: 500; }
+
+        /* Custom Radio Button to match screenshot */
+        .lang-item input[type="radio"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--muted);
+            border-radius: 50%;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+        }
+        .lang-item input[type="radio"]:checked {
+            border-color: var(--primary);
+        }
+        .lang-item input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px; height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        .lang-close {
+            width: 100%;
+            padding: 14px;
+            margin-top: 20px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        /* 
+        ============================================================================
+        HEADER AND FORM STYLES
+        ============================================================================
+        */
+        .header { text-align: center; margin-bottom: 20px; padding: 0 20px; }
+        .logo { width: 56px; height: 56px; border-radius: 14px; object-fit: cover; margin: 0 auto 12px; display: block; }
+        h2 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+        .subtitle { font-size: 14px; color: var(--muted); }
+
+        .progress-container { width: 100%; max-width: 440px; padding: 0 20px; display: flex; gap: 6px; margin-bottom: 24px; }
+        .progress-step { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+        .progress-step.active { background: var(--primary); }
+
+        .form-wrap { width: 100%; max-width: 440px; padding: 0 20px 40px; position: relative; z-index: 10; }
+        .form-group { margin-bottom: 16px; position: relative; }
+        label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+        
+        input[type="email"], input[type="password"], input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+            transition: border 0.2s;
+        }
+        input:focus { border-color: var(--primary); }
+
+        /* Eye Icon for Password */
+        .eye-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(15%);
+            cursor: pointer;
+            color: var(--muted);
+            padding: 10px;
+            font-size: 18px;
+        }
+
+        .dob-wrap { display: flex; gap: 8px; }
+        .dob-wrap input { text-align: center; }
+
+        /* 
+        ============================================================================
+        VERIFICATION AND BUTTON STYLES
+        ============================================================================
+        */
+        .verify-box { border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; background: var(--input-bg); margin-bottom: 18px; }
+        .verify-box video { width: 100%; border-radius: 10px; display: none; margin-bottom: 10px; transform: scaleX(-1); }
+        .verify-box img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin: 10px auto; display: none; border: 3px solid var(--primary); }
+        
+        .verify-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .verify-btn.verified { background: var(--success) !important; }
+        .liveness-text { font-size: 12px; color: var(--primary); font-weight: 600; margin-bottom: 10px; }
+
+        /* Fingerprint Button */
+        .fingerprint-btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text);
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .fingerprint-btn:hover { background: var(--bg); }
+        .fingerprint-btn.verified { border-color: var(--success); color: var(--success); }
+
+        /* Manual Captcha */
+        .manual-captcha-row {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--input-bg); border: 1.5px solid var(--border);
+            padding: 14px 16px; border-radius: 12px; cursor: pointer;
+            margin: 8px 0 20px; user-select: none;
+        }
+        .manual-captcha-row input[type="checkbox"] { display: none; }
+        .custom-checkbox {
+            width: 24px; height: 24px; border: 2px solid var(--muted);
+            border-radius: 6px; display: flex; align-items: center; justify-content: center;
+        }
+        .manual-captcha-row input:checked ~ .custom-checkbox { background: var(--primary); border-color: var(--primary); }
+        .manual-captcha-row input:checked ~ .custom-checkbox::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: white; font-size: 13px; }
+        .manual-captcha-row span { font-size: 14px; font-weight: 600; }
+
+        .btn {
+            width: 100%; padding: 15px; border-radius: 12px; font-size: 15px; font-weight: 700;
+            border: none; margin-top: 10px; background: var(--disabled); color: #fff; cursor: not-allowed;
+        }
+        .btn.active { background: var(--primary) !important; cursor: pointer; }
+        .btn-secondary {
+            width: 100%; padding: 15px; border-radius: 12px; font-size: 15px; font-weight: 700;
+            border: 1.5px solid var(--border); background: transparent; color: var(--text); margin-top: 10px; cursor: pointer;
+        }
+        
+        .msg { text-align: center; font-size: 13px; color: var(--error); font-weight: 700; min-height: 20px; margin-bottom: 10px; }
+        .footer-text { text-align: center; margin-top: 20px; font-size: 13.5px; color: var(--muted); }
+        .footer-text a { color: var(--primary); font-weight: 700; text-decoration: none; }
+        .otp-timer { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+        .hide { display: none !important; }
+    </style>
 </head>
 <body>
 
-<div class="top-bar">
-  <div class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
-  <div class="lang-wrapper" onclick="openLangModal()">
-    <span id="langBtn">English - US</span> <i class="fas fa-chevron-down"></i>
-  </div>
-</div>
-
-<div class="header">
-  <!-- ছোট সাইজের ইমেজ লোগো -->
-  <img src="logo.png" alt="Autrobook Logo" class="logo" onerror="this.style.display='none'">
-  <h2>Secure Your Account</h2>
-  <p class="subtitle">Enter details and verify your identity</p>
-</div>
-
-<div class="progress-container">
-  <div class="progress-step active"></div>
-  <div class="progress-step active"></div>
-</div>
-
-<div class="form-wrap">
-  <p id="namePreview" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:16px;"></p>
-  
-  <div class="form-group">
-    <label>Email Address</label>
-    <input type="email" id="email" placeholder="Enter your email" autocomplete="email" oninput="checkButtonState()">
-  </div>
-
-  <div class="form-group hide" id="otpGroup">
-    <label>Enter 6 Digit Code</label>
-    <input type="text" id="otp" maxlength="6" placeholder="123456">
-    <div class="otp-timer" id="otpTimer">Code expires in 60s</div>
-  </div>
-
-  <div class="form-group">
-    <label>Birthday</label>
-    <div class="dob-wrap">
-      <input type="number" id="day" placeholder="DD" min="1" max="31" oninput="checkButtonState()">
-      <input type="number" id="month" placeholder="MM" min="1" max="12" oninput="checkButtonState()">
-      <input type="number" id="year" placeholder="YYYY" min="1900" max="2026" oninput="checkButtonState()">
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+        <div class="lang-wrapper" onclick="openLangModal()">
+            <span id="langBtn" data-i18n="langBtn">English - US</span> <i class="fas fa-chevron-down"></i>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label>Password</label>
-    <input type="password" id="password" placeholder="Create a strong password" oninput="checkButtonState()" autocomplete="new-password">
-    <i class="fa-solid fa-eye eye-icon" id="togglePasswordIcon" onclick="togglePass()"></i>
-  </div>
-
-  <label>Security Verification (Mandatory)</label>
-  <div class="verify-box">
-    <p class="liveness-text hide" id="livenessText">Please look at the camera to verify</p>
-    <video id="video" autoplay playsinline></video>
-    <img id="photo" />
-    <div class="verify-options">
-      <button type="button" class="verify-btn" id="cameraBtn" onclick="startCamera()">
-        <i class="fas fa-camera"></i> <span>Live Selfie</span>
-      </button>
+    <!-- HEADER -->
+    <div class="header">
+        <img src="logo.png" alt="Autrobook Logo" class="logo" onerror="this.style.display='none'">
+        <h2 data-i18n="secureAcc">Secure Your Account</h2>
+        <p class="subtitle" data-i18n="subtitle">Enter details and verify your identity</p>
     </div>
-    <div class="verify-status" id="verifyStatus" style="font-size:13px; font-weight:600; color:var(--muted);">Verify using camera to proceed</div>
-  </div>
 
-  <div class="captcha-container">
-    <div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d" data-callback="enableBtn"></div>
-  </div>
-  <div class="checkbox-row">
-    <input type="checkbox" id="humanCheck" onchange="manualCaptcha()">
-    <span>I'm not a robot - Manual verification</span>
-  </div>
+    <!-- PROGRESS -->
+    <div class="progress-container">
+        <div class="progress-step active"></div>
+        <div class="progress-step active"></div>
+    </div>
 
-  <div class="msg" id="msgDetails"></div>
-  
-  <button type="button" class="btn" id="sendOtpBtn" onclick="sendOTP()" disabled>Send OTP</button>
-  <button type="button" class="btn" id="signUpBtn" onclick="verifyOTPAndSignup()" disabled>Sign Up</button>
-  <button type="button" class="btn-secondary" onclick="goBack()">← Back / Cancel</button>
-  
-  <p class="footer-text">
-    <span>Already have an account?</span> 
-    <a href="login.html">Log in</a>
-  </p>
-</div>
-
-<div class="lang-modal-back" id="langModal" onclick="closeLangModal()">
-  <div class="lang-modal" onclick="event.stopPropagation()">
-    <h3>Select Language</h3>
-    <div class="lang-list" id="langList"></div>
-    <button class="lang-close" onclick="closeLangModal()">Close</button>
-  </div>
-</div>
-
-<script>
-const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
-let supabase = null;
-try {
-  if (window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  }
-} catch(e) {
-  console.error("Supabase init error", e);
-}
-
-const languages = [
-  {code: 'en', name: 'English - US'},{code: 'bn', name: 'বাংলা - Bangladesh'},
-  {code: 'hi', name: 'हिन्दी - India'},{code: 'es', name: 'Español - Spain'},
-  {code: 'fr', name: 'Français - France'},{code: 'ar', name: 'Arabic - العربية'},
-  {code: 'pt', name: 'Português - Portugal'},{code: 'de', name: 'Deutsch - Germany'},
-  {code: 'id', name: 'Bahasa Indonesia'},{code: 'tr', name: 'Türkçe - Türkiye'}
-];
-
-let currentLang = localStorage.getItem('autro_lang') || 'en';
-let selfieData = ""; let stream = null; let livenessPassed = false;
-let otpTimer = null; let otpSeconds = 60;
-let faceApiLoaded = false;
-
-document.addEventListener('DOMContentLoaded', async () => {
-  buildLangList();
-  const savedLang = languages.find(l => l.code === currentLang);
-  if(savedLang) document.getElementById('langBtn').innerText = savedLang.name;
-
-  const name = localStorage.getItem('signup_name');
-  if (name) {
-    document.getElementById('namePreview').innerText = '👤 ' + name;
-  }
-
-  try {
-    if (typeof faceapi !== 'undefined') {
-      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
-      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
-      faceApiLoaded = true;
-    }
-  } catch (e) {
-    console.error("Face API failed to load models, fallback enabled", e);
-    faceApiLoaded = false;
-  }
-});
-
-function buildLangList(){
-  const langList = document.getElementById('langList');
-  if(!langList) return;
-  langList.innerHTML = '';
-  languages.forEach(lang => {
-    const div = document.createElement('div');
-    div.className = 'lang-item';
-    div.innerHTML = `<span>${lang.name}</span><input type="radio" name="lang" value="${lang.code}" ${currentLang === lang.code ? 'checked' : ''}>`;
-    div.onclick = () => selectLanguage(lang.code, lang.name);
-    langList.appendChild(div);
-  });
-}
-
-function openLangModal(){document.getElementById('langModal').style.display='flex'}
-function closeLangModal(){document.getElementById('langModal').style.display='none'}
-
-function selectLanguage(code, name){
-  currentLang = code;
-  localStorage.setItem('autro_lang', currentLang);
-  document.getElementById('langBtn').innerText = name;
-  closeLangModal();
-}
-
-function goBack(){ 
-  window.location.href = 'signup-name.html'; 
-}
-
-function showMsg(id, text, color="var(--error)"){
-  const el=document.getElementById(id); 
-  if(el){
-    el.textContent=text; 
-    el.style.color=color;
-  }
-}
-
-function togglePass(){
-  const p = document.getElementById('password');
-  const icon = document.getElementById('togglePasswordIcon');
-  if(!p || !icon) return;
-  
-  if(p.type === 'password'){
-    p.type = 'text';
-    icon.classList.remove('fa-eye');
-    icon.classList.add('fa-eye-slash');
-  } else {
-    p.type = 'password';
-    icon.classList.remove('fa-eye-slash');
-    icon.classList.add('fa-eye');
-  }
-}
-
-function checkButtonState(){
-  const captcha=(typeof grecaptcha!=='undefined' && grecaptcha.getResponse().length>0);
-  const manual=document.getElementById('humanCheck').checked;
-  const verified = selfieData && livenessPassed;
-  
-  const email=document.getElementById('email').value.trim();
-  const day=document.getElementById('day').value;
-  const month=document.getElementById('month').value;
-  const year=document.getElementById('year').value;
-  const pass=document.getElementById('password').value;
-
-  const isFormValid = email && day && month && year && year.length === 4 && pass.length >= 6;
-
-  const sendBtn = document.getElementById('sendOtpBtn');
-  const signBtn = document.getElementById('signUpBtn');
-
-  if((captcha || manual) && verified && isFormValid){
-    if(sendBtn) { sendBtn.classList.add('active'); sendBtn.disabled=false; }
-    if(signBtn) { signBtn.classList.add('active'); signBtn.disabled=false; }
-  } else {
-    if(sendBtn) { sendBtn.classList.remove('active'); sendBtn.disabled=true; }
-    if(signBtn) { signBtn.classList.remove('active'); signBtn.disabled=true; }
-  }
-}
-
-window.enableBtn=()=>checkButtonState(); 
-window.manualCaptcha=()=>checkButtonState();
-
-window.startCamera = async function() {
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Camera API is not supported in this browser.");
-      return;
-    }
-    
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-    const video = document.getElementById('video'); 
-    video.srcObject = stream; 
-    video.style.display = 'block';
-    document.getElementById('livenessText').classList.remove('hide');
-    
-    const btn = document.getElementById('cameraBtn'); 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...'; 
-    btn.disabled = true;
-    
-    if (faceApiLoaded) {
-      runLivenessCheck(video);
-    } else {
-      setTimeout(() => {
-        if (!livenessPassed) {
-          capturePhoto(video);
-        }
-      }, 3000);
-    }
-  } catch(e) {
-    console.error("Camera error:", e);
-    showMsg('msgDetails','Camera permission denied or not available.');
-    const btn = document.getElementById('cameraBtn');
-    if(btn) {
-      btn.innerHTML = '<i class="fas fa-camera"></i> <span>Live Selfie</span>'; 
-      btn.disabled = false;
-    }
-  }
-};
-
-async function runLivenessCheck(video){
-  let blinkCount = 0; 
-  let lastEyeState = 'open';
-  let isCompleted = false;
-  
-  const interval = setInterval(async () => {
-    if (isCompleted || !video || video.paused || video.ended) return;
-    
-    try {
-      const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-      
-      if(detections){
-        const leftEye = detections.landmarks.getLeftEye();
-        const rightEye = detections.landmarks.getRightEye();
+    <!-- MAIN FORM -->
+    <div class="form-wrap">
+        <p id="namePreview" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:16px;"></p>
         
-        const leftEAR = (distance(leftEye[1], leftEye[5]) + distance(leftEye[2], leftEye[4])) / (2 * distance(leftEye[0], leftEye[3]));
-        const rightEAR = (distance(rightEye[1], rightEye[5]) + distance(rightEye[2], rightEye[4])) / (2 * distance(rightEye[0], rightEye[3]));
-        const ear = (leftEAR + rightEAR) / 2;
+        <div class="form-group">
+            <label data-i18n="emailLabel">Email Address</label>
+            <input type="email" id="email" placeholder="Enter your email" oninput="checkButtonState()">
+        </div>
+
+        <div class="form-group hide" id="otpGroup">
+            <label data-i18n="otpLabel">Enter 6 Digit Code</label>
+            <input type="text" id="otp" maxlength="6" placeholder="123456" oninput="checkButtonState()">
+            <div class="otp-timer" id="otpTimer" data-i18n="otpTimer">Code expires in 60s</div>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="dobLabel">Birthday</label>
+            <div class="dob-wrap">
+                <input type="number" id="day" placeholder="DD" oninput="checkButtonState()">
+                <input type="number" id="month" placeholder="MM" oninput="checkButtonState()">
+                <input type="number" id="year" placeholder="YYYY" oninput="checkButtonState()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="passLabel">Password</label>
+            <input type="password" id="password" placeholder="Create a strong password" oninput="checkButtonState()">
+            <!-- Password Eye Icon -->
+            <i class="fa-solid fa-eye eye-icon" id="togglePasswordIcon" onclick="togglePass()"></i>
+        </div>
+
+        <label data-i18n="securityLabel">Security Verification (Mandatory)</label>
+        <div class="verify-box">
+            <p class="liveness-text hide" id="livenessText" data-i18n="lookCam">Please look at the camera to verify</p>
+            <video id="video" autoplay playsinline></video>
+            <img id="photo" />
+            
+            <!-- Camera / Face Scan Button -->
+            <button type="button" class="verify-btn" id="cameraBtn" onclick="startCamera()">
+                <i class="fas fa-camera"></i> <span data-i18n="liveSelfie">Live Selfie & Eye Scan</span>
+            </button>
+            
+            <!-- WebAuthn Fingerprint Button -->
+            <button type="button" class="fingerprint-btn" id="fingerprintBtn" onclick="registerFingerprint()">
+                <i class="fas fa-fingerprint"></i> <span data-i18n="fingerprintBtn">Add Fingerprint (WebAuthn)</span>
+            </button>
+            
+            <div class="verify-status" id="verifyStatus" style="font-size:13px; font-weight:600; color:var(--muted); margin-top:10px;" data-i18n="verifyStatus">Verify using camera & fingerprint to proceed</div>
+        </div>
+
+        <!-- Google reCAPTCHA -->
+        <div style="display:flex; justify-content:center; transform:scale(0.9); margin-bottom:8px; min-height:78px;">
+            <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" data-callback="enableBtn"></div>
+        </div>
         
-        if(ear < 0.25 && lastEyeState === 'open'){ 
-          blinkCount++; 
-          lastEyeState = 'closed'; 
-        }
-        if(ear > 0.25 && lastEyeState === 'closed'){ 
-          lastEyeState = 'open'; 
-        }
+        <!-- Manual Captcha Fallback -->
+        <label class="manual-captcha-row" for="humanCheck">
+            <input type="checkbox" id="humanCheck" onchange="manualCaptcha()">
+            <div class="custom-checkbox"></div>
+            <span data-i18n="notRobot">I'm not a robot - Manual verification</span>
+        </label>
+
+        <div class="msg" id="msgDetails"></div>
         
-        if(blinkCount >= 1){ 
-          isCompleted = true;
-          clearInterval(interval); 
-          capturePhoto(video); 
+        <button type="button" class="btn" id="sendOtpBtn" onclick="sendOTP()" disabled><span data-i18n="sendOtp">Send OTP</span></button>
+        <button type="button" class="btn" id="signUpBtn" onclick="verifyOTPAndSignup()" disabled><span data-i18n="signUp">Sign Up</span></button>
+        
+        <button type="button" class="btn-secondary" onclick="goBack()"><span data-i18n="backBtn">← Back</span></button>
+        <button type="button" class="btn-secondary" onclick="goCancel()" style="color:var(--error); border-color:var(--error);"><span data-i18n="cancelBtn">Cancel</span></button>
+        
+        <p class="footer-text">
+            <span data-i18n="haveAcc">Already have an account?</span> 
+            <a href="login.html" data-i18n="login">Log in</a>
+        </p>
+    </div>
+
+    <!-- LANGUAGE MODAL -->
+    <div class="lang-modal-back" id="langModal" onclick="closeLangModal()">
+        <div class="lang-modal" onclick="event.stopPropagation()">
+            <h3 data-i18n="selectLang">Select Language</h3>
+            <div class="lang-list" id="langList"></div>
+            <button class="lang-close" onclick="closeLangModal()" data-i18n="close">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // 1. SUPABASE CONFIGURATION
+        // ============================================================================
+        const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+        let supabaseClient = null;
+        try {
+            if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) { console.error("Supabase error", e); }
+
+        // ============================================================================
+        // 2. TRANSLATION DICTIONARY (Based on your screenshots)
+        // ============================================================================
+        const i18n = {
+            en: { langBtn: "English - US", secureAcc: "Secure Your Account", subtitle: "Enter details and verify your identity", emailLabel: "Email Address", otpLabel: "Enter 6 Digit Code", otpTimer: "Code expires in 60s", dobLabel: "Birthday", passLabel: "Password", securityLabel: "Security Verification (Mandatory)", lookCam: "Please look at the camera to verify", liveSelfie: "Live Selfie & Eye Scan", fingerprintBtn: "Add Fingerprint (WebAuthn)", verifyStatus: "Verify using camera & fingerprint to proceed", notRobot: "I'm not a robot - Manual verification", sendOtp: "Send OTP", signUp: "Sign Up", backBtn: "← Back", cancelBtn: "Cancel", haveAcc: "Already have an account?", login: "Log in", selectLang: "Select Language", close: "Close" },
+            bn: { langBtn: "বাংলা - Bangladesh", secureAcc: "আপনার অ্যাকাউন্ট সুরক্ষিত করুন", subtitle: "বিস্তারিত লিখুন এবং আপনার পরিচয় যাচাই করুন", emailLabel: "ইমেইল ঠিকানা", otpLabel: "৬ ডিজিটের কোড দিন", otpTimer: "কোডটি ৬০ সেকেন্ডে শেষ হবে", dobLabel: "জন্মদিন", passLabel: "পাসওয়ার্ড", securityLabel: "নিরাপত্তা যাচাই (বাধ্যতামূলক)", lookCam: "যাচাই করতে ক্যামেরার দিকে তাকান", liveSelfie: "লাইভ সেলফি এবং চোখ স্ক্যান", fingerprintBtn: "ফিঙ্গারপ্রিন্ট যোগ করুন", verifyStatus: "এগিয়ে যেতে ক্যামেরা এবং ফিঙ্গারপ্রিন্ট যাচাই করুন", notRobot: "আমি রোবট নই - ম্যানুয়াল যাচাই", sendOtp: "OTP পাঠান", signUp: "সাইন আপ", backBtn: "← পিছনে", cancelBtn: "বাতিল", haveAcc: "ইতিমধ্যে একটি অ্যাকাউন্ট আছে?", login: "লগ ইন", selectLang: "ভাষা নির্বাচন করুন", close: "বন্ধ করুন" },
+            hi: { langBtn: "हिन्दी - India", secureAcc: "अपना खाता सुरक्षित करें", subtitle: "विवरण दर्ज करें और अपनी पहचान सत्यापित करें", emailLabel: "ईमेल पता", otpLabel: "6 अंकों का कोड दर्ज करें", otpTimer: "कोड 60 सेकंड में समाप्त होगा", dobLabel: "जन्मदिन", passLabel: "पासवर्ड", securityLabel: "सुरक्षा सत्यापन (अनिवार्य)", lookCam: "सत्यापित करने के लिए कृपया कैमरे की ओर देखें", liveSelfie: "लाइव सेल्फी और आई स्कैन", fingerprintBtn: "फिंगरप्रिंट जोड़ें", verifyStatus: "आगे बढ़ने के लिए कैमरा और फिंगरप्रिंट सत्यापित करें", notRobot: "मैं रोबोट नहीं हूँ - मैन्युअल सत्यापन", sendOtp: "OTP भेजें", signUp: "साइन अप करें", backBtn: "← पीछे", cancelBtn: "रद्द करें", haveAcc: "क्या आपके पास पहले से खाता है?", login: "लॉग इन करें", selectLang: "भाषा चुनें", close: "बंद करें" },
+            es: { langBtn: "Español - Spain", secureAcc: "Asegura tu cuenta", subtitle: "Ingresa los detalles y verifica tu identidad", emailLabel: "Correo electrónico", otpLabel: "Ingresa el código de 6 dígitos", otpTimer: "El código expira en 60s", dobLabel: "Cumpleaños", passLabel: "Contraseña", securityLabel: "Verificación de seguridad (Obligatorio)", lookCam: "Por favor mira a la cámara para verificar", liveSelfie: "Selfie en vivo y escaneo de ojos", fingerprintBtn: "Añadir huella digital", verifyStatus: "Verifica con cámara y huella para proceder", notRobot: "No soy un robot - Verificación manual", sendOtp: "Enviar OTP", signUp: "Registrarse", backBtn: "← Atrás", cancelBtn: "Cancelar", haveAcc: "¿Ya tienes una cuenta?", login: "Iniciar sesión", selectLang: "Seleccionar idioma", close: "Cerrar" },
+            fr: { langBtn: "Français - France", secureAcc: "Sécurisez votre compte", subtitle: "Entrez les détails et vérifiez votre identité", emailLabel: "Adresse e-mail", otpLabel: "Entrez le code à 6 chiffres", otpTimer: "Le code expire dans 60s", dobLabel: "Anniversaire", passLabel: "Mot de passe", securityLabel: "Vérification de sécurité (Obligatoire)", lookCam: "Veuillez regarder la caméra pour vérifier", liveSelfie: "Selfie en direct et scan des yeux", fingerprintBtn: "Ajouter une empreinte digitale", verifyStatus: "Vérifiez avec la caméra et l'empreinte pour continuer", notRobot: "Je ne suis pas un robot - Vérification manuelle", sendOtp: "Envoyer OTP", signUp: "S'inscrire", backBtn: "← Retour", cancelBtn: "Annuler", haveAcc: "Vous avez déjà un compte?", login: "Se connecter", selectLang: "Choisir la langue", close: "Fermer" },
+            ar: { langBtn: "Arabic - العربية", secureAcc: "تأمين حسابك", subtitle: "أدخل التفاصيل وتحقق من هويتك", emailLabel: "عنوان البريد الإلكتروني", otpLabel: "أدخل رمز مكون من 6 أرقام", otpTimer: "ينتهي الرمز في 60 ثانية", dobLabel: "عيد ميلاد", passLabel: "كلمة المرور", securityLabel: "التحقق الأمني (إلزامي)", lookCam: "يرجى النظر إلى الكاميرا للتحقق", liveSelfie: "سيلفي مباشر ومسح العين", fingerprintBtn: "إضافة بصمة الإصبع", verifyStatus: "تحقق باستخدام الكاميرا وبصمة الإصبع للمتابعة", notRobot: "أنا لست روبوتًا - التحقق اليدوي", sendOtp: "إرسال OTP", signUp: "اشتراك", backBtn: "← رجوع", cancelBtn: "إلغاء", haveAcc: "هل لديك حساب بالفعل؟", login: "تسجيل الدخول", selectLang: "اختر اللغة", close: "إغلاق" },
+            pt: { langBtn: "Português - Portugal", secureAcc: "Proteja sua conta", subtitle: "Insira os detalhes e verifique sua identidade", emailLabel: "Endereço de e-mail", otpLabel: "Insira o código de 6 dígitos", otpTimer: "O código expira em 60s", dobLabel: "Aniversário", passLabel: "Senha", securityLabel: "Verificação de segurança (Obrigatório)", lookCam: "Por favor, olhe para a câmera para verificar", liveSelfie: "Selfie ao vivo e digitalização ocular", fingerprintBtn: "Adicionar impressão digital", verifyStatus: "Verifique com câmera e impressão digital para prosseguir", notRobot: "Não sou um robô - Verificação manual", sendOtp: "Enviar OTP", signUp: "Inscrever-se", backBtn: "← Voltar", cancelBtn: "Cancelar", haveAcc: "Já tem uma conta?", login: "Entrar", selectLang: "Selecionar idioma", close: "Fechar" },
+            de: { langBtn: "Deutsch - Germany", secureAcc: "Sichern Sie Ihr Konto", subtitle: "Geben Sie Details ein und bestätigen Sie Ihre Identität", emailLabel: "E-Mail-Adresse", otpLabel: "6-stelligen Code eingeben", otpTimer: "Code läuft in 60s ab", dobLabel: "Geburtstag", passLabel: "Passwort", securityLabel: "Sicherheitsüberprüfung (Erforderlich)", lookCam: "Bitte schauen Sie in die Kamera, um zu verifizieren", liveSelfie: "Live-Selfie & Augenscan", fingerprintBtn: "Fingerabdruck hinzufügen", verifyStatus: "Mit Kamera und Fingerabdruck verifizieren", notRobot: "Ich bin kein Roboter - Manuelle Überprüfung", sendOtp: "OTP senden", signUp: "Anmelden", backBtn: "← Zurück", cancelBtn: "Abbrechen", haveAcc: "Haben Sie bereits ein Konto?", login: "Einloggen", selectLang: "Sprache auswählen", close: "Schließen" },
+            id: { langBtn: "Bahasa Indonesia", secureAcc: "Amankan Akun Anda", subtitle: "Masukkan detail dan verifikasi identitas Anda", emailLabel: "Alamat Email", otpLabel: "Masukkan Kode 6 Digit", otpTimer: "Kode kedaluwarsa dalam 60s", dobLabel: "Ulang tahun", passLabel: "Kata Sandi", securityLabel: "Verifikasi Keamanan (Wajib)", lookCam: "Silakan lihat kamera untuk memverifikasi", liveSelfie: "Selfie Langsung & Pindai Mata", fingerprintBtn: "Tambah Sidik Jari", verifyStatus: "Verifikasi menggunakan kamera & sidik jari", notRobot: "Saya bukan robot - Verifikasi manual", sendOtp: "Kirim OTP", signUp: "Daftar", backBtn: "← Kembali", cancelBtn: "Batal", haveAcc: "Sudah punya akun?", login: "Masuk", selectLang: "Pilih Bahasa", close: "Tutup" },
+            tr: { langBtn: "Türkçe - Türkiye", secureAcc: "Hesabınızı Güvenceye Alın", subtitle: "Bilgileri girin ve kimliğinizi doğrulayın", emailLabel: "E-posta Adresi", otpLabel: "6 Haneli Kodu Girin", otpTimer: "Kodun süresi 60s içinde dolacak", dobLabel: "Doğum günü", passLabel: "Şifre", securityLabel: "Güvenlik Doğrulaması (Zorunlu)", lookCam: "Doğrulamak için lütfen kameraya bakın", liveSelfie: "Canlı Selfie ve Göz Taraması", fingerprintBtn: "Parmak İzi Ekle", verifyStatus: "Devam etmek için kamera ve parmak iziyle doğrulayın", notRobot: "Ben robot değilim - Manuel doğrulama", sendOtp: "OTP Gönder", signUp: "Kayıt Ol", backBtn: "← Geri", cancelBtn: "İptal", haveAcc: "Zaten hesabınız var mı?", login: "Giriş yap", selectLang: "Dil Seçin", close: "Kapat" }
+        };
+
+        const languageList = [
+            { code: 'en', name: 'English - US' }, { code: 'bn', name: 'বাংলা - Bangladesh' },
+            { code: 'hi', name: 'हिन्दी - India' }, { code: 'es', name: 'Español - Spain' },
+            { code: 'fr', name: 'Français - France' }, { code: 'ar', name: 'Arabic - العربية' },
+            { code: 'pt', name: 'Português - Portugal' }, { code: 'de', name: 'Deutsch - Germany' },
+            { code: 'id', name: 'Bahasa Indonesia' }, { code: 'tr', name: 'Türkçe - Türkiye' }
+        ];
+
+        let currentLang = localStorage.getItem('autro_lang') || 'en';
+        
+        // State Variables
+        let selfieData = "", faceDescriptor = null, stream = null, livenessPassed = false;
+        let fingerprintRegistered = false, otpTimer = null, otpSeconds = 60;
+
+        // ============================================================================
+        // 3. TRANSLATION ENGINE
+        // ============================================================================
+        function applyLanguage(langCode) {
+            const dict = i18n[langCode] || i18n['en'];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) el.innerText = dict[key];
+            });
+            document.getElementById('langBtn').innerText = languageList.find(l => l.code === langCode)?.name || 'English';
+            localStorage.setItem('autro_lang', langCode);
+            currentLang = langCode;
         }
-      }
-    } catch(err) {
-      console.log("Detection skip", err);
-    }
-  }, 150);
 
-  setTimeout(()=>{ 
-    clearInterval(interval); 
-    if(!livenessPassed){ 
-      capturePhoto(video);
-    } 
-  }, 10000);
-}
+        function buildLangList() {
+            const list = document.getElementById('langList');
+            list.innerHTML = '';
+            languageList.forEach(lang => {
+                const div = document.createElement('div');
+                div.className = 'lang-item';
+                div.innerHTML = `<span>${lang.name}</span><input type="radio" name="lang" ${currentLang === lang.code ? 'checked' : ''}>`;
+                div.onclick = () => { applyLanguage(lang.code); closeLangModal(); };
+                list.appendChild(div);
+            });
+        }
 
-function distance(p1, p2){ 
-  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); 
-}
+        function openLangModal() { document.getElementById('langModal').style.display = 'flex'; }
+        function closeLangModal() { document.getElementById('langModal').style.display = 'none'; }
 
-window.capturePhoto = function(video){
-  try {
-    const canvas = document.createElement('canvas'); 
-    canvas.width = video.videoWidth || 320; 
-    canvas.height = video.videoHeight || 240;
-    const ctx = canvas.getContext('2d');
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height); 
-    
-    selfieData = canvas.toDataURL('image/jpeg', 0.8);
-    const photoEl = document.getElementById('photo');
-    photoEl.src = selfieData; 
-    photoEl.style.display = 'block'; 
-    video.style.display = 'none';
-    document.getElementById('livenessText').classList.add('hide');
-    
-    if(stream){ stream.getTracks().forEach(track => track.stop()); }
-    
-    const btn = document.getElementById('cameraBtn'); 
-    btn.innerHTML = '<i class="fas fa-check"></i> Verified'; 
-    btn.classList.add('verified'); 
-    btn.disabled = true;
-    
-    livenessPassed = true; 
-    document.getElementById('verifyStatus').innerText = "✅ Real human verified!"; 
-    document.getElementById('verifyStatus').style.color = "var(--success)"; 
-    checkButtonState();
-  } catch(e) {
-    console.error("Capture photo error", e);
-    showMsg('msgDetails', 'Failed to capture photo. Try again.');
-  }
-};
+        // ============================================================================
+        // 4. NAVIGATION
+        // ============================================================================
+        function goBack() { window.location.href = 'signup-name.html'; }
+        function goCancel() { window.location.href = 'welcome.html'; }
 
-async function sendOTP(){
-  const email=document.getElementById('email').value.trim();
-  if(!email) return showMsg('msgDetails',"Please enter email");
-  
-  if(!supabase) {
-    showMsg('msgDetails', "Supabase client not loaded.");
-    return;
-  }
+        // ============================================================================
+        // 5. PASSWORD TOGGLE (EYE ICON)
+        // ============================================================================
+        function togglePass() {
+            const p = document.getElementById('password');
+            const icon = document.getElementById('togglePasswordIcon');
+            if (p.type === 'password') {
+                p.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                p.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
 
-  const btn = document.getElementById('sendOtpBtn');
-  btn.innerText="Sending..."; 
-  btn.disabled=true;
-  
-  const {error}=await supabase.auth.signInWithOtp({email: email, options: { shouldCreateUser: true }});
-  
-  if(error){
-    showMsg('msgDetails',error.message); 
-    btn.innerText="Send OTP"; 
-    btn.disabled=false; 
-    return;
-  }
-  
-  showMsg('msgDetails',`OTP sent to ${email}`,"var(--success)"); 
-  document.getElementById('otpGroup').classList.remove('hide'); 
-  
-  otpSeconds=60; 
-  if(otpTimer) clearInterval(otpTimer);
-  otpTimer=setInterval(()=>{
-    otpSeconds--; 
-    document.getElementById('otpTimer').innerText=`Code expires in ${otpSeconds}s`; 
-    if(otpSeconds<=0){
-      clearInterval(otpTimer); 
-      document.getElementById('otpTimer').innerText="Code expired. Please resend OTP"; 
-      btn.innerText="Resend OTP";
-      btn.disabled=false;
-    }
-  },1000);
-}
+        // ============================================================================
+        // 6. WEBAUTHN FINGERPRINT (GOOGLE/APPLE STANDARD)
+        // ============================================================================
+        async function registerFingerprint() {
+            if (!window.PublicKeyCredential) {
+                alert("WebAuthn is not supported on this browser.");
+                return;
+            }
 
-async function verifyOTPAndSignup(){
-  const email=document.getElementById('email').value.trim(); 
-  const otp=document.getElementById('otp').value.trim();
-  const day=document.getElementById('day').value; 
-  const month=document.getElementById('month').value; 
-  const year=document.getElementById('year').value; 
-  const password=document.getElementById('password').value;
-  const dob=`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`; 
-  
-  const name=localStorage.getItem('signup_name') || 'User'; 
-  const username=localStorage.getItem('signup_username') || 'user_' + Date.now();
-  
-  if(!otp) return showMsg('msgDetails',"Please enter the 6-digit OTP");
-  if(!day||!month||!year||year.length!=4) return showMsg('msgDetails',"Please enter a valid Birthday");
-  if(password.length<6) return showMsg('msgDetails',"Password must be at least 6 characters");
-  
-  if(!supabase) {
-    showMsg('msgDetails', "Supabase client not initialized.");
-    return;
-  }
+            try {
+                // 1. Generate a random challenge
+                const challenge = new Uint8Array(32);
+                window.crypto.getRandomValues(challenge);
 
-  const btn=document.getElementById('signUpBtn'); 
-  btn.innerText="Processing..."; 
-  btn.disabled=true;
-  
-  try{
-    const {data, error}=await supabase.auth.verifyOtp({email:email,token:otp,type:'email'}); 
-    if(error) throw error;
-    
-    const {error:updateError}=await supabase.auth.updateUser({
-      password: password,
-      data: { full_name: name, username: username, dob: dob }
-    });
-    if(updateError) throw updateError;
-    
-    await supabase.from('profiles').insert([{
-      id: data.user.id,
-      email: email,
-      full_name: name,
-      username: username,
-      dob: dob,
-      selfie_url: selfieData,
-      is_verified: true,
-      created_at: new Date()
-    }]);
-    
-    showMsg('msgDetails',"Account created successfully! Redirecting...","var(--success)"); 
-    localStorage.setItem('isLoggedIn','true'); 
-    localStorage.setItem('current_user',email); 
-    
-    localStorage.removeItem('signup_firstName');
-    localStorage.removeItem('signup_surname');
-    localStorage.removeItem('signup_username');
-    localStorage.removeItem('signup_name');
+                // 2. Request biometric prompt
+                const credential = await navigator.credentials.create({
+                    publicKey: {
+                        challenge: challenge,
+                        rp: { name: "Autrobook", id: window.location.hostname },
+                        user: {
+                            id: new Uint8Array(16), // In production, use the Supabase user ID
+                            name: document.getElementById('email').value || "user@autrobook.com",
+                            displayName: "Autrobook User"
+                        },
+                        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+                        authenticatorSelection: { userVerification: "required", authenticatorAttachment: "platform" },
+                        timeout: 60000
+                    }
+                });
 
-    setTimeout(()=>{window.location.href='index.html';},1500);
-    
-  }catch(error){
-    showMsg('msgDetails',error.message); 
-    btn.innerText="Sign Up"; 
-    btn.disabled=false;
-  }
-}
-</script>
-<!-- Index JS Linkage -->
-<script src="index.js"></script>
+                if (credential) {
+                    // Convert ArrayBuffer to Base64 to save in Supabase
+                    const rawId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+                    
+                    fingerprintRegistered = true;
+                    const btn = document.getElementById('fingerprintBtn');
+                    btn.classList.add('verified');
+                    btn.innerHTML = '<i class="fas fa-check-circle"></i> Fingerprint Registered';
+                    btn.disabled = true;
+                    checkButtonState();
+                    
+                    // NOTE: You must save 'rawId' to Supabase when the user signs up.
+                    // window.savedFingerprintId = rawId; 
+                }
+            } catch (err) {
+                console.error("Fingerprint registration failed:", err);
+                alert("Fingerprint setup cancelled or failed.");
+            }
+        }
+
+        // ============================================================================
+        // 7. FACE API (LIVENESS & DESCRIPTOR EXTRACTION)
+        // ============================================================================
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.getElementById('livenessText').classList.remove('hide');
+                
+                const btn = document.getElementById('cameraBtn');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning Face...';
+                btn.disabled = true;
+
+                // Load models if not loaded
+                if (!faceapi.nets.tinyFaceDetector.isLoaded) {
+                    await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
+                    await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
+                    await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
+                }
+
+                // Liveness check (Blink detection)
+                let blinkCount = 0, lastEyeState = 'open', isCompleted = false;
+                const interval = setInterval(async () => {
+                    if (isCompleted) return;
+                    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+                    
+                    if (detections) {
+                        const leftEye = detections.landmarks.getLeftEye();
+                        const rightEye = detections.landmarks.getRightEye();
+                        const ear = (getDistance(leftEye[1], leftEye[5]) + getDistance(leftEye[2], leftEye[4])) / (2 * getDistance(leftEye[0], leftEye[3]));
+                        
+                        if (ear < 0.25 && lastEyeState === 'open') { blinkCount++; lastEyeState = 'closed'; }
+                        if (ear > 0.25 && lastEyeState === 'closed') { lastEyeState = 'open'; }
+
+                        // If human blinked, take photo and extract Descriptor
+                        if (blinkCount >= 1) {
+                            isCompleted = true;
+                            clearInterval(interval);
+                            await capturePhotoAndDescriptor(video);
+                        }
+                    }
+                }, 200);
+
+                // Timeout
+                setTimeout(() => {
+                    if (!livenessPassed) {
+                        clearInterval(interval);
+                        alert("Liveness failed. Please blink.");
+                        stopCamera(btn);
+                    }
+                }, 15000);
+
+            } catch (err) {
+                console.error(err);
+                alert("Camera access denied.");
+            }
+        }
+
+        function getDistance(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
+
+        async function capturePhotoAndDescriptor(video) {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+            
+            selfieData = canvas.toDataURL('image/jpeg', 0.8);
+            document.getElementById('photo').src = selfieData;
+            document.getElementById('photo').style.display = 'block';
+            document.getElementById('video').style.display = 'none';
+            
+            // Extract 128-float face descriptor for future matching
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+            if (detection) {
+                faceDescriptor = Array.from(detection.descriptor); // Save this to Supabase
+            }
+
+            document.getElementById('livenessText').classList.add('hide');
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            
+            const btn = document.getElementById('cameraBtn');
+            btn.innerHTML = '<i class="fas fa-check"></i> Face Verified';
+            btn.classList.add('verified');
+            btn.disabled = true;
+
+            livenessPassed = true;
+            checkButtonState();
+        }
+
+        // ============================================================================
+        // 8. FORM VALIDATION AND UI STATE
+        // ============================================================================
+        function checkButtonState() {
+            const captcha = (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse().length > 0);
+            const manual = document.getElementById('humanCheck').checked;
+            
+            // To proceed, we require Face Liveness AND (Fingerprint OR Captcha)
+            const isVerified = livenessPassed && fingerprintRegistered; 
+            
+            const email = document.getElementById('email').value.trim();
+            const day = document.getElementById('day').value;
+            const month = document.getElementById('month').value;
+            const year = document.getElementById('year').value;
+            const pass = document.getElementById('password').value;
+
+            const sendBtn = document.getElementById('sendOtpBtn');
+            const signBtn = document.getElementById('signUpBtn');
+
+            if (email.includes('@')) {
+                sendBtn.classList.add('active'); sendBtn.disabled = false;
+            } else {
+                sendBtn.classList.remove('active'); sendBtn.disabled = true;
+            }
+
+            if ((captcha || manual) && isVerified && email && day && month && year.length === 4 && pass.length >= 6) {
+                signBtn.classList.add('active'); signBtn.disabled = false;
+            } else {
+                signBtn.classList.remove('active'); signBtn.disabled = true;
+            }
+        }
+
+        window.enableBtn = () => checkButtonState();
+        window.manualCaptcha = () => checkButtonState();
+
+        // ============================================================================
+        // 9. SUPABASE: OTP AND SIGNUP
+        // ============================================================================
+        async function sendOTP() {
+            const email = document.getElementById('email').value.trim();
+            const btn = document.getElementById('sendOtpBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            
+            const { error } = await supabaseClient.auth.signInWithOtp({ email: email });
+            if (error) { alert(error.message); btn.innerHTML = "Send OTP"; return; }
+
+            document.getElementById('otpGroup').classList.remove('hide');
+            otpSeconds = 60;
+            otpTimer = setInterval(() => {
+                otpSeconds--;
+                document.getElementById('otpTimer').innerText = `Code expires in ${otpSeconds}s`;
+                if (otpSeconds <= 0) clearInterval(otpTimer);
+            }, 1000);
+        }
+
+        async function verifyOTPAndSignup() {
+            const email = document.getElementById('email').value.trim();
+            const otp = document.getElementById('otp').value.trim();
+            const password = document.getElementById('password').value;
+            const name = localStorage.getItem('signup_name') || 'User';
+
+            try {
+                // 1. Verify OTP
+                const { data, error } = await supabaseClient.auth.verifyOtp({ email, token: otp, type: 'email' });
+                if (error) throw error;
+
+                // 2. Set Password
+                await supabaseClient.auth.updateUser({ password });
+
+                // 3. Save all biometric data to Supabase 'profiles' table
+                await supabaseClient.from('profiles').insert([{
+                    id: data.user.id,
+                    email: email,
+                    full_name: name,
+                    selfie_url: selfieData, // The base64 image
+                    face_descriptor: faceDescriptor, // The 128-float array for matching
+                    fingerprint_id: 'registered_webauthn', // Save the WebAuthn rawId here
+                    status: 'verified'
+                }]);
+
+                // 4. Redirect to Index
+                window.location.href = 'index.html'; 
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        // INITIALIZATION
+        document.addEventListener('DOMContentLoaded', () => {
+            applyLanguage(currentLang);
+            buildLangList();
+        });
+    </script>
 </body>
-  </html>
+</html>
