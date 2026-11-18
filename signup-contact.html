@@ -1,781 +1,937 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- 
-    ============================================================================
-    META TAGS AND INITIAL SETUP
-    ============================================================================
-    -->
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#043D22">
-    <title>Sign Up - Autrobook</title>
-
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Google reCAPTCHA (Test Key) -->
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    
-    <!-- Supabase for Authentication -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
-    <!-- Face-API for Biometrics (Liveness & Face Descriptors) -->
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-
-    <style>
-        /* 
-        ============================================================================
-        CSS VARIABLES FOR THEMING (LIGHT & DARK MODE)
-        ============================================================================
-        */
-        :root {
-            --primary: #043D22; 
-            --primary-hover: #022a17;
-            --bg: #f0f2f5; 
-            --card: #ffffff; 
-            --text: #050505; 
-            --muted: #65676b;
-            --border: #dadde1; 
-            --input-bg: #ffffff; 
-            --error: #e41e3f; 
-            --success: #2e7d32; 
-            --disabled: #9e9e9e;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #18191a; 
-                --card: #242526; 
-                --text: #e4e6eb; 
-                --muted: #b0b3b8;
-                --border: #3a3b3c; 
-                --input-bg: #242526; 
-                --error: #f02849; 
-                --success: #66bb6a; 
-                --disabled: #4b4c4f;
-            }
-        }
-
-        /* Global Reset */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* 
-        ============================================================================
-        TOP NAVIGATION BAR
-        ============================================================================
-        */
-        .top-bar {
-            width: 100%;
-            max-width: 480px;
-            padding: 16px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-        }
-
-        .back-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--card);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            color: var(--text);
-            cursor: pointer;
-            border: 1px solid var(--border);
-        }
-
-        .lang-wrapper {
-            display: inline-flex;
-            align-items: center;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 8px 14px;
-            cursor: pointer;
-        }
-
-        .lang-wrapper span {
-            font-size: 13.5px;
-            font-weight: 600;
-        }
-
-        .lang-wrapper i {
-            font-size: 12px;
-            color: var(--muted);
-            margin-left: 8px;
-        }
-
-        /* 
-        ============================================================================
-        LANGUAGE MODAL (MATCHING YOUR SCREENSHOT)
-        ============================================================================
-        */
-        .lang-modal-back {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-
-        .lang-modal {
-            background: var(--card);
-            width: 90%;
-            max-width: 380px;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-
-        .lang-modal h3 {
-            margin-bottom: 20px;
-            font-size: 18px;
-            font-weight: 700;
-            color: #000; /* Forced dark text to match screenshot */
-        }
-        @media (prefers-color-scheme: dark) { .lang-modal h3 { color: var(--text); } }
-
-        .lang-list {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .lang-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 8px;
-            border-radius: 8px;
-            cursor: pointer;
-            color: #000;
-        }
-        @media (prefers-color-scheme: dark) { .lang-item { color: var(--text); } }
-        .lang-item:hover { background: var(--bg); }
-
-        .lang-item span { font-size: 15px; font-weight: 500; }
-
-        /* Custom Radio Button to match screenshot */
-        .lang-item input[type="radio"] {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--muted);
-            border-radius: 50%;
-            outline: none;
-            cursor: pointer;
-            position: relative;
-        }
-        .lang-item input[type="radio"]:checked {
-            border-color: var(--primary);
-        }
-        .lang-item input[type="radio"]:checked::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 10px; height: 10px;
-            background: var(--primary);
-            border-radius: 50%;
-        }
-
-        .lang-close {
-            width: 100%;
-            padding: 14px;
-            margin-top: 20px;
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 15px;
-            cursor: pointer;
-        }
-
-        /* 
-        ============================================================================
-        HEADER AND FORM STYLES
-        ============================================================================
-        */
-        .header { text-align: center; margin-bottom: 20px; padding: 0 20px; }
-        .logo { width: 56px; height: 56px; border-radius: 14px; object-fit: cover; margin: 0 auto 12px; display: block; }
-        h2 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
-        .subtitle { font-size: 14px; color: var(--muted); }
-
-        .progress-container { width: 100%; max-width: 440px; padding: 0 20px; display: flex; gap: 6px; margin-bottom: 24px; }
-        .progress-step { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
-        .progress-step.active { background: var(--primary); }
-
-        .form-wrap { width: 100%; max-width: 440px; padding: 0 20px 40px; position: relative; z-index: 10; }
-        .form-group { margin-bottom: 16px; position: relative; }
-        label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
-        
-        input[type="email"], input[type="password"], input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 14px 16px;
-            border-radius: 12px;
-            border: 1.5px solid var(--border);
-            background: var(--input-bg);
-            color: var(--text);
-            font-size: 15px;
-            outline: none;
-            transition: border 0.2s;
-        }
-        input:focus { border-color: var(--primary); }
-
-        /* Eye Icon for Password */
-        .eye-icon {
-            position: absolute;
-            right: 14px;
-            top: 50%;
-            transform: translateY(15%);
-            cursor: pointer;
-            color: var(--muted);
-            padding: 10px;
-            font-size: 18px;
-        }
-
-        .dob-wrap { display: flex; gap: 8px; }
-        .dob-wrap input { text-align: center; }
-
-        /* 
-        ============================================================================
-        VERIFICATION AND BUTTON STYLES
-        ============================================================================
-        */
-        .verify-box { border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; background: var(--input-bg); margin-bottom: 18px; }
-        .verify-box video { width: 100%; border-radius: 10px; display: none; margin-bottom: 10px; transform: scaleX(-1); }
-        .verify-box img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin: 10px auto; display: none; border: 3px solid var(--primary); }
-        
-        .verify-btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            background: var(--primary);
-            color: white;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .verify-btn.verified { background: var(--success) !important; }
-        .liveness-text { font-size: 12px; color: var(--primary); font-weight: 600; margin-bottom: 10px; }
-
-        /* Fingerprint Button */
-        .fingerprint-btn {
-            width: 100%;
-            padding: 14px;
-            margin-top: 10px;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            background: transparent;
-            color: var(--text);
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.2s;
-        }
-        .fingerprint-btn:hover { background: var(--bg); }
-        .fingerprint-btn.verified { border-color: var(--success); color: var(--success); }
-
-        /* Manual Captcha */
-        .manual-captcha-row {
-            display: flex; align-items: center; gap: 12px;
-            background: var(--input-bg); border: 1.5px solid var(--border);
-            padding: 14px 16px; border-radius: 12px; cursor: pointer;
-            margin: 8px 0 20px; user-select: none;
-        }
-        .manual-captcha-row input[type="checkbox"] { display: none; }
-        .custom-checkbox {
-            width: 24px; height: 24px; border: 2px solid var(--muted);
-            border-radius: 6px; display: flex; align-items: center; justify-content: center;
-        }
-        .manual-captcha-row input:checked ~ .custom-checkbox { background: var(--primary); border-color: var(--primary); }
-        .manual-captcha-row input:checked ~ .custom-checkbox::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: white; font-size: 13px; }
-        .manual-captcha-row span { font-size: 14px; font-weight: 600; }
-
-        .btn {
-            width: 100%; padding: 15px; border-radius: 12px; font-size: 15px; font-weight: 700;
-            border: none; margin-top: 10px; background: var(--disabled); color: #fff; cursor: not-allowed;
-        }
-        .btn.active { background: var(--primary) !important; cursor: pointer; }
-        .btn-secondary {
-            width: 100%; padding: 15px; border-radius: 12px; font-size: 15px; font-weight: 700;
-            border: 1.5px solid var(--border); background: transparent; color: var(--text); margin-top: 10px; cursor: pointer;
-        }
-        
-        .msg { text-align: center; font-size: 13px; color: var(--error); font-weight: 700; min-height: 20px; margin-bottom: 10px; }
-        .footer-text { text-align: center; margin-top: 20px; font-size: 13.5px; color: var(--muted); }
-        .footer-text a { color: var(--primary); font-weight: 700; text-decoration: none; }
-        .otp-timer { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
-        .hide { display: none !important; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#043D22">
+<title>Sign Up - Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+:root{--primary:#043D22;--bg:#f0f2f5;--card:#fff;--text:#050505;--muted:#65676b;--border:#dadde1;--input-bg:#fff;--error:#e41e3f;--success:#2e7d32;--disabled:#9e9e9e}
+@media (prefers-color-scheme:dark){:root{--bg:#18191a;--card:#242526;--text:#e4e6eb;--muted:#b0b3b8;--border:#3a3b3c;--input-bg:#242526;--error:#f02849;--success:#66bb6a;--disabled:#4b4c4f}}
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.top-bar{width:100%;max-width:480px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.back-btn{width:40px;height:40px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text);cursor:pointer;border:1px solid var(--border)}
+.lang-wrapper{display:inline-flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:8px 14px;cursor:pointer}
+.lang-wrapper span{font-size:13.5px;font-weight:600}
+.lang-wrapper i{font-size:12px;color:var(--muted);margin-left:8px}
+.lang-modal-back{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:999}
+.lang-modal{background:var(--card);width:90%;max-width:380px;border-radius:16px;padding:24px}
+.lang-modal h3{margin-bottom:20px;font-size:18px;font-weight:700}
+.lang-list{display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto}
+.lang-item{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;border-radius:8px;cursor:pointer}
+.lang-item:hover{background:var(--bg)}
+.lang-item span{font-size:15px;font-weight:500}
+.lang-item input[type="radio"]{appearance:none;width:20px;height:20px;border:2px solid var(--muted);border-radius:50%;cursor:pointer;position:relative}
+.lang-item input[type="radio"]:checked{border-color:var(--primary)}
+.lang-item input[type="radio"]:checked::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:var(--primary);border-radius:50%}
+.lang-close{width:100%;padding:14px;margin-top:20px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer}
+.header{text-align:center;margin-bottom:20px;padding:0 20px}
+.logo{width:56px;height:56px;border-radius:14px;object-fit:cover;margin:0 auto 12px;display:block}
+h2{font-size:24px;font-weight:800;margin-bottom:6px}
+.subtitle{font-size:14px;color:var(--muted)}
+.progress-container{width:100%;max-width:440px;padding:0 20px;display:flex;gap:6px;margin-bottom:24px}
+.progress-step{flex:1;height:4px;border-radius:2px;background:var(--border)}
+.progress-step.active{background:var(--primary)}
+.form-wrap{width:100%;max-width:440px;padding:0 20px 40px;position:relative;z-index:10}
+.form-group{margin-bottom:16px;position:relative}
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+input[type="email"],input[type="password"],input[type="text"],input[type="number"]{width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--input-bg);color:var(--text);font-size:15px;outline:none;transition:border .2s}
+input:focus{border-color:var(--primary)}
+.eye-icon{position:absolute;right:14px;top:50%;transform:translateY(15%);cursor:pointer;color:var(--muted);padding:10px;font-size:18px}
+.dob-wrap{display:flex;gap:8px}
+.dob-wrap input{text-align:center}
+.verify-box{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;background:var(--input-bg);margin-bottom:18px}
+.verify-box video{width:100%;border-radius:10px;display:none;margin-bottom:10px;transform:scaleX(-1)}
+.verify-box img{width:90px;height:90px;border-radius:50%;object-fit:cover;margin:10px auto;display:none;border:3px solid var(--primary)}
+.verify-btn{width:100%;padding:14px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.verify-btn.verified{background:var(--success)!important}
+.liveness-text{font-size:12px;color:var(--primary);font-weight:600;margin-bottom:10px}
+.fingerprint-btn{width:100%;padding:14px;margin-top:10px;border:1.5px solid var(--border);border-radius:10px;background:transparent;color:var(--text);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.fingerprint-btn.verified{border-color:var(--success);color:var(--success)}
+.manual-captcha-row{display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);padding:14px 16px;border-radius:12px;cursor:pointer;margin:8px 0 20px}
+.manual-captcha-row input[type="checkbox"]{display:none}
+.custom-checkbox{width:24px;height:24px;border:2px solid var(--muted);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.manual-captcha-row input:checked~.custom-checkbox{background:var(--primary);border-color:var(--primary)}
+.manual-captcha-row input:checked~.custom-checkbox::after{content:'\f00c';font-family:'Font Awesome 6 Free';font-weight:900;color:#fff;font-size:13px}
+.manual-captcha-row span{font-size:14px;font-weight:600}
+.btn{width:100%;padding:15px;border-radius:12px;font-size:15px;font-weight:700;border:none;margin-top:10px;background:var(--disabled);color:#fff;cursor:not-allowed}
+.btn.active{background:var(--primary)!important;cursor:pointer}
+.btn-secondary{width:100%;padding:15px;border-radius:12px;font-size:15px;font-weight:700;border:1.5px solid var(--border);background:transparent;color:var(--text);margin-top:10px;cursor:pointer}
+.msg{text-align:center;font-size:13px;color:var(--error);font-weight:700;min-height:20px;margin-bottom:10px}
+.footer-text{text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)}
+.footer-text a{color:var(--primary);font-weight:700;text-decoration:none}
+.otp-timer{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+.hide{display:none!important}
+</style>
 </head>
 <body>
 
-    <!-- TOP BAR -->
-    <div class="top-bar">
-        <div class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
-        <div class="lang-wrapper" onclick="openLangModal()">
-            <span id="langBtn" data-i18n="langBtn">English - US</span> <i class="fas fa-chevron-down"></i>
-        </div>
+<div class="top-bar">
+  <div class="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+  <div class="lang-wrapper" onclick="openLangModal()">
+    <span id="langBtn" data-i18n="langBtn">English - US</span> <i class="fas fa-chevron-down"></i>
+  </div>
+</div>
+
+<div class="header">
+  <img src="logo.png" alt="Autrobook" class="logo" onerror="this.style.display='none'">
+  <h2 data-i18n="secureAcc">Secure Your Account</h2>
+  <p class="subtitle" data-i18n="subtitle">Enter details and verify your identity</p>
+</div>
+
+<div class="progress-container">
+  <div class="progress-step active"></div>
+  <div class="progress-step active"></div>
+</div>
+
+<div class="form-wrap">
+  <p id="namePreview" style="color:var(--primary);font-size:14px;font-weight:700;margin-bottom:16px;"></p>
+
+  <div class="form-group">
+    <label data-i18n="emailLabel">Email Address</label>
+    <input type="email" id="email" placeholder="you@example.com" oninput="checkButtonState()">
+  </div>
+
+  <div class="form-group hide" id="otpGroup">
+    <label data-i18n="otpLabel">Enter 6 Digit Code</label>
+    <input type="text" id="otp" maxlength="6" placeholder="123456" oninput="checkButtonState()">
+    <div class="otp-timer" id="otpTimer" data-i18n="otpTimer">Code expires in 60s</div>
+  </div>
+
+  <div class="form-group">
+    <label data-i18n="dobLabel">Birthday</label>
+    <div class="dob-wrap">
+      <input type="number" id="day" placeholder="DD" oninput="checkButtonState()">
+      <input type="number" id="month" placeholder="MM" oninput="checkButtonState()">
+      <input type="number" id="year" placeholder="YYYY" oninput="checkButtonState()">
     </div>
+  </div>
 
-    <!-- HEADER -->
-    <div class="header">
-        <img src="logo.png" alt="Autrobook Logo" class="logo" onerror="this.style.display='none'">
-        <h2 data-i18n="secureAcc">Secure Your Account</h2>
-        <p class="subtitle" data-i18n="subtitle">Enter details and verify your identity</p>
-    </div>
+  <div class="form-group">
+    <label data-i18n="passLabel">Password</label>
+    <input type="password" id="password" placeholder="Create a strong password" oninput="checkButtonState()">
+    <i class="fa-solid fa-eye eye-icon" id="togglePasswordIcon" onclick="togglePass()"></i>
+  </div>
 
-    <!-- PROGRESS -->
-    <div class="progress-container">
-        <div class="progress-step active"></div>
-        <div class="progress-step active"></div>
-    </div>
+  <label data-i18n="securityLabel">Security Verification (Mandatory)</label>
+  <div class="verify-box">
+    <p class="liveness-text hide" id="livenessText" data-i18n="lookCam">Please look at the camera to verify</p>
+    <video id="video" autoplay playsinline></video>
+    <img id="photo" />
+    <button type="button" class="verify-btn" id="cameraBtn" onclick="startCamera()">
+      <i class="fas fa-camera"></i> <span data-i18n="liveSelfie">Live Selfie & Eye Scan</span>
+    </button>
+    <button type="button" class="fingerprint-btn" id="fingerprintBtn" onclick="registerFingerprint()">
+      <i class="fas fa-fingerprint"></i> <span data-i18n="fingerprintBtn">Add Fingerprint (Optional)</span>
+    </button>
+    <div class="verify-status" id="verifyStatus" style="font-size:13px;font-weight:600;color:var(--muted);margin-top:10px;" data-i18n="verifyStatus">Verify using camera to proceed</div>
+  </div>
 
-    <!-- MAIN FORM -->
-    <div class="form-wrap">
-        <p id="namePreview" style="color:var(--primary); font-size:14px; font-weight:700; margin-bottom:16px;"></p>
-        
-        <div class="form-group">
-            <label data-i18n="emailLabel">Email Address</label>
-            <input type="email" id="email" placeholder="Enter your email" oninput="checkButtonState()">
-        </div>
+  <div style="display:flex;justify-content:center;transform:scale(0.9);margin-bottom:8px;min-height:78px;">
+    <div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d" data-callback="enableBtn"></div>
+  </div>
 
-        <div class="form-group hide" id="otpGroup">
-            <label data-i18n="otpLabel">Enter 6 Digit Code</label>
-            <input type="text" id="otp" maxlength="6" placeholder="123456" oninput="checkButtonState()">
-            <div class="otp-timer" id="otpTimer" data-i18n="otpTimer">Code expires in 60s</div>
-        </div>
+  <label class="manual-captcha-row" for="humanCheck">
+    <input type="checkbox" id="humanCheck" onchange="manualCaptcha()">
+    <div class="custom-checkbox"></div>
+    <span data-i18n="notRobot">I'm not a robot - Manual verification</span>
+  </label>
 
-        <div class="form-group">
-            <label data-i18n="dobLabel">Birthday</label>
-            <div class="dob-wrap">
-                <input type="number" id="day" placeholder="DD" oninput="checkButtonState()">
-                <input type="number" id="month" placeholder="MM" oninput="checkButtonState()">
-                <input type="number" id="year" placeholder="YYYY" oninput="checkButtonState()">
-            </div>
-        </div>
+  <div class="msg" id="msgDetails"></div>
 
-        <div class="form-group">
-            <label data-i18n="passLabel">Password</label>
-            <input type="password" id="password" placeholder="Create a strong password" oninput="checkButtonState()">
-            <!-- Password Eye Icon -->
-            <i class="fa-solid fa-eye eye-icon" id="togglePasswordIcon" onclick="togglePass()"></i>
-        </div>
+  <button type="button" class="btn" id="sendOtpBtn" onclick="sendOTP()" disabled><span data-i18n="sendOtp">Send OTP</span></button>
+  <button type="button" class="btn" id="signUpBtn" onclick="verifyOTPAndSignup()" disabled><span data-i18n="signUp">Sign Up</span></button>
+  <button type="button" class="btn-secondary" onclick="goBack()"><span data-i18n="backBtn">← Back</span></button>
+  <button type="button" class="btn-secondary" onclick="goCancel()" style="color:var(--error);border-color:var(--error);"><span data-i18n="cancelBtn">Cancel</span></button>
 
-        <label data-i18n="securityLabel">Security Verification (Mandatory)</label>
-        <div class="verify-box">
-            <p class="liveness-text hide" id="livenessText" data-i18n="lookCam">Please look at the camera to verify</p>
-            <video id="video" autoplay playsinline></video>
-            <img id="photo" />
-            
-            <!-- Camera / Face Scan Button -->
-            <button type="button" class="verify-btn" id="cameraBtn" onclick="startCamera()">
-                <i class="fas fa-camera"></i> <span data-i18n="liveSelfie">Live Selfie & Eye Scan</span>
-            </button>
-            
-            <!-- WebAuthn Fingerprint Button -->
-            <button type="button" class="fingerprint-btn" id="fingerprintBtn" onclick="registerFingerprint()">
-                <i class="fas fa-fingerprint"></i> <span data-i18n="fingerprintBtn">Add Fingerprint (WebAuthn)</span>
-            </button>
-            
-            <div class="verify-status" id="verifyStatus" style="font-size:13px; font-weight:600; color:var(--muted); margin-top:10px;" data-i18n="verifyStatus">Verify using camera & fingerprint to proceed</div>
-        </div>
+  <p class="footer-text">
+    <span data-i18n="haveAcc">Already have an account?</span>
+    <a href="login.html" data-i18n="login">Log in</a>
+  </p>
+</div>
 
-        <!-- Google reCAPTCHA -->
-        <div style="display:flex; justify-content:center; transform:scale(0.9); margin-bottom:8px; min-height:78px;">
-            <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" data-callback="enableBtn"></div>
-        </div>
-        
-        <!-- Manual Captcha Fallback -->
-        <label class="manual-captcha-row" for="humanCheck">
-            <input type="checkbox" id="humanCheck" onchange="manualCaptcha()">
-            <div class="custom-checkbox"></div>
-            <span data-i18n="notRobot">I'm not a robot - Manual verification</span>
-        </label>
+<div class="lang-modal-back" id="langModal" onclick="closeLangModal()">
+  <div class="lang-modal" onclick="event.stopPropagation()">
+    <h3 data-i18n="selectLang">Select Language</h3>
+    <div class="lang-list" id="langList"></div>
+    <button class="lang-close" onclick="closeLangModal()" data-i18n="close">Close</button>
+  </div>
+</div>
 
-        <div class="msg" id="msgDetails"></div>
-        
-        <button type="button" class="btn" id="sendOtpBtn" onclick="sendOTP()" disabled><span data-i18n="sendOtp">Send OTP</span></button>
-        <button type="button" class="btn" id="signUpBtn" onclick="verifyOTPAndSignup()" disabled><span data-i18n="signUp">Sign Up</span></button>
-        
-        <button type="button" class="btn-secondary" onclick="goBack()"><span data-i18n="backBtn">← Back</span></button>
-        <button type="button" class="btn-secondary" onclick="goCancel()" style="color:var(--error); border-color:var(--error);"><span data-i18n="cancelBtn">Cancel</span></button>
-        
-        <p class="footer-text">
-            <span data-i18n="haveAcc">Already have an account?</span> 
-            <a href="login.html" data-i18n="login">Log in</a>
-        </p>
-    </div>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE CLIENT
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+let supabaseClient = null;
+try { if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+catch(e){ console.error('Supabase init:', e); }
 
-    <!-- LANGUAGE MODAL -->
-    <div class="lang-modal-back" id="langModal" onclick="closeLangModal()">
-        <div class="lang-modal" onclick="event.stopPropagation()">
-            <h3 data-i18n="selectLang">Select Language</h3>
-            <div class="lang-list" id="langList"></div>
-            <button class="lang-close" onclick="closeLangModal()" data-i18n="close">Close</button>
-        </div>
-    </div>
+// ═══════════════════════════════════════════════════════════════
+// FULL TRANSLATIONS — 10 LANGUAGES
+// ═══════════════════════════════════════════════════════════════
+const i18n = {
+  en: {
+    langBtn:"English - US", secureAcc:"Secure Your Account", subtitle:"Enter details and verify your identity",
+    emailLabel:"Email Address", otpLabel:"Enter 6 Digit Code", otpTimer:"Code expires in {s}s",
+    dobLabel:"Birthday", passLabel:"Password", securityLabel:"Security Verification (Mandatory)",
+    lookCam:"Please look at the camera to verify", liveSelfie:"Live Selfie & Eye Scan",
+    fingerprintBtn:"Add Fingerprint (Optional)", verifyStatus:"Verify using camera to proceed",
+    notRobot:"I'm not a robot - Manual verification", sendOtp:"Send OTP", signUp:"Sign Up",
+    backBtn:"← Back", cancelBtn:"Cancel", haveAcc:"Already have an account?", login:"Log in",
+    selectLang:"Select Language", close:"Close",
+    // Error codes
+    EMAIL_REQUIRED:"Email is required", INVALID_EMAIL:"Please enter a valid email address",
+    RATE_LIMITED:"Too many attempts. Try again in 10 minutes.",
+    ALREADY_EXISTS:"An account already exists with this email. Please log in.",
+    DB_ERROR:"Database error. Please try again later.",
+    GMAIL_MISSING:"Email service not configured. Contact support.",
+    SERVER_ERROR:"Server error. Please try again.",
+    METHOD_NOT_ALLOWED:"Method not allowed", INVALID_JSON:"Invalid request format",
+    OTP_SENT:"OTP sent to your email ✓",
+    OTP_NOT_FOUND:"OTP not found. Please request a new one.",
+    OTP_EXPIRED:"OTP expired. Please request a new one.",
+    OTP_MAX_ATTEMPTS:"Too many wrong attempts. Request a new OTP.",
+    OTP_INVALID:"Invalid OTP code", PASSWORD_TOO_SHORT:"Password must be at least 6 characters",
+    MISSING_FIELDS:"Missing required information",
+    ACCOUNT_CREATED:"Account created successfully!",
+    // UI states
+    SENDING:"Sending...", RESEND_OTP:"Resend OTP", CREATING_ACCOUNT:"Creating Account...",
+    CODE_EXPIRED_RESEND:"Code expired — resend",
+    SCANNING_FACE:"Scanning face...", FACE_VERIFIED:"Face Verified",
+    FINGERPRINT_ADDED:"Fingerprint Registered",
+    LIVENESS_FAILED:"Liveness failed. Please blink your eyes clearly.",
+    CAMERA_DENIED:"Camera access denied or unavailable.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (Fingerprint) is not supported on this browser.",
+    FINGERPRINT_FAILED:"Fingerprint setup cancelled or failed.",
+    DOB_INVALID:"Please enter a valid birthday"
+  },
+  bn: {
+    langBtn:"বাংলা - Bangladesh", secureAcc:"আপনার অ্যাকাউন্ট সুরক্ষিত করুন", subtitle:"বিস্তারিত লিখুন এবং আপনার পরিচয় যাচাই করুন",
+    emailLabel:"ইমেইল ঠিকানা", otpLabel:"৬ ডিজিটের কোড দিন", otpTimer:"কোডটি {s} সেকেন্ডে শেষ হবে",
+    dobLabel:"জন্মদিন", passLabel:"পাসওয়ার্ড", securityLabel:"নিরাপত্তা যাচাই (বাধ্যতামূলক)",
+    lookCam:"যাচাই করতে ক্যামেরার দিকে তাকান", liveSelfie:"লাইভ সেলফি এবং চোখ স্ক্যান",
+    fingerprintBtn:"ফিঙ্গারপ্রিন্ট যোগ করুন (ঐচ্ছিক)", verifyStatus:"এগিয়ে যেতে ক্যামেরা দিয়ে যাচাই করুন",
+    notRobot:"আমি রোবট নই - ম্যানুয়াল যাচাই", sendOtp:"OTP পাঠান", signUp:"সাইন আপ",
+    backBtn:"← পিছনে", cancelBtn:"বাতিল", haveAcc:"ইতিমধ্যে অ্যাকাউন্ট আছে?", login:"লগ ইন",
+    selectLang:"ভাষা নির্বাচন করুন", close:"বন্ধ করুন",
+    EMAIL_REQUIRED:"ইমেইল আবশ্যক", INVALID_EMAIL:"সঠিক ইমেইল ঠিকানা দিন",
+    RATE_LIMITED:"অনেকবার চেষ্টা হয়েছে। ১০ মিনিট পর আবার চেষ্টা করুন।",
+    ALREADY_EXISTS:"এই ইমেইলে ইতিমধ্যে অ্যাকাউন্ট আছে। লগ ইন করুন।",
+    DB_ERROR:"ডাটাবেস ত্রুটি। একটু পরে চেষ্টা করুন।",
+    GMAIL_MISSING:"ইমেইল সার্ভিস কনফিগার হয়নি। সাপোর্টে যোগাযোগ করুন।",
+    SERVER_ERROR:"সার্ভার ত্রুটি। আবার চেষ্টা করুন।",
+    METHOD_NOT_ALLOWED:"অনুমোদিত নয়", INVALID_JSON:"অনুরোধের ফরম্যাট ভুল",
+    OTP_SENT:"OTP আপনার ইমেইলে পাঠানো হয়েছে ✓",
+    OTP_NOT_FOUND:"OTP পাওয়া যায়নি। নতুন কোড চান।",
+    OTP_EXPIRED:"OTP মেয়াদোত্তীর্ণ। নতুন কোড চান।",
+    OTP_MAX_ATTEMPTS:"অনেকবার ভুল হয়েছে। নতুন OTP চান।",
+    OTP_INVALID:"ভুল OTP কোড", PASSWORD_TOO_SHORT:"পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে",
+    MISSING_FIELDS:"প্রয়োজনীয় তথ্য অসম্পূর্ণ",
+    ACCOUNT_CREATED:"অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে!",
+    SENDING:"পাঠানো হচ্ছে...", RESEND_OTP:"OTP আবার পাঠান", CREATING_ACCOUNT:"অ্যাকাউন্ট তৈরি হচ্ছে...",
+    CODE_EXPIRED_RESEND:"কোড মেয়াদোত্তীর্ণ — আবার পাঠান",
+    SCANNING_FACE:"মুখ স্ক্যান করা হচ্ছে...", FACE_VERIFIED:"মুখ যাচাই সম্পন্ন",
+    FINGERPRINT_ADDED:"ফিঙ্গারপ্রিন্ট নিবন্ধিত",
+    LIVENESS_FAILED:"লাইভনেস ব্যর্থ। স্পষ্টভাবে চোখ পিটপিট করুন।",
+    CAMERA_DENIED:"ক্যামেরা অ্যাক্সেস প্রত্যাখ্যাত বা অনুপলব্ধ।",
+    WEBAUTHN_NOT_SUPPORTED:"এই ব্রাউজারে ফিঙ্গারপ্রিন্ট সমর্থিত নয়।",
+    FINGERPRINT_FAILED:"ফিঙ্গারপ্রিন্ট সেটআপ বাতিল বা ব্যর্থ।",
+    DOB_INVALID:"সঠিক জন্মতারিখ দিন"
+  },
+  hi: {
+    langBtn:"हिन्दी - India", secureAcc:"अपना खाता सुरक्षित करें", subtitle:"विवरण दर्ज करें और अपनी पहचान सत्यापित करें",
+    emailLabel:"ईमेल पता", otpLabel:"6 अंकों का कोड दर्ज करें", otpTimer:"कोड {s} सेकंड में समाप्त होगा",
+    dobLabel:"जन्मदिन", passLabel:"पासवर्ड", securityLabel:"सुरक्षा सत्यापन (अनिवार्य)",
+    lookCam:"सत्यापित करने के लिए कैमरे की ओर देखें", liveSelfie:"लाइव सेल्फी और आई स्कैन",
+    fingerprintBtn:"फिंगरप्रिंट जोड़ें (वैकल्पिक)", verifyStatus:"आगे बढ़ने के लिए कैमरे से सत्यापित करें",
+    notRobot:"मैं रोबोट नहीं हूँ - मैन्युअल सत्यापन", sendOtp:"OTP भेजें", signUp:"साइन अप करें",
+    backBtn:"← पीछे", cancelBtn:"रद्द करें", haveAcc:"पहले से खाता है?", login:"लॉग इन करें",
+    selectLang:"भाषा चुनें", close:"बंद करें",
+    EMAIL_REQUIRED:"ईमेल आवश्यक", INVALID_EMAIL:"कृपया सही ईमेल पता दर्ज करें",
+    RATE_LIMITED:"बहुत बार प्रयास किया गया। 10 मिनट बाद पुन: प्रयास करें।",
+    ALREADY_EXISTS:"इस ईमेल से पहले से खाता है। कृपया लॉग इन करें।",
+    DB_ERROR:"डेटाबेस त्रुटि। कृपया बाद में पुन: प्रयास करें।",
+    GMAIL_MISSING:"ईमेल सेवा कॉन्फ़िगर नहीं है। सहायता से संपर्क करें।",
+    SERVER_ERROR:"सर्वर त्रुटि। पुन: प्रयास करें।",
+    METHOD_NOT_ALLOWED:"अनुमति नहीं", INVALID_JSON:"अनुरोध का प्रारूप अमान्य",
+    OTP_SENT:"OTP आपके ईमेल पर भेजा गया ✓",
+    OTP_NOT_FOUND:"OTP नहीं मिला। नया कोड मांगें।",
+    OTP_EXPIRED:"OTP समाप्त। नया कोड मांगें।",
+    OTP_MAX_ATTEMPTS:"बहुत बार गलत। नया OTP मांगें।",
+    OTP_INVALID:"गलत OTP कोड", PASSWORD_TOO_SHORT:"पासवर्ड कम से कम 6 अक्षर का होना चाहिए",
+    MISSING_FIELDS:"आवश्यक जानकारी अधूरी है",
+    ACCOUNT_CREATED:"खाता सफलतापूर्वक बनाया गया!",
+    SENDING:"भेज रहे हैं...", RESEND_OTP:"OTP पुन: भेजें", CREATING_ACCOUNT:"खाता बना रहे हैं...",
+    CODE_EXPIRED_RESEND:"कोड समाप्त — पुन: भेजें",
+    SCANNING_FACE:"चेहरा स्कैन हो रहा है...", FACE_VERIFIED:"चेहरा सत्यापित",
+    FINGERPRINT_ADDED:"फिंगरप्रिंट पंजीकृत",
+    LIVENESS_FAILED:"लाइवनेस विफल। कृपया स्पष्ट रूप से पलक झपकाएं।",
+    CAMERA_DENIED:"कैमरा पहुँच अस्वीकृत या अनुपलब्ध।",
+    WEBAUTHN_NOT_SUPPORTED:"इस ब्राउज़र पर फिंगरप्रिंट समर्थित नहीं।",
+    FINGERPRINT_FAILED:"फिंगरप्रिंट सेटअप रद्द या विफल।",
+    DOB_INVALID:"कृपया सही जन्मतिथि दर्ज करें"
+  },
+  es: {
+    langBtn:"Español - Spain", secureAcc:"Asegura tu cuenta", subtitle:"Ingresa los detalles y verifica tu identidad",
+    emailLabel:"Correo electrónico", otpLabel:"Ingresa el código de 6 dígitos", otpTimer:"El código expira en {s}s",
+    dobLabel:"Cumpleaños", passLabel:"Contraseña", securityLabel:"Verificación de seguridad (Obligatorio)",
+    lookCam:"Mira a la cámara para verificar", liveSelfie:"Selfie en vivo y escaneo de ojos",
+    fingerprintBtn:"Añadir huella (Opcional)", verifyStatus:"Verifica con cámara para proceder",
+    notRobot:"No soy un robot - Verificación manual", sendOtp:"Enviar OTP", signUp:"Registrarse",
+    backBtn:"← Atrás", cancelBtn:"Cancelar", haveAcc:"¿Ya tienes una cuenta?", login:"Iniciar sesión",
+    selectLang:"Seleccionar idioma", close:"Cerrar",
+    EMAIL_REQUIRED:"Correo requerido", INVALID_EMAIL:"Ingresa una dirección de correo válida",
+    RATE_LIMITED:"Demasiados intentos. Inténtalo en 10 minutos.",
+    ALREADY_EXISTS:"Ya existe una cuenta con este correo. Inicia sesión.",
+    DB_ERROR:"Error de base de datos. Inténtalo más tarde.",
+    GMAIL_MISSING:"Servicio de email no configurado. Contacta soporte.",
+    SERVER_ERROR:"Error del servidor. Inténtalo de nuevo.",
+    METHOD_NOT_ALLOWED:"Método no permitido", INVALID_JSON:"Formato de solicitud inválido",
+    OTP_SENT:"OTP enviado a tu correo ✓",
+    OTP_NOT_FOUND:"OTP no encontrado. Solicita uno nuevo.",
+    OTP_EXPIRED:"OTP expirado. Solicita uno nuevo.",
+    OTP_MAX_ATTEMPTS:"Demasiados intentos incorrectos. Solicita nuevo OTP.",
+    OTP_INVALID:"Código OTP inválido", PASSWORD_TOO_SHORT:"La contraseña debe tener al menos 6 caracteres",
+    MISSING_FIELDS:"Falta información requerida",
+    ACCOUNT_CREATED:"¡Cuenta creada con éxito!",
+    SENDING:"Enviando...", RESEND_OTP:"Reenviar OTP", CREATING_ACCOUNT:"Creando cuenta...",
+    CODE_EXPIRED_RESEND:"Código expirado — reenviar",
+    SCANNING_FACE:"Escaneando rostro...", FACE_VERIFIED:"Rostro verificado",
+    FINGERPRINT_ADDED:"Huella registrada",
+    LIVENESS_FAILED:"Prueba de vida fallida. Parpadea claramente.",
+    CAMERA_DENIED:"Acceso a cámara denegado o no disponible.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (huella) no soportado en este navegador.",
+    FINGERPRINT_FAILED:"Configuración de huella cancelada o fallida.",
+    DOB_INVALID:"Ingresa una fecha de nacimiento válida"
+  },
+  fr: {
+    langBtn:"Français - France", secureAcc:"Sécurisez votre compte", subtitle:"Entrez les détails et vérifiez votre identité",
+    emailLabel:"Adresse e-mail", otpLabel:"Entrez le code à 6 chiffres", otpTimer:"Le code expire dans {s}s",
+    dobLabel:"Anniversaire", passLabel:"Mot de passe", securityLabel:"Vérification de sécurité (Obligatoire)",
+    lookCam:"Regardez la caméra pour vérifier", liveSelfie:"Selfie en direct et scan des yeux",
+    fingerprintBtn:"Ajouter une empreinte (Optionnel)", verifyStatus:"Vérifiez avec la caméra pour continuer",
+    notRobot:"Je ne suis pas un robot - Vérification manuelle", sendOtp:"Envoyer OTP", signUp:"S'inscrire",
+    backBtn:"← Retour", cancelBtn:"Annuler", haveAcc:"Déjà un compte?", login:"Se connecter",
+    selectLang:"Choisir la langue", close:"Fermer",
+    EMAIL_REQUIRED:"E-mail requis", INVALID_EMAIL:"Veuillez saisir une adresse e-mail valide",
+    RATE_LIMITED:"Trop de tentatives. Réessayez dans 10 minutes.",
+    ALREADY_EXISTS:"Un compte existe déjà avec cet e-mail. Connectez-vous.",
+    DB_ERROR:"Erreur de base de données. Réessayez plus tard.",
+    GMAIL_MISSING:"Service e-mail non configuré. Contactez le support.",
+    SERVER_ERROR:"Erreur serveur. Réessayez.",
+    METHOD_NOT_ALLOWED:"Méthode non autorisée", INVALID_JSON:"Format de requête invalide",
+    OTP_SENT:"OTP envoyé à votre e-mail ✓",
+    OTP_NOT_FOUND:"OTP introuvable. Demandez-en un nouveau.",
+    OTP_EXPIRED:"OTP expiré. Demandez-en un nouveau.",
+    OTP_MAX_ATTEMPTS:"Trop de tentatives incorrectes. Demandez un nouvel OTP.",
+    OTP_INVALID:"Code OTP invalide", PASSWORD_TOO_SHORT:"Le mot de passe doit contenir au moins 6 caractères",
+    MISSING_FIELDS:"Informations requises manquantes",
+    ACCOUNT_CREATED:"Compte créé avec succès !",
+    SENDING:"Envoi...", RESEND_OTP:"Renvoyer OTP", CREATING_ACCOUNT:"Création du compte...",
+    CODE_EXPIRED_RESEND:"Code expiré — renvoyer",
+    SCANNING_FACE:"Scan du visage...", FACE_VERIFIED:"Visage vérifié",
+    FINGERPRINT_ADDED:"Empreinte enregistrée",
+    LIVENESS_FAILED:"Test de vivacité échoué. Clignez des yeux clairement.",
+    CAMERA_DENIED:"Accès caméra refusé ou indisponible.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (empreinte) non pris en charge sur ce navigateur.",
+    FINGERPRINT_FAILED:"Configuration de l'empreinte annulée ou échouée.",
+    DOB_INVALID:"Saisissez une date de naissance valide"
+  },
+  ar: {
+    langBtn:"العربية - Arabic", secureAcc:"تأمين حسابك", subtitle:"أدخل التفاصيل وتحقق من هويتك",
+    emailLabel:"عنوان البريد الإلكتروني", otpLabel:"أدخل رمزاً من 6 أرقام", otpTimer:"ينتهي الرمز في {s} ثانية",
+    dobLabel:"تاريخ الميلاد", passLabel:"كلمة المرور", securityLabel:"التحقق الأمني (إلزامي)",
+    lookCam:"انظر إلى الكاميرا للتحقق", liveSelfie:"سيلفي مباشر ومسح العين",
+    fingerprintBtn:"إضافة بصمة (اختياري)", verifyStatus:"تحقق بالكاميرا للمتابعة",
+    notRobot:"أنا لست روبوتاً - تحقق يدوي", sendOtp:"إرسال OTP", signUp:"اشتراك",
+    backBtn:"← رجوع", cancelBtn:"إلغاء", haveAcc:"لديك حساب؟", login:"تسجيل الدخول",
+    selectLang:"اختر اللغة", close:"إغلاق",
+    EMAIL_REQUIRED:"البريد مطلوب", INVALID_EMAIL:"يرجى إدخال بريد إلكتروني صحيح",
+    RATE_LIMITED:"محاولات كثيرة. حاول بعد 10 دقائق.",
+    ALREADY_EXISTS:"يوجد حساب بالفعل بهذا البريد. يرجى تسجيل الدخول.",
+    DB_ERROR:"خطأ في قاعدة البيانات. حاول لاحقاً.",
+    GMAIL_MISSING:"خدمة البريد غير مهيأة. اتصل بالدعم.",
+    SERVER_ERROR:"خطأ في الخادم. حاول مرة أخرى.",
+    METHOD_NOT_ALLOWED:"الطريقة غير مسموحة", INVALID_JSON:"تنسيق الطلب غير صالح",
+    OTP_SENT:"تم إرسال OTP إلى بريدك ✓",
+    OTP_NOT_FOUND:"لم يتم العثور على OTP. اطلب واحداً جديداً.",
+    OTP_EXPIRED:"انتهت صلاحية OTP. اطلب واحداً جديداً.",
+    OTP_MAX_ATTEMPTS:"محاولات خاطئة كثيرة. اطلب OTP جديداً.",
+    OTP_INVALID:"رمز OTP غير صحيح", PASSWORD_TOO_SHORT:"يجب أن تكون كلمة المرور 6 أحرف على الأقل",
+    MISSING_FIELDS:"المعلومات المطلوبة مفقودة",
+    ACCOUNT_CREATED:"تم إنشاء الحساب بنجاح!",
+    SENDING:"جارٍ الإرسال...", RESEND_OTP:"إعادة إرسال OTP", CREATING_ACCOUNT:"جارٍ إنشاء الحساب...",
+    CODE_EXPIRED_RESEND:"انتهت الصلاحية — أعد الإرسال",
+    SCANNING_FACE:"جارٍ مسح الوجه...", FACE_VERIFIED:"تم التحقق من الوجه",
+    FINGERPRINT_ADDED:"تم تسجيل البصمة",
+    LIVENESS_FAILED:"فشل اختبار الحياة. ارمش بوضوح.",
+    CAMERA_DENIED:"تم رفض الوصول للكاميرا أو غير متاح.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (البصمة) غير مدعوم في هذا المتصفح.",
+    FINGERPRINT_FAILED:"تم إلغاء إعداد البصمة أو فشل.",
+    DOB_INVALID:"أدخل تاريخ ميلاد صحيح"
+  },
+  pt: {
+    langBtn:"Português - Portugal", secureAcc:"Proteja sua conta", subtitle:"Insira os detalhes e verifique sua identidade",
+    emailLabel:"Endereço de e-mail", otpLabel:"Insira o código de 6 dígitos", otpTimer:"O código expira em {s}s",
+    dobLabel:"Aniversário", passLabel:"Senha", securityLabel:"Verificação de segurança (Obrigatório)",
+    lookCam:"Olhe para a câmera para verificar", liveSelfie:"Selfie ao vivo e digitalização ocular",
+    fingerprintBtn:"Adicionar impressão digital (Opcional)", verifyStatus:"Verifique com a câmera para continuar",
+    notRobot:"Não sou um robô - Verificação manual", sendOtp:"Enviar OTP", signUp:"Inscrever-se",
+    backBtn:"← Voltar", cancelBtn:"Cancelar", haveAcc:"Já tem uma conta?", login:"Entrar",
+    selectLang:"Selecionar idioma", close:"Fechar",
+    EMAIL_REQUIRED:"E-mail obrigatório", INVALID_EMAIL:"Digite um endereço de e-mail válido",
+    RATE_LIMITED:"Muitas tentativas. Tente em 10 minutos.",
+    ALREADY_EXISTS:"Já existe uma conta com este e-mail. Faça login.",
+    DB_ERROR:"Erro no banco de dados. Tente mais tarde.",
+    GMAIL_MISSING:"Serviço de e-mail não configurado. Contate o suporte.",
+    SERVER_ERROR:"Erro do servidor. Tente novamente.",
+    METHOD_NOT_ALLOWED:"Método não permitido", INVALID_JSON:"Formato de requisição inválido",
+    OTP_SENT:"OTP enviado para seu e-mail ✓",
+    OTP_NOT_FOUND:"OTP não encontrado. Solicite um novo.",
+    OTP_EXPIRED:"OTP expirado. Solicite um novo.",
+    OTP_MAX_ATTEMPTS:"Muitas tentativas erradas. Solicite novo OTP.",
+    OTP_INVALID:"Código OTP inválido", PASSWORD_TOO_SHORT:"A senha deve ter pelo menos 6 caracteres",
+    MISSING_FIELDS:"Informações obrigatórias em falta",
+    ACCOUNT_CREATED:"Conta criada com sucesso!",
+    SENDING:"Enviando...", RESEND_OTP:"Reenviar OTP", CREATING_ACCOUNT:"Criando conta...",
+    CODE_EXPIRED_RESEND:"Código expirado — reenviar",
+    SCANNING_FACE:"Escaneando rosto...", FACE_VERIFIED:"Rosto verificado",
+    FINGERPRINT_ADDED:"Impressão registrada",
+    LIVENESS_FAILED:"Teste de vivacidade falhou. Pisque claramente.",
+    CAMERA_DENIED:"Acesso à câmera negado ou indisponível.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (impressão) não suportado neste navegador.",
+    FINGERPRINT_FAILED:"Configuração da impressão cancelada ou falhou.",
+    DOB_INVALID:"Insira uma data de nascimento válida"
+  },
+  de: {
+    langBtn:"Deutsch - Germany", secureAcc:"Sichern Sie Ihr Konto", subtitle:"Geben Sie Details ein und bestätigen Sie Ihre Identität",
+    emailLabel:"E-Mail-Adresse", otpLabel:"6-stelligen Code eingeben", otpTimer:"Code läuft in {s}s ab",
+    dobLabel:"Geburtstag", passLabel:"Passwort", securityLabel:"Sicherheitsüberprüfung (Erforderlich)",
+    lookCam:"Bitte schauen Sie in die Kamera", liveSelfie:"Live-Selfie & Augenscan",
+    fingerprintBtn:"Fingerabdruck hinzufügen (Optional)", verifyStatus:"Mit Kamera verifizieren",
+    notRobot:"Ich bin kein Roboter - Manuelle Überprüfung", sendOtp:"OTP senden", signUp:"Anmelden",
+    backBtn:"← Zurück", cancelBtn:"Abbrechen", haveAcc:"Bereits ein Konto?", login:"Einloggen",
+    selectLang:"Sprache auswählen", close:"Schließen",
+    EMAIL_REQUIRED:"E-Mail erforderlich", INVALID_EMAIL:"Bitte geben Sie eine gültige E-Mail ein",
+    RATE_LIMITED:"Zu viele Versuche. Versuchen Sie es in 10 Minuten erneut.",
+    ALREADY_EXISTS:"Mit dieser E-Mail existiert bereits ein Konto. Bitte einloggen.",
+    DB_ERROR:"Datenbankfehler. Bitte später erneut versuchen.",
+    GMAIL_MISSING:"E-Mail-Dienst nicht konfiguriert. Support kontaktieren.",
+    SERVER_ERROR:"Serverfehler. Bitte erneut versuchen.",
+    METHOD_NOT_ALLOWED:"Methode nicht erlaubt", INVALID_JSON:"Ungültiges Anforderungsformat",
+    OTP_SENT:"OTP an Ihre E-Mail gesendet ✓",
+    OTP_NOT_FOUND:"OTP nicht gefunden. Fordern Sie ein neues an.",
+    OTP_EXPIRED:"OTP abgelaufen. Fordern Sie ein neues an.",
+    OTP_MAX_ATTEMPTS:"Zu viele falsche Versuche. Neuen OTP anfordern.",
+    OTP_INVALID:"Ungültiger OTP-Code", PASSWORD_TOO_SHORT:"Passwort muss mindestens 6 Zeichen lang sein",
+    MISSING_FIELDS:"Erforderliche Informationen fehlen",
+    ACCOUNT_CREATED:"Konto erfolgreich erstellt!",
+    SENDING:"Wird gesendet...", RESEND_OTP:"OTP erneut senden", CREATING_ACCOUNT:"Konto wird erstellt...",
+    CODE_EXPIRED_RESEND:"Code abgelaufen — erneut senden",
+    SCANNING_FACE:"Gesicht wird gescannt...", FACE_VERIFIED:"Gesicht verifiziert",
+    FINGERPRINT_ADDED:"Fingerabdruck registriert",
+    LIVENESS_FAILED:"Liveness fehlgeschlagen. Bitte deutlich blinzeln.",
+    CAMERA_DENIED:"Kamerazugriff verweigert oder nicht verfügbar.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (Fingerabdruck) wird in diesem Browser nicht unterstützt.",
+    FINGERPRINT_FAILED:"Fingerabdruck-Setup abgebrochen oder fehlgeschlagen.",
+    DOB_INVALID:"Bitte ein gültiges Geburtsdatum eingeben"
+  },
+  id: {
+    langBtn:"Bahasa Indonesia", secureAcc:"Amankan Akun Anda", subtitle:"Masukkan detail dan verifikasi identitas Anda",
+    emailLabel:"Alamat Email", otpLabel:"Masukkan Kode 6 Digit", otpTimer:"Kode kedaluwarsa dalam {s}s",
+    dobLabel:"Ulang tahun", passLabel:"Kata Sandi", securityLabel:"Verifikasi Keamanan (Wajib)",
+    lookCam:"Silakan lihat kamera untuk verifikasi", liveSelfie:"Selfie Langsung & Pindai Mata",
+    fingerprintBtn:"Tambah Sidik Jari (Opsional)", verifyStatus:"Verifikasi dengan kamera untuk melanjutkan",
+    notRobot:"Saya bukan robot - Verifikasi manual", sendOtp:"Kirim OTP", signUp:"Daftar",
+    backBtn:"← Kembali", cancelBtn:"Batal", haveAcc:"Sudah punya akun?", login:"Masuk",
+    selectLang:"Pilih Bahasa", close:"Tutup",
+    EMAIL_REQUIRED:"Email diperlukan", INVALID_EMAIL:"Silakan masukkan alamat email yang valid",
+    RATE_LIMITED:"Terlalu banyak percobaan. Coba lagi dalam 10 menit.",
+    ALREADY_EXISTS:"Akun sudah ada dengan email ini. Silakan masuk.",
+    DB_ERROR:"Kesalahan database. Coba lagi nanti.",
+    GMAIL_MISSING:"Layanan email belum dikonfigurasi. Hubungi dukungan.",
+    SERVER_ERROR:"Kesalahan server. Coba lagi.",
+    METHOD_NOT_ALLOWED:"Metode tidak diizinkan", INVALID_JSON:"Format permintaan tidak valid",
+    OTP_SENT:"OTP dikirim ke email Anda ✓",
+    OTP_NOT_FOUND:"OTP tidak ditemukan. Minta yang baru.",
+    OTP_EXPIRED:"OTP kedaluwarsa. Minta yang baru.",
+    OTP_MAX_ATTEMPTS:"Terlalu banyak kesalahan. Minta OTP baru.",
+    OTP_INVALID:"Kode OTP salah", PASSWORD_TOO_SHORT:"Kata sandi minimal 6 karakter",
+    MISSING_FIELDS:"Informasi yang diperlukan kurang",
+    ACCOUNT_CREATED:"Akun berhasil dibuat!",
+    SENDING:"Mengirim...", RESEND_OTP:"Kirim ulang OTP", CREATING_ACCOUNT:"Membuat akun...",
+    CODE_EXPIRED_RESEND:"Kode kedaluwarsa — kirim ulang",
+    SCANNING_FACE:"Memindai wajah...", FACE_VERIFIED:"Wajah terverifikasi",
+    FINGERPRINT_ADDED:"Sidik jari terdaftar",
+    LIVENESS_FAILED:"Uji liveness gagal. Berkediplah dengan jelas.",
+    CAMERA_DENIED:"Akses kamera ditolak atau tidak tersedia.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (sidik jari) tidak didukung di browser ini.",
+    FINGERPRINT_FAILED:"Pengaturan sidik jari dibatalkan atau gagal.",
+    DOB_INVALID:"Silakan masukkan tanggal lahir yang valid"
+  },
+  tr: {
+    langBtn:"Türkçe - Türkiye", secureAcc:"Hesabınızı Güvenceye Alın", subtitle:"Bilgileri girin ve kimliğinizi doğrulayın",
+    emailLabel:"E-posta Adresi", otpLabel:"6 Haneli Kodu Girin", otpTimer:"Kod {s}s içinde dolacak",
+    dobLabel:"Doğum günü", passLabel:"Şifre", securityLabel:"Güvenlik Doğrulaması (Zorunlu)",
+    lookCam:"Doğrulamak için kameraya bakın", liveSelfie:"Canlı Selfie ve Göz Taraması",
+    fingerprintBtn:"Parmak İzi Ekle (İsteğe Bağlı)", verifyStatus:"Devam etmek için kamera ile doğrulayın",
+    notRobot:"Ben robot değilim - Manuel doğrulama", sendOtp:"OTP Gönder", signUp:"Kayıt Ol",
+    backBtn:"← Geri", cancelBtn:"İptal", haveAcc:"Hesabınız var mı?", login:"Giriş yap",
+    selectLang:"Dil Seçin", close:"Kapat",
+    EMAIL_REQUIRED:"E-posta gerekli", INVALID_EMAIL:"Lütfen geçerli bir e-posta adresi girin",
+    RATE_LIMITED:"Çok fazla deneme. 10 dakika sonra tekrar deneyin.",
+    ALREADY_EXISTS:"Bu e-posta ile zaten bir hesap var. Lütfen giriş yapın.",
+    DB_ERROR:"Veritabanı hatası. Lütfen sonra tekrar deneyin.",
+    GMAIL_MISSING:"E-posta servisi yapılandırılmamış. Destek ile iletişime geçin.",
+    SERVER_ERROR:"Sunucu hatası. Tekrar deneyin.",
+    METHOD_NOT_ALLOWED:"Yöntem izin verilmedi", INVALID_JSON:"Geçersiz istek biçimi",
+    OTP_SENT:"OTP e-postanıza gönderildi ✓",
+    OTP_NOT_FOUND:"OTP bulunamadı. Yeni bir tane isteyin.",
+    OTP_EXPIRED:"OTP süresi doldu. Yeni bir tane isteyin.",
+    OTP_MAX_ATTEMPTS:"Çok fazla yanlış deneme. Yeni OTP isteyin.",
+    OTP_INVALID:"Geçersiz OTP kodu", PASSWORD_TOO_SHORT:"Şifre en az 6 karakter olmalı",
+    MISSING_FIELDS:"Gerekli bilgiler eksik",
+    ACCOUNT_CREATED:"Hesap başarıyla oluşturuldu!",
+    SENDING:"Gönderiliyor...", RESEND_OTP:"OTP'yi tekrar gönder", CREATING_ACCOUNT:"Hesap oluşturuluyor...",
+    CODE_EXPIRED_RESEND:"Kod süresi doldu — tekrar gönder",
+    SCANNING_FACE:"Yüz taranıyor...", FACE_VERIFIED:"Yüz doğrulandı",
+    FINGERPRINT_ADDED:"Parmak izi kaydedildi",
+    LIVENESS_FAILED:"Canlılık testi başarısız. Lütfen netçe göz kırpın.",
+    CAMERA_DENIED:"Kamera erişimi reddedildi veya kullanılamıyor.",
+    WEBAUTHN_NOT_SUPPORTED:"WebAuthn (parmak izi) bu tarayıcıda desteklenmiyor.",
+    FINGERPRINT_FAILED:"Parmak izi kurulumu iptal edildi veya başarısız.",
+    DOB_INVALID:"Lütfen geçerli bir doğum tarihi girin"
+  }
+};
 
-    <script>
-        // ============================================================================
-        // 1. SUPABASE CONFIGURATION
-        // ============================================================================
-        const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
-        let supabaseClient = null;
-        try {
-            if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch(e) { console.error("Supabase error", e); }
+const languageList = [
+  { code:'en', name:'English - US' }, { code:'bn', name:'বাংলা - Bangladesh' },
+  { code:'hi', name:'हिन्दी - India' }, { code:'es', name:'Español - Spain' },
+  { code:'fr', name:'Français - France' }, { code:'ar', name:'العربية - Arabic' },
+  { code:'pt', name:'Português - Portugal' }, { code:'de', name:'Deutsch - Germany' },
+  { code:'id', name:'Bahasa Indonesia' }, { code:'tr', name:'Türkçe - Türkiye' }
+];
 
-        // ============================================================================
-        // 2. TRANSLATION DICTIONARY (Based on your screenshots)
-        // ============================================================================
-        const i18n = {
-            en: { langBtn: "English - US", secureAcc: "Secure Your Account", subtitle: "Enter details and verify your identity", emailLabel: "Email Address", otpLabel: "Enter 6 Digit Code", otpTimer: "Code expires in 60s", dobLabel: "Birthday", passLabel: "Password", securityLabel: "Security Verification (Mandatory)", lookCam: "Please look at the camera to verify", liveSelfie: "Live Selfie & Eye Scan", fingerprintBtn: "Add Fingerprint (WebAuthn)", verifyStatus: "Verify using camera & fingerprint to proceed", notRobot: "I'm not a robot - Manual verification", sendOtp: "Send OTP", signUp: "Sign Up", backBtn: "← Back", cancelBtn: "Cancel", haveAcc: "Already have an account?", login: "Log in", selectLang: "Select Language", close: "Close" },
-            bn: { langBtn: "বাংলা - Bangladesh", secureAcc: "আপনার অ্যাকাউন্ট সুরক্ষিত করুন", subtitle: "বিস্তারিত লিখুন এবং আপনার পরিচয় যাচাই করুন", emailLabel: "ইমেইল ঠিকানা", otpLabel: "৬ ডিজিটের কোড দিন", otpTimer: "কোডটি ৬০ সেকেন্ডে শেষ হবে", dobLabel: "জন্মদিন", passLabel: "পাসওয়ার্ড", securityLabel: "নিরাপত্তা যাচাই (বাধ্যতামূলক)", lookCam: "যাচাই করতে ক্যামেরার দিকে তাকান", liveSelfie: "লাইভ সেলফি এবং চোখ স্ক্যান", fingerprintBtn: "ফিঙ্গারপ্রিন্ট যোগ করুন", verifyStatus: "এগিয়ে যেতে ক্যামেরা এবং ফিঙ্গারপ্রিন্ট যাচাই করুন", notRobot: "আমি রোবট নই - ম্যানুয়াল যাচাই", sendOtp: "OTP পাঠান", signUp: "সাইন আপ", backBtn: "← পিছনে", cancelBtn: "বাতিল", haveAcc: "ইতিমধ্যে একটি অ্যাকাউন্ট আছে?", login: "লগ ইন", selectLang: "ভাষা নির্বাচন করুন", close: "বন্ধ করুন" },
-            hi: { langBtn: "हिन्दी - India", secureAcc: "अपना खाता सुरक्षित करें", subtitle: "विवरण दर्ज करें और अपनी पहचान सत्यापित करें", emailLabel: "ईमेल पता", otpLabel: "6 अंकों का कोड दर्ज करें", otpTimer: "कोड 60 सेकंड में समाप्त होगा", dobLabel: "जन्मदिन", passLabel: "पासवर्ड", securityLabel: "सुरक्षा सत्यापन (अनिवार्य)", lookCam: "सत्यापित करने के लिए कृपया कैमरे की ओर देखें", liveSelfie: "लाइव सेल्फी और आई स्कैन", fingerprintBtn: "फिंगरप्रिंट जोड़ें", verifyStatus: "आगे बढ़ने के लिए कैमरा और फिंगरप्रिंट सत्यापित करें", notRobot: "मैं रोबोट नहीं हूँ - मैन्युअल सत्यापन", sendOtp: "OTP भेजें", signUp: "साइन अप करें", backBtn: "← पीछे", cancelBtn: "रद्द करें", haveAcc: "क्या आपके पास पहले से खाता है?", login: "लॉग इन करें", selectLang: "भाषा चुनें", close: "बंद करें" },
-            es: { langBtn: "Español - Spain", secureAcc: "Asegura tu cuenta", subtitle: "Ingresa los detalles y verifica tu identidad", emailLabel: "Correo electrónico", otpLabel: "Ingresa el código de 6 dígitos", otpTimer: "El código expira en 60s", dobLabel: "Cumpleaños", passLabel: "Contraseña", securityLabel: "Verificación de seguridad (Obligatorio)", lookCam: "Por favor mira a la cámara para verificar", liveSelfie: "Selfie en vivo y escaneo de ojos", fingerprintBtn: "Añadir huella digital", verifyStatus: "Verifica con cámara y huella para proceder", notRobot: "No soy un robot - Verificación manual", sendOtp: "Enviar OTP", signUp: "Registrarse", backBtn: "← Atrás", cancelBtn: "Cancelar", haveAcc: "¿Ya tienes una cuenta?", login: "Iniciar sesión", selectLang: "Seleccionar idioma", close: "Cerrar" },
-            fr: { langBtn: "Français - France", secureAcc: "Sécurisez votre compte", subtitle: "Entrez les détails et vérifiez votre identité", emailLabel: "Adresse e-mail", otpLabel: "Entrez le code à 6 chiffres", otpTimer: "Le code expire dans 60s", dobLabel: "Anniversaire", passLabel: "Mot de passe", securityLabel: "Vérification de sécurité (Obligatoire)", lookCam: "Veuillez regarder la caméra pour vérifier", liveSelfie: "Selfie en direct et scan des yeux", fingerprintBtn: "Ajouter une empreinte digitale", verifyStatus: "Vérifiez avec la caméra et l'empreinte pour continuer", notRobot: "Je ne suis pas un robot - Vérification manuelle", sendOtp: "Envoyer OTP", signUp: "S'inscrire", backBtn: "← Retour", cancelBtn: "Annuler", haveAcc: "Vous avez déjà un compte?", login: "Se connecter", selectLang: "Choisir la langue", close: "Fermer" },
-            ar: { langBtn: "Arabic - العربية", secureAcc: "تأمين حسابك", subtitle: "أدخل التفاصيل وتحقق من هويتك", emailLabel: "عنوان البريد الإلكتروني", otpLabel: "أدخل رمز مكون من 6 أرقام", otpTimer: "ينتهي الرمز في 60 ثانية", dobLabel: "عيد ميلاد", passLabel: "كلمة المرور", securityLabel: "التحقق الأمني (إلزامي)", lookCam: "يرجى النظر إلى الكاميرا للتحقق", liveSelfie: "سيلفي مباشر ومسح العين", fingerprintBtn: "إضافة بصمة الإصبع", verifyStatus: "تحقق باستخدام الكاميرا وبصمة الإصبع للمتابعة", notRobot: "أنا لست روبوتًا - التحقق اليدوي", sendOtp: "إرسال OTP", signUp: "اشتراك", backBtn: "← رجوع", cancelBtn: "إلغاء", haveAcc: "هل لديك حساب بالفعل؟", login: "تسجيل الدخول", selectLang: "اختر اللغة", close: "إغلاق" },
-            pt: { langBtn: "Português - Portugal", secureAcc: "Proteja sua conta", subtitle: "Insira os detalhes e verifique sua identidade", emailLabel: "Endereço de e-mail", otpLabel: "Insira o código de 6 dígitos", otpTimer: "O código expira em 60s", dobLabel: "Aniversário", passLabel: "Senha", securityLabel: "Verificação de segurança (Obrigatório)", lookCam: "Por favor, olhe para a câmera para verificar", liveSelfie: "Selfie ao vivo e digitalização ocular", fingerprintBtn: "Adicionar impressão digital", verifyStatus: "Verifique com câmera e impressão digital para prosseguir", notRobot: "Não sou um robô - Verificação manual", sendOtp: "Enviar OTP", signUp: "Inscrever-se", backBtn: "← Voltar", cancelBtn: "Cancelar", haveAcc: "Já tem uma conta?", login: "Entrar", selectLang: "Selecionar idioma", close: "Fechar" },
-            de: { langBtn: "Deutsch - Germany", secureAcc: "Sichern Sie Ihr Konto", subtitle: "Geben Sie Details ein und bestätigen Sie Ihre Identität", emailLabel: "E-Mail-Adresse", otpLabel: "6-stelligen Code eingeben", otpTimer: "Code läuft in 60s ab", dobLabel: "Geburtstag", passLabel: "Passwort", securityLabel: "Sicherheitsüberprüfung (Erforderlich)", lookCam: "Bitte schauen Sie in die Kamera, um zu verifizieren", liveSelfie: "Live-Selfie & Augenscan", fingerprintBtn: "Fingerabdruck hinzufügen", verifyStatus: "Mit Kamera und Fingerabdruck verifizieren", notRobot: "Ich bin kein Roboter - Manuelle Überprüfung", sendOtp: "OTP senden", signUp: "Anmelden", backBtn: "← Zurück", cancelBtn: "Abbrechen", haveAcc: "Haben Sie bereits ein Konto?", login: "Einloggen", selectLang: "Sprache auswählen", close: "Schließen" },
-            id: { langBtn: "Bahasa Indonesia", secureAcc: "Amankan Akun Anda", subtitle: "Masukkan detail dan verifikasi identitas Anda", emailLabel: "Alamat Email", otpLabel: "Masukkan Kode 6 Digit", otpTimer: "Kode kedaluwarsa dalam 60s", dobLabel: "Ulang tahun", passLabel: "Kata Sandi", securityLabel: "Verifikasi Keamanan (Wajib)", lookCam: "Silakan lihat kamera untuk memverifikasi", liveSelfie: "Selfie Langsung & Pindai Mata", fingerprintBtn: "Tambah Sidik Jari", verifyStatus: "Verifikasi menggunakan kamera & sidik jari", notRobot: "Saya bukan robot - Verifikasi manual", sendOtp: "Kirim OTP", signUp: "Daftar", backBtn: "← Kembali", cancelBtn: "Batal", haveAcc: "Sudah punya akun?", login: "Masuk", selectLang: "Pilih Bahasa", close: "Tutup" },
-            tr: { langBtn: "Türkçe - Türkiye", secureAcc: "Hesabınızı Güvenceye Alın", subtitle: "Bilgileri girin ve kimliğinizi doğrulayın", emailLabel: "E-posta Adresi", otpLabel: "6 Haneli Kodu Girin", otpTimer: "Kodun süresi 60s içinde dolacak", dobLabel: "Doğum günü", passLabel: "Şifre", securityLabel: "Güvenlik Doğrulaması (Zorunlu)", lookCam: "Doğrulamak için lütfen kameraya bakın", liveSelfie: "Canlı Selfie ve Göz Taraması", fingerprintBtn: "Parmak İzi Ekle", verifyStatus: "Devam etmek için kamera ve parmak iziyle doğrulayın", notRobot: "Ben robot değilim - Manuel doğrulama", sendOtp: "OTP Gönder", signUp: "Kayıt Ol", backBtn: "← Geri", cancelBtn: "İptal", haveAcc: "Zaten hesabınız var mı?", login: "Giriş yap", selectLang: "Dil Seçin", close: "Kapat" }
-        };
+let currentLang = localStorage.getItem('autro_lang') || 'en';
 
-        const languageList = [
-            { code: 'en', name: 'English - US' }, { code: 'bn', name: 'বাংলা - Bangladesh' },
-            { code: 'hi', name: 'हिन्दी - India' }, { code: 'es', name: 'Español - Spain' },
-            { code: 'fr', name: 'Français - France' }, { code: 'ar', name: 'Arabic - العربية' },
-            { code: 'pt', name: 'Português - Portugal' }, { code: 'de', name: 'Deutsch - Germany' },
-            { code: 'id', name: 'Bahasa Indonesia' }, { code: 'tr', name: 'Türkçe - Türkiye' }
-        ];
+// ═══════════════════════════════════════════════════════════════
+// TRANSLATION HELPER
+// ═══════════════════════════════════════════════════════════════
+function t(key, vars) {
+  const dict = i18n[currentLang] || i18n['en'];
+  let str = dict[key] || i18n['en'][key] || key;
+  if (vars) {
+    Object.keys(vars).forEach(k => {
+      str = str.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]);
+    });
+  }
+  return str;
+}
 
-        let currentLang = localStorage.getItem('autro_lang') || 'en';
-        
-        // State Variables
-        let selfieData = "", faceDescriptor = null, stream = null, livenessPassed = false;
-        let fingerprintRegistered = false, otpTimer = null, otpSeconds = 60;
+function applyLanguage(langCode) {
+  const dict = i18n[langCode] || i18n['en'];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) el.innerText = dict[key];
+  });
+  document.getElementById('langBtn').innerText = languageList.find(l => l.code === langCode)?.name || 'English';
+  document.documentElement.lang = langCode;
+  document.documentElement.dir = (langCode === 'ar') ? 'rtl' : 'ltr';
+  localStorage.setItem('autro_lang', langCode);
+  currentLang = langCode;
+  // refresh dynamic texts
+  updateNamePreview();
+  if (otpSent) updateTimer();
+}
 
-        // ============================================================================
-        // 3. TRANSLATION ENGINE
-        // ============================================================================
-        function applyLanguage(langCode) {
-            const dict = i18n[langCode] || i18n['en'];
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (dict[key]) el.innerText = dict[key];
-            });
-            document.getElementById('langBtn').innerText = languageList.find(l => l.code === langCode)?.name || 'English';
-            localStorage.setItem('autro_lang', langCode);
-            currentLang = langCode;
+function buildLangList() {
+  const list = document.getElementById('langList'); list.innerHTML = '';
+  languageList.forEach(lang => {
+    const div = document.createElement('div');
+    div.className = 'lang-item';
+    div.innerHTML = `<span>${lang.name}</span><input type="radio" name="lang" ${currentLang === lang.code ? 'checked' : ''}>`;
+    div.onclick = () => { applyLanguage(lang.code); closeLangModal(); };
+    list.appendChild(div);
+  });
+}
+
+function openLangModal() { document.getElementById('langModal').style.display = 'flex'; }
+function closeLangModal() { document.getElementById('langModal').style.display = 'none'; }
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION & UI
+// ═══════════════════════════════════════════════════════════════
+function goBack() { window.location.href = 'signup-name.html'; }
+function goCancel() { window.location.href = 'welcome.html'; }
+
+function togglePass() {
+  const p = document.getElementById('password');
+  const icon = document.getElementById('togglePasswordIcon');
+  if (p.type === 'password') {
+    p.type = 'text';
+    icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash');
+  } else {
+    p.type = 'password';
+    icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye');
+  }
+}
+
+function updateNamePreview() {
+  const savedName = localStorage.getItem('signup_name');
+  if (savedName) {
+    document.getElementById('namePreview').innerText = '👤 ' + savedName;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let selfieData = "";
+let faceDescriptor = null;
+let stream = null;
+let livenessPassed = false;
+let webauthnCredentialId = null;
+let fingerprintRegistered = false;
+let otpTimer = null;
+let otpSeconds = 60;
+let modelsLoaded = false;
+let otpSent = false;
+
+// ═══════════════════════════════════════════════════════════════
+// WEBAUTHN FINGERPRINT (OPTIONAL)
+// ═══════════════════════════════════════════════════════════════
+async function registerFingerprint() {
+  if (!window.PublicKeyCredential) {
+    alert(t('WEBAUTHN_NOT_SUPPORTED'));
+    return;
+  }
+  try {
+    const challenge = new Uint8Array(32);
+    window.crypto.getRandomValues(challenge);
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: "Autrobook", id: window.location.hostname },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: document.getElementById('email').value || "user@autrobook.com",
+          displayName: "Autrobook User"
+        },
+        pubKeyCredParams: [{ type:"public-key", alg:-7 }, { type:"public-key", alg:-257 }],
+        authenticatorSelection: { userVerification:"required", authenticatorAttachment:"platform" },
+        timeout: 60000
+      }
+    });
+    if (credential) {
+      webauthnCredentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+      fingerprintRegistered = true;
+      const btn = document.getElementById('fingerprintBtn');
+      btn.classList.add('verified');
+      btn.innerHTML = `<i class="fas fa-check-circle"></i> ${t('FINGERPRINT_ADDED')}`;
+      btn.disabled = true;
+      checkButtonState();
+    }
+  } catch (err) {
+    console.error("WebAuthn failed:", err);
+    alert(t('FINGERPRINT_FAILED'));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FACE API (LIVENESS)
+// ═══════════════════════════════════════════════════════════════
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+
+function stopCamera(btn) {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  document.getElementById('video').style.display = 'none';
+  document.getElementById('livenessText').classList.add('hide');
+  if (btn) {
+    btn.innerHTML = `<i class="fas fa-camera"></i> <span>${t('liveSelfie')}</span>`;
+    btn.disabled = false;
+  }
+}
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    video.style.display = 'block';
+    document.getElementById('livenessText').classList.remove('hide');
+
+    const btn = document.getElementById('cameraBtn');
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('SCANNING_FACE')}`;
+    btn.disabled = true;
+
+    if (!modelsLoaded) {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      modelsLoaded = true;
+    }
+
+    let blinkCount = 0, lastEyeState = 'open', isCompleted = false;
+    const interval = setInterval(async () => {
+      if (isCompleted) return;
+      const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+      if (detections) {
+        const le = detections.landmarks.getLeftEye();
+        const re = detections.landmarks.getRightEye();
+        const ear = (getDistance(le[1], le[5]) + getDistance(le[2], le[4])) / (2 * getDistance(le[0], le[3]));
+        if (ear < 0.25 && lastEyeState === 'open') { blinkCount++; lastEyeState = 'closed'; }
+        if (ear > 0.25 && lastEyeState === 'closed') { lastEyeState = 'open'; }
+        if (blinkCount >= 1) {
+          isCompleted = true;
+          clearInterval(interval);
+          await capturePhotoAndDescriptor(video);
         }
+      }
+    }, 200);
 
-        function buildLangList() {
-            const list = document.getElementById('langList');
-            list.innerHTML = '';
-            languageList.forEach(lang => {
-                const div = document.createElement('div');
-                div.className = 'lang-item';
-                div.innerHTML = `<span>${lang.name}</span><input type="radio" name="lang" ${currentLang === lang.code ? 'checked' : ''}>`;
-                div.onclick = () => { applyLanguage(lang.code); closeLangModal(); };
-                list.appendChild(div);
-            });
+    setTimeout(() => {
+      if (!livenessPassed) {
+        clearInterval(interval);
+        alert(t('LIVENESS_FAILED'));
+        stopCamera(btn);
+      }
+    }, 15000);
+  } catch (err) {
+    console.error(err);
+    alert(t('CAMERA_DENIED'));
+    stopCamera(document.getElementById('cameraBtn'));
+  }
+}
+
+function getDistance(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
+
+async function capturePhotoAndDescriptor(video) {
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0);
+
+  selfieData = canvas.toDataURL('image/jpeg', 0.8);
+  document.getElementById('photo').src = selfieData;
+  document.getElementById('photo').style.display = 'block';
+  document.getElementById('video').style.display = 'none';
+
+  const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+  if (detection) faceDescriptor = Array.from(detection.descriptor);
+
+  document.getElementById('livenessText').classList.add('hide');
+  if (stream) stream.getTracks().forEach(t => t.stop());
+
+  const btn = document.getElementById('cameraBtn');
+  btn.innerHTML = `<i class="fas fa-check"></i> ${t('FACE_VERIFIED')}`;
+  btn.classList.add('verified');
+  btn.disabled = true;
+
+  livenessPassed = true;
+  checkButtonState();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VALIDATION
+// ═══════════════════════════════════════════════════════════════
+function isValidDob(day, month, year) {
+  const d = parseInt(day), m = parseInt(month), y = parseInt(year);
+  if (!d || !m || !y) return false;
+  if (d < 1 || d > 31 || m < 1 || m > 12) return false;
+  const now = new Date().getFullYear();
+  if (y < 1900 || y > now) return false;
+  const dt = new Date(y, m - 1, d);
+  return dt.getDate() === d && dt.getMonth() === m - 1 && dt.getFullYear() === y;
+}
+
+function checkButtonState() {
+  const captcha = (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse().length > 0);
+  const manual = document.getElementById('humanCheck').checked;
+  const isVerified = livenessPassed;  // Face only (fingerprint optional)
+
+  const email = document.getElementById('email').value.trim();
+  const day = document.getElementById('day').value;
+  const month = document.getElementById('month').value;
+  const year = document.getElementById('year').value;
+  const pass = document.getElementById('password').value;
+
+  const sendBtn = document.getElementById('sendOtpBtn');
+  const signBtn = document.getElementById('signUpBtn');
+
+  if (email.includes('@') && (captcha || manual)) {
+    sendBtn.classList.add('active'); sendBtn.disabled = false;
+  } else {
+    sendBtn.classList.remove('active'); sendBtn.disabled = true;
+  }
+
+  const dobOk = year.length === 4 && isValidDob(day, month, year);
+  if (otpSent && (captcha || manual) && isVerified && email && dobOk && pass.length >= 6) {
+    signBtn.classList.add('active'); signBtn.disabled = false;
+  } else {
+    signBtn.classList.remove('active'); signBtn.disabled = true;
+  }
+}
+window.enableBtn = () => checkButtonState();
+window.manualCaptcha = () => checkButtonState();
+
+// ═══════════════════════════════════════════════════════════════
+// SEND OTP (translated)
+// ═══════════════════════════════════════════════════════════════
+async function sendOTP() {
+  const email = document.getElementById('email').value.trim();
+  const btn = document.getElementById('sendOtpBtn');
+  const msg = document.getElementById('msgDetails');
+  msg.innerText = '';
+
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('SENDING')}`;
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: localStorage.getItem('signup_name') || 'User' })
+    });
+    const data = await res.json();
+
+    // Already exists → login page
+    if (data.alreadyExists) {
+      msg.innerText = t(data.code);
+      setTimeout(() => window.location.href = 'login.html', 2000);
+      return;
+    }
+
+    if (!res.ok || !data.success) {
+      msg.innerText = t(data.code) || t('SERVER_ERROR');
+      btn.innerHTML = t('sendOtp');
+      btn.classList.remove('active');
+      btn.disabled = false;
+      return;
+    }
+
+    otpSent = true;
+    document.getElementById('otpGroup').classList.remove('hide');
+    document.getElementById('otp').focus();
+
+    otpSeconds = 60;
+    if (otpTimer) clearInterval(otpTimer);
+    otpTimer = setInterval(() => {
+      otpSeconds--;
+      updateTimer();
+      if (otpSeconds <= 0) clearInterval(otpTimer);
+    }, 1000);
+
+    btn.innerHTML = `<i class="fas fa-check"></i> ${t('OTP_SENT')}`;
+    setTimeout(() => {
+      btn.innerHTML = t('RESEND_OTP');
+      btn.classList.add('active');
+      btn.disabled = false;
+    }, 3000);
+
+    checkButtonState();
+  } catch (err) {
+    msg.innerText = t('SERVER_ERROR');
+    btn.innerHTML = t('sendOtp');
+    btn.classList.remove('active');
+    btn.disabled = false;
+  }
+}
+
+function updateTimer() {
+  const el = document.getElementById('otpTimer');
+  if (otpSeconds > 0) {
+    el.innerText = t('otpTimer', { s: otpSeconds });
+  } else {
+    el.innerText = t('CODE_EXPIRED_RESEND');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFY OTP + SIGNUP (translated)
+// ═══════════════════════════════════════════════════════════════
+async function verifyOTPAndSignup() {
+  const email = document.getElementById('email').value.trim();
+  const otp = document.getElementById('otp').value.trim();
+  const password = document.getElementById('password').value;
+  const name = localStorage.getItem('signup_name') || 'User';
+  const day = document.getElementById('day').value;
+  const month = document.getElementById('month').value;
+  const year = document.getElementById('year').value;
+  const dob = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+
+  const btn = document.getElementById('signUpBtn');
+  const msg = document.getElementById('msgDetails');
+  msg.innerText = '';
+
+  if (!isValidDob(day, month, year)) {
+    msg.innerText = t('DOB_INVALID');
+    return;
+  }
+
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('CREATING_ACCOUNT')}`;
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email, otp, password,
+        profile: {
+          full_name: name, dob,
+          selfieData, faceDescriptor,
+          webauthnCredentialId
         }
+      })
+    });
+    const data = await res.json();
 
-        function openLangModal() { document.getElementById('langModal').style.display = 'flex'; }
-        function closeLangModal() { document.getElementById('langModal').style.display = 'none'; }
+    if (data.alreadyExists) {
+      msg.innerText = t('ALREADY_EXISTS');
+      setTimeout(() => window.location.href = 'login.html', 2000);
+      return;
+    }
 
-        // ============================================================================
-        // 4. NAVIGATION
-        // ============================================================================
-        function goBack() { window.location.href = 'signup-name.html'; }
-        function goCancel() { window.location.href = 'welcome.html'; }
+    if (!res.ok || !data.success) {
+      msg.innerText = t(data.code) || t('SERVER_ERROR');
+      btn.innerHTML = t('signUp');
+      btn.classList.add('active');
+      btn.disabled = false;
+      return;
+    }
 
-        // ============================================================================
-        // 5. PASSWORD TOGGLE (EYE ICON)
-        // ============================================================================
-        function togglePass() {
-            const p = document.getElementById('password');
-            const icon = document.getElementById('togglePasswordIcon');
-            if (p.type === 'password') {
-                p.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                p.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        }
+    // success → auto login
+    const { error: signInErr } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (signInErr) {
+      window.location.href = 'login.html?msg=signup_success';
+      return;
+    }
+    window.location.href = 'index.html';
 
-        // ============================================================================
-        // 6. WEBAUTHN FINGERPRINT (GOOGLE/APPLE STANDARD)
-        // ============================================================================
-        async function registerFingerprint() {
-            if (!window.PublicKeyCredential) {
-                alert("WebAuthn is not supported on this browser.");
-                return;
-            }
+  } catch (err) {
+    msg.innerText = t('SERVER_ERROR');
+    btn.innerHTML = t('signUp');
+    btn.classList.add('active');
+    btn.disabled = false;
+  }
+}
 
-            try {
-                // 1. Generate a random challenge
-                const challenge = new Uint8Array(32);
-                window.crypto.getRandomValues(challenge);
-
-                // 2. Request biometric prompt
-                const credential = await navigator.credentials.create({
-                    publicKey: {
-                        challenge: challenge,
-                        rp: { name: "Autrobook", id: window.location.hostname },
-                        user: {
-                            id: new Uint8Array(16), // In production, use the Supabase user ID
-                            name: document.getElementById('email').value || "user@autrobook.com",
-                            displayName: "Autrobook User"
-                        },
-                        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-                        authenticatorSelection: { userVerification: "required", authenticatorAttachment: "platform" },
-                        timeout: 60000
-                    }
-                });
-
-                if (credential) {
-                    // Convert ArrayBuffer to Base64 to save in Supabase
-                    const rawId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-                    
-                    fingerprintRegistered = true;
-                    const btn = document.getElementById('fingerprintBtn');
-                    btn.classList.add('verified');
-                    btn.innerHTML = '<i class="fas fa-check-circle"></i> Fingerprint Registered';
-                    btn.disabled = true;
-                    checkButtonState();
-                    
-                    // NOTE: You must save 'rawId' to Supabase when the user signs up.
-                    // window.savedFingerprintId = rawId; 
-                }
-            } catch (err) {
-                console.error("Fingerprint registration failed:", err);
-                alert("Fingerprint setup cancelled or failed.");
-            }
-        }
-
-        // ============================================================================
-        // 7. FACE API (LIVENESS & DESCRIPTOR EXTRACTION)
-        // ============================================================================
-        async function startCamera() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-                video.style.display = 'block';
-                document.getElementById('livenessText').classList.remove('hide');
-                
-                const btn = document.getElementById('cameraBtn');
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning Face...';
-                btn.disabled = true;
-
-                // Load models if not loaded
-                if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-                    await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
-                    await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
-                    await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
-                }
-
-                // Liveness check (Blink detection)
-                let blinkCount = 0, lastEyeState = 'open', isCompleted = false;
-                const interval = setInterval(async () => {
-                    if (isCompleted) return;
-                    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-                    
-                    if (detections) {
-                        const leftEye = detections.landmarks.getLeftEye();
-                        const rightEye = detections.landmarks.getRightEye();
-                        const ear = (getDistance(leftEye[1], leftEye[5]) + getDistance(leftEye[2], leftEye[4])) / (2 * getDistance(leftEye[0], leftEye[3]));
-                        
-                        if (ear < 0.25 && lastEyeState === 'open') { blinkCount++; lastEyeState = 'closed'; }
-                        if (ear > 0.25 && lastEyeState === 'closed') { lastEyeState = 'open'; }
-
-                        // If human blinked, take photo and extract Descriptor
-                        if (blinkCount >= 1) {
-                            isCompleted = true;
-                            clearInterval(interval);
-                            await capturePhotoAndDescriptor(video);
-                        }
-                    }
-                }, 200);
-
-                // Timeout
-                setTimeout(() => {
-                    if (!livenessPassed) {
-                        clearInterval(interval);
-                        alert("Liveness failed. Please blink.");
-                        stopCamera(btn);
-                    }
-                }, 15000);
-
-            } catch (err) {
-                console.error(err);
-                alert("Camera access denied.");
-            }
-        }
-
-        function getDistance(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
-
-        async function capturePhotoAndDescriptor(video) {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0);
-            
-            selfieData = canvas.toDataURL('image/jpeg', 0.8);
-            document.getElementById('photo').src = selfieData;
-            document.getElementById('photo').style.display = 'block';
-            document.getElementById('video').style.display = 'none';
-            
-            // Extract 128-float face descriptor for future matching
-            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-            if (detection) {
-                faceDescriptor = Array.from(detection.descriptor); // Save this to Supabase
-            }
-
-            document.getElementById('livenessText').classList.add('hide');
-            if (stream) stream.getTracks().forEach(t => t.stop());
-            
-            const btn = document.getElementById('cameraBtn');
-            btn.innerHTML = '<i class="fas fa-check"></i> Face Verified';
-            btn.classList.add('verified');
-            btn.disabled = true;
-
-            livenessPassed = true;
-            checkButtonState();
-        }
-
-        // ============================================================================
-        // 8. FORM VALIDATION AND UI STATE
-        // ============================================================================
-        function checkButtonState() {
-            const captcha = (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse().length > 0);
-            const manual = document.getElementById('humanCheck').checked;
-            
-            // To proceed, we require Face Liveness AND (Fingerprint OR Captcha)
-            const isVerified = livenessPassed && fingerprintRegistered; 
-            
-            const email = document.getElementById('email').value.trim();
-            const day = document.getElementById('day').value;
-            const month = document.getElementById('month').value;
-            const year = document.getElementById('year').value;
-            const pass = document.getElementById('password').value;
-
-            const sendBtn = document.getElementById('sendOtpBtn');
-            const signBtn = document.getElementById('signUpBtn');
-
-            if (email.includes('@')) {
-                sendBtn.classList.add('active'); sendBtn.disabled = false;
-            } else {
-                sendBtn.classList.remove('active'); sendBtn.disabled = true;
-            }
-
-            if ((captcha || manual) && isVerified && email && day && month && year.length === 4 && pass.length >= 6) {
-                signBtn.classList.add('active'); signBtn.disabled = false;
-            } else {
-                signBtn.classList.remove('active'); signBtn.disabled = true;
-            }
-        }
-
-        window.enableBtn = () => checkButtonState();
-        window.manualCaptcha = () => checkButtonState();
-
-        // ============================================================================
-        // 9. SUPABASE: OTP AND SIGNUP
-        // ============================================================================
-        async function sendOTP() {
-            const email = document.getElementById('email').value.trim();
-            const btn = document.getElementById('sendOtpBtn');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-            
-            const { error } = await supabaseClient.auth.signInWithOtp({ email: email });
-            if (error) { alert(error.message); btn.innerHTML = "Send OTP"; return; }
-
-            document.getElementById('otpGroup').classList.remove('hide');
-            otpSeconds = 60;
-            otpTimer = setInterval(() => {
-                otpSeconds--;
-                document.getElementById('otpTimer').innerText = `Code expires in ${otpSeconds}s`;
-                if (otpSeconds <= 0) clearInterval(otpTimer);
-            }, 1000);
-        }
-
-        async function verifyOTPAndSignup() {
-            const email = document.getElementById('email').value.trim();
-            const otp = document.getElementById('otp').value.trim();
-            const password = document.getElementById('password').value;
-            const name = localStorage.getItem('signup_name') || 'User';
-
-            try {
-                // 1. Verify OTP
-                const { data, error } = await supabaseClient.auth.verifyOtp({ email, token: otp, type: 'email' });
-                if (error) throw error;
-
-                // 2. Set Password
-                await supabaseClient.auth.updateUser({ password });
-
-                // 3. Save all biometric data to Supabase 'profiles' table
-                await supabaseClient.from('profiles').insert([{
-                    id: data.user.id,
-                    email: email,
-                    full_name: name,
-                    selfie_url: selfieData, // The base64 image
-                    face_descriptor: faceDescriptor, // The 128-float array for matching
-                    fingerprint_id: 'registered_webauthn', // Save the WebAuthn rawId here
-                    status: 'verified'
-                }]);
-
-                // 4. Redirect to Index
-                window.location.href = 'index.html'; 
-            } catch (err) {
-                alert("Error: " + err.message);
-            }
-        }
-
-        // INITIALIZATION
-        document.addEventListener('DOMContentLoaded', () => {
-            applyLanguage(currentLang);
-            buildLangList();
-        });
-    </script>
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  applyLanguage(currentLang);
+  buildLangList();
+  updateNamePreview();
+});
+</script>
 </body>
-</html>
+    </html>
