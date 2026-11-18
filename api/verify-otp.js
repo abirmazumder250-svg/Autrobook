@@ -1,119 +1,92 @@
-// api/verify-otp.js - Verify OTP Only
-// Job: Check if the 6-digit OTP entered by user matches the hashed OTP in Supabase
-// This file does NOT send OTP. Sending is done in api/send-otp.js
-
+// api/verify-otp.js
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 
-// MUST USE SERVICE ROLE KEY
-// Anon Key cannot read the 'otps' table because of RLS (Row Level Security)
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
 export default async function handler(req, res) {
-  // 1. CORS Configuration
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
-  }
-
-  // 2. Check Environment Variables
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return res.status(500).json({ success: false, message: 'Supabase credentials not set in Vercel' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ success: false, code: 'METHOD_NOT_ALLOWED' });
 
   try {
-    // 3. Parse Request Body Safely
     let body = req.body;
     if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch (e) {
-        return res.status(400).json({ success: false, message: 'Invalid JSON payload' });
-      }
+      try { body = JSON.parse(body); } catch { return res.status(400).json({ success: false, code: 'INVALID_JSON' }); }
     }
 
-    const { email, otp } = body || {};
-    if (!email || !otp) {
-      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+    const { email, otp, password, profile } = body || {};
+    if (!email || !otp || !password || !profile) {
+      return res.status(400).json({ success: false, code: 'MISSING_FIELDS' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, code: 'PASSWORD_TOO_SHORT' });
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-    const cleanOtp = String(otp).trim();
 
-    // 4. Fetch Latest OTP for This Email
-    const { data: otpRecords, error: fetchError } = await supabase
-      .from('otps')
-      .select('*')
-      .eq('email', cleanEmail)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    const { data: rec } = await supabase
+      .from('otps').select('*').eq('email', cleanEmail)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
 
-    if (fetchError) {
-      console.error('Supabase Fetch Error:', fetchError);
-      return res.status(500).json({ success: false, message: 'Database error: ' + fetchError.message });
+    if (!rec) return res.status(400).json({ success: false, code: 'OTP_NOT_FOUND' });
+
+    if (new Date(rec.expires_at) < new Date()) {
+      await supabase.from('otps').delete().eq('id', rec.id);
+      return res.status(400).json({ success: false, code: 'OTP_EXPIRED' });
     }
 
-    if (!otpRecords || otpRecords.length === 0) {
-      return res.status(400).json({ success: false, message: 'No OTP found for this email. Please request a new one.' });
+    if ((rec.attempts || 0) >= 5) {
+      await supabase.from('otps').delete().eq('id', rec.id);
+      return res.status(429).json({ success: false, code: 'OTP_MAX_ATTEMPTS' });
     }
 
-    const record = otpRecords[0];
-
-    // 5. Check Expiry - Supports 3 column names: expires_at / expiry / expire_at
-    const expiryRaw = record.expires_at || record.expiry || record.expire_at;
-    if (!expiryRaw) {
-      return res.status(500).json({ success: false, message: 'OTP expiry field missing in database' });
+    const ok = await bcrypt.compare(String(otp), rec.otp_hash);
+    if (!ok) {
+      await supabase.from('otps').update({ attempts: (rec.attempts || 0) + 1 }).eq('id', rec.id);
+      return res.status(400).json({ success: false, code: 'OTP_INVALID' });
     }
 
-    const now = new Date();
-    const expiry = new Date(expiryRaw);
-    if (now > expiry) {
-      // Delete expired OTP
-      await supabase.from('otps').delete().eq('email', cleanEmail);
-      return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
-    }
+    await supabase.from('otps').delete().eq('id', rec.id);
 
-    // 6. Compare OTP - Supports 3 column names: otp_hash / otp / code
-    const storedHash = record.otp_hash || record.otp || record.code;
-    if (!storedHash) {
-      return res.status(500).json({ success: false, message: 'OTP hash not found in database' });
-    }
-
-    // If stored as plain 6-digit code, compare directly
-    // If stored as bcrypt hash, use bcrypt.compare
-    let isMatch = false;
-    if (String(storedHash).length === 6 && /^\d{6}$/.test(String(storedHash))) {
-      isMatch = String(storedHash) === cleanOtp;
-    } else {
-      isMatch = await bcrypt.compare(cleanOtp, String(storedHash));
-    }
-
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP. Please try again.' });
-    }
-
-    // 7. OTP is Valid - Delete it so it cannot be reused
-    await supabase.from('otps').delete().eq('email', cleanEmail);
-
-    // 8. Generate Secure Reset Token - FIXED: Now uses crypto random, not predictable
-    const resetToken = crypto.randomBytes(32).toString('hex');
-
-    return res.status(200).json({
-      success: true,
-      message: 'OTP verified successfully',
-      resetToken: resetToken
+    const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+      email: cleanEmail, password, email_confirm: true
     });
 
+    if (createErr) {
+      if (createErr.message?.toLowerCase().includes('already')) {
+        return res.status(409).json({ success: false, code: 'ALREADY_EXISTS', alreadyExists: true });
+      }
+      console.error('createUser:', createErr);
+      return res.status(500).json({ success: false, code: 'SERVER_ERROR' });
+    }
+
+    const { error: profileErr } = await supabase.from('profiles').upsert({
+      id: created.user.id,
+      email: cleanEmail,
+      full_name: profile.full_name,
+      dob: profile.dob,
+      selfie_url: profile.selfieData,
+      face_descriptor: profile.faceDescriptor,
+      fingerprint_id: profile.webauthnCredentialId,
+      status: 'verified'
+    });
+
+    if (profileErr) {
+      await supabase.auth.admin.deleteUser(created.user.id);
+      console.error('profile save:', profileErr);
+      return res.status(500).json({ success: false, code: 'SERVER_ERROR' });
+    }
+
+    return res.status(200).json({ success: true, code: 'ACCOUNT_CREATED', userId: created.user.id });
   } catch (e) {
-    console.error('Server Internal Error:', e);
-    return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
+    console.error('verify-otp:', e);
+    return res.status(500).json({ success: false, code: 'SERVER_ERROR' });
   }
 }
