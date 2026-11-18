@@ -55,7 +55,6 @@ body{background-color:var(--bg);color:var(--text);min-height:100vh;display:flex;
 .lang-close{width:100%;padding:12px;margin-top:16px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer}
 
 .header{text-align:center;margin-bottom:28px;padding:0 20px;margin-top:10px}
-/* ছোট এবং আকর্ষণীয় লোগো স্টাইল */
 .logo{width:56px;height:56px;border-radius:14px;object-fit:cover;margin:0 auto 12px;display:block;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
 h2{font-size:24px;font-weight:800;margin-bottom:6px}
 p.subtitle{font-size:14px;color:var(--muted);line-height:1.5}
@@ -95,7 +94,6 @@ input::placeholder{color:var(--muted);opacity:0.7}
 </div>
 
 <div class="header">
-  <!-- ছোট সাইজের ইমেজ লোগো -->
   <img src="logo.png" alt="Autrobook Logo" class="logo" onerror="this.style.display='none'">
   <h2 data-key="title">What's your name?</h2>
   <p class="subtitle" data-key="subtitle">Enter the name you use in real life</p>
@@ -121,7 +119,8 @@ input::placeholder{color:var(--muted);opacity:0.7}
   </div>
   
   <div class="msg" id="msg"></div>
-  <button class="btn" id="nextBtn" data-key="next">Next</button>
+  <!-- type="button" যোগ করা হয়েছে যাতে ফর্ম সাবমিট সংক্রান্ত কোনো সমস্যা না হয় -->
+  <button type="button" class="btn" id="nextBtn" data-key="next">Next</button>
   
   <p class="footer-text" id="loginFooter">
     <span data-key="haveAcc">Already have an account?</span> 
@@ -133,7 +132,7 @@ input::placeholder{color:var(--muted);opacity:0.7}
   <div class="lang-modal" id="langModalContent">
     <h3 id="langTitle">Select Language</h3>
     <div class="lang-list" id="langList"></div>
-    <button class="lang-close" id="langClose">Close</button>
+    <button type="button" class="lang-close" id="langClose">Close</button>
   </div>
 </div>
 
@@ -175,26 +174,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   buildLangList();
   applyLanguage();
   
-  const { data: { session } } = await supabase.auth.getSession();
-  if(session){
-    document.getElementById('loginFooter').classList.add('hide');
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if(session){
+      const loginFooter = document.getElementById('loginFooter');
+      if(loginFooter) loginFooter.classList.add('hide');
+    }
+  } catch(e) {
+    console.error("Supabase session error:", e);
   }
 
+  // লোড করার সময় আগের ডাটা থাকলে ইনপুট ফিল্ডে বসিয়ে দেওয়া
   if(localStorage.getItem('signup_firstName')) document.getElementById('firstName').value = localStorage.getItem('signup_firstName');
   if(localStorage.getItem('signup_surname')) document.getElementById('surname').value = localStorage.getItem('signup_surname');
   if(localStorage.getItem('signup_username')) document.getElementById('username').value = localStorage.getItem('signup_username');
 
-  // Event Listeners for buttons to ensure reliable functionality
-  document.getElementById('nextBtn').addEventListener('click', goNext);
-  document.getElementById('backBtn').addEventListener('click', () => { location.href = 'welcome.html'; });
-  document.getElementById('langWrapper').addEventListener('click', openLangModal);
-  document.getElementById('langModal').addEventListener('click', closeLangModal);
-  document.getElementById('langModalContent').addEventListener('click', (e) => e.stopPropagation());
-  document.getElementById('langClose').addEventListener('click', closeLangModal);
+  // সেফটি চেক সহ ইভেন্ট লিসেনার যুক্ত করা
+  const nextBtn = document.getElementById('nextBtn');
+  if(nextBtn) nextBtn.addEventListener('click', goNext);
+
+  const backBtn = document.getElementById('backBtn');
+  if(backBtn) backBtn.addEventListener('click', () => { location.href = 'welcome.html'; });
+
+  const langWrapper = document.getElementById('langWrapper');
+  if(langWrapper) langWrapper.addEventListener('click', openLangModal);
+
+  const langModal = document.getElementById('langModal');
+  if(langModal) langModal.addEventListener('click', closeLangModal);
+
+  const langModalContent = document.getElementById('langModalContent');
+  if(langModalContent) langModalContent.addEventListener('click', (e) => e.stopPropagation());
+
+  const langClose = document.getElementById('langClose');
+  if(langClose) langClose.addEventListener('click', closeLangModal);
 });
 
 function buildLangList(){
   const langList = document.getElementById('langList');
+  if(!langList) return;
   langList.innerHTML = '';
   languages.forEach(lang => {
     const div = document.createElement('div');
@@ -205,19 +222,27 @@ function buildLangList(){
   });
 }
 
-function openLangModal(){ document.getElementById('langModal').style.display = 'flex'; }
-function closeLangModal(){ document.getElementById('langModal').style.display = 'none'; }
+function openLangModal(){ 
+  const modal = document.getElementById('langModal');
+  if(modal) modal.style.display = 'flex'; 
+}
+
+function closeLangModal(){ 
+  const modal = document.getElementById('langModal');
+  if(modal) modal.style.display = 'none'; 
+}
 
 function selectLanguage(code, name){
   currentLang = code;
   localStorage.setItem('autro_lang', currentLang);
-  document.getElementById('langBtn').innerText = name;
+  const langBtn = document.getElementById('langBtn');
+  if(langBtn) langBtn.innerText = name;
   applyLanguage();
   closeLangModal();
 }
 
 function applyLanguage(){
-  const t = translations[currentLang];
+  const t = translations[currentLang] || translations['en'];
   document.documentElement.lang = currentLang;
   document.querySelectorAll('[data-key]').forEach(el => {
     const key = el.getAttribute('data-key');
@@ -229,13 +254,20 @@ function applyLanguage(){
   });
 }
 
-function showMsg(t){ document.getElementById('msg').textContent = t; }
+function showMsg(t){ 
+  const msgEl = document.getElementById('msg');
+  if(msgEl) msgEl.textContent = t; 
+}
 
 function goNext(){
   const t = translations[currentLang] || translations['en'];
-  const fn = document.getElementById('firstName').value.trim();
-  const sn = document.getElementById('surname').value.trim();
-  const un = document.getElementById('username').value.trim();
+  const fnInput = document.getElementById('firstName');
+  const snInput = document.getElementById('surname');
+  const unInput = document.getElementById('username');
+
+  const fn = fnInput ? fnInput.value.trim() : '';
+  const sn = snInput ? snInput.value.trim() : '';
+  const un = unInput ? unInput.value.trim() : '';
   
   if(!fn) return showMsg(t.err1 || "Please enter your first name");
   if(!sn) return showMsg(t.err2 || "Please enter your surname");
