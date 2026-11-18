@@ -2,486 +2,416 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#043D22">
-<title>Autrobook — Safety First Social</title>
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="css/index.css">
-<script>
-  // AUTH GUARD - Allow Real User OR Guest. Block only if no one.
-  if (localStorage.getItem('autro_logged_in') !== '1' && localStorage.getItem('isLoggedIn') !== 'true' && localStorage.getItem('autro_guest') !== '1') {
-    window.location.href = 'welcome.html';
-  }
-</script>
-<style>
-  #guestBanner{display:none;background:#fef3c7;color:#92400e;text-align:center;padding:10px 14px;font-size:13px;font-weight:700;border-bottom:1px solid #fde68a;position:sticky;top:0;z-index:100}
-  #guestBanner button{background:#043D22;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-weight:700;margin-left:8px;cursor:pointer}
-  body.guest-mode .composer{opacity:.6;pointer-events:none}
-  body.guest-mode .composer::after{content:"Login to Post • View Only Mode";display:block;text-align:center;font-size:12px;color:#92400e;padding:6px}
-  /* GUEST PROTECTION - No Select, No Callout, No Drag */
-  body.guest-mode, body.guest-mode *{-webkit-user-select:none !important;user-select:none !important;-webkit-touch-callout:none !important;-webkit-tap-highlight-color:transparent}
-  body.guest-mode img, body.guest-mode video{-webkit-user-drag:none;user-drag:none;pointer-events:auto}
-  /* SCREENSHOT SHIELD - Black overlay when app loses focus */
-  #screenshotShield{display:none;position:fixed;inset:0;background:#000;z-index:99999;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;text-align:center;padding:20px}
-  #screenshotShield.show{display:flex}
-</style>
+<link rel="stylesheet" href="css/shortcut.css">
 </head>
 <body>
 
-<!-- SCREENSHOT SHIELD - Shows black screen when user tries to screenshot / switch app -->
-<div id="screenshotShield">🔒 Autrobook Protected<br><small style="font-size:13px;font-weight:400">Screenshot is blocked in Guest Mode</small></div>
-
-<!-- GUEST BANNER - Only for Guest -->
-<div id="guestBanner">👀 You are in Guest Mode - View Only. You can only view posts, photos & videos. <button onclick="window.location.href='welcome.html'">Login to Unlock All</button></div>
-
-<!-- TOPBAR -->
-<header class="topbar">
-  <div class="brand" onclick="scrollTopPage()">
-    <img src="logo.png" alt="Autrobook" class="logo-img" onerror="this.style.display='none'">
-    <span class="brand-name">Autrobook</span>
-    <span class="vbadge" title="Official"><i class="fas fa-check"></i></span>
+<header class="fb-topbar">
+  <div class="fb-top-left">
+    <button class="fb-hamburger" onclick="openShortcutPage()">☰</button>
+    <a href="index.html" class="fb-logo-link"><span class="fb-logo-text">Autrobook</span></a>
   </div>
-  <div class="search">
-    <i class="fas fa-search" style="color:var(--muted)"></i>
-    <input placeholder="Search Autrobook..." id="globalSearch" onkeyup="handleSearch(event)">
-  </div>
-  <div class="top-actions">
-    <button class="icon-btn" onclick="window.location.href='notification.html'" title="Notifications"><i class="fas fa-bell"></i><span class="notif-dot" id="notifDot"></span></button>
-    <button class="icon-btn" onclick="toggleTheme()" title="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
-    <button class="icon-btn" onclick="window.location.href='shortcut.html'" title="Menu / Shortcuts"><i class="fas fa-bars"></i></button>
-    <button class="icon-btn" id="authBtn" onclick="openAuthModal()" title="Login / Signup" style="width:auto;padding:0 14px;border-radius:20px;font-size:14px;font-weight:700;background:var(--primary);color:#fff"><span id="authBtnText">Login</span></button>
+  <div class="fb-top-right">
+    <button class="fb-top-icon" onclick="toggleCreateMenu(event)">+</button>
+    <button class="fb-top-icon" onclick="openSearch()"><i class="fas fa-search"></i></button>
+    <button class="fb-top-icon" onclick="window.location.href='messages.html'">
+      <i class="fab fa-facebook-messenger"></i>
+      <span id="msgBadge" class="fb-mini-badge" style="display:none;">0</span>
+    </button>
   </div>
 </header>
 
-<div class="app">
-  <aside class="sidebar">
-    <div class="side-card profile-mini">
-      <div class="pm-row">
-        <img src="https://i.pravatar.cc/100?img=12" class="post-avatar" id="sidebarAvatar" style="width:48px;height:48px">
-        <div class="pm-info">
-          <div class="pm-name"><span id="sidebarUserName">Abir Mazumder</span> <span class="vbadge" style="background:#000;color:#fff"><i class="fas fa-check"></i></span></div>
-          <div class="pm-sub" onclick="openModal('mProfile')">View profile →</div>
-          <div class="pm-sub" id="sidebarUserEmail" style="font-size:12px">Guest User</div>
-        </div>
-      </div>
-      <button class="btn btn-primary w-100" id="sidebarAuthBtn" onclick="openAuthModal()" style="margin-top:10px">Login / Create Account</button>
-      <button class="btn w-100" id="sidebarLogoutBtn" onclick="logoutUser()" style="margin-top:8px;background:var(--input-bg);color:var(--text);display:none">Logout</button>
-    </div>
-    <div class="side-card">
-      <div class="nav-item active" onclick="filterFeed('all')"><i class="fas fa-newspaper"></i> News Feed</div>
-      <div class="nav-item" onclick="window.location.href='friends.html'"><i class="fas fa-users"></i> Friends</div>
-      <div class="nav-item" onclick="window.location.href='groups.html'"><i class="fas fa-users-rectangle"></i> Groups</div>
-      <div class="nav-item" onclick="window.location.href='games.html'"><i class="fas fa-gamepad"></i> Games</div>
-      <div class="nav-item" onclick="window.location.href='reels.html'"><i class="fas fa-video"></i> Reels</div>
-      <div class="nav-item" onclick="openModal('mMissing')"><i class="fas fa-user-magnifying-glass"></i> Missing Alerts</div>
-      <div class="nav-item" onclick="openModal('mBlood')"><i class="fas fa-droplet"></i> Blood Donors</div>
-      <div class="nav-item" onclick="openShield()"><i class="fas fa-shield-halved"></i> My Shield</div>
-      <div class="nav-item" onclick="window.location.href='shortcut.html'"><i class="fas fa-bars"></i> Shortcuts & Settings</div>
-    </div>
-    <div class="side-card sos-card" onclick="sosAlert()"><i class="fas fa-triangle-exclamation"></i><div><b>Emergency SOS</b><br><small>Share live location</small></div></div>
-    <div class="side-card">
-      <h4 style="margin-bottom:10px">👥 People You May Know</h4>
-      <div id="sidebarPeople"></div>
-      <a href="friends.html" class="see-all" style="text-decoration:none;display:block">See All →</a>
-    </div>
-  </aside>
-
-  <main class="feed">
-    <div class="stories-bar" id="storiesBar">
-      <div class="story-card create-story" onclick="openCreateMenu()"><div class="story-avatar-wrap"><i class="fas fa-plus"></i></div><span>Create</span></div>
-      <div class="story-card" onclick="viewStory('Abir')"><img src="https://picsum.photos/200/300?1"><div class="story-ring"><img src="https://i.pravatar.cc/60?img=12" class="story-avatar"></div><span>Abir M.</span></div>
-      <div class="story-card" onclick="viewStory('Rafiq')"><img src="https://picsum.photos/200/300?2"><div class="story-ring"><img src="https://i.pravatar.cc/60?img=13" class="story-avatar"></div><span>Rafiq H.</span></div>
-      <div class="story-card" onclick="viewStory('Sumi')"><img src="https://picsum.photos/200/300?3"><div class="story-ring"><img src="https://i.pravatar.cc/60?img=47" class="story-avatar"></div><span>Sumi A.</span></div>
-      <div class="story-card" onclick="viewStory('Karim')"><img src="https://picsum.photos/200/300?4"><div class="story-ring"><img src="https://i.pravatar.cc/60?img=14" class="story-avatar"></div><span>Karim U.</span></div>
-    </div>
-
-    <div class="composer">
-      <div class="composer-row" onclick="openCreateMenu()">
-        <img src="https://i.pravatar.cc/60?img=12" class="post-avatar" id="composerAvatar">
-        <div class="composer-input" id="composerUserName">What's on your mind, Abir?</div>
-      </div>
-      <div class="composer-actions">
-        <button onclick="createType('live')"><i class="fas fa-video" style="color:#e74c3c;"></i> Live</button>
-        <button onclick="createType('reel')"><i class="fas fa-images" style="color:#2ecc71;"></i> Photo/Video</button>
-        <button onclick="createType('post')"><i class="fas fa-pen" style="color:#043D22;"></i> Post</button>
-      </div>
-    </div>
-
-    <div class="filter-bar" id="filterBar">
-      <button class="filter-btn active" onclick="filterFeed('all',this)">All</button>
-      <button class="filter-btn" onclick="filterFeed('posts',this)">Posts</button>
-      <button class="filter-btn" onclick="filterFeed('missing',this)">Missing</button>
-      <button class="filter-btn" onclick="filterFeed('blood',this)">Blood</button>
-    </div>
-
-    <div id="feedContainer"></div>
-  </main>
-
-  <aside class="rightbar">
-    <div class="side-card">
-      <h4 style="margin-bottom:10px">🎬 Trending Reels</h4>
-      <div class="mini-reel" onclick="location.href='reels.html'"><img src="https://picsum.photos/100/100?10"><div><b>Karim Uddin</b><br><small>12.4k views • Reel</small></div><button class="mini-play">▶</button></div>
-      <div class="mini-reel" onclick="location.href='reels.html'"><img src="https://picsum.photos/100/100?11"><div><b>Tanvir Ahmed</b><br><small>24k views • Reel</small></div><button class="mini-play">▶</button></div>
-      <div class="mini-reel" onclick="location.href='reels.html'"><img src="https://picsum.photos/100/100?12"><div><b>Sumi Akter</b><br><small>8.9k views • Reel</small></div><button class="mini-play">▶</button></div>
-    </div>
-    <div class="side-card">
-      <h4 style="margin-bottom:6px">🟢 Online Friends</h4>
-      <div class="online-row"><img src="https://i.pravatar.cc/40?img=13"><span class="dot"></span><span>Karim Uddin</span></div>
-      <div class="online-row"><img src="https://i.pravatar.cc/40?img=47"><span class="dot"></span><span>Sumi Akter</span></div>
-      <div class="online-row"><img src="https://i.pravatar.cc/40?img=14"><span class="dot"></span><span>Tanvir Ahmed</span></div>
-    </div>
-  </aside>
+<div id="createMenu" class="create-menu" style="display:none;">
+  <button class="create-menu-item" onclick="openCreatePost(); closeCreateMenu()"><i class="far fa-pen-to-square"></i><span>Post</span></button>
+  <button class="create-menu-item" onclick="openCreateStory(); closeCreateMenu()"><i class="fas fa-plus"></i><span>Story</span></button>
+  <button class="create-menu-item" onclick="openCreateReel(); closeCreateMenu()"><i class="fas fa-clapperboard"></i><span>Reel</span></button>
+  <button class="create-menu-item" onclick="openLive(); closeCreateMenu()"><i class="fas fa-video"></i><span>Live</span></button>
+  <button class="create-menu-item" onclick="openNote(); closeCreateMenu()"><i class="far fa-comment"></i><span>Note</span></button>
 </div>
 
-<nav class="bottom-nav">
-  <div class="bn-item active" onclick="filterFeed('all')"><i class="fas fa-home"></i></div>
-  <div class="bn-item" onclick="window.location.href='friends.html'"><i class="fas fa-users"></i></div>
-  <div class="bn-item bn-plus" onclick="openCreateMenu()"><i class="fas fa-plus-circle"></i></div>
-  <div class="bn-item" onclick="window.location.href='reels.html'"><i class="fas fa-video"></i></div>
-  <div class="bn-item" onclick="window.location.href='shortcut.html'"><i class="fas fa-bars"></i></div>
+<div id="searchOverlay" class="fb-search-overlay" style="display:none;">
+  <div class="fb-search-header">
+    <button onclick="closeSearch()">←</button>
+    <input type="text" id="searchInput" placeholder="Search" oninput="searchPeople(this.value)">
+  </div>
+  <div id="searchResults" class="fb-search-results"></div>
+</div>
+
+<div id="menuDropdown" class="fb-dropdown" style="display:none;">
+  <a href="shortcut.html" class="fb-dropdown-item"><i class="fas fa-bars"></i></a>
+  <a href="index.html" class="fb-dropdown-item"><i class="fas fa-house"></i></a>
+  <a href="reels.html" class="fb-dropdown-item"><i class="fas fa-play"></i></a>
+  <a href="friend-request.html" class="fb-dropdown-item"><i class="fas fa-user-group"></i></a>
+  <a href="groups.html" class="fb-dropdown-item"><i class="fas fa-users"></i></a>
+  <a href="games.html" class="fb-dropdown-item"><i class="fas fa-gamepad"></i></a>
+  <a href="notifications.html" class="fb-dropdown-item"><i class="fas fa-bell"></i></a>
+  <a href="profile.html" class="fb-dropdown-item"><i class="fas fa-user"></i></a>
+  <a href="report.html" class="fb-dropdown-item"><i class="fas fa-flag"></i></a>
+  <button class="fb-dropdown-item" onclick="toggleTheme()"><i class="fas fa-circle-half-stroke"></i></button>
+  <button class="fb-dropdown-item danger" onclick="logoutUser()"><i class="fas fa-right-from-bracket"></i></button>
+</div>
+
+<button class="back-btn" onclick="window.location.href='index.html'" id="globalBackBtn">←</button>
+
+<div class="fb-create-row">
+  <div class="fb-create-avatar-text" onclick="window.location.href='profile.html'">A</div>
+  <input type="text" class="fb-create-input" placeholder="What's on your mind?" onclick="openCreatePost()" readonly>
+  <button class="fb-photo-btn" onclick="openCreatePost()"><i class="far fa-image"></i></button>
+</div>
+
+<!-- CREATE POST -->
+<div id="createPostModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header"><button class="close-btn" onclick="closeModal('createPostModal')">✕</button></div>
+    <textarea id="postText" placeholder="What's on your mind?" rows="4"></textarea>
+    <img id="postPreview" style="display:none;width:100%;border-radius:10px;margin-top:10px;">
+    <input type="file" id="postImageInput" accept="image/*" style="display:none;" onchange="previewPostImage(event)">
+    <div class="modal-actions">
+      <button class="btn-gray" onclick="document.getElementById('postImageInput').click()"><i class="fas fa-image"></i></button>
+      <button class="btn-gray" onclick="startVoicePostRecording()">🎤</button>
+      <button class="btn-green" id="publishBtn" onclick="publishPost()">Post</button>
+    </div>
+    <div id="voicePostBox" style="display:none;margin-top:10px;">
+      <span id="voicePostTimer">00:00</span>
+      <button class="btn-green" onclick="stopVoicePostRecording()">⏹</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE STORY -->
+<div id="createStoryModal" class="modal">
+  <div class="modal-content story-modal">
+    <div class="modal-header">
+      <button class="close-btn" onclick="closeModal('createStoryModal')">✕</button>
+      <h3>Create story</h3>
+      <button class="icon-btn-small" onclick="openStorySettings()">⚙</button>
+    </div>
+    <div class="story-tools">
+      <button class="story-tool" onclick="openStoryText(event)"><span>Aa</span><small>Text</small></button>
+      <button class="story-tool" onclick="openStoryMusic()"><i class="fas fa-music"></i><small>Music</small></button>
+      <button class="story-tool" onclick="openStoryCollage()"><i class="fas fa-table-cells"></i><small>Collage</small></button>
+    </div>
+    <div class="story-gallery-header">
+      <button class="gallery-btn" onclick="toggleGallerySource()">Gallery <i class="fas fa-chevron-down"></i></button>
+      <button class="select-multiple-btn" id="storyMultiBtn" onclick="toggleSelectMultiple()"><i class="far fa-image"></i> Select multiple</button>
+    </div>
+    <div id="gallerySourceList" class="gallery-source-list" style="display:none;">
+      <button onclick="setGallerySource('Gallery')">Gallery</button>
+      <button onclick="setGallerySource('Camera')">Camera</button>
+      <button onclick="setGallerySource('Downloads')">Downloads</button>
+    </div>
+    <div id="storyTextBox" style="display:none;">
+      <textarea id="storyTextInput" placeholder="Add text..." rows="3"></textarea>
+      <div class="story-text-colors">
+        <button style="background:#14532d" onclick="setStoryTextColor('#14532d')"></button>
+        <button style="background:#e11d48" onclick="setStoryTextColor('#e11d48')"></button>
+        <button style="background:#f59e0b" onclick="setStoryTextColor('#f59e0b')"></button>
+        <button style="background:#000" onclick="setStoryTextColor('#000')"></button>
+        <button style="background:#fff;border:1px solid #ddd;" onclick="setStoryTextColor('#fff')"></button>
+      </div>
+    </div>
+    <div id="storyMusicBox" style="display:none;">
+      <input type="text" id="storyMusicSearch" placeholder="Search music" oninput="searchStoryMusic(this.value)">
+      <div id="storyMusicList"></div>
+    </div>
+    <input type="file" id="storyGalleryInput" accept="image/*,video/*" multiple style="display:none;" onchange="previewStoryGallery(event)">
+    <div id="storyGalleryPreview" class="gallery-grid"></div>
+    <div class="gallery-grid" onclick="document.getElementById('storyGalleryInput').click()"><div class="gallery-placeholder">+ Gallery</div></div>
+    <div class="modal-actions">
+      <button class="btn-gray" onclick="closeModal('createStoryModal')">Cancel</button>
+      <button class="btn-green" onclick="publishStory()">Share</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE REEL -->
+<div id="createReelModal" class="modal">
+  <div class="modal-content reel-modal">
+    <div class="modal-header">
+      <button class="close-btn" onclick="closeModal('createReelModal')">✕</button>
+      <h3>Create reel</h3>
+      <button class="icon-btn-small" onclick="openReelSettings()">⚙</button>
+    </div>
+    <div class="reel-tools">
+      <button class="reel-tool" onclick="openReelCamera()"><i class="fas fa-camera"></i><small>Camera</small></button>
+      <button class="reel-tool" onclick="openReelMusic()"><i class="fas fa-music"></i><small>Music</small></button>
+      <button class="reel-tool" onclick="openReelTemplates()"><i class="fas fa-layer-group"></i><small>Templates</small></button>
+      <button class="reel-tool" onclick="openReelDrafts()"><i class="far fa-file"></i><small>Drafts</small></button>
+    </div>
+    <div class="story-gallery-header">
+      <button class="gallery-btn" onclick="toggleReelGallerySource()">Gallery <i class="fas fa-chevron-down"></i></button>
+      <button class="select-multiple-btn" id="reelMultiBtn" onclick="toggleReelSelectMultiple()"><i class="far fa-image"></i> Select multiple</button>
+    </div>
+    <div id="reelGallerySourceList" class="gallery-source-list" style="display:none;">
+      <button onclick="setReelGallerySource('Gallery')">Gallery</button>
+      <button onclick="setReelGallerySource('Camera')">Camera</button>
+      <button onclick="setReelGallerySource('Downloads')">Downloads</button>
+    </div>
+    <div id="reelCameraBox" style="display:none;">
+      <video id="reelCameraVideo" autoplay playsinline style="width:100%;border-radius:12px;background:#000;"></video>
+      <button class="btn-green" onclick="captureReelPhoto()" style="margin-top:8px;width:100%;">Capture</button>
+      <button class="btn-gray" onclick="stopReelCamera()" style="margin-top:8px;width:100%;">Stop Camera</button>
+    </div>
+    <div id="reelMusicBox" style="display:none;">
+      <input type="text" id="reelMusicSearch" placeholder="Search music" oninput="searchReelMusic(this.value)">
+      <div id="reelMusicList"></div>
+    </div>
+    <div id="reelTemplatesBox" style="display:none;">
+      <div class="templates-grid">
+        <button class="template-card" onclick="applyReelTemplate('Split', event)">Split</button>
+        <button class="template-card" onclick="applyReelTemplate('Zoom', event)">Zoom</button>
+        <button class="template-card" onclick="applyReelTemplate('Beat', event)">Beat</button>
+        <button class="template-card" onclick="applyReelTemplate('Slow', event)">Slow</button>
+      </div>
+    </div>
+    <div id="reelDraftsBox" style="display:none;"><div id="reelDraftsList">No drafts</div></div>
+    <textarea id="reelCaption" placeholder="Write caption..." rows="2" style="width:100%;margin-top:10px;padding:10px;border:1px solid #ddd;border-radius:10px;"></textarea>
+    <input type="file" id="reelGalleryInput" accept="video/*,image/*" multiple style="display:none;" onchange="previewReelGallery(event)">
+    <div id="reelGalleryPreview" class="gallery-grid"></div>
+    <div class="gallery-grid" onclick="document.getElementById('reelGalleryInput').click()"><div class="gallery-placeholder">+ Gallery</div></div>
+    <div class="modal-actions">
+      <button class="btn-gray" onclick="saveReelDraft()">Save Draft</button>
+      <button class="btn-green" onclick="publishReel()">Share Reel</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE -->
+<div id="liveModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button class="close-btn" onclick="closeLiveModal()">✕</button>
+      <h3>Live</h3>
+      <span id="liveViewerCount" class="live-viewers" style="display:none;">👁 <span id="liveViewerNum">0</span></span>
+    </div>
+    <div id="liveVideoContainer" class="live-video-container">
+      <video id="liveVideo" autoplay playsinline muted style="width:100%;border-radius:12px;background:#000;min-height:300px;"></video>
+      <div id="liveRemoteVideos"></div>
+      <div id="liveOverlay" class="live-overlay" style="display:none;">● LIVE</div>
+    </div>
+    <input type="text" id="liveTitle" placeholder="Live title..." style="width:100%;padding:10px;margin-top:10px;border:1px solid #ddd;border-radius:10px;">
+    <input type="text" id="liveRoomName" placeholder="Room name (optional)..." style="width:100%;padding:10px;margin-top:8px;border:1px solid #ddd;border-radius:10px;">
+    <div class="live-controls">
+      <button class="btn-gray" id="liveMicBtn" onclick="toggleLiveMic()">🎤</button>
+      <button class="btn-gray" id="liveCamBtn" onclick="toggleLiveCam()">📷</button>
+      <button class="btn-gray" onclick="toggleLiveChat()">💬</button>
+    </div>
+    <div id="liveChatBox" style="display:none;margin-top:10px;">
+      <div id="liveChatMessages" class="live-chat-messages"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="text" id="liveChatInput" placeholder="Chat..." style="flex:1;padding:9px;border:1px solid #ddd;border-radius:20px;" onkeypress="if(event.key==='Enter') sendLiveChat()">
+        <button class="btn-green" onclick="sendLiveChat()">Send</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-gray" onclick="closeLiveModal()">Cancel</button>
+      <button class="btn-green" id="liveBtn" onclick="toggleLive()">Go Live</button>
+    </div>
+    <p id="liveStatus" style="text-align:center;margin-top:10px;color:#e11d48;font-weight:700;"></p>
+    <p id="liveRoomInfo" style="text-align:center;font-size:12px;color:#65676b;"></p>
+  </div>
+</div>
+
+<!-- NOTE -->
+<div id="noteModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header"><button class="close-btn" onclick="closeModal('noteModal')">✕</button><h3>Note</h3></div>
+    <textarea id="noteText" placeholder="Write note..." rows="4" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;"></textarea>
+    <div class="modal-actions">
+      <button class="btn-gray" onclick="closeModal('noteModal')">Cancel</button>
+      <button class="btn-green" onclick="publishNote()">Share Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== POST OPTIONS SHEET 1 ========== -->
+<div id="postOptionsSheet" class="bottom-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-group">
+    <button class="sheet-item" onclick="markPostInterested()"><span class="sheet-icon">⊕</span><span>Interested</span></button>
+    <button class="sheet-item" onclick="markPostNotInterested()"><span class="sheet-icon">⊖</span><span>Not interested</span></button>
+  </div>
+  <div class="sheet-group">
+    <button class="sheet-item" onclick="savePostFromSheet()"><i class="far fa-bookmark"></i><span>Save post</span></button>
+    <button class="sheet-item" onclick="openReportSheet()"><span class="sheet-icon">!</span><span>Report photo</span></button>
+  </div>
+  <div class="sheet-group">
+    <button class="sheet-item" onclick="openPostMoreOptions()"><span>More options</span><i class="fas fa-chevron-right sheet-arrow"></i></button>
+  </div>
+</div>
+
+<!-- ========== POST MORE OPTIONS SHEET 2 ========== -->
+<div id="postMoreOptionsSheet" class="bottom-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <button onclick="backToPostOptions()">←</button>
+    <h3>More options</h3>
+    <span style="width:32px;"></span>
+  </div>
+  <div class="sheet-group">
+    <button class="sheet-item" onclick="whyAmISeeingThisPost()"><span class="sheet-icon">ⓘ</span><span>Why am I seeing this post?</span></button>
+    <button class="sheet-item" onclick="togglePostNotifications()"><i class="far fa-bell"></i><span id="postNotifLabel">Turn on notifications for this post</span></button>
+    <button class="sheet-item" onclick="copyPostLink()"><i class="fas fa-link"></i><span>Copy link</span></button>
+    <button class="sheet-item" onclick="manageYourFeed()"><i class="fas fa-sliders"></i><span>Manage your Feed</span></button>
+  </div>
+  <div class="sheet-group">
+    <button class="sheet-item" onclick="hidePostFromSheet()"><span class="sheet-icon">⊖</span><span>Hide post</span></button>
+    <button class="sheet-item danger" onclick="unfollowAuthorFromSheet()"><i class="fas fa-user-minus"></i><span>Unfollow</span></button>
+    <button class="sheet-item danger" onclick="blockAuthorFromSheet()"><i class="fas fa-ban"></i><span>Block</span></button>
+  </div>
+</div>
+
+<!-- ========== REPORT SHEET - LIKE SCREENSHOT - NO > ========== -->
+<div id="reportSheet" class="bottom-sheet report-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <button onclick="closeReportSheet()">←</button>
+    <h3>Report</h3>
+    <span style="width:32px;"></span>
+  </div>
+  <h3 class="report-title">Why are you reporting this post?</h3>
+  <p class="report-subtitle">If someone is in immediate danger, get help before reporting to Autrobook. Don't wait.</p>
+  <div class="sheet-group report-group">
+    <button class="sheet-item report-item" onclick="askReportConfirm('Problem involving someone under 18')">Problem involving someone under 18</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('Bullying, harassment or abuse')">Bullying, harassment or abuse</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('Suicide or self-harm')">Suicide or self-harm</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('Violent, hateful or disturbing content')">Violent, hateful or disturbing content</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('Selling or promoting restricted items')">Selling or promoting restricted items</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('Adult content')">Adult content</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('Scam, fraud or false information')">Scam, fraud or false information</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('Intellectual property')">Intellectual property</button>
+    <button class="sheet-item report-item" onclick="askReportConfirm('I don\'t want to see this')">I don't want to see this</button>
+  </div>
+</div>
+
+<!-- ========== REPORT CONFIRM - Yes | No ========== -->
+<div id="reportConfirmModal" class="modal">
+  <div class="modal-content confirm-modal">
+    <h3 style="text-align:center;">Are you want to report?</h3>
+    <p id="reportConfirmText" style="text-align:center;color:#65676b;margin:12px 0;font-size:14px;"></p>
+    <div class="modal-actions">
+      <button class="btn-gray" onclick="cancelReportConfirm()">No</button>
+      <button class="btn-green" onclick="confirmReportYes()">Yes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== REPORT SUBMITTED ========== -->
+<div id="reportSubmittedModal" class="modal">
+  <div class="modal-content confirm-modal" style="text-align:center;">
+    <div style="font-size:48px;color:#14532d;">✓</div>
+    <h3>Your report has been submitted</h3>
+    <p style="color:#65676b;font-size:14px;margin:10px 0;">Thanks for reporting. Our team will review this post.</p>
+    <button class="btn-green" onclick="closeModal('reportSubmittedModal')" style="width:100%;">Done</button>
+  </div>
+</div>
+
+<!-- ========== SHARE SHEET ========== -->
+<div id="shareSheet" class="bottom-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><button onclick="closeShareSheet()">←</button><h3>Share</h3><span style="width:32px;"></span></div>
+  <div class="sheet-group">
+    <button class="sheet-item" onclick="shareToMessenger()"><i class="fab fa-facebook-messenger"></i><span>Messenger</span></button>
+    <button class="sheet-item" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></button>
+    <button class="sheet-item" onclick="shareCopyLink()"><i class="fas fa-link"></i><span>Copy link</span></button>
+    <button class="sheet-item" onclick="shareNative()"><i class="fas fa-share"></i><span>More</span></button>
+  </div>
+  <div class="sheet-group">
+    <button class="sheet-item" onclick="shareToFeed()"><i class="fas fa-share"></i><span>Share to Feed</span></button>
+    <button class="sheet-item" onclick="shareToStory()"><i class="fas fa-plus"></i><span>Share to Story</span></button>
+  </div>
+</div>
+
+<!-- ========== WHY SEEING ========== -->
+<div id="whySeeingModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header"><button class="close-btn" onclick="closeModal('whySeeingModal')">✕</button><h3>Why am I seeing this post?</h3></div>
+    <p id="whySeeingText" style="font-size:14px;line-height:1.6;">You are seeing this post because you follow similar content, you interacted with similar posts, or this post is popular. Autrobook shows you posts based on your interests and friends.</p>
+    <div class="modal-actions"><button class="btn-green" onclick="closeModal('whySeeingModal')">Got it</button></div>
+  </div>
+</div>
+
+<!-- ========== MANAGE FEED ========== -->
+<div id="manageFeedModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header"><button class="close-btn" onclick="closeModal('manageFeedModal')">✕</button><h3>Manage your Feed</h3></div>
+    <label class="feed-toggle"><span>Show Friends Posts First</span><input type="checkbox" id="feedFriendsFirst" onchange="saveFeedSettings()"></label>
+    <label class="feed-toggle"><span>Show Reels in Feed</span><input type="checkbox" id="feedShowReels" checked onchange="saveFeedSettings()"></label>
+    <label class="feed-toggle"><span>Show Suggested Posts</span><input type="checkbox" id="feedShowSuggested" checked onchange="saveFeedSettings()"></label>
+    <label class="feed-toggle"><span>Reduce Sensitive Content</span><input type="checkbox" id="feedReduceSensitive" onchange="saveFeedSettings()"></label>
+    <div class="modal-actions"><button class="btn-green" onclick="closeModal('manageFeedModal')">Done</button></div>
+  </div>
+</div>
+
+<!-- ========== COMMENT SHEET - LINKED ========== -->
+<div id="commentSheet" class="bottom-sheet comment-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><button onclick="closeCommentSheet()">←</button><h3>Comments</h3><span style="width:32px;"></span></div>
+  <div id="commentSheetList"></div>
+  <div class="comment-input-row" style="margin-top:10px;">
+    <input type="text" id="commentSheetInput" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') sendCommentFromSheet()">
+    <button onclick="sendCommentFromSheet()">→</button>
+    <button onclick="startInlineVoiceComment(currentPostId)">🎤</button>
+  </div>
+  <div id="commentSheetReactions" class="reaction-bar" style="margin-top:10px;">
+    <button onclick="reactFromComment('👍')">👍</button>
+    <button onclick="reactFromComment('❤️')">❤️</button>
+    <button onclick="reactFromComment('🥰')">🥰</button>
+    <button onclick="reactFromComment('😆')">😆</button>
+    <button onclick="reactFromComment('😮')">😮</button>
+    <button onclick="reactFromComment('😢')">😢</button>
+    <button onclick="reactFromComment('😠')">😠</button>
+  </div>
+</div>
+
+<section id="liveNowSection" class="live-now-section" style="display:none;">
+  <div class="section-header"><span>● Live Now</span><a href="live.html">→</a></div>
+  <div id="liveNowList" class="live-now-list"></div>
+</section>
+
+<section class="stories-section">
+  <div id="storiesRow" class="stories-row">
+    <div class="story-add" onclick="openStoryUpload()">
+      <div class="story-circle add">+</div>
+      <input type="file" id="storyInput" accept="image/*,video/*" style="display:none;" onchange="uploadStory(event)">
+    </div>
+  </div>
+</section>
+
+<section class="friends-section">
+  <div class="section-header"><a href="friend-request.html">→</a></div>
+  <div id="suggestionsRow" class="suggestions-row"></div>
+</section>
+
+<div class="home-tabs">
+  <button class="tab-btn active" onclick="filterHomeFeed('all', this)"><i class="fas fa-house"></i></button>
+  <button class="tab-btn" onclick="filterHomeFeed('friends', this)"><i class="fas fa-user-group"></i></button>
+  <button class="tab-btn" onclick="window.location.href='reels.html'"><i class="fas fa-play"></i></button>
+  <button class="tab-btn" onclick="filterHomeFeed('saved', this)"><i class="fas fa-bookmark"></i></button>
+</div>
+
+<main id="postsFeed" class="posts-feed"></main>
+
+<nav class="fb-bottom-nav">
+  <a href="index.html" class="fb-bottom-item active" data-page="index"><i class="fas fa-house"></i></a>
+  <a href="reels.html" class="fb-bottom-item" data-page="reels"><i class="fas fa-play"></i><span id="fbReelsBadge" class="fb-badge" style="display:none;">0</span></a>
+  <a href="friend-request.html" class="fb-bottom-item" data-page="friends"><i class="fas fa-user-group"></i><span id="fbFriendBadge" class="fb-badge" style="display:none;">0</span></a>
+  <a href="groups.html" class="fb-bottom-item" data-page="groups"><i class="fas fa-users"></i><span id="fbGroupBadge" class="fb-badge" style="display:none;">0</span></a>
+  <a href="games.html" class="fb-bottom-item" data-page="games"><i class="fas fa-gamepad"></i></a>
+  <a href="notifications.html" class="fb-bottom-item" data-page="notifications"><i class="fas fa-bell"></i><span id="fbNotifBadge" class="fb-badge" style="display:none;">0</span></a>
+  <a href="profile.html" class="fb-bottom-item" data-page="profile"><i class="far fa-circle-user"></i></a>
 </nav>
 
-<div class="modal-back" id="mComposer"><div class="modal"><h3>Create Post <i class="fas fa-times close-x" onclick="closeModal('mComposer')"></i></h3><textarea id="postText" placeholder="What's on your mind?"></textarea><input type="file" id="postFile" accept="image/*,video/*" style="margin-bottom:12px;width:100%"><button class="btn btn-primary w-100" onclick="publishPost()">Publish Post</button></div></div>
+<div id="toast" class="toast"></div>
 
-<div class="modal-back" id="mAuth">
-  <div class="modal">
-    <h3 id="authTitle">Welcome to Autrobook <i class="fas fa-times close-x" onclick="closeModal('mAuth')"></i></h3>
-    <p style="color:var(--muted);font-size:14px;margin-bottom:14px" id="authSub">Login to post, comment, react & go live.</p>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button class="btn btn-primary w-100" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
-      <button class="btn w-100" id="tabSignup" onclick="switchAuthTab('signup')" style="background:var(--input-bg);color:var(--text)">Sign Up</button>
-    </div>
-    <div id="signupNameWrap" style="display:none">
-      <input type="text" id="authName" placeholder="Full Name - e.g. Abir Mazumder" class="live-input">
-    </div>
-    <input type="email" id="authEmail" placeholder="Email - e.g. you@gmail.com" class="live-input">
-    <input type="password" id="authPassword" placeholder="Password - min 6 characters" class="live-input">
-    <button class="btn btn-primary w-100" id="authSubmitBtn" onclick="submitAuth()">Login</button>
-    <button class="btn w-100" onclick="forgotPassword()" style="background:transparent;color:var(--primary);margin-top:8px">Forgot Password?</button>
-    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px">By continuing, you agree to Autrobook Safety Policy.<br>Welcome email will be sent from autrobooksupport@gmail.com</p>
-  </div>
-</div>
-
-<div class="modal-back" id="mCreateMenu">
-  <div class="modal create-menu-modal">
-    <h3>Create <i class="fas fa-times close-x" onclick="closeModal('mCreateMenu')"></i></h3>
-    <div class="create-option" onclick="createType('post')">
-      <div class="create-icon" style="background:#e6f4ea;color:#043D22"><i class="fas fa-pen"></i></div>
-      <div><b>Post</b><small>Text, Photo, Video</small></div>
-      <i class="fas fa-chevron-right create-arrow"></i>
-    </div>
-    <div class="create-option" onclick="createType('story')">
-      <div class="create-icon" style="background:#e3f2fd;color:#0866ff"><i class="fas fa-circle-plus"></i></div>
-      <div><b>Story</b><small>Photo / Video • 24 hours</small></div>
-      <i class="fas fa-chevron-right create-arrow"></i>
-    </div>
-    <div class="create-option" onclick="createType('reel')">
-      <div class="create-icon" style="background:#fce4ec;color:#e91e63"><i class="fas fa-video"></i></div>
-      <div><b>Reel</b><small>Short Video • Music</small></div>
-      <i class="fas fa-chevron-right create-arrow"></i>
-    </div>
-    <div class="create-option" id="liveOption" onclick="createType('live')">
-      <div class="create-icon" style="background:#ffebee;color:#c62828"><i class="fas fa-tower-broadcast"></i></div>
-      <div><b>Live</b><small id="liveSub">Go Live Now</small></div>
-      <span class="live-badge" id="liveBadge">LIVE</span>
-      <i class="fas fa-chevron-right create-arrow"></i>
-    </div>
-    <p class="create-note" id="liveNote" style="display:none"></p>
-  </div>
-</div>
-
-<div class="modal-back" id="mLive">
-  <div class="modal">
-    <h3>Go Live <i class="fas fa-times close-x" onclick="closeModal('mLive')"></i></h3>
-    <div style="text-align:center;padding:10px 0">
-      <div style="width:80px;height:80px;background:#ffebee;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:32px;color:#c62828"><i class="fas fa-tower-broadcast"></i></div>
-      <h4>You are Live!</h4>
-      <p style="color:var(--muted);font-size:14px;margin-top:6px">Your friends can watch you now.</p>
-      <div class="live-viewers">👁 <span id="liveViewers">12</span> watching • ❤️ <span id="liveLikes">0</span> likes</div>
-    </div>
-    <input type="text" id="liveTitleInput" placeholder="Live Title - e.g. Morning Talk in Tongi" class="live-input">
-    <button class="btn btn-primary w-100" onclick="startLive()">Start Live</button>
-    <button class="btn w-100" style="background:var(--input-bg);color:var(--text);margin-top:8px" onclick="closeModal('mLive')">Cancel</button>
-  </div>
-</div>
-
-<div class="modal-back" id="mStoryReel">
-  <div class="modal">
-    <h3 id="storyReelTitle">Create Story <i class="fas fa-times close-x" onclick="closeModal('mStoryReel')"></i></h3>
-    <textarea id="storyReelText" placeholder="Say something about your Story / Reel..."></textarea>
-    <input type="file" id="storyReelFile" accept="image/*,video/*" style="margin-bottom:12px;width:100%">
-    <button class="btn btn-primary w-100" onclick="publishStoryReel()">Publish</button>
-  </div>
-</div>
-
-<div class="modal-back" id="mComment">
-  <div class="modal comment-modal">
-    <div class="comment-modal-head">
-      <div><span>😢 👍</span> <b>357</b> <span style="color:var(--muted)">• 8 shares</span></div>
-      <i class="fas fa-times close-x" onclick="closeModal('mComment')"></i>
-    </div>
-    <div class="comment-sort">Most relevant <i class="fas fa-chevron-down"></i></div>
-    <div id="commentPostPreview" class="comment-preview"></div>
-    <div id="commentList" class="comment-list"></div>
-    <div class="voice-effect-row" id="voiceEffectRow">
-      <span>Voice Effect:</span>
-      <button class="effect-btn active" data-effect="normal" onclick="selectVoiceEffect('normal',this)">Normal</button>
-      <button class="effect-btn" data-effect="echo" onclick="selectVoiceEffect('echo',this)">Echo</button>
-      <button class="effect-btn" data-effect="deep" onclick="selectVoiceEffect('deep',this)">Deep</button>
-    </div>
-    <div class="recording-bar" id="recordingBar" style="display:none">
-      <span class="rec-dot"></span> Recording... <b id="recTime">0s</b>
-      <button onclick="stopVoiceRecording()">Stop</button>
-      <button onclick="cancelVoiceRecording()" style="background:#eee;color:#333">Cancel</button>
-    </div>
-    <div class="voice-preview" id="voicePreview" style="display:none">
-      <audio id="voicePreviewAudio" controls></audio>
-      <span id="voicePreviewLabel">Normal • Ready to send</span>
-      <button onclick="cancelVoiceRecording()">✕</button>
-    </div>
-    <div class="comment-input-row">
-      <img src="https://i.pravatar.cc/60?img=12" class="post-avatar" style="width:38px;height:38px">
-      <input type="text" id="commentInput" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') sendComment()">
-      <button class="icon-mini" title="Photo" onclick="document.getElementById('commentPhoto').click()"><i class="fas fa-camera"></i></button>
-      <input type="file" id="commentPhoto" accept="image/*" hidden onchange="sendPhotoComment(this)">
-      <button class="icon-mini" title="GIF" onclick="showToast('GIF picker coming soon')"><span style="font-weight:800;font-size:13px;border:1px solid var(--muted);border-radius:6px;padding:2px 5px">GIF</span></button>
-      <button class="icon-mini" title="Emoji" onclick="insertEmoji('😍')"><i class="far fa-face-smile"></i></button>
-      <button class="icon-mini mic-btn" id="micBtn" title="Voice Comment" onclick="toggleVoiceRecording()"><i class="fas fa-microphone"></i></button>
-      <button class="comment-send-btn" onclick="sendComment()"><i class="fas fa-paper-plane"></i></button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-back" id="mReportComment">
-  <div class="modal">
-    <h3>Report Comment <i class="fas fa-times close-x" onclick="closeModal('mReportComment')"></i></h3>
-    <div id="reportCommentPreview" class="comment-preview"></div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Select a legal reason. Our team will review within 24-48 hours. You will get an email from autrobooksupport@gmail.com</p>
-    <div class="report-list" id="reportReasonList"></div>
-    <textarea id="reportDetails" placeholder="Add more details (optional)..." style="min-height:70px"></textarea>
-    <input type="email" id="reportEmail" placeholder="Your email for update - e.g. you@gmail.com" class="live-input">
-    <button class="btn btn-primary w-100" onclick="submitCommentReport()">Submit Report</button>
-    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">False reports may lead to account action.</p>
-  </div>
-</div>
-
-<div class="modal-back" id="mReactions">
-  <div class="modal">
-    <h3>Reactions <i class="fas fa-times close-x" onclick="closeModal('mReactions')"></i></h3>
-    <div class="reaction-tabs" id="reactionTabs"></div>
-    <div id="reactionPeopleList"></div>
-  </div>
-</div>
-
-<div class="modal-back" id="mReport"><div class="modal"><h3>Report Post <i class="fas fa-times close-x" onclick="closeModal('mReport')"></i></h3><div class="form-group"><label>Select a reason</label><select id="reportReason"><option value="spam">Spam or Fake Account</option><option value="harassment">Harassment or Bullying</option><option value="misinformation">False Information</option><option value="violence">Violence or Dangerous Organizations</option></select></div><button class="btn btn-primary w-100" onclick="submitReport()">Submit Report</button></div></div>
-<div class="modal-back" id="mProfile"><div class="modal"><h3>My Profile <i class="fas fa-times close-x" onclick="closeModal('mProfile')"></i></h3><div style="text-align:center"><img src="https://i.pravatar.cc/100?img=12" style="width:70px;height:70px;border-radius:50%" id="profileAvatar"><h4 style="margin-top:8px"><span id="profileUserName">Abir Mazumder</span> <span class="vbadge" style="background:#000;color:#fff"><i class="fas fa-check"></i></span></h4><p style="color:var(--muted);font-size:13px" id="profileUserEmail">Joined Autrobook • Safety Member</p><p style="color:var(--muted);font-size:12px;margin-top:6px" id="profileAccountAge"></p><button class="btn btn-primary w-100" onclick="closeModal('mProfile');openAuthModal()" style="margin-top:12px">Switch Account</button></div></div></div>
-<div class="modal-back" id="mMissing"><div class="modal"><h3>Missing Alerts <i class="fas fa-times close-x" onclick="closeModal('mMissing')"></i></h3><p style="color:var(--muted);font-size:14px;line-height:1.6">Missing Person: Sakib, Age 12, Last Seen: Tongi.<br>Please share. If you see him, contact us.</p><button class="btn btn-primary w-100" onclick="closeModal('mMissing');location.href='missing.html'">Report / Help</button></div></div>
-<div class="modal-back" id="mBlood"><div class="modal"><h3>Blood Donors <i class="fas fa-times close-x" onclick="closeModal('mBlood')"></i></h3><p style="color:var(--muted);font-size:14px;line-height:1.6">O+ 2 Bags needed - Dhaka Medical.<br>Be a hero. Donate blood.</p><button class="btn btn-primary w-100" onclick="closeModal('mBlood');location.href='blood.html'">I Can Donate</button></div></div>
-
-<div id="toast" class="toast">Message sent!</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/shortcut.js"></script>
 <script src="js/index.js"></script>
-<script>
-  // ===== GUEST MODE + ANTI-SCREENSHOT + ANTI-COPY / ANTI-SHARE - ALL IN ENGLISH =====
-  function isGuest() { return localStorage.getItem('autro_guest') === '1'; }
-  function requireLogin(actionName) {
-    if (isGuest()) {
-      if (confirm('Please login to ' + (actionName || 'use this feature') + '. Go to Login?')) {
-        window.location.href = 'welcome.html';
-      }
-      return false;
-    }
-    return true;
-  }
-  function lockFunction(fnName, actionName) {
-    var original = window[fnName];
-    if (typeof original === 'function') {
-      window[fnName] = function() {
-        if (!requireLogin(actionName)) return;
-        return original.apply(this, arguments);
-      };
-    } else {
-      window[fnName] = function() { requireLogin(actionName); };
-    }
-  }
-
-  // ===== ANTI-SCREENSHOT / ANTI-COPY FOR GUEST ONLY =====
-  function enableGuestProtection() {
-    // 1. Block Right Click / Long Press Menu
-    document.addEventListener('contextmenu', function(e) { e.preventDefault(); requireLogin('copy or save this'); return false; }, true);
-    // 2. Block Copy / Cut / Paste / Drag / Drop / Select
-    ['copy','cut','paste','dragstart','drop','selectstart'].forEach(function(evt) {
-      document.addEventListener(evt, function(e) { e.preventDefault(); return false; }, true);
-    });
-    // 3. Block Keyboard Shortcuts: PrintScreen, Ctrl+C, Ctrl+X, Ctrl+P, Ctrl+S, Ctrl+U, Ctrl+Shift+I, F12
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'PrintScreen' || e.keyCode === 44) {
-        e.preventDefault();
-        var shield = document.getElementById('screenshotShield');
-        if (shield) shield.classList.add('show');
-        setTimeout(function(){ if (shield) shield.classList.remove('show'); }, 1500);
-        navigator.clipboard && navigator.clipboard.writeText('Screenshot blocked in Guest Mode');
-        return false;
-      }
-      if ((e.ctrlKey || e.metaKey) && ['c','x','p','s','u','a'].includes(e.key.toLowerCase())) { e.preventDefault(); requireLogin('copy or save this'); return false; }
-      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase()))) { e.preventDefault(); return false; }
-    }, true);
-    // 4. Block Share API + Clipboard API for Guest
-    if (navigator.share) { navigator.share = function() { requireLogin('share'); return Promise.reject('Blocked'); }; }
-    if (navigator.clipboard) {
-      try { navigator.clipboard.writeText = function() { requireLogin('copy link'); return Promise.reject('Blocked'); }; } catch(e) {}
-    }
-    // 5. Black Screen when tab loses focus / user tries to screenshot via app switcher
-    document.addEventListener('visibilitychange', function() {
-      var shield = document.getElementById('screenshotShield');
-      if (!shield) return;
-      if (document.hidden) shield.classList.add('show');
-      else setTimeout(function(){ shield.classList.remove('show'); }, 400);
-    });
-    window.addEventListener('blur', function() {
-      var shield = document.getElementById('screenshotShield');
-      if (shield) shield.classList.add('show');
-    });
-    window.addEventListener('focus', function() {
-      var shield = document.getElementById('screenshotShield');
-      if (shield) setTimeout(function(){ shield.classList.remove('show'); }, 400);
-    });
-    // 6. Disable Download / Save on Images & Videos
-    document.querySelectorAll('img, video').forEach(function(el) {
-      el.setAttribute('oncontextmenu', 'return false');
-      el.setAttribute('draggable', 'false');
-      if (el.tagName === 'VIDEO') el.setAttribute('controlsList', 'nodownload');
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    var user = null;
-    try { user = JSON.parse(localStorage.getItem('currentUser') || 'null'); } catch(e) {}
-    if (!user && localStorage.getItem('autro_user_email')) {
-      user = { email: localStorage.getItem('autro_user_email'), user_metadata: { full_name: localStorage.getItem('autro_user_name') || 'User' } };
-    }
-
-    if (isGuest()) {
-      document.body.classList.add('guest-mode');
-      enableGuestProtection();
-      var banner = document.getElementById('guestBanner');
-      if (banner) banner.style.display = 'block';
-      var sidebarName = document.getElementById('sidebarUserName');
-      if (sidebarName) sidebarName.textContent = 'Guest User';
-      var sidebarEmail = document.getElementById('sidebarUserEmail');
-      if (sidebarEmail) sidebarEmail.textContent = 'View Only Mode';
-      var composerName = document.getElementById('composerUserName');
-      if (composerName) composerName.textContent = 'Login to post...';
-      var authBtnText = document.getElementById('authBtnText');
-      if (authBtnText) authBtnText.textContent = 'Login';
-      var authBtn = document.getElementById('authBtn');
-      if (authBtn) authBtn.onclick = function() { window.location.href = 'welcome.html'; };
-      var sidebarAuthBtn = document.getElementById('sidebarAuthBtn');
-      if (sidebarAuthBtn) { sidebarAuthBtn.style.display = 'block'; sidebarAuthBtn.textContent = 'Login to Unlock All Features'; sidebarAuthBtn.onclick = function() { window.location.href = 'welcome.html'; }; }
-      var sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
-      if (sidebarLogoutBtn) { sidebarLogoutBtn.style.display = 'block'; sidebarLogoutBtn.textContent = 'Exit Guest Mode'; }
-
-      // Lock ALL action functions - Including Profile, Share, Copy Link
-      lockFunction('publishPost', 'create a post');
-      lockFunction('publishStoryReel', 'create a story or reel');
-      lockFunction('sendComment', 'comment');
-      lockFunction('sendPhotoComment', 'comment with photo');
-      lockFunction('createType', 'create');
-      lockFunction('openCreateMenu', 'create');
-      lockFunction('startLive', 'go live');
-      lockFunction('toggleVoiceRecording', 'send voice comment');
-      lockFunction('sosAlert', 'use SOS');
-      lockFunction('openShield', 'open My Shield');
-      lockFunction('submitReport', 'report');
-      lockFunction('submitCommentReport', 'report comment');
-      lockFunction('viewStory', 'view story');
-      lockFunction('openModal', 'open this');
-      lockFunction('sharePost', 'share this post');
-      lockFunction('copyPostLink', 'copy post link');
-      lockFunction('copyProfileLink', 'copy profile link');
-      lockFunction('shareProfile', 'share profile');
-      lockFunction('handleSearch', 'search');
-      lockFunction('insertEmoji', 'use emoji');
-      lockFunction('showToast', 'use this');
-
-      // Block navigation to other pages
-      document.addEventListener('click', function(e) {
-        var el = e.target.closest('[onclick], a');
-        if (!el) return;
-        var onclickText = el.getAttribute('onclick') || '';
-        var href = el.getAttribute('href') || '';
-        if (el.closest('#guestBanner')) return;
-        if (onclickText.includes('closeModal') || onclickText.includes('filterFeed') || onclickText.includes('toggleTheme') || onclickText.includes('scrollTopPage')) return;
-        if ((onclickText.includes("location.href") && !onclickText.includes("welcome.html")) || (href && href.endsWith('.html') && href !== 'index.html')) {
-          e.preventDefault(); e.stopPropagation();
-          requireLogin('open this page');
-          return false;
-        }
-        // Block Profile View / Profile Link Copy
-        if (onclickText.includes('mProfile') || onclickText.toLowerCase().includes('profile')) {
-          e.preventDefault(); e.stopPropagation();
-          requireLogin('view profile or copy profile link');
-          return false;
-        }
-      }, true);
-
-      // Block Like / React / Comment / Share buttons inside feed - Allow ONLY Image / Video / Text view
-      var feed = document.getElementById('feedContainer');
-      if (feed) {
-        feed.addEventListener('click', function(e) {
-          var target = e.target;
-          if (target.tagName === 'IMG' || target.tagName === 'VIDEO' || target.closest('img, video')) return;
-          if (target.closest('button') || target.closest('a')) {
-            e.preventDefault(); e.stopPropagation();
-            requireLogin('like, comment, share or copy link');
-          }
-        }, true);
-        // Also block copy/share inside feed text selection
-        feed.addEventListener('copy', function(e) { e.preventDefault(); requireLogin('copy'); }, true);
-      }
-      return;
-    }
-
-    // REAL USER UI
-    if (user) {
-      var userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-      var userEmail = user.email || '';
-      var sName = document.getElementById('sidebarUserName');
-      if (sName) sName.textContent = userName;
-      var sEmail = document.getElementById('sidebarUserEmail');
-      if (sEmail) sEmail.textContent = userEmail;
-      var pName = document.getElementById('profileUserName');
-      if (pName) pName.textContent = userName;
-      var pEmail = document.getElementById('profileUserEmail');
-      if (pEmail) pEmail.textContent = userEmail;
-      var cName = document.getElementById('composerUserName');
-      if (cName) cName.textContent = "What's on your mind, " + userName + "?";
-      var aText = document.getElementById('authBtnText');
-      if (aText) aText.textContent = 'Logout';
-      var aBtn = document.getElementById('authBtn');
-      if (aBtn) aBtn.onclick = function() { logoutUser(); };
-      var sAuth = document.getElementById('sidebarAuthBtn');
-      if (sAuth) sAuth.style.display = 'none';
-      var sLogout = document.getElementById('sidebarLogoutBtn');
-      if (sLogout) sLogout.style.display = 'block';
-    }
-  });
-
-  async function logoutUser() {
-    try {
-      if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
-        await supabaseClient.auth.signOut();
-      }
-    } catch (e) {}
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('autro_logged_in');
-    localStorage.removeItem('autro_user_email');
-    localStorage.removeItem('autro_user_name');
-    localStorage.removeItem('autro_guest');
-    window.location.href = 'welcome.html';
-  }
-</script>
 </body>
-                                                                                                                                                                                                                  </html>
+        </html>
