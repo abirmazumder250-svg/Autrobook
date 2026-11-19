@@ -1,92 +1,122 @@
 // api/verify-otp.js
-import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
+import nodemailer from 'nodemailer';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
+function createGmailTransporter(gmailUser, gmailAppPassword) {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: gmailUser,
+      pass: gmailAppPassword
+    }
+  });
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ success: false, code: 'METHOD_NOT_ALLOWED' });
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, code: 'METHOD_NOT_ALLOWED' });
+  }
 
   try {
     let body = req.body;
     if (typeof body === 'string') {
-      try { body = JSON.parse(body); } catch { return res.status(400).json({ success: false, code: 'INVALID_JSON' }); }
+      try {
+        body = JSON.parse(body);
+      } catch {
+        return res.status(400).json({ success: false, code: 'INVALID_JSON' });
+      }
     }
 
     const { email, otp, password, profile } = body || {};
     if (!email || !otp || !password || !profile) {
       return res.status(400).json({ success: false, code: 'MISSING_FIELDS' });
     }
-    if (password.length < 6) {
+
+    const cleanOtp = String(otp).trim();
+    if (!/^\d{6}$/.test(cleanOtp)) {
+      return res.status(400).json({ success: false, code: 'OTP_INVALID' });
+    }
+
+    if (String(password).length < 6) {
       return res.status(400).json({ success: false, code: 'PASSWORD_TOO_SHORT' });
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-
-    const { data: rec } = await supabase
-      .from('otps').select('*').eq('email', cleanEmail)
-      .order('created_at', { ascending: false }).limit(1).maybeSingle();
-
-    if (!rec) return res.status(400).json({ success: false, code: 'OTP_NOT_FOUND' });
-
-    if (new Date(rec.expires_at) < new Date()) {
-      await supabase.from('otps').delete().eq('id', rec.id);
-      return res.status(400).json({ success: false, code: 'OTP_EXPIRED' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ success: false, code: 'INVALID_EMAIL' });
     }
 
-    if ((rec.attempts || 0) >= 5) {
-      await supabase.from('otps').delete().eq('id', rec.id);
-      return res.status(429).json({ success: false, code: 'OTP_MAX_ATTEMPTS' });
+    const gmailUser = (process.env.GMAIL_USER || '').trim();
+    const gmailAppPassword = (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '').trim();
+
+    if (!gmailUser || !gmailAppPassword) {
+      return res.status(500).json({
+        success: false,
+        code: 'GMAIL_APP_PASSWORD_MISSING',
+        message: 'GMAIL_USER or GMAIL_APP_PASSWORD is missing in Vercel Environment Variables.'
+      });
     }
 
-    const ok = await bcrypt.compare(String(otp), rec.otp_hash);
-    if (!ok) {
-      await supabase.from('otps').update({ attempts: (rec.attempts || 0) + 1 }).eq('id', rec.id);
-      return res.status(400).json({ success: false, code: 'OTP_INVALID' });
-    }
+    const cleanName = esc(profile.full_name ? String(profile.full_name).trim() : 'User');
+    const safePassword = esc(password);
 
-    await supabase.from('otps').delete().eq('id', rec.id);
+    const transporter = createGmailTransporter(gmailUser, gmailAppPassword);
+    await transporter.verify();
 
-    const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-      email: cleanEmail, password, email_confirm: true
+    // আপনার নিজের Gmail থেকে ইউজারের ইমেইলে অটোমেটিক পাসওয়ার্ড ও অ্যাকাউন্ট তথ্য পাঠানো
+    await transporter.sendMail({
+      from: `"Autrobook" <${gmailUser}>`,
+      replyTo: gmailUser,
+      to: cleanEmail,
+      subject: 'Your Autrobook Account Password & Details',
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:30px;max-width:520px;margin:auto;border:1px solid #e4e6e9;border-radius:16px;background:#fff">
+          <div style="background:#0B3D20;padding:24px;border-radius:12px 12px 0 0;text-align:center;margin:-30px -30px 24px">
+            <h2 style="color:#fff;margin:0;font-size:22px">Autrobook</h2>
+          </div>
+          <h3 style="margin:0 0 12px;color:#050505">Hi ${cleanName},</h3>
+          <p style="color:#65676b;margin:0 0 16px">Your account details have been confirmed. Here is your password:</p>
+          <div style="background:#f0f2f5;padding:18px;border-radius:12px;margin:16px 0">
+            <p style="margin:0 0 8px;color:#050505;font-size:14px"><b>Email:</b> ${esc(cleanEmail)}</p>
+            <p style="margin:0;color:#050505;font-size:14px"><b>Password:</b> <span style="color:#0B3D20;font-weight:800;font-family:'Courier New',monospace">${safePassword}</span></p>
+          </div>
+          <p style="color:#65676b;font-size:13px;margin:16px 0 0">For your security, please keep this email safe or change your password after logging in.</p>
+          <p style="color:#9aa0a6;font-size:12px;text-align:center;margin:20px 0 0">&copy; 2026 Autrobook</p>
+        </div>
+      `
     });
 
-    if (createErr) {
-      if (createErr.message?.toLowerCase().includes('already')) {
-        return res.status(409).json({ success: false, code: 'ALREADY_EXISTS', alreadyExists: true });
-      }
-      console.error('createUser:', createErr);
-      return res.status(500).json({ success: false, code: 'SERVER_ERROR' });
-    }
-
-    const { error: profileErr } = await supabase.from('profiles').upsert({
-      id: created.user.id,
-      email: cleanEmail,
-      full_name: profile.full_name,
-      dob: profile.dob,
-      selfie_url: profile.selfieData,
-      face_descriptor: profile.faceDescriptor,
-      fingerprint_id: profile.webauthnCredentialId,
-      status: 'verified'
+    return res.status(200).json({
+      success: true,
+      code: 'VERIFIED_AND_SENT',
+      sentFrom: gmailUser
     });
-
-    if (profileErr) {
-      await supabase.auth.admin.deleteUser(created.user.id);
-      console.error('profile save:', profileErr);
-      return res.status(500).json({ success: false, code: 'SERVER_ERROR' });
-    }
-
-    return res.status(200).json({ success: true, code: 'ACCOUNT_CREATED', userId: created.user.id });
   } catch (e) {
-    console.error('verify-otp:', e);
-    return res.status(500).json({ success: false, code: 'SERVER_ERROR' });
+    console.error('verify-otp error:', e);
+    return res.status(500).json({
+      success: false,
+      code: 'GMAIL_SEND_FAILED',
+      message: e && e.message ? e.message : 'Failed to send email via Gmail App Password.'
+    });
   }
-}
+      }
