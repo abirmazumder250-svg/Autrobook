@@ -5,26 +5,636 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Autro Account - Autrobook</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <link rel="stylesheet" href="css/autro-account.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default Theme: Black & White */
+    :root {
+      --bg-page: #f5f5f5;
+      --bg-card: #ffffff;
+      --bg-box: #fafafa;
+      --bg-input: #ffffff;
+      --bg-chip-active: #000000;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-box: #d4d4d4;
+      --accent: #000000;
+      --accent-soft: rgba(0, 0, 0, 0.07);
+      --shadow-box: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #111111;
+      --bg-box: #181818;
+      --bg-input: #1f1f1f;
+      --bg-chip-active: #ffffff;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-box: #2e2e2e;
+      --accent: #ffffff;
+      --accent-soft: rgba(255, 255, 255, 0.12);
+      --shadow-box: 0 6px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Top Header */
+    .account-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-box);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border-box);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .brand-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-logo-wrap {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border-box);
+      background-color: var(--bg-box);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .brand-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .brand-logo-fallback {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .topbar-title {
+      font-size: 16.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .topbar-subtitle {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .theme-pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-box);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Main Container */
+    .account-container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Section Boxes */
+    .account-hero-card,
+    .account-section-card {
+      background-color: var(--bg-card);
+      border: 1.5px solid var(--border-box);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-box);
+    }
+
+    .account-hero-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hero-avatar-wrap {
+      width: 62px;
+      height: 62px;
+      border-radius: 16px;
+      background-color: var(--bg-box);
+      border: 1.5px solid var(--border-box);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .hero-avatar-fallback {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .hero-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero-name-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .hero-name-row h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .verified-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-box);
+    }
+
+    .verified-chip.is-verified {
+      background-color: var(--bg-chip-active);
+      color: var(--text-invert);
+      border-color: var(--accent);
+    }
+
+    .hero-username {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 2px;
+    }
+
+    .hero-email-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .hero-caption {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .section-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-box);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .section-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
+    .section-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-box);
+      flex-shrink: 0;
+    }
+
+    /* Inner Boxes */
+    .inner-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-box);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .inner-box:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 7px;
+    }
+
+    .field-label i {
+      color: var(--text-main);
+    }
+
+    .text-input,
+    .select-input {
+      width: 100%;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-box);
+      color: var(--text-main);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .text-input:focus,
+    .select-input:focus {
+      border-color: var(--accent);
+    }
+
+    .username-input-box {
+      display: flex;
+      align-items: center;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-box);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .username-input-box:focus-within {
+      border-color: var(--accent);
+    }
+
+    .username-prefix {
+      padding: 0 0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .username-field {
+      border: none !important;
+      background: transparent !important;
+      padding-left: 6px;
+    }
+
+    .field-help {
+      display: block;
+      margin-top: 6px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    /* Link Boxes */
+    .link-rows-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .account-nav-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-box);
+      background-color: var(--bg-box);
+      text-decoration: none;
+      color: var(--text-main);
+      transition: border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .account-nav-row:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .row-icon-box {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-box);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .row-text-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .row-text-content strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .row-text-content span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    .row-arrow {
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* Toggle Boxes */
+    .toggle-rows-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toggle-setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-box);
+    }
+
+    .switch-control {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .switch-control input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #737373;
+      border-radius: 999px;
+      transition: background-color 0.2s ease;
+    }
+
+    .switch-slider::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      top: 3px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+
+    .switch-control input:checked + .switch-slider {
+      background-color: var(--bg-chip-active);
+    }
+
+    .switch-control input:checked + .switch-slider::before {
+      transform: translateX(20px);
+      background-color: var(--text-invert);
+    }
+
+    /* Topic Chips */
+    .chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .topic-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-box);
+      background-color: var(--bg-input);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .topic-chip.active {
+      background-color: var(--bg-chip-active);
+      border-color: var(--accent);
+      color: var(--text-invert);
+    }
+
+    /* Buttons */
+    .section-footer-actions {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn-primary-save,
+    .btn-secondary-save {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-primary-save {
+      background-color: var(--bg-chip-active);
+      color: var(--text-invert);
+      border: 1px solid var(--accent);
+    }
+
+    .btn-primary-save:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary-save {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--accent);
+    }
+
+    .btn-secondary-save:hover {
+      background-color: var(--accent-soft);
+    }
+
+    /* Footer */
+    .account-footer {
+      background-color: var(--bg-card);
+      border: 1.5px solid var(--border-box);
+      border-radius: 16px;
+      padding: 14px;
+      text-align: center;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .footer-brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .footer-small-sub {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toastBanner {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--bg-chip-active);
+      color: var(--text-invert);
+      border: 1px solid var(--border-box);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 9999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toastBanner.show {
+      opacity: 1;
+    }
+  </style>
 </head>
 <body>
-  <!-- Top Navigation Bar -->
   <header class="account-topbar">
     <div class="topbar-left">
-      <button type="button" class="icon-btn" id="backBtn" aria-label="Go back">
+      <a href="settings.html" class="icon-btn" id="backBtn" aria-label="Back to Settings">
         <i class="fa-solid fa-arrow-left"></i>
-      </button>
+      </a>
       <div class="brand-title-group">
-        <span class="autro-badge-a" aria-hidden="true">A</span>
+        <span class="brand-logo-wrap" aria-hidden="true">
+          <img
+            alt="Autrobook Logo"
+            class="brand-logo-img"
+            id="topBrandLogo"
+          />
+          <span class="brand-logo-fallback" id="topBrandFallback">A</span>
+        </span>
         <div>
           <h1 class="topbar-title">Autro Account</h1>
-          <p class="topbar-subtitle">Manage your identity, security, and preferences</p>
+          <p class="topbar-subtitle">Manage your identity, email, security, and preferences</p>
         </div>
       </div>
     </div>
     <div class="topbar-right">
-      <button type="button" class="theme-pill-btn" id="themeToggleBtn" title="Toggle Theme">
+      <button type="button" class="theme-pill-btn" id="themeToggleBtn" title="System Default Theme">
         <i class="fa-solid fa-circle-half-stroke"></i>
         <span id="themeLabel">System</span>
       </button>
@@ -32,10 +642,8 @@
   </header>
 
   <main class="account-container">
-    <!-- Hero Profile Summary Card -->
     <section class="account-hero-card">
       <div class="hero-avatar-wrap">
-        <img id="heroAvatarImg" alt="Profile avatar" />
         <span id="heroAvatarFallback" class="hero-avatar-fallback">A</span>
       </div>
       <div class="hero-info">
@@ -47,38 +655,36 @@
           </span>
         </div>
         <p class="hero-username" id="heroUsernameText">@autro_user</p>
-        <p class="hero-caption">Central account hub for your profile, security, ad controls, and linked experiences.</p>
+        <p class="hero-email-sub" id="heroEmailText">No email set yet</p>
+        <p class="hero-caption">Central account hub for your profile, email, password, verification, and preferences.</p>
       </div>
     </section>
 
-    <!-- Personal Details: Name & Username -->
     <section class="account-section-card" aria-labelledby="personalDetailsHeading">
       <div class="section-header-row">
         <div>
-          <h3 id="personalDetailsHeading" class="section-title">Personal Details</h3>
-          <p class="section-desc">Update your display name and unique username across Autrobook.</p>
+          <h3 id="personalDetailsHeading" class="section-title">Personal Details &amp; Email</h3>
+          <p class="section-desc">Update your Name, Username, and Email address.</p>
         </div>
-        <span class="section-badge">Identity</span>
+        <span class="section-badge">Account</span>
       </div>
 
-      <div class="field-group">
+      <div class="inner-box">
         <label for="fullNameInput" class="field-label">
           <i class="fa-regular fa-id-card"></i>
           <span>Name</span>
         </label>
-        <div class="field-control-row">
-          <input
-            type="text"
-            id="fullNameInput"
-            class="text-input"
-            placeholder="Enter your full name"
-            autocomplete="name"
-          />
-        </div>
-        <small class="field-help">This name appears on your profile, posts, and account summary.</small>
+        <input
+          type="text"
+          id="fullNameInput"
+          class="text-input"
+          placeholder="Enter your full name"
+          autocomplete="name"
+        />
+        <small class="field-help">Displayed on your Autrobook profile and account card.</small>
       </div>
 
-      <div class="field-group">
+      <div class="inner-box">
         <label for="usernameInput" class="field-label">
           <i class="fa-solid fa-at"></i>
           <span>Username</span>
@@ -93,66 +699,71 @@
             autocomplete="username"
           />
         </div>
-        <small class="field-help" id="usernamePreviewText">Profile URL handle: @your_username</small>
+        <small class="field-help" id="usernamePreviewText">Profile handle: @your_username</small>
+      </div>
+
+      <div class="inner-box">
+        <label for="emailChangeInput" class="field-label">
+          <i class="fa-regular fa-envelope"></i>
+          <span>Email Change</span>
+        </label>
+        <input
+          type="email"
+          id="emailChangeInput"
+          class="text-input"
+          placeholder="Enter new email address"
+          autocomplete="email"
+        />
+        <small class="field-help">Updates your account email and saves to Supabase.</small>
       </div>
 
       <div class="section-footer-actions">
-        <button type="button" class="btn-primary-emerald" id="savePersonalDetailsBtn">
+        <button type="button" class="btn-primary-save" id="savePersonalDetailsBtn">
           <i class="fa-regular fa-floppy-disk"></i>
-          <span>Save Personal Details</span>
+          <span>Save Details &amp; Email</span>
         </button>
       </div>
     </section>
 
-    <!-- Password & Account Verification Links -->
     <section class="account-section-card" aria-labelledby="securityAccessHeading">
       <div class="section-header-row">
         <div>
           <h3 id="securityAccessHeading" class="section-title">Password &amp; Verification</h3>
-          <p class="section-desc">Protect your sign-in credentials and verify your account status.</p>
+          <p class="section-desc">Manage password security and account verification.</p>
         </div>
         <span class="section-badge">Security</span>
       </div>
 
       <div class="link-rows-list">
-        <!-- Password -> password.html -->
         <a href="password.html" class="account-nav-row" id="passwordLinkRow">
-          <div class="row-icon-box emerald-soft">
+          <div class="row-icon-box">
             <i class="fa-solid fa-key"></i>
           </div>
           <div class="row-text-content">
             <strong>Password</strong>
-            <span>Change your password, review login alerts, and manage sign-in security</span>
+            <span>Change password and manage sign-in security</span>
           </div>
-          <div class="row-trailing">
-            <span class="row-meta-tag">password.html</span>
-            <i class="fa-solid fa-chevron-right row-arrow"></i>
-          </div>
+          <i class="fa-solid fa-chevron-right row-arrow"></i>
         </a>
 
-        <!-- Verification -> verification.html -->
         <a href="verification.html" class="account-nav-row" id="verificationLinkRow">
-          <div class="row-icon-box teal-soft">
+          <div class="row-icon-box">
             <i class="fa-solid fa-circle-check"></i>
           </div>
           <div class="row-text-content">
             <strong>Verification</strong>
-            <span id="verificationRowDesc">Submit identity verification or check your verified badge status</span>
+            <span id="verificationRowDesc">Submit identity verification or check badge status</span>
           </div>
-          <div class="row-trailing">
-            <span class="row-meta-tag" id="verificationLinkTag">verification.html</span>
-            <i class="fa-solid fa-chevron-right row-arrow"></i>
-          </div>
+          <i class="fa-solid fa-chevron-right row-arrow"></i>
         </a>
       </div>
     </section>
 
-    <!-- Cross-Profile Experiences -->
     <section class="account-section-card" aria-labelledby="crossProfileHeading">
       <div class="section-header-row">
         <div>
           <h3 id="crossProfileHeading" class="section-title">Cross-Profile Experiences</h3>
-          <p class="section-desc">Choose how your main profile, creator pages, and connected spaces share activity.</p>
+          <p class="section-desc">Control sharing between your profile, pages, and linked spaces.</p>
         </div>
         <span class="section-badge">Connected</span>
       </div>
@@ -161,7 +772,7 @@
         <div class="toggle-setting-row">
           <div class="row-text-content">
             <strong>Shared Profile &amp; Page Switching</strong>
-            <span>Switch seamlessly between your personal account and Autrobook pages</span>
+            <span>Switch between your personal account and pages</span>
           </div>
           <label class="switch-control" aria-label="Shared Profile and Page Switching">
             <input type="checkbox" id="crossProfileSwitchToggle" checked />
@@ -171,10 +782,10 @@
 
         <div class="toggle-setting-row">
           <div class="row-text-content">
-            <strong>Sync Name &amp; Avatar Across Profiles</strong>
-            <span>Keep your profile photo and display name synchronized across linked spaces</span>
+            <strong>Sync Name, Username &amp; Avatar</strong>
+            <span>Keep identity details consistent across profiles</span>
           </div>
-          <label class="switch-control" aria-label="Sync Name and Avatar Across Profiles">
+          <label class="switch-control" aria-label="Sync Name, Username and Avatar">
             <input type="checkbox" id="syncIdentityToggle" checked />
             <span class="switch-slider"></span>
           </label>
@@ -182,10 +793,10 @@
 
         <div class="toggle-setting-row">
           <div class="row-text-content">
-            <strong>Cross-Profile Activity &amp; Notifications</strong>
-            <span>Receive unified notifications and activity updates across your profiles</span>
+            <strong>Cross-Profile Activity &amp; Alerts</strong>
+            <span>Receive unified activity updates across linked profiles</span>
           </div>
-          <label class="switch-control" aria-label="Cross-Profile Activity and Notifications">
+          <label class="switch-control" aria-label="Cross-Profile Activity and Alerts">
             <input type="checkbox" id="crossActivityToggle" />
             <span class="switch-slider"></span>
           </label>
@@ -193,19 +804,18 @@
       </div>
 
       <div class="section-footer-actions">
-        <button type="button" class="btn-secondary-outline" id="saveCrossProfileBtn">
+        <button type="button" class="btn-secondary-save" id="saveCrossProfileBtn">
           <i class="fa-solid fa-link"></i>
-          <span>Save Cross-Profile Settings</span>
+          <span>Save Cross-Profile</span>
         </button>
       </div>
     </section>
 
-    <!-- Ad Preferences -->
     <section class="account-section-card" aria-labelledby="adPreferencesHeading">
       <div class="section-header-row">
         <div>
           <h3 id="adPreferencesHeading" class="section-title">Ad Preferences</h3>
-          <p class="section-desc">Control ad personalization, topic interests, and ad visibility in your feed.</p>
+          <p class="section-desc">Customize ad personalization, frequency, and topics.</p>
         </div>
         <span class="section-badge">Ads</span>
       </div>
@@ -214,7 +824,7 @@
         <div class="toggle-setting-row">
           <div class="row-text-content">
             <strong>Personalized Ads</strong>
-            <span>Allow Autrobook to tailor ads based on your account activity and preferences</span>
+            <span>Tailor ads based on your account activity</span>
           </div>
           <label class="switch-control" aria-label="Personalized Ads">
             <input type="checkbox" id="personalizedAdsToggle" />
@@ -224,30 +834,31 @@
 
         <div class="toggle-setting-row">
           <div class="row-text-content">
-            <strong>Show Ads Based on Followed Topics</strong>
-            <span>Display relevant promotional content aligned with topics you interact with</span>
+            <strong>Topic-Based Ads</strong>
+            <span>Show ads related to topics you engage with</span>
           </div>
-          <label class="switch-control" aria-label="Show Ads Based on Followed Topics">
+          <label class="switch-control" aria-label="Topic-Based Ads">
             <input type="checkbox" id="topicAdsToggle" />
             <span class="switch-slider"></span>
           </label>
         </div>
       </div>
 
-      <div class="field-group ad-frequency-group">
+      <div class="inner-box" style="margin-top: 12px;">
         <label for="adFrequencySelect" class="field-label">
           <i class="fa-solid fa-sliders"></i>
           <span>Ad Experience Level</span>
         </label>
         <select id="adFrequencySelect" class="select-input">
-          <option value="minimal">Minimal / Mindful (Low frequency)</option>
+          <option value="minimal">Minimal (Low frequency)</option>
           <option value="standard" selected>Standard (Balanced experience)</option>
           <option value="topic_focused">Topic Focused (Category-based)</option>
         </select>
-      </div>
 
-      <div class="topics-chip-box">
-        <span class="topics-label">Your Ad Topics</span>
+        <span class="field-label" style="margin-top: 12px;">
+          <i class="fa-solid fa-tags"></i>
+          <span>Your Ad Topics</span>
+        </span>
         <div class="chips-wrap" id="adTopicsWrap">
           <button type="button" class="topic-chip active" data-topic="Technology">Technology</button>
           <button type="button" class="topic-chip active" data-topic="Design &amp; UI">Design &amp; UI</button>
@@ -259,26 +870,537 @@
       </div>
 
       <div class="section-footer-actions">
-        <button type="button" class="btn-primary-emerald" id="saveAdPreferencesBtn">
+        <button type="button" class="btn-primary-save" id="saveAdPreferencesBtn">
           <i class="fa-solid fa-check-double"></i>
           <span>Save Ad Preferences</span>
         </button>
       </div>
     </section>
 
-    <!-- Footer -->
     <footer class="account-footer">
-      <div class="footer-brand">
-        <img src="logo.png" alt="Autrobook Logo" class="footer-logo-img" />
-        <span>Autrobook Account Center</span>
-      </div>
-      <p class="footer-note" id="systemThemeIndicator">System Default Theme Active</p>
+      <div class="footer-brand-title">Autrobook</div>
+      <div class="footer-small-sub">18+ Free Social Media Platform</div>
     </footer>
   </main>
 
-  <!-- Toast Notification -->
   <div id="toastBanner" role="status" aria-live="polite"></div>
 
-  <script src="js/autro-account.js"></script>
+  <script>
+    (function () {
+      const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+      // Add a full URL here if testing in an online editor without local logo.png
+      const LOGO_CANDIDATES = [
+        'logo.png',
+        './logo.png',
+        '/logo.png',
+        'Logo.png',
+        './Logo.png',
+        '/Logo.png',
+        'assets/logo.png',
+        './assets/logo.png',
+        '/assets/logo.png',
+        'images/logo.png',
+        './images/logo.png',
+        '/images/logo.png'
+      ];
+
+      const KEYS = {
+        profile: 'autro_account_profile',
+        cross: 'autro_cross_profile_settings',
+        ads: 'autro_ad_preferences',
+        clientId: 'autro_account_client_id'
+      };
+
+      window.__autroMemoryStore = window.__autroMemoryStore || {};
+
+      let sb = null;
+      let activeKeyId = null;
+      let manualPreviewTheme = null;
+
+      function loadBrandLogo() {
+        const img = document.getElementById('topBrandLogo');
+        const fallback = document.getElementById('topBrandFallback');
+        if (!img || !fallback) return;
+
+        let idx = 0;
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = 'none';
+            fallback.style.display = 'inline';
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          img.onload = () => {
+            img.style.display = 'block';
+            fallback.style.display = 'none';
+          };
+          img.onerror = tryNext;
+          img.src = src;
+        }
+
+        tryNext();
+      }
+
+      function writeStore(key, val) {
+        const serialized = JSON.stringify(val);
+        window.__autroMemoryStore[key] = serialized;
+        try {
+          localStorage.setItem(key, serialized);
+        } catch (e) {}
+      }
+
+      function readStore(key, fallbackObj) {
+        let raw = null;
+        try {
+          raw = localStorage.getItem(key);
+        } catch (e) {}
+        if (!raw) {
+          raw = window.__autroMemoryStore[key] || null;
+        }
+        if (!raw) return fallbackObj;
+        try {
+          return JSON.parse(raw);
+        } catch (e) {
+          return fallbackObj;
+        }
+      }
+
+      function getOrCreateClientId() {
+        let id = null;
+        try {
+          id = localStorage.getItem(KEYS.clientId);
+        } catch (e) {}
+        if (!id) {
+          id = window.__autroMemoryStore[KEYS.clientId] || null;
+        }
+        if (!id) {
+          id = 'autro_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+          window.__autroMemoryStore[KEYS.clientId] = id;
+          try {
+            localStorage.setItem(KEYS.clientId, id);
+          } catch (e) {}
+        }
+        return id;
+      }
+
+      function toast(msg) {
+        const el = document.getElementById('toastBanner');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(window._autroToastTimer);
+        window._autroToastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+      }
+
+      function getSystemTheme() {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          return 'dark';
+        }
+        return 'light';
+      }
+
+      function applySystemDefaultTheme(overrideMode) {
+        const systemTheme = getSystemTheme();
+        const activeTheme = overrideMode || systemTheme;
+        const isDark = activeTheme === 'dark';
+
+        document.documentElement.setAttribute('data-theme', activeTheme);
+        document.body.classList.toggle('theme-dark', isDark);
+        document.body.classList.toggle('dark', isDark);
+
+        const label = document.getElementById('themeLabel');
+        if (label) {
+          label.textContent = 'System (' + (isDark ? 'Dark' : 'Light') + ')';
+        }
+      }
+
+      function toggleThemePreview() {
+        const sys = getSystemTheme();
+        if (!manualPreviewTheme) {
+          manualPreviewTheme = sys === 'dark' ? 'light' : 'dark';
+        } else {
+          manualPreviewTheme = manualPreviewTheme === 'dark' ? 'light' : 'dark';
+        }
+        applySystemDefaultTheme(manualPreviewTheme);
+        toast('Preview: ' + manualPreviewTheme.toUpperCase() + ' (System Default: ' + sys.toUpperCase() + ')');
+      }
+
+      function updateHero(name, username, email, verified) {
+        const cleanName = (name || 'Autro Member').trim();
+        const cleanUser = (username || 'autro_user').replace(/^@+/, '').trim() || 'autro_user';
+        const cleanEmail = (email || '').trim();
+
+        const nameEl = document.getElementById('heroDisplayName');
+        const userEl = document.getElementById('heroUsernameText');
+        const emailEl = document.getElementById('heroEmailText');
+        const fallbackEl = document.getElementById('heroAvatarFallback');
+        const previewEl = document.getElementById('usernamePreviewText');
+        const chipEl = document.getElementById('verificationStatusChip');
+        const chipTextEl = document.getElementById('verificationChipText');
+
+        if (nameEl) nameEl.textContent = cleanName;
+        if (userEl) userEl.textContent = '@' + cleanUser;
+        if (emailEl) emailEl.textContent = cleanEmail || 'No email set yet';
+        if (fallbackEl) fallbackEl.textContent = cleanName.charAt(0).toUpperCase() || 'A';
+        if (previewEl) previewEl.textContent = 'Profile handle: @' + cleanUser;
+
+        if (chipEl && chipTextEl) {
+          chipEl.classList.toggle('is-verified', Boolean(verified));
+          chipTextEl.textContent = verified ? 'Verified' : 'Unverified';
+        }
+      }
+
+      function hydrateUI(profile, cross, ads) {
+        const nameInput = document.getElementById('fullNameInput');
+        const userInput = document.getElementById('usernameInput');
+        const emailInput = document.getElementById('emailChangeInput');
+
+        if (nameInput && profile.full_name) nameInput.value = profile.full_name;
+        if (userInput && profile.username) userInput.value = profile.username;
+        if (emailInput && profile.email) emailInput.value = profile.email;
+
+        updateHero(
+          profile.full_name,
+          profile.username,
+          profile.email,
+          Boolean(profile.is_verified)
+        );
+
+        if (typeof cross.sharedSwitching === 'boolean') {
+          document.getElementById('crossProfileSwitchToggle').checked = cross.sharedSwitching;
+        }
+        if (typeof cross.syncIdentity === 'boolean') {
+          document.getElementById('syncIdentityToggle').checked = cross.syncIdentity;
+        }
+        if (typeof cross.crossActivity === 'boolean') {
+          document.getElementById('crossActivityToggle').checked = cross.crossActivity;
+        }
+
+        if (typeof ads.personalizedAds === 'boolean') {
+          document.getElementById('personalizedAdsToggle').checked = ads.personalizedAds;
+        }
+        if (typeof ads.topicAds === 'boolean') {
+          document.getElementById('topicAdsToggle').checked = ads.topicAds;
+        }
+        if (ads.frequency) {
+          document.getElementById('adFrequencySelect').value = ads.frequency;
+        }
+        const selectedTopics = Array.isArray(ads.topics) ? ads.topics : ['Technology', 'Design & UI'];
+        document.querySelectorAll('#adTopicsWrap .topic-chip').forEach((chip) => {
+          chip.classList.toggle('active', selectedTopics.includes(chip.getAttribute('data-topic')));
+        });
+      }
+
+      async function initAndLoad() {
+        activeKeyId = getOrCreateClientId();
+
+        let profile = readStore(KEYS.profile, {});
+        let cross = readStore(KEYS.cross, {});
+        let ads = readStore(KEYS.ads, {});
+
+        hydrateUI(profile, cross, ads);
+
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          try {
+            sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+            let { data: row } = await sb
+              .from('account_settings')
+              .select('*')
+              .eq('account_key', activeKeyId)
+              .maybeSingle();
+
+            if (!row) {
+              const { data: latestList } = await sb
+                .from('account_settings')
+                .select('*')
+                .order('updated_at', { ascending: false })
+                .limit(1);
+              if (Array.isArray(latestList) && latestList.length > 0) {
+                row = latestList[0];
+                if (row.account_key) {
+                  activeKeyId = row.account_key;
+                  window.__autroMemoryStore[KEYS.clientId] = activeKeyId;
+                  try {
+                    localStorage.setItem(KEYS.clientId, activeKeyId);
+                  } catch (e) {}
+                }
+              }
+            }
+
+            if (row) {
+              profile = {
+                full_name: row.full_name || profile.full_name || '',
+                username: row.username || profile.username || '',
+                email: row.email || profile.email || '',
+                is_verified: Boolean(row.is_verified)
+              };
+              cross = {
+                sharedSwitching:
+                  typeof row.shared_switching === 'boolean' ? row.shared_switching : true,
+                syncIdentity:
+                  typeof row.sync_identity === 'boolean' ? row.sync_identity : true,
+                crossActivity:
+                  typeof row.cross_activity === 'boolean' ? row.cross_activity : false
+              };
+              ads = {
+                personalizedAds:
+                  typeof row.personalized_ads === 'boolean' ? row.personalized_ads : false,
+                topicAds: typeof row.topic_ads === 'boolean' ? row.topic_ads : false,
+                frequency: row.ad_frequency || 'standard',
+                topics: Array.isArray(row.ad_topics)
+                  ? row.ad_topics
+                  : ['Technology', 'Design & UI']
+              };
+
+              writeStore(KEYS.profile, profile);
+              writeStore(KEYS.cross, cross);
+              writeStore(KEYS.ads, ads);
+              hydrateUI(profile, cross, ads);
+            }
+          } catch (err) {
+            console.warn('Supabase initial load note:', err);
+          }
+        }
+      }
+
+      async function persistToSupabase(fields) {
+        if (!sb) return { ok: false, reason: 'Supabase client unavailable' };
+        if (!activeKeyId) activeKeyId = getOrCreateClientId();
+
+        const currentProfile = readStore(KEYS.profile, {});
+        const currentCross = readStore(KEYS.cross, {
+          sharedSwitching: true,
+          syncIdentity: true,
+          crossActivity: false
+        });
+        const currentAds = readStore(KEYS.ads, {
+          personalizedAds: false,
+          topicAds: false,
+          frequency: 'standard',
+          topics: ['Technology', 'Design & UI']
+        });
+
+        const payload = {
+          account_key: activeKeyId,
+          full_name: fields.full_name !== undefined ? fields.full_name : currentProfile.full_name || null,
+          username: fields.username !== undefined ? fields.username : currentProfile.username || null,
+          email: fields.email !== undefined ? fields.email : currentProfile.email || null,
+          shared_switching:
+            fields.shared_switching !== undefined
+              ? fields.shared_switching
+              : Boolean(currentCross.sharedSwitching),
+          sync_identity:
+            fields.sync_identity !== undefined
+              ? fields.sync_identity
+              : Boolean(currentCross.syncIdentity),
+          cross_activity:
+            fields.cross_activity !== undefined
+              ? fields.cross_activity
+              : Boolean(currentCross.crossActivity),
+          personalized_ads:
+            fields.personalized_ads !== undefined
+              ? fields.personalized_ads
+              : Boolean(currentAds.personalizedAds),
+          topic_ads:
+            fields.topic_ads !== undefined ? fields.topic_ads : Boolean(currentAds.topicAds),
+          ad_frequency:
+            fields.ad_frequency !== undefined
+              ? fields.ad_frequency
+              : currentAds.frequency || 'standard',
+          ad_topics:
+            fields.ad_topics !== undefined
+              ? fields.ad_topics
+              : Array.isArray(currentAds.topics)
+              ? currentAds.topics
+              : ['Technology', 'Design & UI'],
+          updated_at: new Date().toISOString()
+        };
+
+        try {
+          const { error } = await sb
+            .from('account_settings')
+            .upsert(payload, { onConflict: 'account_key' });
+
+          if (error) {
+            return { ok: false, reason: error.message };
+          }
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, reason: e.message || 'Network error' };
+        }
+      }
+
+      async function onSavePersonalAndEmail() {
+        const btn = document.getElementById('savePersonalDetailsBtn');
+        const nameInput = document.getElementById('fullNameInput');
+        const userInput = document.getElementById('usernameInput');
+        const emailInput = document.getElementById('emailChangeInput');
+
+        const fullName = (nameInput?.value || '').trim();
+        const username = (userInput?.value || '')
+          .trim()
+          .replace(/^@+/, '')
+          .replace(/[^a-zA-Z0-9._-]/g, '_');
+        const newEmail = (emailInput?.value || '').trim();
+
+        if (!fullName) {
+          toast('Please enter your name.');
+          nameInput?.focus();
+          return;
+        }
+        if (!username) {
+          toast('Please enter a username.');
+          userInput?.focus();
+          return;
+        }
+        if (newEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+          toast('Please enter a valid email address.');
+          emailInput?.focus();
+          return;
+        }
+
+        if (userInput) userInput.value = username;
+        if (btn) btn.disabled = true;
+
+        const existing = readStore(KEYS.profile, {});
+        const updatedProfile = {
+          ...existing,
+          full_name: fullName,
+          username,
+          email: newEmail || existing.email || '',
+          updated_at: new Date().toISOString()
+        };
+
+        writeStore(KEYS.profile, updatedProfile);
+        updateHero(
+          fullName,
+          username,
+          updatedProfile.email,
+          Boolean(updatedProfile.is_verified)
+        );
+
+        const res = await persistToSupabase({
+          full_name: fullName,
+          username,
+          email: updatedProfile.email || null
+        });
+
+        if (btn) btn.disabled = false;
+
+        if (res.ok) {
+          toast('Details & Email saved!');
+        } else {
+          toast('Saved! (DB note: ' + res.reason + ')');
+        }
+      }
+
+      async function onSaveCrossProfile() {
+        const btn = document.getElementById('saveCrossProfileBtn');
+        if (btn) btn.disabled = true;
+
+        const sharedSwitching = Boolean(document.getElementById('crossProfileSwitchToggle')?.checked);
+        const syncIdentity = Boolean(document.getElementById('syncIdentityToggle')?.checked);
+        const crossActivity = Boolean(document.getElementById('crossActivityToggle')?.checked);
+
+        writeStore(KEYS.cross, {
+          sharedSwitching,
+          syncIdentity,
+          crossActivity,
+          updated_at: new Date().toISOString()
+        });
+
+        const res = await persistToSupabase({
+          shared_switching: sharedSwitching,
+          sync_identity: syncIdentity,
+          cross_activity: crossActivity
+        });
+
+        if (btn) btn.disabled = false;
+
+        if (res.ok) {
+          toast('Cross-profile saved!');
+        } else {
+          toast('Cross-profile saved! (DB note: ' + res.reason + ')');
+        }
+      }
+
+      async function onSaveAdPreferences() {
+        const btn = document.getElementById('saveAdPreferencesBtn');
+        if (btn) btn.disabled = true;
+
+        const personalizedAds = Boolean(document.getElementById('personalizedAdsToggle')?.checked);
+        const topicAds = Boolean(document.getElementById('topicAdsToggle')?.checked);
+        const frequency = document.getElementById('adFrequencySelect')?.value || 'standard';
+        const topics = Array.from(document.querySelectorAll('#adTopicsWrap .topic-chip.active')).map(
+          (chip) => chip.getAttribute('data-topic')
+        );
+
+        writeStore(KEYS.ads, {
+          personalizedAds,
+          topicAds,
+          frequency,
+          topics,
+          updated_at: new Date().toISOString()
+        });
+
+        const res = await persistToSupabase({
+          personalized_ads: personalizedAds,
+          topic_ads: topicAds,
+          ad_frequency: frequency,
+          ad_topics: topics
+        });
+
+        if (btn) btn.disabled = false;
+
+        if (res.ok) {
+          toast('Ad preferences saved!');
+        } else {
+          toast('Ad preferences saved! (DB note: ' + res.reason + ')');
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadBrandLogo();
+        applySystemDefaultTheme();
+        initAndLoad();
+
+        document.getElementById('themeToggleBtn')?.addEventListener('click', toggleThemePreview);
+
+        document.getElementById('usernameInput')?.addEventListener('input', (e) => {
+          const handle =
+            (e.target.value || 'your_username').replace(/^@+/, '').trim() || 'your_username';
+          const preview = document.getElementById('usernamePreviewText');
+          if (preview) preview.textContent = 'Profile handle: @' + handle;
+        });
+
+        document
+          .getElementById('savePersonalDetailsBtn')
+          ?.addEventListener('click', onSavePersonalAndEmail);
+        document
+          .getElementById('saveCrossProfileBtn')
+          ?.addEventListener('click', onSaveCrossProfile);
+        document
+          .getElementById('saveAdPreferencesBtn')
+          ?.addEventListener('click', onSaveAdPreferences);
+
+        document.querySelectorAll('#adTopicsWrap .topic-chip').forEach((chip) => {
+          chip.addEventListener('click', () => {
+            chip.classList.toggle('active');
+          });
+        });
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            manualPreviewTheme = null;
+            applySystemDefaultTheme();
+          });
+        }
+      });
+    })();
+  </script>
 </body>
-  </html>
+              </html>
