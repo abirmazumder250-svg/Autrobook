@@ -7,11 +7,21 @@
     "images/logo.png"
   ];
 
-  function applySystemTheme() {
-    const prefersDark =
-      window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const savedTheme = localStorage.getItem("autro_theme_mode");
-    const useDark = savedTheme === "dark" || (!savedTheme && prefersDark);
+  function applyThemeByTextColor() {
+    const target = document.body || document.documentElement;
+    if (!target) return;
+
+    const color = getComputedStyle(target).color;
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (!match) return;
+
+    const r = Number(match[1]);
+    const g = Number(match[2]);
+    const b = Number(match[3]);
+
+    // লেখা সাদা হলে true (Dark theme), কালো হলে false (Light theme)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    const useDark = brightness >= 128;
 
     document.documentElement.setAttribute("data-theme", useDark ? "dark" : "light");
     document.body.classList.toggle("dark", useDark);
@@ -98,11 +108,24 @@
     }, 2200);
   };
 
-  if (window.matchMedia) {
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applySystemTheme);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyThemeByTextColor);
+  } else {
+    applyThemeByTextColor();
   }
 
-  applySystemTheme();
+  const observer = new MutationObserver(applyThemeByTextColor);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["style", "class"]
+  });
+  if (document.body) {
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["style", "class"]
+    });
+  }
+
   hydrateBrandLogos();
   bindSettingsSearch();
 })();
