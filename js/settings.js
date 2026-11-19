@@ -14,7 +14,6 @@
     "/images/logo.png"
   ];
 
-  // Expose index integration hook if js/index.js provides a handler
   window.AutroSettingsPage = {
     homeUrl: "index.html",
     stylesheetUrl: "css/index.css",
@@ -106,12 +105,11 @@
     });
   }
 
+  // Strictly System Default: white text on black theme, black text on white theme
   function syncSystemTheme() {
     const prefersDark =
       window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const savedTheme =
-      localStorage.getItem("theme") || localStorage.getItem("autro_theme");
-    const mode = savedTheme || (prefersDark ? "dark" : "light");
+    const mode = prefersDark ? "dark" : "light";
     const isDark = mode === "dark";
 
     document.documentElement.setAttribute("data-theme", mode);
