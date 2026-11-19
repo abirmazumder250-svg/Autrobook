@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subscriptions - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f7f7f7;
+      --bg-hover: #ececec;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.65);
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 44px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .sub-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .plan-pill {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    /* Page Container */
+    .sub-container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Section Cards */
+    .sub-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Billing Cycle Switch */
+    .billing-toggle {
+      display: inline-flex;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+      align-self: flex-start;
+    }
+
+    .billing-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .billing-btn.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    /* Plan List */
+    .plans-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .plan-item {
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .plan-item.selected {
+      border-color: var(--text-main);
+      background-color: var(--bg-hover);
+    }
+
+    .plan-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .plan-name {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .plan-price {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .plan-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .plan-features li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .plan-features i {
+      font-size: 12px;
+      color: var(--text-main);
+    }
+
+    .plan-action-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .select-plan-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .plan-item.selected .select-plan-btn {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Active Subscriptions Rows */
+    .sub-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+    }
+
+    .sub-row-info strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .sub-row-info span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .cancel-btn {
+      padding: 7px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .cancel-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    /* Footer */
+    .sub-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="sub-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Subscriptions</h1>
+    </div>
+    <span class="plan-pill" id="activePlanBadge">Free Plan</span>
+  </header>
+
+  <main class="sub-container">
+    <section class="sub-card">
+      <div class="card-header-row">
+        <div>
+          <h2 class="card-title">Membership Plans</h2>
+          <p class="card-desc">Choose a plan for Autrobook features, tools, and creator support.</p>
+        </div>
+      </div>
+
+      <div class="billing-toggle" role="group" aria-label="Billing cycle">
+        <button type="button" class="billing-btn active" data-cycle="monthly">Monthly</button>
+        <button type="button" class="billing-btn" data-cycle="yearly">Yearly</button>
+      </div>
+
+      <div class="plans-grid" id="plansGrid"></div>
+    </section>
+
+    <section class="sub-card">
+      <h2 class="card-title">Active Subscriptions</h2>
+      <p class="card-desc">Manage your current Autrobook plan and active memberships.</p>
+      <div id="activeSubscriptionsList"></div>
+    </section>
+
+    <footer class="sub-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "autro_subscriptions_state";
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      const PLANS = [
+        {
+          id: "free",
+          name: "Autro Free",
+          monthly: "$0 / mo",
+          yearly: "$0 / yr",
+          features: [
+            "Core Autrobook feed, posts, and stories",
+            "Standard privacy and account controls",
+            "Community access"
+          ]
+        },
+        {
+          id: "plus",
+          name: "Autro Plus",
+          monthly: "$4.99 / mo",
+          yearly: "$49.99 / yr",
+          features: [
+            "Expanded profile and media customization",
+            "Priority support and early feature access",
+            "Reduced ad frequency controls"
+          ]
+        },
+        {
+          id: "creator",
+          name: "Autro Creator",
+          monthly: "$9.99 / mo",
+          yearly: "$99.99 / yr",
+          features: [
+            "Creator insights and analytics dashboard",
+            "Cross-profile tools and page management",
+            "Everything in Autro Plus"
+          ]
+        }
+      ];
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(window._subToastTimer);
+        window._subToastTimer = setTimeout(() => toast.classList.remove("show"), 2500);
+      }
+
+      function readState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return {
+              cycle: parsed.cycle === "yearly" ? "yearly" : "monthly",
+              selectedPlanId: parsed.selectedPlanId || "free"
+            };
+          }
+        } catch (e) {}
+        return { cycle: "monthly", selectedPlanId: "free" };
+      }
+
+      function writeState(state) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {}
+      }
+
+      let state = readState();
+
+      function render() {
+        const currentPlan = PLANS.find((p) => p.id === state.selectedPlanId) || PLANS[0];
+        const badge = document.getElementById("activePlanBadge");
+        if (badge) badge.textContent = currentPlan.name;
+
+        document.querySelectorAll(".billing-btn").forEach((btn) => {
+          btn.classList.toggle("active", btn.getAttribute("data-cycle") === state.cycle);
+        });
+
+        const grid = document.getElementById("plansGrid");
+        if (grid) {
+          grid.innerHTML = PLANS.map((plan) => {
+            const isSelected = plan.id === state.selectedPlanId;
+            const priceLabel = state.cycle === "yearly" ? plan.yearly : plan.monthly;
+            return `
+              <div class="plan-item ${isSelected ? "selected" : ""}">
+                <div class="plan-top">
+                  <span class="plan-name">${plan.name}</span>
+                  <span class="plan-price">${priceLabel}</span>
+                </div>
+                <ul class="plan-features">
+                  ${plan.features.map((f) => `<li><i class="fa-solid fa-check"></i><span>${f}</span></li>`).join("")}
+                </ul>
+                <div class="plan-action-row">
+                  <button type="button" class="select-plan-btn" data-plan-id="${plan.id}">
+                    ${isSelected ? "Active Plan" : "Select Plan"}
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          grid.querySelectorAll(".select-plan-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const id = btn.getAttribute("data-plan-id");
+              state.selectedPlanId = id;
+              writeState(state);
+              render();
+              const chosen = PLANS.find((p) => p.id === id);
+              showToast(`${chosen ? chosen.name : "Plan"} activated`);
+            });
+          });
+        }
+
+        const activeList = document.getElementById("activeSubscriptionsList");
+        if (activeList) {
+          const priceText = state.cycle === "yearly" ? currentPlan.yearly : currentPlan.monthly;
+          activeList.innerHTML = `
+            <div class="sub-row">
+              <div class="sub-row-info">
+                <strong>${currentPlan.name} (${state.cycle === "yearly" ? "Yearly" : "Monthly"})</strong>
+                <span>Billing: ${priceText} • Status: Active</span>
+              </div>
+              ${
+                state.selectedPlanId !== "free"
+                  ? `<button type="button" class="cancel-btn" id="downgradeFreeBtn">Switch to Free</button>`
+                  : `<span class="plan-pill">Default</span>`
+              }
+            </div>
+          `;
+
+          const downgradeBtn = document.getElementById("downgradeFreeBtn");
+          if (downgradeBtn) {
+            downgradeBtn.addEventListener("click", () => {
+              state.selectedPlanId = "free";
+              writeState(state);
+              render();
+              showToast("Switched back to Autro Free");
+            });
+          }
+        }
+      }
+
+      document.querySelectorAll(".billing-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.cycle = btn.getAttribute("data-cycle") === "yearly" ? "yearly" : "monthly";
+          writeState(state);
+          render();
+        });
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      render();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+    </html>
