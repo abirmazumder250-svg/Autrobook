@@ -1,127 +1,108 @@
 (function () {
-  const LOGO_CANDIDATES = [
+  const LOGO_SOURCES = [
     "logo.png",
     "./logo.png",
     "/logo.png",
-    "Logo.png",
-    "./Logo.png",
-    "/Logo.png",
     "assets/logo.png",
-    "./assets/logo.png",
-    "/assets/logo.png",
-    "images/logo.png",
-    "./images/logo.png",
-    "/images/logo.png"
+    "images/logo.png"
   ];
 
-  window.AutroSettingsPage = {
-    homeUrl: "index.html",
-    stylesheetUrl: "css/index.css",
-    scriptUrl: "js/index.js"
-  };
+  function applySystemTheme() {
+    const prefersDark =
+      window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const savedTheme = localStorage.getItem("autro_theme_mode");
+    const useDark = savedTheme === "dark" || (!savedTheme && prefersDark);
 
-  function resolveBrandLogos() {
-    const imgs = Array.from(document.querySelectorAll("img[data-autro-logo]"));
+    document.documentElement.setAttribute("data-theme", useDark ? "dark" : "light");
+    document.body.classList.toggle("dark", useDark);
+    document.body.classList.toggle("theme-dark", useDark);
+  }
+
+  function hydrateBrandLogos() {
+    const imgs = document.querySelectorAll("[data-autro-logo]");
     if (!imgs.length) return;
 
     const probe = new Image();
     let idx = 0;
 
-    function applyFallback() {
-      imgs.forEach((img) => {
-        img.style.display = "none";
-        const fb =
-          img.parentElement?.querySelector("[data-autro-logo-fallback]") ||
-          img.nextElementSibling;
-        if (fb && fb.hasAttribute("data-autro-logo-fallback")) {
-          fb.style.display = "inline-flex";
-        }
-      });
-    }
-
-    function applyImage(validSrc) {
-      imgs.forEach((img) => {
-        img.src = validSrc;
-        img.style.display = "block";
-        const fb =
-          img.parentElement?.querySelector("[data-autro-logo-fallback]") ||
-          img.nextElementSibling;
-        if (fb && fb.hasAttribute("data-autro-logo-fallback")) {
-          fb.style.display = "none";
-        }
-      });
-    }
-
-    function tryNext() {
-      if (idx >= LOGO_CANDIDATES.length) {
-        applyFallback();
-        return;
-      }
-      const candidate = LOGO_CANDIDATES[idx++];
-      probe.onload = () => applyImage(candidate);
-      probe.onerror = tryNext;
+    function nextSrc() {
+      if (idx >= LOGO_SOURCES.length) return;
+      const candidate = LOGO_SOURCES[idx++];
+      probe.onload = () => {
+        imgs.forEach((img) => {
+          img.src = candidate;
+          img.style.display = "block";
+          const fallback = img.parentElement
+            ? img.parentElement.querySelector("[data-autro-logo-fallback]")
+            : null;
+          if (fallback) fallback.style.display = "none";
+          if (img.classList.contains("footer-small-logo")) {
+            const footerFb = document.querySelector(".footer-small-logo-fallback");
+            if (footerFb) footerFb.style.display = "none";
+          }
+        });
+      };
+      probe.onerror = nextSrc;
       probe.src = candidate;
     }
 
-    tryNext();
+    nextSrc();
   }
 
-  const backBtn = document.getElementById("backToIndexBtn");
-  if (backBtn) {
-    backBtn.addEventListener("click", function (e) {
-      if (typeof window.onAutroBackToIndex === "function") {
-        e.preventDefault();
-        window.onAutroBackToIndex("index.html");
-      }
-    });
-  }
+  function bindSettingsSearch() {
+    const searchInput = document.getElementById("settingsSearchInput");
+    const focusBtn = document.getElementById("searchFocusBtn");
+    const sections = Array.from(document.querySelectorAll(".settings-section"));
 
-  const searchInput = document.getElementById("settingsSearchInput");
-  const searchFocusBtn = document.getElementById("searchFocusBtn");
+    if (focusBtn && searchInput) {
+      focusBtn.addEventListener("click", () => {
+        searchInput.focus();
+        searchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
 
-  if (searchFocusBtn && searchInput) {
-    searchFocusBtn.addEventListener("click", function () {
-      searchInput.focus();
-      searchInput.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
-  }
+    if (!searchInput) return;
 
-  if (searchInput) {
-    searchInput.addEventListener("input", function () {
-      const q = searchInput.value.trim().toLowerCase();
-      document.querySelectorAll(".settings-section").forEach(function (sec) {
-        const links = Array.from(
-          sec.querySelectorAll(".setting-link-item, .autro-account-card")
-        );
-        if (!links.length) return;
-        let visibleCount = 0;
-        links.forEach(function (item) {
-          const matched = !q || item.textContent.toLowerCase().includes(q);
-          item.style.display = matched ? "" : "none";
-          if (matched) visibleCount++;
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.trim().toLowerCase();
+
+      sections.forEach((section) => {
+        const items = Array.from(section.querySelectorAll(".setting-link-item, .autro-account-card"));
+        if (!query) {
+          section.classList.remove("is-hidden");
+          items.forEach((item) => item.classList.remove("is-hidden"));
+          return;
+        }
+
+        let matchedCount = 0;
+        items.forEach((item) => {
+          const text = (item.textContent || "").toLowerCase();
+          const match = text.includes(query);
+          item.classList.toggle("is-hidden", !match);
+          if (match) matchedCount += 1;
         });
-        sec.style.display = visibleCount > 0 ? "" : "none";
+
+        section.classList.toggle("is-hidden", matchedCount === 0);
       });
     });
   }
 
-  // Strictly System Default: white text on black theme, black text on white theme
-  function syncSystemTheme() {
-    const prefersDark =
-      window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const mode = prefersDark ? "dark" : "light";
-    const isDark = mode === "dark";
+  window.showSettingsToast = function (message) {
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(window._autroToastTimer);
+    window._autroToastTimer = setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2200);
+  };
 
-    document.documentElement.setAttribute("data-theme", mode);
-    document.body.classList.toggle("theme-dark", isDark);
-    document.body.classList.toggle("dark", isDark);
-  }
-
-  resolveBrandLogos();
-  syncSystemTheme();
   if (window.matchMedia) {
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", syncSystemTheme);
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applySystemTheme);
   }
+
+  applySystemTheme();
+  hydrateBrandLogos();
+  bindSettingsSearch();
 })();
