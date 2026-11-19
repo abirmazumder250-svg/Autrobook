@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reaction Preferences - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f5f6f7;
+      --bg-hover: #eaecef;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 48px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .rp-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(16px, 4vw, 19px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .rp-pill {
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .rp-pill.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Main Container */
+    .rp-container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Cards */
+    .rp-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-margin-top: 70px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14.5px;
+      flex-shrink: 0;
+    }
+
+    .rp-heading {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .rp-text {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-chip {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Master Box */
+    .master-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .master-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .master-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .master-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Default Reaction Selector Grid */
+    .reaction-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 540px) {
+      .reaction-picker-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .rxn-btn {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 12px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-main);
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .rxn-btn:hover:not(:disabled) {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .rxn-btn.selected {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .rxn-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .rxn-emoji {
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .rxn-label {
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    /* Rows & Controls */
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-row,
+    .toggle-row {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .option-copy strong {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .option-copy span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      line-height: 1.45;
+    }
+
+    .rp-select,
+    .rp-input {
+      border-radius: 11px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12.5px;
+      outline: none;
+    }
+
+    .rp-select {
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .rp-input {
+      width: 100%;
+      padding: 10px 13px;
+      background-color: var(--bg-box);
+    }
+
+    .rp-select:focus,
+    .rp-input:focus {
+      border-color: var(--text-main);
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    /* Switch */
+    .switch-control {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .switch-control input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #737373;
+      border-radius: 999px;
+      transition: background-color 0.2s ease;
+    }
+
+    .switch-slider::before {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      left: 3px;
+      top: 3px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+
+    .switch-control input:checked + .switch-slider {
+      background-color: var(--accent-bg);
+    }
+
+    .switch-control input:checked + .switch-slider::before {
+      transform: translateX(22px);
+      background-color: var(--accent-fg);
+    }
+
+    /* Preview Box */
+    .rp-preview-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-title {
+      font-size: 14.5px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .summary-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* Actions */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-outline,
+    .btn-solid {
+      padding: 10px 16px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid var(--accent-bg);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .btn-outline {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .btn-solid:hover {
+      transform: translateY(-1px);
+    }
+
+    /* Footer */
+    .rp-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="rp-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Reaction Preferences</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="rp-pill active" id="topbarRxnPill">Quick: Like</span>
+      <button type="button" class="top-action-btn" id="reloadRxnBtn" aria-label="Reload reaction preferences">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="rp-container">
+    <!-- Quick Reaction & Master Control -->
+    <section class="rp-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-regular fa-face-smile"></i>
+          </span>
+          <h2 class="rp-heading">Default Quick Reaction</h2>
+        </div>
+        <span class="badge-tag">Reactions</span>
+      </div>
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+        <span class="meta-chip" id="countVisibilityChip">Counts Visible</span>
+      </div>
+      <p class="rp-text">
+        Pick your default single-tap reaction, control count visibility on posts, and set who can react or view reactor lists.
+      </p>
+
+      <div class="master-box">
+        <div class="master-copy">
+          <strong class="master-title">Enable Post Reactions</strong>
+          <span class="master-sub" id="rxnMasterSub">
+            Reactions are enabled on posts and stories.
+          </span>
+        </div>
+        <label class="switch-control" aria-label="Enable Post Reactions">
+          <input type="checkbox" id="reactionsEnabledSwitch" checked />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="reaction-picker-grid" role="group" aria-label="Default Quick Reaction">
+        <button type="button" class="rxn-btn selected" data-rxn="like">
+          <span class="rxn-emoji">👍</span>
+          <span class="rxn-label">Like</span>
+        </button>
+        <button type="button" class="rxn-btn" data-rxn="love">
+          <span class="rxn-emoji">❤️</span>
+          <span class="rxn-label">Love</span>
+        </button>
+        <button type="button" class="rxn-btn" data-rxn="haha">
+          <span class="rxn-emoji">😂</span>
+          <span class="rxn-label">Haha</span>
+        </button>
+        <button type="button" class="rxn-btn" data-rxn="wow">
+          <span class="rxn-emoji">😮</span>
+          <span class="rxn-label">Wow</span>
+        </button>
+        <button type="button" class="rxn-btn" data-rxn="sad">
+          <span class="rxn-emoji">😢</span>
+          <span class="rxn-label">Sad</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Counts, Motion & Privacy -->
+    <section class="rp-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-sliders"></i>
+          </span>
+          <h2 class="rp-heading">Counts, Motion &amp; Privacy</h2>
+        </div>
+        <span class="badge-tag">Controls</span>
+      </div>
+
+      <div class="options-list">
+        <div class="toggle-row">
+          <div class="option-copy">
+            <strong>Hide Reaction Counts on Feed Posts</strong>
+            <span>Hide total reaction numbers on posts from other accounts</span>
+          </div>
+          <label class="switch-control" aria-label="Hide Reaction Counts on Feed Posts">
+            <input type="checkbox" id="hideCountsToggle" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="option-copy">
+            <strong>Hide Counts on My Own Posts</strong>
+            <span>Keep reaction totals private on your own published posts</span>
+          </div>
+          <label class="switch-control" aria-label="Hide Counts on My Own Posts">
+            <input type="checkbox" id="hideOwnCountsToggle" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="option-copy">
+            <strong>Reaction Burst Animation</strong>
+            <span>Animate emojis when tapping or long-pressing reactions</span>
+          </div>
+          <label class="switch-control" aria-label="Reaction Burst Animation">
+            <input type="checkbox" id="reactionAnimToggle" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="option-copy">
+            <strong>Reaction Sound Effects</strong>
+            <span>Play subtle sound feedback when reacting</span>
+          </div>
+          <label class="switch-control" aria-label="Reaction Sound Effects">
+            <input type="checkbox" id="reactionSoundToggle" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="option-row">
+          <div class="option-copy">
+            <strong>Who Can React to Your Posts</strong>
+            <span>Choose who is allowed to react to your content</span>
+          </div>
+          <select id="whoCanReactSelect" class="rp-select" aria-label="Who Can React to Your Posts">
+            <option value="everyone">Everyone</option>
+            <option value="friends" selected>Friends</option>
+            <option value="none">No One</option>
+          </select>
+        </div>
+
+        <div class="option-row">
+          <div class="option-copy">
+            <strong>Who Can See Reactor Names</strong>
+            <span>Control visibility of who reacted to your posts</span>
+          </div>
+          <select id="whoSeesReactorsSelect" class="rp-select" aria-label="Who Can See Reactor Names">
+            <option value="friends" selected>Friends</option>
+            <option value="only_me">Only Me</option>
+            <option value="public">Everyone</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label for="mutedReactorsInput" class="option-copy">
+          <strong>Hide Reaction Alerts From (@handles, Comma-Separated)</strong>
+          <span>Suppress reaction notifications from specific accounts</span>
+        </label>
+        <input type="text" id="mutedReactorsInput" class="rp-input" maxlength="160" placeholder="e.g., @user_one, @user_two" />
+      </div>
+    </section>
+
+    <!-- Summary & Save -->
+    <section class="rp-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-regular fa-eye"></i>
+          </span>
+          <h2 class="rp-heading">Reaction Summary</h2>
+        </div>
+        <span class="badge-tag">Summary</span>
+      </div>
+
+      <div class="rp-preview-box">
+        <strong class="summary-title" id="rxnSummaryTitle">Quick Reaction: 👍 Like</strong>
+        <p class="summary-desc" id="rxnSummaryDesc">
+          Who can react: Friends • Reactor list: Friends • Counts: Visible.
+        </p>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-outline" id="resetRxnBtn">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>Reset</span>
+        </button>
+        <button type="button" class="btn-solid" id="saveRxnBtn">
+          <i class="fa-regular fa-floppy-disk"></i>
+          <span>Save</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="rp-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const CLOUD_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+      const CLOUD_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const ROW_ID = "default_reaction_preferences";
+      const LOCAL_KEY = "autro_reaction_preferences_v1";
+
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      const RXN_META = {
+        like: { emoji: "👍", label: "Like" },
+        love: { emoji: "❤️", label: "Love" },
+        haha: { emoji: "😂", label: "Haha" },
+        wow: { emoji: "😮", label: "Wow" },
+        sad: { emoji: "😢", label: "Sad" }
+      };
+
+      function defaultReactionState() {
+        return {
+          reactions_enabled: true,
+          default_reaction: "like",
+          hide_reaction_counts: false,
+          hide_own_counts: false,
+          reaction_animations: true,
+          reaction_sounds: false,
+          who_can_react: "friends",
+          who_sees_reactors: "friends",
+          muted_reactors: ""
+        };
+      }
+
+      function readLocal() {
+        try {
+          const raw = localStorage.getItem(LOCAL_KEY);
+          if (!raw) return defaultReactionState();
+          return Object.assign(defaultReactionState(), JSON.parse(raw));
+        } catch (e) {
+          return defaultReactionState();
+        }
+      }
+
+      function writeLocal(next) {
+        try {
+          localStorage.setItem(LOCAL_KEY, JSON.stringify(next));
+        } catch (e) {}
+      }
+
+      let rxnState = readLocal();
+
+      function apiHeaders(extra) {
+        return Object.assign(
+          {
+            apikey: CLOUD_KEY,
+            Authorization: "Bearer " + CLOUD_KEY,
+            "Content-Type": "application/json"
+          },
+          extra || {}
+        );
+      }
+
+      function collectForm() {
+        rxnState = {
+          reactions_enabled: Boolean(
+            document.getElementById("reactionsEnabledSwitch")?.checked
+          ),
+          default_reaction: RXN_META[rxnState.default_reaction]
+            ? rxnState.default_reaction
+            : "like",
+          hide_reaction_counts: Boolean(
+            document.getElementById("hideCountsToggle")?.checked
+          ),
+          hide_own_counts: Boolean(
+            document.getElementById("hideOwnCountsToggle")?.checked
+          ),
+          reaction_animations: Boolean(
+            document.getElementById("reactionAnimToggle")?.checked
+          ),
+          reaction_sounds: Boolean(
+            document.getElementById("reactionSoundToggle")?.checked
+          ),
+          who_can_react:
+            document.getElementById("whoCanReactSelect")?.value || "friends",
+          who_sees_reactors:
+            document.getElementById("whoSeesReactorsSelect")?.value || "friends",
+          muted_reactors: (
+            document.getElementById("mutedReactorsInput")?.value || ""
+          ).trim()
+        };
+      }
+
+      function renderReactionUI() {
+        const enabled = Boolean(rxnState.reactions_enabled);
+        const rxnKey = RXN_META[rxnState.default_reaction]
+          ? rxnState.default_reaction
+          : "like";
+        const rxnObj = RXN_META[rxnKey];
+
+        const sw = document.getElementById("reactionsEnabledSwitch");
+        const pill = document.getElementById("topbarRxnPill");
+        const sub = document.getElementById("rxnMasterSub");
+        const countChip = document.getElementById("countVisibilityChip");
+
+        if (sw) sw.checked = enabled;
+        if (pill) pill.textContent = enabled ? `Quick: ${rxnObj.label}` : "Reactions: OFF";
+        if (sub) {
+          sub.textContent = enabled
+            ? `Default reaction is ${rxnObj.emoji} ${rxnObj.label}.`
+            : "Reactions are currently turned off.";
+        }
+
+        document.querySelectorAll(".rxn-btn").forEach((btn) => {
+          const val = btn.getAttribute("data-rxn");
+          btn.classList.toggle("selected", val === rxnKey);
+          btn.disabled = !enabled;
+        });
+
+        const setChk = (id, b) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.checked = Boolean(b);
+            el.disabled = !enabled;
+          }
+        };
+        const setSel = (id, v) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.value = v;
+            el.disabled = !enabled;
+          }
+        };
+
+        setChk("hideCountsToggle", rxnState.hide_reaction_counts);
+        setChk("hideOwnCountsToggle", rxnState.hide_own_counts);
+        setChk("reactionAnimToggle", rxnState.reaction_animations);
+        setChk("reactionSoundToggle", rxnState.reaction_sounds);
+        setSel("whoCanReactSelect", rxnState.who_can_react || "friends");
+        setSel("whoSeesReactorsSelect", rxnState.who_sees_reactors || "friends");
+
+        const mutedEl = document.getElementById("mutedReactorsInput");
+        if (mutedEl) {
+          if (document.activeElement !== mutedEl) {
+            mutedEl.value = rxnState.muted_reactors || "";
+          }
+          mutedEl.disabled = !enabled;
+        }
+
+        if (countChip) {
+          if (!enabled) countChip.textContent = "Reactions OFF";
+          else if (rxnState.hide_reaction_counts) countChip.textContent = "Counts Hidden";
+          else countChip.textContent = "Counts Visible";
+        }
+
+        const labelMap = {
+          everyone: "Everyone",
+          friends: "Friends",
+          none: "No One",
+          only_me: "Only Me",
+          public: "Everyone"
+        };
+
+        const sumTitle = document.getElementById("rxnSummaryTitle");
+        const sumDesc = document.getElementById("rxnSummaryDesc");
+
+        if (sumTitle) {
+          sumTitle.textContent = enabled
+            ? `Quick Reaction: ${rxnObj.emoji} ${rxnObj.label}`
+            : "Reactions Disabled";
+        }
+        if (sumDesc) {
+          const canReactTxt = labelMap[rxnState.who_can_react] || "Friends";
+          const seesTxt = labelMap[rxnState.who_sees_reactors] || "Friends";
+          const cntTxt = rxnState.hide_reaction_counts ? "Hidden" : "Visible";
+          const muteTxt = rxnState.muted_reactors
+            ? ` • Muted alerts: ${rxnState.muted_reactors}`
+            : "";
+          sumDesc.textContent = `Who can react: ${canReactTxt} • Reactor list: ${seesTxt} • Counts: ${cntTxt}${muteTxt}.`;
+        }
+      }
+
+      async function loadFromCloud() {
+        try {
+          const url = `${CLOUD_URL}/rest/v1/reaction_preferences_settings?id=eq.${encodeURIComponent(
+            ROW_ID
+          )}&select=*`;
+          const res = await fetch(url, {
+            method: "GET",
+            headers: apiHeaders()
+          });
+          if (!res.ok) return;
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            const r = rows[0];
+            rxnState = Object.assign(defaultReactionState(), {
+              reactions_enabled:
+                typeof r.reactions_enabled === "boolean" ? r.reactions_enabled : true,
+              default_reaction: RXN_META[r.default_reaction]
+                ? r.default_reaction
+                : "like",
+              hide_reaction_counts: Boolean(r.hide_reaction_counts),
+              hide_own_counts: Boolean(r.hide_own_counts),
+              reaction_animations:
+                typeof r.reaction_animations === "boolean"
+                  ? r.reaction_animations
+                  : true,
+              reaction_sounds: Boolean(r.reaction_sounds),
+              who_can_react: r.who_can_react || "friends",
+              who_sees_reactors: r.who_sees_reactors || "friends",
+              muted_reactors: r.muted_reactors || ""
+            });
+            writeLocal(rxnState);
+            renderReactionUI();
+          }
+        } catch (err) {}
+      }
+
+      async function saveToCloud(stateObj) {
+        try {
+          const payload = [
+            Object.assign(
+              {
+                id: ROW_ID,
+                updated_at: new Date().toISOString()
+              },
+              stateObj
+            )
+          ];
+          const res = await fetch(
+            `${CLOUD_URL}/rest/v1/reaction_preferences_settings?on_conflict=id`,
+            {
+              method: "POST",
+              headers: apiHeaders({
+                Prefer: "resolution=merge-duplicates,return=minimal"
+              }),
+              body: JSON.stringify(payload)
+            }
+          );
+          return res.ok;
+        } catch (err) {
+          return false;
+        }
+      }
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._rpToastTimer);
+        window._rpToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      document.querySelectorAll(".rxn-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const val = btn.getAttribute("data-rxn");
+          if (!RXN_META[val]) return;
+          rxnState.default_reaction = val;
+          writeLocal(rxnState);
+          renderReactionUI();
+          showToast(`Default reaction: ${RXN_META[val].emoji} ${RXN_META[val].label}`);
+        });
+      });
+
+      [
+        "reactionsEnabledSwitch",
+        "hideCountsToggle",
+        "hideOwnCountsToggle",
+        "reactionAnimToggle",
+        "reactionSoundToggle",
+        "whoCanReactSelect",
+        "whoSeesReactorsSelect",
+        "mutedReactorsInput"
+      ].forEach((id) => {
+        document.getElementById(id)?.addEventListener("input", () => {
+          collectForm();
+          writeLocal(rxnState);
+          renderReactionUI();
+        });
+        document.getElementById(id)?.addEventListener("change", () => {
+          collectForm();
+          writeLocal(rxnState);
+          renderReactionUI();
+        });
+      });
+
+      document.getElementById("resetRxnBtn")?.addEventListener("click", () => {
+        rxnState = defaultReactionState();
+        writeLocal(rxnState);
+        renderReactionUI();
+        showToast("Reaction preferences reset");
+      });
+
+      document.getElementById("saveRxnBtn")?.addEventListener("click", async () => {
+        collectForm();
+        writeLocal(rxnState);
+        renderReactionUI();
+        const saved = await saveToCloud(rxnState);
+        showToast(saved ? "Saved" : "Saved locally");
+      });
+
+      document.getElementById("reloadRxnBtn")?.addEventListener("click", async () => {
+        await loadFromCloud();
+        showToast("Reaction preferences refreshed");
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      renderReactionUI();
+      loadFromCloud();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+  </html>
