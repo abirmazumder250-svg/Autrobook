@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<html lang="en"><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -141,6 +140,97 @@
     pointer-events: none;
     font-size: 12px;
     color: var(--muted);
+  }
+
+  .lang-modal-back {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+
+  .lang-modal {
+    background: var(--card);
+    width: 90%;
+    max-width: 380px;
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .lang-modal h3 {
+    margin-bottom: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .lang-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 380px;
+    overflow-y: auto;
+  }
+
+  .lang-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text);
+  }
+
+  .lang-item:hover {
+    background: var(--bg);
+  }
+
+  .lang-item span {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .lang-item input[type="radio"] {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--muted);
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .lang-item input[type="radio"]:checked {
+    border-color: var(--primary);
+  }
+
+  .lang-item input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: var(--primary);
+    border-radius: 50%;
+  }
+
+  .lang-close {
+    width: 100%;
+    padding: 13px;
+    margin-top: 18px;
+    background: var(--dark-green-btn);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
   }
 
   .header {
@@ -461,7 +551,7 @@
   </a>
 
   <div class="lang-selector-box" id="langSelectorBox" title="Select and save language">
-    <select id="languageSelect" aria-label="Select Language" onchange="onLanguageSelectChange(this)">
+    <select id="languageSelect" aria-label="Select Language">
       <option value="en" data-dir="ltr" selected>English (US)</option>
       <option value="en-GB" data-dir="ltr">English (UK)</option>
       <option value="bn" data-dir="ltr">Bengali (বাংলা)</option>
@@ -644,8 +734,16 @@
   </p>
 </div>
 
-<script src="js/index.js"></script>
-<script src="js/auth.js"></script>
+<div class="lang-modal-back" id="langModal" onclick="closeLangModal()">
+  <div class="lang-modal" onclick="event.stopPropagation()">
+    <h3 id="langModalTitle">Select Language</h3>
+    <div class="lang-list" id="langList"></div>
+    <button type="button" class="lang-close" id="langCloseBtn" onclick="closeLangModal()">Close</button>
+  </div>
+</div>
+
+<script src="js/index.js" onerror="void(0)"></script>
+<script src="js/auth.js" onerror="void(0)"></script>
 <script>
 const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
@@ -656,7 +754,7 @@ try {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch (err) {
-  console.error('Supabase initialization error:', err);
+  console.warn('Supabase init skipped:', err);
 }
 
 const UI_STRINGS = {
@@ -664,9 +762,12 @@ const UI_STRINGS = {
     heading: 'Secure Your Account',
     subtitle: 'Enter details, verify your identity, and confirm with a 6-digit email OTP code',
     email: 'Email Address',
+    emailPlaceholder: 'you@example.com',
     otp: '6-Digit Email Verification Code (OTP)',
+    otpPlaceholder: 'Enter 6-digit OTP from email',
     dob: 'Birthday',
     password: 'Create Password',
+    passwordPlaceholder: 'At least 6 characters',
     security: 'Security Verification (Mandatory)',
     liveness: 'Please look at the camera and blink clearly to verify',
     camera: 'Live Selfie & Eye Scan',
@@ -678,15 +779,23 @@ const UI_STRINGS = {
     back: '← Back',
     cancel: 'Cancel',
     alreadyHave: 'Already have an account?',
-    logIn: 'Log in'
+    logIn: 'Log in',
+    accountNamePrefix: 'Account Name: ',
+    otpExpiresPrefix: 'Code expires in ',
+    otpExpired: 'Code expired - click Resend OTP',
+    modalTitle: 'Select Language',
+    closeBtn: 'Close'
   },
   bn: {
     heading: 'আপনার অ্যাকাউন্ট সুরক্ষিত করুন',
     subtitle: 'তথ্য দিন, পরিচয় যাচাই করুন এবং ৬ সংখ্যার ইমেইল OTP দিয়ে নিশ্চিত করুন',
     email: 'ইমেইল ঠিকানা',
+    emailPlaceholder: 'you@example.com',
     otp: '৬ সংখ্যার ইমেইল ভেরিফিকেশন কোড (OTP)',
+    otpPlaceholder: 'ইমেইল থেকে ৬ সংখ্যার OTP লিখুন',
     dob: 'জন্মতারিখ',
     password: 'পাসওয়ার্ড তৈরি করুন',
+    passwordPlaceholder: 'অন্তত ৬ অক্ষরের পাসওয়ার্ড',
     security: 'নিরাপত্তা যাচাই (বাধ্যতামূলক)',
     liveness: 'ক্যামেরার দিকে তাকান এবং স্পষ্টভাবে চোখের পলক ফেলুন',
     camera: 'লাইভ সেলফি ও চোখ স্ক্যান',
@@ -698,15 +807,23 @@ const UI_STRINGS = {
     back: '← পেছনে',
     cancel: 'বাতিল',
     alreadyHave: 'ইতিমধ্যে অ্যাকাউন্ট আছে?',
-    logIn: 'লগ ইন'
+    logIn: 'লগ ইন',
+    accountNamePrefix: 'অ্যাকাউন্টের নাম: ',
+    otpExpiresPrefix: 'কোডের মেয়াদ শেষ হবে ',
+    otpExpired: 'কোডের মেয়াদ শেষ - পুনরায় OTP পাঠান',
+    modalTitle: 'ভাষা নির্বাচন করুন',
+    closeBtn: 'বন্ধ করুন'
   },
   hi: {
     heading: 'अपना खाता सुरक्षित करें',
     subtitle: 'विवरण दर्ज करें, पहचान सत्यापित करें और 6-अंकों के ईमेल OTP से पुष्टि करें',
     email: 'ईमेल पता',
+    emailPlaceholder: 'you@example.com',
     otp: '6-अंकों का ईमेल सत्यापन कोड (OTP)',
+    otpPlaceholder: 'ईमेल से 6-अंकों का OTP दर्ज करें',
     dob: 'जन्मतिथि',
     password: 'पासवर्ड बनाएं',
+    passwordPlaceholder: 'कम से कम 6 अक्षर',
     security: 'सुरक्षा सत्यापन (अनिवार्य)',
     liveness: 'कृपया कैमरे की ओर देखें और स्पष्ट रूप से पलक झपकाएं',
     camera: 'लाइव सेल्फी और आई स्कैन',
@@ -718,15 +835,23 @@ const UI_STRINGS = {
     back: '← वापस',
     cancel: 'रद्द करें',
     alreadyHave: 'क्या आपका पहले से खाता है?',
-    logIn: 'लॉग इन'
+    logIn: 'लॉग इन',
+    accountNamePrefix: 'खाता नाम: ',
+    otpExpiresPrefix: 'कोड समाप्त होगा ',
+    otpExpired: 'कोड समाप्त हो गया - OTP पुनः भेजें',
+    modalTitle: 'भाषा चुनें',
+    closeBtn: 'बंद करें'
   },
   es: {
     heading: 'Protege tu cuenta',
     subtitle: 'Ingresa tus datos, verifica tu identidad y confirma con un código OTP de 6 dígitos',
     email: 'Correo electrónico',
+    emailPlaceholder: 'you@example.com',
     otp: 'Código de verificación OTP de 6 dígitos',
+    otpPlaceholder: 'Ingresa el OTP de 6 dígitos del correo',
     dob: 'Fecha de nacimiento',
     password: 'Crear contraseña',
+    passwordPlaceholder: 'Al menos 6 caracteres',
     security: 'Verificación de seguridad (obligatoria)',
     liveness: 'Mira a la cámara y parpadea claramente para verificar',
     camera: 'Selfie en vivo y escaneo ocular',
@@ -738,15 +863,23 @@ const UI_STRINGS = {
     back: '← Atrás',
     cancel: 'Cancelar',
     alreadyHave: '¿Ya tienes una cuenta?',
-    logIn: 'Iniciar sesión'
+    logIn: 'Iniciar sesión',
+    accountNamePrefix: 'Nombre de cuenta: ',
+    otpExpiresPrefix: 'El código caduca en ',
+    otpExpired: 'Código caducado - haz clic en Reenviar OTP',
+    modalTitle: 'Seleccionar idioma',
+    closeBtn: 'Cerrar'
   },
   fr: {
     heading: 'Sécurisez votre compte',
     subtitle: 'Saisissez vos informations, vérifiez votre identité et validez avec un code OTP à 6 chiffres',
     email: 'Adresse e-mail',
+    emailPlaceholder: 'you@example.com',
     otp: 'Code de vérification OTP à 6 chiffres',
+    otpPlaceholder: 'Entrez le code OTP à 6 chiffres',
     dob: 'Date de naissance',
     password: 'Créer un mot de passe',
+    passwordPlaceholder: 'Au moins 6 caractères',
     security: 'Vérification de sécurité (obligatoire)',
     liveness: 'Regardez la caméra et clignez clairement des yeux',
     camera: 'Selfie en direct et scan oculaire',
@@ -758,15 +891,23 @@ const UI_STRINGS = {
     back: '← Retour',
     cancel: 'Annuler',
     alreadyHave: 'Vous avez déjà un compte ?',
-    logIn: 'Connexion'
+    logIn: 'Connexion',
+    accountNamePrefix: 'Nom du compte : ',
+    otpExpiresPrefix: 'Le code expire dans ',
+    otpExpired: 'Code expiré - cliquez sur Renvoyer OTP',
+    modalTitle: 'Choisir la langue',
+    closeBtn: 'Fermer'
   },
   ar: {
     heading: 'أمّن حسابك',
     subtitle: 'أدخل البيانات وتحقق من هويتك وأكد برمز OTP مكوّن من 6 أرقام عبر البريد',
     email: 'البريد الإلكتروني',
+    emailPlaceholder: 'you@example.com',
     otp: 'رمز التحقق OTP المكون من 6 أرقام',
+    otpPlaceholder: 'أدخل رمز OTP المكون من 6 أرقام',
     dob: 'تاريخ الميلاد',
     password: 'إنشاء كلمة مرور',
+    passwordPlaceholder: '6 أحرف على الأقل',
     security: 'التحقق الأمني (إجباري)',
     liveness: 'يرجى النظر إلى الكاميرا والرمش بوضوح للتحقق',
     camera: 'سيلفي مباشر ومسح العين',
@@ -778,11 +919,396 @@ const UI_STRINGS = {
     back: '← رجوع',
     cancel: 'إلغاء',
     alreadyHave: 'هل لديك حساب بالفعل؟',
-    logIn: 'تسجيل الدخول'
+    logIn: 'تسجيل الدخول',
+    accountNamePrefix: 'اسم الحساب: ',
+    otpExpiresPrefix: 'ينتهي الرمز خلال ',
+    otpExpired: 'انتهت صلاحية الرمز - أعد إرسال OTP',
+    modalTitle: 'اختر اللغة',
+    closeBtn: 'إغلاق'
+  },
+  de: {
+    heading: 'Konto sichern',
+    subtitle: 'Daten eingeben, Identität prüfen und mit einem 6-stelligen E-Mail-OTP bestätigen',
+    email: 'E-Mail-Adresse',
+    emailPlaceholder: 'you@example.com',
+    otp: '6-stelliger E-Mail-Bestätigungscode (OTP)',
+    otpPlaceholder: '6-stelligen OTP aus der E-Mail eingeben',
+    dob: 'Geburtsdatum',
+    password: 'Passwort erstellen',
+    passwordPlaceholder: 'Mindestens 6 Zeichen',
+    security: 'Sicherheitsprüfung (erforderlich)',
+    liveness: 'Bitte in die Kamera schauen und deutlich blinzeln',
+    camera: 'Live-Selfie & Augenscan',
+    fingerprint: 'Fingerabdruck hinzufügen (optional)',
+    verifyStatus: 'Zur Fortsetzung mit der Kamera prüfen',
+    humanCheck: 'Ich bin kein Roboter - Manuelle Prüfung',
+    sendOtp: 'OTP senden',
+    signUp: 'Registrieren',
+    back: '← Zurück',
+    cancel: 'Abbrechen',
+    alreadyHave: 'Hast du schon ein Konto?',
+    logIn: 'Anmelden',
+    accountNamePrefix: 'Kontoname: ',
+    otpExpiresPrefix: 'Code läuft ab in ',
+    otpExpired: 'Code abgelaufen - OTP erneut senden',
+    modalTitle: 'Sprache wählen',
+    closeBtn: 'Schließen'
+  },
+  pt: {
+    heading: 'Proteja sua conta',
+    subtitle: 'Insira os dados, verifique sua identidade e confirme com um código OTP de 6 dígitos por e-mail',
+    email: 'Endereço de e-mail',
+    emailPlaceholder: 'you@example.com',
+    otp: 'Código de verificação OTP de 6 dígitos',
+    otpPlaceholder: 'Digite o OTP de 6 dígitos do e-mail',
+    dob: 'Data de nascimento',
+    password: 'Criar senha',
+    passwordPlaceholder: 'Pelo menos 6 caracteres',
+    security: 'Verificação de segurança (obrigatória)',
+    liveness: 'Olhe para a câmera e pisque claramente para verificar',
+    camera: 'Selfie ao vivo e leitura ocular',
+    fingerprint: 'Adicionar impressão digital (opcional)',
+    verifyStatus: 'Verifique usando a câmera para continuar',
+    humanCheck: 'Não sou um robô - Verificação manual',
+    sendOtp: 'Enviar OTP',
+    signUp: 'Cadastrar',
+    back: '← Voltar',
+    cancel: 'Cancelar',
+    alreadyHave: 'Já tem uma conta?',
+    logIn: 'Entrar',
+    accountNamePrefix: 'Nome da conta: ',
+    otpExpiresPrefix: 'O código expira em ',
+    otpExpired: 'Código expirado - clique em Reenviar OTP',
+    modalTitle: 'Selecionar idioma',
+    closeBtn: 'Fechar'
+  },
+  ru: {
+    heading: 'Защитите свой аккаунт',
+    subtitle: 'Введите данные, подтвердите личность и введите 6-значный OTP-код из письма',
+    email: 'Электронная почта',
+    emailPlaceholder: 'you@example.com',
+    otp: '6-значный код подтверждения (OTP)',
+    otpPlaceholder: 'Введите 6-значный OTP из письма',
+    dob: 'Дата рождения',
+    password: 'Создайте пароль',
+    passwordPlaceholder: 'Не менее 6 символов',
+    security: 'Проверка безопасности (обязательно)',
+    liveness: 'Посмотрите в камеру и чётко моргните для проверки',
+    camera: 'Живое селфи и сканирование глаз',
+    fingerprint: 'Добавить отпечаток пальца (необязательно)',
+    verifyStatus: 'Подтвердите через камеру, чтобы продолжить',
+    humanCheck: 'Я не робот - Ручная проверка',
+    sendOtp: 'Отправить OTP',
+    signUp: 'Регистрация',
+    back: '← Назад',
+    cancel: 'Отмена',
+    alreadyHave: 'Уже есть аккаунт?',
+    logIn: 'Войти',
+    accountNamePrefix: 'Имя аккаунта: ',
+    otpExpiresPrefix: 'Код истекает через ',
+    otpExpired: 'Срок действия кода истёк - нажмите «Отправить OTP снова»',
+    modalTitle: 'Выберите язык',
+    closeBtn: 'Закрыть'
+  },
+  'zh-CN': {
+    heading: '保护您的账户',
+    subtitle: '填写信息、验证身份，并使用6位邮箱验证码（OTP）确认',
+    email: '电子邮箱',
+    emailPlaceholder: 'you@example.com',
+    otp: '6位邮箱验证码（OTP）',
+    otpPlaceholder: '输入邮箱中的6位验证码',
+    dob: '出生日期',
+    password: '创建密码',
+    passwordPlaceholder: '至少6个字符',
+    security: '安全验证（必填）',
+    liveness: '请注视摄像头并清晰眨眼以完成验证',
+    camera: '实时自拍与眼部扫描',
+    fingerprint: '添加指纹（可选）',
+    verifyStatus: '请使用摄像头验证以继续',
+    humanCheck: '我不是机器人 - 手动验证',
+    sendOtp: '发送 OTP',
+    signUp: '注册',
+    back: '← 返回',
+    cancel: '取消',
+    alreadyHave: '已有账户？',
+    logIn: '登录',
+    accountNamePrefix: '账户名称：',
+    otpExpiresPrefix: '验证码将在 ',
+    otpExpired: '验证码已过期 - 请重新发送 OTP',
+    modalTitle: '选择语言',
+    closeBtn: '关闭'
+  },
+  'zh-TW': {
+    heading: '保護您的帳號',
+    subtitle: '填寫資料、驗證身分，並使用6位數電子郵件 OTP 驗證碼確認',
+    email: '電子郵件地址',
+    emailPlaceholder: 'you@example.com',
+    otp: '6位數電子郵件驗證碼（OTP）',
+    otpPlaceholder: '輸入信箱中的6位數 OTP 驗證碼',
+    dob: '出生日期',
+    password: '建立密碼',
+    passwordPlaceholder: '至少6個字元',
+    security: '安全性驗證（必填）',
+    liveness: '請看著鏡頭並清楚眨眼以完成驗證',
+    camera: '即時自拍與眼部掃描',
+    fingerprint: '新增指紋（選填）',
+    verifyStatus: '請使用鏡頭驗證以繼續',
+    humanCheck: '我不是機器人 - 手動驗證',
+    sendOtp: '傳送 OTP',
+    signUp: '註冊',
+    back: '← 返回',
+    cancel: '取消',
+    alreadyHave: '已經有帳號了？',
+    logIn: '登入',
+    accountNamePrefix: '帳號名稱：',
+    otpExpiresPrefix: '驗證碼將於 ',
+    otpExpired: '驗證碼已過期 - 請重新傳送 OTP',
+    modalTitle: '選擇語言',
+    closeBtn: '關閉'
+  },
+  ja: {
+    heading: 'アカウントを保護する',
+    subtitle: '情報を入力して本人確認を行い、6桁のメールOTPコードで確定してください',
+    email: 'メールアドレス',
+    emailPlaceholder: 'you@example.com',
+    otp: '6桁のメール認証コード（OTP）',
+    otpPlaceholder: 'メールの6桁のOTPを入力',
+    dob: '生年月日',
+    password: 'パスワードを作成',
+    passwordPlaceholder: '6文字以上',
+    security: 'セキュリティ認証（必須）',
+    liveness: 'カメラを見て、はっきりとまばたきしてください',
+    camera: 'ライブセルフィー＆アイ認証',
+    fingerprint: '指紋を追加（任意）',
+    verifyStatus: '続行するにはカメラで認証してください',
+    humanCheck: '私はロボットではありません - 手動認証',
+    sendOtp: 'OTPを送信',
+    signUp: '新規登録',
+    back: '← 戻る',
+    cancel: 'キャンセル',
+    alreadyHave: 'すでにアカウントをお持ちですか？',
+    logIn: 'ログイン',
+    accountNamePrefix: 'アカウント名：',
+    otpExpiresPrefix: 'コードの有効期限：',
+    otpExpired: 'コードの有効期限が切れました - OTPを再送信してください',
+    modalTitle: '言語を選択',
+    closeBtn: '閉じる'
+  },
+  ko: {
+    heading: '계정 보안 설정',
+    subtitle: '정보를 입력하고 본인 인증 후 6자리 이메일 OTP 코드로 확인하세요',
+    email: '이메일 주소',
+    emailPlaceholder: 'you@example.com',
+    otp: '6자리 이메일 인증 코드 (OTP)',
+    otpPlaceholder: '이메일로 받은 6자리 OTP 입력',
+    dob: '생년월일',
+    password: '비밀번호 만들기',
+    passwordPlaceholder: '6자 이상 입력',
+    security: '보안 인증 (필수)',
+    liveness: '카메라를 보고 눈을 명확하게 깜빡여 주세요',
+    camera: '실시간 셀카 및 눈 스캔',
+    fingerprint: '지문 추가 (선택 사항)',
+    verifyStatus: '계속하려면 카메라로 인증하세요',
+    humanCheck: '로봇이 아닙니다 - 수동 인증',
+    sendOtp: 'OTP 전송',
+    signUp: '가입하기',
+    back: '← 뒤로',
+    cancel: '취소',
+    alreadyHave: '이미 계정이 있나요?',
+    logIn: '로그인',
+    accountNamePrefix: '계정 이름: ',
+    otpExpiresPrefix: '코드 만료까지 ',
+    otpExpired: '코드가 만료되었습니다 - OTP를 다시 전송하세요',
+    modalTitle: '언어 선택',
+    closeBtn: '닫기'
+  },
+  id: {
+    heading: 'Amankan Akun Anda',
+    subtitle: 'Masukkan detail, verifikasi identitas, dan konfirmasi dengan kode OTP email 6 digit',
+    email: 'Alamat Email',
+    emailPlaceholder: 'you@example.com',
+    otp: 'Kode Verifikasi Email 6 Digit (OTP)',
+    otpPlaceholder: 'Masukkan 6 digit OTP dari email',
+    dob: 'Tanggal Lahir',
+    password: 'Buat Kata Sandi',
+    passwordPlaceholder: 'Minimal 6 karakter',
+    security: 'Verifikasi Keamanan (Wajib)',
+    liveness: 'Lihat ke kamera dan berkedip dengan jelas untuk memverifikasi',
+    camera: 'Swafoto Langsung & Pindai Mata',
+    fingerprint: 'Tambah Sidik Jari (Opsional)',
+    verifyStatus: 'Verifikasi menggunakan kamera untuk melanjutkan',
+    humanCheck: 'Saya bukan robot - Verifikasi manual',
+    sendOtp: 'Kirim OTP',
+    signUp: 'Daftar',
+    back: '← Kembali',
+    cancel: 'Batal',
+    alreadyHave: 'Sudah punya akun?',
+    logIn: 'Masuk',
+    accountNamePrefix: 'Nama Akun: ',
+    otpExpiresPrefix: 'Kode kedaluwarsa dalam ',
+    otpExpired: 'Kode kedaluwarsa - klik Kirim Ulang OTP',
+    modalTitle: 'Pilih Bahasa',
+    closeBtn: 'Tutup'
+  },
+  ms: {
+    heading: 'Lindungi Akaun Anda',
+    subtitle: 'Masukkan butiran, sahkan identiti anda, dan sahkan dengan kod OTP e-mel 6 digit',
+    email: 'Alamat E-mel',
+    emailPlaceholder: 'you@example.com',
+    otp: 'Kod Pengesahan E-mel 6 Digit (OTP)',
+    otpPlaceholder: 'Masukkan 6 digit OTP daripada e-mel',
+    dob: 'Tarikh Lahir',
+    password: 'Cipta Kata Laluan',
+    passwordPlaceholder: 'Sekurang-kurangnya 6 aksara',
+    security: 'Pengesahan Keselamatan (Wajib)',
+    liveness: 'Sila pandang kamera dan kelipkan mata dengan jelas untuk mengesahkan',
+    camera: 'Swafoto Langsung & Imbasan Mata',
+    fingerprint: 'Tambah Cap Jari (Pilihan)',
+    verifyStatus: 'Sahkan menggunakan kamera untuk meneruskan',
+    humanCheck: 'Saya bukan robot - Pengesahan manual',
+    sendOtp: 'Hantar OTP',
+    signUp: 'Daftar',
+    back: '← Kembali',
+    cancel: 'Batal',
+    alreadyHave: 'Sudah mempunyai akaun?',
+    logIn: 'Log masuk',
+    accountNamePrefix: 'Nama Akaun: ',
+    otpExpiresPrefix: 'Kod tamat tempoh dalam ',
+    otpExpired: 'Kod tamat tempoh - klik Hantar Semula OTP',
+    modalTitle: 'Pilih Bahasa',
+    closeBtn: 'Tutup'
+  },
+  tl: {
+    heading: 'Seguridad ng Iyong Account',
+    subtitle: 'Ilagay ang mga detalye, i-verify ang pagkakakilanlan, at kumpirmahin gamit ang 6-digit email OTP code',
+    email: 'Email Address',
+    emailPlaceholder: 'you@example.com',
+    otp: '6-Digit Email Verification Code (OTP)',
+    otpPlaceholder: 'Ilagay ang 6-digit OTP mula sa email',
+    dob: 'Kaarawan',
+    password: 'Gumawa ng Password',
+    passwordPlaceholder: 'Hindi bababa sa 6 na character',
+    security: 'Security Verification (Mandatory)',
+    liveness: 'Tingnan ang camera at kumurap nang malinaw upang ma-verify',
+    camera: 'Live Selfie & Eye Scan',
+    fingerprint: 'Magdagdag ng Fingerprint (Optional)',
+    verifyStatus: 'Mag-verify gamit ang camera upang magpatuloy',
+    humanCheck: 'Hindi ako robot - Manual verification',
+    sendOtp: 'Magpadala ng OTP',
+    signUp: 'Mag-sign Up',
+    back: '← Bumalik',
+    cancel: 'Kanselahin',
+    alreadyHave: 'May account ka na?',
+    logIn: 'Mag-log in',
+    accountNamePrefix: 'Pangalan ng Account: ',
+    otpExpiresPrefix: 'Mag-e-expire ang code sa ',
+    otpExpired: 'Nag-expire na ang code - i-click ang Resend OTP',
+    modalTitle: 'Pumili ng Wika',
+    closeBtn: 'Isara'
+  },
+  vi: {
+    heading: 'Bảo mật tài khoản của bạn',
+    subtitle: 'Nhập thông tin, xác minh danh tính và xác nhận bằng mã OTP 6 chữ số qua email',
+    email: 'Địa chỉ email',
+    emailPlaceholder: 'you@example.com',
+    otp: 'Mã xác minh email 6 chữ số (OTP)',
+    otpPlaceholder: 'Nhập mã OTP 6 chữ số từ email',
+    dob: 'Ngày sinh',
+    password: 'Tạo mật khẩu',
+    passwordPlaceholder: 'Ít nhất 6 ký tự',
+    security: 'Xác minh bảo mật (Bắt buộc)',
+    liveness: 'Vui lòng nhìn vào camera và chớp mắt rõ ràng để xác minh',
+    camera: 'Selfie trực tiếp & Quét mắt',
+    fingerprint: 'Thêm vân tay (Tùy chọn)',
+    verifyStatus: 'Xác minh bằng camera để tiếp tục',
+    humanCheck: 'Tôi không phải người máy - Xác minh thủ công',
+    sendOtp: 'Gửi OTP',
+    signUp: 'Đăng ký',
+    back: '← Quay lại',
+    cancel: 'Hủy',
+    alreadyHave: 'Đã có tài khoản?',
+    logIn: 'Đăng nhập',
+    accountNamePrefix: 'Tên tài khoản: ',
+    otpExpiresPrefix: 'Mã hết hạn sau ',
+    otpExpired: 'Mã đã hết hạn - nhấn Gửi lại OTP',
+    modalTitle: 'Chọn ngôn ngữ',
+    closeBtn: 'Đóng'
+  },
+  th: {
+    heading: 'รักษาความปลอดภัยบัญชีของคุณ',
+    subtitle: 'กรอกรายละเอียด ยืนยันตัวตน และยืนยันด้วยรหัส OTP 6 หลักทางอีเมล',
+    email: 'ที่อยู่อีเมล',
+    emailPlaceholder: 'you@example.com',
+    otp: 'รหัสยืนยันอีเมล 6 หลัก (OTP)',
+    otpPlaceholder: 'กรอกรหัส OTP 6 หลักจากอีเมล',
+    dob: 'วันเกิด',
+    password: 'สร้างรหัสผ่าน',
+    passwordPlaceholder: 'อย่างน้อย 6 ตัวอักษร',
+    security: 'การยืนยันความปลอดภัย (จำเป็น)',
+    liveness: 'โปรดมองกล้องและกะพริบตาให้ชัดเจนเพื่อยืนยัน',
+    camera: 'เซลฟี่สดและสแกนดวงตา',
+    fingerprint: 'เพิ่มลายนิ้วมือ (ไม่บังคับ)',
+    verifyStatus: 'ยืนยันด้วยกล้องเพื่อดำเนินการต่อ',
+    humanCheck: 'ฉันไม่ใช่บอท - ยืนยันด้วยตนเอง',
+    sendOtp: 'ส่ง OTP',
+    signUp: 'สมัครสมาชิก',
+    back: '← ย้อนกลับ',
+    cancel: 'ยกเลิก',
+    alreadyHave: 'มีบัญชีอยู่แล้วใช่ไหม?',
+    logIn: 'เข้าสู่ระบบ',
+    accountNamePrefix: 'ชื่อบัญชี: ',
+    otpExpiresPrefix: 'รหัสจะหมดอายุใน ',
+    otpExpired: 'รหัสหมดอายุแล้ว - คลิกส่ง OTP อีกครั้ง',
+    modalTitle: 'เลือกภาษา',
+    closeBtn: 'ปิด'
+  },
+  tr: {
+    heading: 'Hesabınızı Güvenli Hale Getirin',
+    subtitle: 'Bilgileri girin, kimliğinizi doğrulayın ve 6 haneli e-posta OTP koduyla onaylayın',
+    email: 'E-posta Adresi',
+    emailPlaceholder: 'you@example.com',
+    otp: '6 Haneli E-posta Doğrulama Kodu (OTP)',
+    otpPlaceholder: 'E-postadaki 6 haneli OTP kodunu girin',
+    dob: 'Doğum Tarihi',
+    password: 'Şifre Oluştur',
+    passwordPlaceholder: 'En az 6 karakter',
+    security: 'Güvenlik Doğrulaması (Zorunlu)',
+    liveness: 'Doğrulamak için kameraya bakın ve net şekilde göz kırpın',
+    camera: 'Canlı Selfie ve Göz Taraması',
+    fingerprint: 'Parmak İzi Ekle (İsteğe Bağlı)',
+    verifyStatus: 'Devam etmek için kamerayla doğrulayın',
+    humanCheck: 'Robot değilim - Manuel doğrulama',
+    sendOtp: 'OTP Gönder',
+    signUp: 'Kaydol',
+    back: '← Geri',
+    cancel: 'İptal',
+    alreadyHave: 'Zaten bir hesabınız var mı?',
+    logIn: 'Giriş yap',
+    accountNamePrefix: 'Hesap Adı: ',
+    otpExpiresPrefix: 'Kodun süresi dolacak: ',
+    otpExpired: 'Kodun süresi doldu - OTP’yi Yeniden Gönder’e tıklayın',
+    modalTitle: 'Dil Seçin',
+    closeBtn: 'Kapat'
   }
 };
 
-let currentLang = localStorage.getItem('autro_lang') || localStorage.getItem('lang') || 'en';
+function getDict(langCode, langLabel) {
+  const baseCode = (langCode || 'en').split('-')[0];
+  if (UI_STRINGS[langCode]) return UI_STRINGS[langCode];
+  if (UI_STRINGS[baseCode]) return UI_STRINGS[baseCode];
+
+  const labelText = langLabel || langCode || 'English';
+  return Object.assign({}, UI_STRINGS.en, {
+    heading: `${UI_STRINGS.en.heading} (${labelText})`,
+    subtitle: `${UI_STRINGS.en.subtitle} — ${labelText}`
+  });
+}
+
+let currentLang = 'en';
+try {
+  currentLang = localStorage.getItem('autro_lang') || localStorage.getItem('lang') || 'en';
+} catch (e) {}
+
 let selfieData = '';
 let faceDescriptor = null;
 let stream = null;
@@ -800,20 +1326,45 @@ function setMessage(text, isSuccess = false) {
   msg.classList.toggle('success', Boolean(isSuccess));
 }
 
-function applyAppTranslation(langCode) {
-  const baseCode = (langCode || 'en').split('-')[0];
-  const dict = UI_STRINGS[langCode] || UI_STRINGS[baseCode] || UI_STRINGS.en;
+function getSelectedLangLabel(langCode) {
+  const selectEl = document.getElementById('languageSelect');
+  if (!selectEl) return langCode;
+  const opt = Array.from(selectEl.options).find(o => o.value === langCode);
+  return opt ? opt.textContent.trim() : langCode;
+}
+
+function updateNamePreview() {
+  let savedName = '';
+  try {
+    savedName = localStorage.getItem('signup_name') || '';
+  } catch (e) {}
+  const el = document.getElementById('namePreview');
+  if (el && savedName) {
+    const dict = getDict(currentLang, getSelectedLangLabel(currentLang));
+    el.textContent = dict.accountNamePrefix + savedName;
+  }
+}
+
+function applyAppTranslation(langCode, langLabel) {
+  const dict = getDict(langCode, langLabel || getSelectedLangLabel(langCode));
   const setText = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
+  };
+  const setPlaceholder = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.placeholder = val;
   };
 
   setText('titleHeading', dict.heading);
   setText('subtitleText', dict.subtitle);
   setText('emailLabel', dict.email);
+  setPlaceholder('email', dict.emailPlaceholder);
   setText('otpLabel', dict.otp);
+  setPlaceholder('otp', dict.otpPlaceholder);
   setText('dobLabel', dict.dob);
   setText('passwordLabel', dict.password);
+  setPlaceholder('password', dict.passwordPlaceholder);
   setText('securityLabel', dict.security);
   setText('livenessText', dict.liveness);
   setText('cameraBtnText', dict.camera);
@@ -821,6 +1372,8 @@ function applyAppTranslation(langCode) {
   setText('humanCheckText', dict.humanCheck);
   setText('backActionBtn', dict.back);
   setText('cancelActionBtn', dict.cancel);
+  setText('langModalTitle', dict.modalTitle);
+  setText('langCloseBtn', dict.closeBtn);
 
   if (!livenessPassed) {
     setText('verifyStatus', dict.verifyStatus);
@@ -840,6 +1393,9 @@ function applyAppTranslation(langCode) {
   if (footer) {
     footer.innerHTML = `${dict.alreadyHave} <a href="login.html" id="loginLink">${dict.logIn}</a>`;
   }
+
+  updateNamePreview();
+  updateTimer();
 }
 
 async function syncLanguageToSupabase(langCode, langName, isRtl) {
@@ -874,35 +1430,84 @@ async function syncLanguageToSupabase(langCode, langName, isRtl) {
   } catch (e) {}
 }
 
+function setActiveLanguage(langCode, langName, isRtl) {
+  currentLang = langCode || 'en';
+  const resolvedName = langName || getSelectedLangLabel(currentLang);
+  const resolvedRtl = typeof isRtl === 'boolean' ? isRtl : false;
+
+  try {
+    localStorage.setItem('autro_lang', currentLang);
+    localStorage.setItem('lang', currentLang);
+    localStorage.setItem('autro_language', currentLang);
+    localStorage.setItem('autro_language_name', resolvedName);
+    localStorage.setItem('autro_language_dir', resolvedRtl ? 'rtl' : 'ltr');
+    sessionStorage.setItem('lang', currentLang);
+    sessionStorage.setItem('autro_language', currentLang);
+  } catch (e) {}
+
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = resolvedRtl ? 'rtl' : 'ltr';
+
+  const selectEl = document.getElementById('languageSelect');
+  if (selectEl && selectEl.value !== currentLang) {
+    const exists = Array.from(selectEl.options).some(o => o.value === currentLang);
+    if (exists) selectEl.value = currentLang;
+  }
+
+  applyAppTranslation(currentLang, resolvedName);
+  buildLangList();
+  syncLanguageToSupabase(currentLang, resolvedName, resolvedRtl);
+  setMessage('');
+
+  window.dispatchEvent(new CustomEvent('autro:languageChanged', {
+    detail: { code: currentLang, name: resolvedName, rtl: resolvedRtl }
+  }));
+}
+
 function onLanguageSelectChange(selectEl) {
   if (!selectEl) return;
   const opt = selectEl.options[selectEl.selectedIndex];
   const langCode = selectEl.value || 'en';
   const langName = opt ? opt.textContent.trim() : 'English (US)';
   const isRtl = opt && opt.getAttribute('data-dir') === 'rtl';
+  setActiveLanguage(langCode, langName, isRtl);
+}
 
-  currentLang = langCode;
+function buildLangList() {
+  const list = document.getElementById('langList');
+  const selectEl = document.getElementById('languageSelect');
+  if (!list || !selectEl) return;
 
-  try {
-    localStorage.setItem('autro_lang', langCode);
-    localStorage.setItem('lang', langCode);
-    localStorage.setItem('autro_language', langCode);
-    localStorage.setItem('autro_language_name', langName);
-    localStorage.setItem('autro_language_dir', isRtl ? 'rtl' : 'ltr');
-    sessionStorage.setItem('lang', langCode);
-    sessionStorage.setItem('autro_language', langCode);
-  } catch (e) {}
+  list.innerHTML = '';
+  Array.from(selectEl.options).forEach(opt => {
+    const code = opt.value;
+    const name = opt.textContent.trim();
+    const isRtl = opt.getAttribute('data-dir') === 'rtl';
 
-  document.documentElement.lang = langCode;
-  document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    const item = document.createElement('div');
+    item.className = 'lang-item';
+    item.innerHTML = `
+      <span>${name}</span>
+      <input type="radio" name="modalLang" value="${code}" ${currentLang === code ? 'checked' : ''}>
+    `;
+    item.addEventListener('click', () => {
+      selectEl.value = code;
+      setActiveLanguage(code, name, isRtl);
+      closeLangModal();
+    });
+    list.appendChild(item);
+  });
+}
 
-  applyAppTranslation(langCode);
-  syncLanguageToSupabase(langCode, langName, isRtl);
-  setMessage(`Language selected & saved: ${langName}`, true);
+function openLangModal() {
+  buildLangList();
+  const modal = document.getElementById('langModal');
+  if (modal) modal.style.display = 'flex';
+}
 
-  window.dispatchEvent(new CustomEvent('autro:languageChanged', {
-    detail: { code: langCode, name: langName, rtl: isRtl }
-  }));
+function closeLangModal() {
+  const modal = document.getElementById('langModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function restoreSavedLanguage() {
@@ -916,10 +1521,12 @@ function restoreSavedLanguage() {
     currentLang = 'en';
   }
   const opt = selectEl.options[selectEl.selectedIndex];
+  const langName = opt ? opt.textContent.trim() : 'English (US)';
   const isRtl = opt && opt.getAttribute('data-dir') === 'rtl';
   document.documentElement.lang = currentLang;
   document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
-  applyAppTranslation(currentLang);
+  applyAppTranslation(currentLang, langName);
+  buildLangList();
 }
 
 function goBack(event) {
@@ -946,13 +1553,6 @@ function togglePass() {
   }
 }
 
-function updateNamePreview() {
-  const savedName = localStorage.getItem('signup_name');
-  if (savedName) {
-    document.getElementById('namePreview').textContent = 'Account Name: ' + savedName;
-  }
-}
-
 async function registerFingerprint() {
   if (!window.PublicKeyCredential || !navigator.credentials) {
     setMessage('Fingerprint / WebAuthn is not supported in this browser.');
@@ -965,15 +1565,19 @@ async function registerFingerprint() {
     const userId = new Uint8Array(16);
     window.crypto.getRandomValues(userId);
     const emailVal = document.getElementById('email').value.trim() || 'user@autrobook.com';
+    let displayName = 'Autrobook User';
+    try {
+      displayName = localStorage.getItem('signup_name') || 'Autrobook User';
+    } catch (e) {}
 
     const credential = await navigator.credentials.create({
       publicKey: {
         challenge,
-        rp: { name: 'Autrobook', id: window.location.hostname },
+        rp: { name: 'Autrobook', id: window.location.hostname || 'localhost' },
         user: {
           id: userId,
           name: emailVal,
-          displayName: localStorage.getItem('signup_name') || 'Autrobook User'
+          displayName
         },
         pubKeyCredParams: [
           { type: 'public-key', alg: -7 },
@@ -1011,7 +1615,8 @@ function stopCamera(btn) {
   document.getElementById('video').style.display = 'none';
   document.getElementById('livenessText').classList.add('hide');
   if (btn && !livenessPassed) {
-    btn.innerHTML = '<i class="fas fa-camera"></i> <span>Live Selfie &amp; Eye Scan</span>';
+    const dict = getDict(currentLang, getSelectedLangLabel(currentLang));
+    btn.innerHTML = `<i class="fas fa-camera"></i> <span id="cameraBtnText">${dict.camera}</span>`;
     btn.disabled = false;
   }
 }
@@ -1201,10 +1806,11 @@ window.manualCaptcha = () => checkButtonState();
 function updateTimer() {
   const el = document.getElementById('otpTimer');
   if (!el) return;
+  const dict = getDict(currentLang, getSelectedLangLabel(currentLang));
   if (otpSeconds > 0) {
-    el.textContent = `Code expires in ${otpSeconds}s`;
+    el.textContent = `${dict.otpExpiresPrefix}${otpSeconds}s`;
   } else {
-    el.textContent = 'Code expired - click Resend OTP';
+    el.textContent = dict.otpExpired;
   }
 }
 
@@ -1220,12 +1826,18 @@ async function parseJsonSafe(res) {
 async function sendOTP() {
   const email = document.getElementById('email').value.trim();
   const btn = document.getElementById('sendOtpBtn');
+  const dict = getDict(currentLang, getSelectedLangLabel(currentLang));
   setMessage('');
 
   if (!isValidEmail(email)) {
     setMessage('Please enter a valid email address.');
     return;
   }
+
+  let signupName = 'User';
+  try {
+    signupName = localStorage.getItem('signup_name') || 'User';
+  } catch (e) {}
 
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending OTP...';
   btn.disabled = true;
@@ -1236,7 +1848,7 @@ async function sendOTP() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email,
-        name: localStorage.getItem('signup_name') || 'User',
+        name: signupName,
         lang: currentLang
       })
     });
@@ -1254,7 +1866,7 @@ async function sendOTP() {
     if (!res.ok || data.success === false) {
       const errMsg = data.message || data.error || data.code || `Failed to send OTP (HTTP ${res.status}).`;
       setMessage(errMsg);
-      btn.innerHTML = 'Send OTP';
+      btn.innerHTML = dict.sendOtp;
       checkButtonState();
       return;
     }
@@ -1285,7 +1897,7 @@ async function sendOTP() {
   } catch (err) {
     console.error('Send OTP network/client error:', err);
     setMessage('Network or server error while sending OTP: ' + (err.message || 'Unknown error'));
-    btn.innerHTML = 'Send OTP';
+    btn.innerHTML = dict.sendOtp;
     checkButtonState();
   }
 }
@@ -1294,12 +1906,16 @@ async function verifyOTPAndSignup() {
   const email = document.getElementById('email').value.trim();
   const otp = document.getElementById('otp').value.trim();
   const password = document.getElementById('password').value;
-  const name = localStorage.getItem('signup_name') || 'User';
+  let name = 'User';
+  try {
+    name = localStorage.getItem('signup_name') || 'User';
+  } catch (e) {}
   const day = document.getElementById('day').value.trim();
   const month = document.getElementById('month').value.trim();
   const year = document.getElementById('year').value.trim();
 
   const btn = document.getElementById('signUpBtn');
+  const dict = getDict(currentLang, getSelectedLangLabel(currentLang));
   setMessage('');
 
   if (!isValidDob(day, month, year)) {
@@ -1349,7 +1965,7 @@ async function verifyOTPAndSignup() {
     if (!res.ok || data.success === false) {
       const errMsg = data.message || data.error || data.code || `Signup failed (HTTP ${res.status}).`;
       setMessage(errMsg);
-      btn.innerHTML = 'Sign Up';
+      btn.innerHTML = dict.signUp;
       checkButtonState();
       return;
     }
@@ -1366,1142 +1982,24 @@ async function verifyOTPAndSignup() {
   } catch (err) {
     console.error('Verify OTP / Signup error:', err);
     setMessage('Error completing sign up: ' + (err.message || 'Unknown error'));
-    btn.innerHTML = 'Sign Up';
+    btn.innerHTML = dict.signUp;
     checkButtonState();
   }
 }
 
-restoreSavedLanguage();
-updateNamePreview();
-checkButtonState();
-document.addEventListener('DOMContentLoaded', () => {
+function initPage() {
+  const selectEl = document.getElementById('languageSelect');
+  if (selectEl) {
+    selectEl.addEventListener('change', () => onLanguageSelectChange(selectEl));
+    selectEl.addEventListener('input', () => onLanguageSelectChange(selectEl));
+  }
   restoreSavedLanguage();
   updateNamePreview();
   checkButtonState();
-});
+}
+
+initPage();
+document.addEventListener('DOMContentLoaded', initPage);
 </script>
 </body>
-        </html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#043D22">
-<title>Sign Up - Autrobook</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-<style>
-  :root {
-    --primary: #043D22;
-    --primary-hover: #065731;
-    --bg: #f0f2f5;
-    --card: #ffffff;
-    --text: #050505;
-    --muted: #65676b;
-    --border: #dadde1;
-    --input-bg: #ffffff;
-    --error: #e41e3f;
-    --success: #2e7d32;
-    --disabled: #9e9e9e;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --primary: #10b981;
-      --primary-hover: #059669;
-      --bg: #18191a;
-      --card: #242526;
-      --text: #e4e6eb;
-      --muted: #b0b3b8;
-      --border: #3a3b3c;
-      --input-bg: #242526;
-      --error: #f02849;
-      --success: #66bb6a;
-      --disabled: #4b4c4f;
-    }
-  }
-
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .top-bar {
-    width: 100%;
-    max-width: 480px;
-    padding: 16px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .back-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--card);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: var(--text);
-    cursor: pointer;
-    border: 1px solid var(--border);
-  }
-
-  .lang-wrapper {
-    display: inline-flex;
-    align-items: center;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 8px 14px;
-    cursor: pointer;
-  }
-
-  .lang-wrapper span {
-    font-size: 13.5px;
-    font-weight: 600;
-  }
-
-  .lang-wrapper i {
-    font-size: 12px;
-    color: var(--muted);
-    margin-left: 8px;
-  }
-
-  .lang-modal-back {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-  }
-
-  .lang-modal {
-    background: var(--card);
-    width: 90%;
-    max-width: 380px;
-    border-radius: 16px;
-    padding: 24px;
-  }
-
-  .lang-modal h3 {
-    margin-bottom: 16px;
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .lang-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 380px;
-    overflow-y: auto;
-  }
-
-  .lang-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  .lang-item:hover {
-    background: var(--bg);
-  }
-
-  .lang-item span {
-    font-size: 15px;
-    font-weight: 500;
-  }
-
-  .lang-item input[type="radio"] {
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--muted);
-    border-radius: 50%;
-    cursor: pointer;
-    position: relative;
-  }
-
-  .lang-item input[type="radio"]:checked {
-    border-color: var(--primary);
-  }
-
-  .lang-item input[type="radio"]:checked::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 10px;
-    height: 10px;
-    background: var(--primary);
-    border-radius: 50%;
-  }
-
-  .lang-close {
-    width: 100%;
-    padding: 13px;
-    margin-top: 18px;
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-  }
-
-  .header {
-    text-align: center;
-    margin-bottom: 18px;
-    padding: 0 20px;
-  }
-
-  .logo {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-    object-fit: cover;
-    margin: 0 auto 12px;
-    display: block;
-  }
-
-  h2 {
-    font-size: 24px;
-    font-weight: 800;
-    margin-bottom: 6px;
-  }
-
-  .subtitle {
-    font-size: 14px;
-    color: var(--muted);
-  }
-
-  .progress-container {
-    width: 100%;
-    max-width: 440px;
-    padding: 0 20px;
-    display: flex;
-    gap: 6px;
-    margin-bottom: 22px;
-  }
-
-  .progress-step {
-    flex: 1;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--border);
-  }
-
-  .progress-step.active {
-    background: var(--primary);
-  }
-
-  .form-wrap {
-    width: 100%;
-    max-width: 440px;
-    padding: 0 20px 40px;
-    position: relative;
-    z-index: 10;
-  }
-
-  .form-group {
-    margin-bottom: 16px;
-    position: relative;
-  }
-
-  label {
-    display: block;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-
-  input[type="email"],
-  input[type="password"],
-  input[type="text"],
-  input[type="number"] {
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1.5px solid var(--border);
-    background: var(--input-bg);
-    color: var(--text);
-    font-size: 15px;
-    outline: none;
-    transition: border 0.2s;
-  }
-
-  input:focus {
-    border-color: var(--primary);
-  }
-
-  .eye-icon {
-    position: absolute;
-    right: 14px;
-    top: 38px;
-    cursor: pointer;
-    color: var(--muted);
-    padding: 6px;
-    font-size: 17px;
-  }
-
-  .dob-wrap {
-    display: flex;
-    gap: 8px;
-  }
-
-  .dob-wrap input {
-    text-align: center;
-  }
-
-  .verify-box {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 18px;
-    text-align: center;
-    background: var(--input-bg);
-    margin-bottom: 18px;
-  }
-
-  .verify-box video {
-    width: 100%;
-    border-radius: 10px;
-    display: none;
-    margin-bottom: 10px;
-    transform: scaleX(-1);
-  }
-
-  .verify-box img {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin: 10px auto;
-    display: none;
-    border: 3px solid var(--primary);
-  }
-
-  .verify-btn {
-    width: 100%;
-    padding: 13px;
-    border: none;
-    border-radius: 10px;
-    background: var(--primary);
-    color: #fff;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .verify-btn:hover {
-    background: var(--primary-hover);
-  }
-
-  .verify-btn.verified {
-    background: var(--success) !important;
-  }
-
-  .liveness-text {
-    font-size: 12.5px;
-    color: var(--primary);
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-
-  .fingerprint-btn {
-    width: 100%;
-    padding: 13px;
-    margin-top: 10px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    background: transparent;
-    color: var(--text);
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .fingerprint-btn.verified {
-    border-color: var(--success);
-    color: var(--success);
-  }
-
-  .manual-captcha-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--input-bg);
-    border: 1.5px solid var(--border);
-    padding: 14px 16px;
-    border-radius: 12px;
-    cursor: pointer;
-    margin: 8px 0 18px;
-  }
-
-  .manual-captcha-row input[type="checkbox"] {
-    display: none;
-  }
-
-  .custom-checkbox {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--muted);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .manual-captcha-row input:checked ~ .custom-checkbox {
-    background: var(--primary);
-    border-color: var(--primary);
-  }
-
-  .manual-captcha-row input:checked ~ .custom-checkbox::after {
-    content: '\f00c';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    color: #fff;
-    font-size: 13px;
-  }
-
-  .manual-captcha-row span {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .btn {
-    width: 100%;
-    padding: 14px;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    border: none;
-    margin-top: 10px;
-    background: var(--disabled);
-    color: #fff;
-    cursor: not-allowed;
-    transition: background 0.2s;
-  }
-
-  .btn.active {
-    background: var(--primary) !important;
-    cursor: pointer;
-  }
-
-  .btn.active:hover {
-    background: var(--primary-hover) !important;
-  }
-
-  .btn-secondary {
-    width: 100%;
-    padding: 14px;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    border: 1.5px solid var(--border);
-    background: transparent;
-    color: var(--text);
-    margin-top: 10px;
-    cursor: pointer;
-  }
-
-  .msg {
-    text-align: center;
-    font-size: 13px;
-    color: var(--error);
-    font-weight: 700;
-    min-height: 20px;
-    margin-bottom: 10px;
-    word-break: break-word;
-  }
-
-  .msg.success {
-    color: var(--success);
-  }
-
-  .footer-text {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 13.5px;
-    color: var(--muted);
-  }
-
-  .footer-text a {
-    color: var(--primary);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .otp-timer {
-    font-size: 12px;
-    color: var(--muted);
-    text-align: center;
-    margin-top: 8px;
-  }
-
-  .hide {
-    display: none !important;
-  }
-</style>
-</head>
-<body>
-
-<div class="top-bar">
-  <div class="back-btn" onclick="goBack()" title="Back"><i class="fas fa-arrow-left"></i></div>
-  <div class="lang-wrapper" onclick="openLangModal()">
-    <span id="langBtn">English - US</span>
-    <i class="fas fa-chevron-down"></i>
-  </div>
-</div>
-
-<div class="header">
-  <img src="logo.png" alt="Autrobook" class="logo" onerror="this.style.display='none'">
-  <h2>Secure Your Account</h2>
-  <p class="subtitle">Enter details, verify your identity, and confirm with a 6-digit email OTP code</p>
-</div>
-
-<div class="progress-container">
-  <div class="progress-step active"></div>
-  <div class="progress-step active"></div>
-</div>
-
-<div class="form-wrap">
-  <p id="namePreview" style="color:var(--primary);font-size:14px;font-weight:700;margin-bottom:16px;"></p>
-
-  <div class="form-group">
-    <label for="email">Email Address</label>
-    <input type="email" id="email" placeholder="you@example.com" autocomplete="email" oninput="checkButtonState()">
-  </div>
-
-  <div class="form-group hide" id="otpGroup">
-    <label for="otp">6-Digit Email Verification Code (OTP)</label>
-    <input type="text" id="otp" maxlength="6" inputmode="numeric" placeholder="Enter 6-digit OTP from email" oninput="checkButtonState()">
-    <div class="otp-timer" id="otpTimer">Code expires in 60s</div>
-  </div>
-
-  <div class="form-group">
-    <label>Birthday</label>
-    <div class="dob-wrap">
-      <input type="number" id="day" placeholder="DD" min="1" max="31" oninput="checkButtonState()">
-      <input type="number" id="month" placeholder="MM" min="1" max="12" oninput="checkButtonState()">
-      <input type="number" id="year" placeholder="YYYY" min="1900" max="2026" oninput="checkButtonState()">
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label for="password">Create Password</label>
-    <input type="password" id="password" placeholder="At least 6 characters" autocomplete="new-password" oninput="checkButtonState()">
-    <i class="fa-solid fa-eye eye-icon" id="togglePasswordIcon" onclick="togglePass()"></i>
-  </div>
-
-  <label>Security Verification (Mandatory)</label>
-  <div class="verify-box">
-    <p class="liveness-text hide" id="livenessText">Please look at the camera and blink clearly to verify</p>
-    <video id="video" autoplay playsinline muted></video>
-    <img id="photo" alt="Captured selfie">
-    <button type="button" class="verify-btn" id="cameraBtn" onclick="startCamera()">
-      <i class="fas fa-camera"></i> <span>Live Selfie &amp; Eye Scan</span>
-    </button>
-    <button type="button" class="fingerprint-btn" id="fingerprintBtn" onclick="registerFingerprint()">
-      <i class="fas fa-fingerprint"></i> <span>Add Fingerprint (Optional)</span>
-    </button>
-    <div class="verify-status" id="verifyStatus" style="font-size:13px;font-weight:600;color:var(--muted);margin-top:10px;">
-      Verify using camera to proceed
-    </div>
-  </div>
-
-  <div style="display:flex;justify-content:center;transform:scale(0.9);margin-bottom:8px;min-height:78px;">
-    <div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d" data-callback="enableBtn"></div>
-  </div>
-
-  <label class="manual-captcha-row" for="humanCheck">
-    <input type="checkbox" id="humanCheck" onchange="manualCaptcha()">
-    <div class="custom-checkbox"></div>
-    <span>I'm not a robot - Manual verification</span>
-  </label>
-
-  <div class="msg" id="msgDetails"></div>
-
-  <button type="button" class="btn" id="sendOtpBtn" onclick="sendOTP()" disabled>Send OTP</button>
-  <button type="button" class="btn" id="signUpBtn" onclick="verifyOTPAndSignup()" disabled>Sign Up</button>
-  <button type="button" class="btn-secondary" onclick="goBack()">← Back</button>
-  <button type="button" class="btn-secondary" onclick="goCancel()" style="color:var(--error);border-color:var(--error);">Cancel</button>
-
-  <p class="footer-text">
-    Already have an account?
-    <a href="login.html">Log in</a>
-  </p>
-</div>
-
-<div class="lang-modal-back" id="langModal" onclick="closeLangModal()">
-  <div class="lang-modal" onclick="event.stopPropagation()">
-    <h3>Select Language</h3>
-    <div class="lang-list" id="langList"></div>
-    <button class="lang-close" onclick="closeLangModal()">Close</button>
-  </div>
-</div>
-
-<script>
-const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
-
-let supabaseClient = null;
-try {
-  if (window.supabase && typeof window.supabase.createClient === 'function') {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-} catch (err) {
-  console.error('Supabase initialization error:', err);
-}
-
-const languageList = [
-  { code: 'en', name: 'English - US', dir: 'ltr' },
-  { code: 'bn', name: 'Bangla - Bangladesh', dir: 'ltr' },
-  { code: 'hi', name: 'Hindi - India', dir: 'ltr' },
-  { code: 'es', name: 'Spanish - Spain', dir: 'ltr' },
-  { code: 'fr', name: 'French - France', dir: 'ltr' },
-  { code: 'ar', name: 'Arabic - Standard', dir: 'rtl' },
-  { code: 'pt', name: 'Portuguese - Portugal', dir: 'ltr' },
-  { code: 'de', name: 'German - Germany', dir: 'ltr' },
-  { code: 'id', name: 'Indonesian', dir: 'ltr' },
-  { code: 'tr', name: 'Turkish - Turkiye', dir: 'ltr' }
-];
-
-let currentLang = localStorage.getItem('autro_lang') || 'en';
-let selfieData = '';
-let faceDescriptor = null;
-let stream = null;
-let livenessPassed = false;
-let webauthnCredentialId = null;
-let otpTimer = null;
-let otpSeconds = 60;
-let modelsLoaded = false;
-let otpSent = false;
-
-function setMessage(text, isSuccess = false) {
-  const msg = document.getElementById('msgDetails');
-  if (!msg) return;
-  msg.textContent = text || '';
-  msg.classList.toggle('success', Boolean(isSuccess));
-}
-
-function applyLanguage(langCode) {
-  const selected = languageList.find(l => l.code === langCode) || languageList[0];
-  currentLang = selected.code;
-  localStorage.setItem('autro_lang', currentLang);
-  document.documentElement.lang = currentLang;
-  document.documentElement.dir = selected.dir;
-  document.getElementById('langBtn').textContent = selected.name;
-}
-
-function buildLangList() {
-  const list = document.getElementById('langList');
-  list.innerHTML = '';
-  languageList.forEach(lang => {
-    const item = document.createElement('div');
-    item.className = 'lang-item';
-    item.innerHTML = `
-      <span>${lang.name}</span>
-      <input type="radio" name="lang" ${currentLang === lang.code ? 'checked' : ''}>
-    `;
-    item.addEventListener('click', () => {
-      applyLanguage(lang.code);
-      closeLangModal();
-    });
-    list.appendChild(item);
-  });
-}
-
-function openLangModal() {
-  document.getElementById('langModal').style.display = 'flex';
-}
-
-function closeLangModal() {
-  document.getElementById('langModal').style.display = 'none';
-}
-
-function goBack() {
-  window.location.href = 'signup-name.html';
-}
-
-function goCancel() {
-  window.location.href = 'welcome.html';
-}
-
-function togglePass() {
-  const input = document.getElementById('password');
-  const icon = document.getElementById('togglePasswordIcon');
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.classList.remove('fa-eye');
-    icon.classList.add('fa-eye-slash');
-  } else {
-    input.type = 'password';
-    icon.classList.remove('fa-eye-slash');
-    icon.classList.add('fa-eye');
-  }
-}
-
-function updateNamePreview() {
-  const savedName = localStorage.getItem('signup_name');
-  if (savedName) {
-    document.getElementById('namePreview').textContent = 'Account Name: ' + savedName;
-  }
-}
-
-async function registerFingerprint() {
-  if (!window.PublicKeyCredential || !navigator.credentials) {
-    setMessage('Fingerprint / WebAuthn is not supported in this browser.');
-    return;
-  }
-
-  try {
-    const challenge = new Uint8Array(32);
-    window.crypto.getRandomValues(challenge);
-    const userId = new Uint8Array(16);
-    window.crypto.getRandomValues(userId);
-    const emailVal = document.getElementById('email').value.trim() || 'user@autrobook.com';
-
-    const credential = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: 'Autrobook', id: window.location.hostname },
-        user: {
-          id: userId,
-          name: emailVal,
-          displayName: localStorage.getItem('signup_name') || 'Autrobook User'
-        },
-        pubKeyCredParams: [
-          { type: 'public-key', alg: -7 },
-          { type: 'public-key', alg: -257 }
-        ],
-        authenticatorSelection: {
-          userVerification: 'required',
-          authenticatorAttachment: 'platform'
-        },
-        timeout: 60000
-      }
-    });
-
-    if (credential) {
-      webauthnCredentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-      const btn = document.getElementById('fingerprintBtn');
-      btn.classList.add('verified');
-      btn.innerHTML = '<i class="fas fa-check-circle"></i> Fingerprint Registered';
-      btn.disabled = true;
-      setMessage('');
-    }
-  } catch (err) {
-    console.error('Fingerprint setup error:', err);
-    setMessage('Fingerprint setup was cancelled or failed.');
-  }
-}
-
-const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
-
-function stopCamera(btn) {
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-    stream = null;
-  }
-  document.getElementById('video').style.display = 'none';
-  document.getElementById('livenessText').classList.add('hide');
-  if (btn && !livenessPassed) {
-    btn.innerHTML = '<i class="fas fa-camera"></i> <span>Live Selfie &amp; Eye Scan</span>';
-    btn.disabled = false;
-  }
-}
-
-function getDistance(p1, p2) {
-  return Math.hypot(p1.x - p2.x, p1.y - p2.y);
-}
-
-async function startCamera() {
-  const btn = document.getElementById('cameraBtn');
-  const statusEl = document.getElementById('verifyStatus');
-  setMessage('');
-
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user' },
-      audio: false
-    });
-
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-    video.style.display = 'block';
-    document.getElementById('livenessText').classList.remove('hide');
-
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning face...';
-    btn.disabled = true;
-    statusEl.textContent = 'Loading face detection models...';
-
-    if (!modelsLoaded) {
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-      modelsLoaded = true;
-    }
-
-    statusEl.textContent = 'Blink your eyes once to complete verification';
-
-    let blinkCount = 0;
-    let lastEyeState = 'open';
-    let completed = false;
-
-    const interval = setInterval(async () => {
-      if (completed) return;
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks();
-
-      if (detection) {
-        const leftEye = detection.landmarks.getLeftEye();
-        const rightEye = detection.landmarks.getRightEye();
-        const earLeft = (getDistance(leftEye[1], leftEye[5]) + getDistance(leftEye[2], leftEye[4])) / (2 * getDistance(leftEye[0], leftEye[3]));
-        const earRight = (getDistance(rightEye[1], rightEye[5]) + getDistance(rightEye[2], rightEye[4])) / (2 * getDistance(rightEye[0], rightEye[3]));
-        const avgEar = (earLeft + earRight) / 2;
-
-        if (avgEar < 0.25 && lastEyeState === 'open') {
-          blinkCount++;
-          lastEyeState = 'closed';
-        } else if (avgEar >= 0.25 && lastEyeState === 'closed') {
-          lastEyeState = 'open';
-        }
-
-        if (blinkCount >= 1) {
-          completed = true;
-          clearInterval(interval);
-          await capturePhotoAndDescriptor(video);
-        }
-      }
-    }, 220);
-
-    setTimeout(() => {
-      if (!livenessPassed) {
-        clearInterval(interval);
-        setMessage('Liveness check timed out. Please look at the camera and blink clearly.');
-        statusEl.textContent = 'Verification failed. Try again.';
-        stopCamera(btn);
-      }
-    }, 15000);
-  } catch (err) {
-    console.error('Camera error:', err);
-    setMessage('Camera permission denied or camera is unavailable.');
-    statusEl.textContent = 'Camera unavailable';
-    stopCamera(btn);
-  }
-}
-
-async function capturePhotoAndDescriptor(video) {
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth || 320;
-  canvas.height = video.videoHeight || 240;
-
-  const ctx = canvas.getContext('2d');
-  ctx.translate(canvas.width, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  selfieData = canvas.toDataURL('image/jpeg', 0.8);
-  const photoImg = document.getElementById('photo');
-  photoImg.src = selfieData;
-  photoImg.style.display = 'block';
-
-  try {
-    const fullDetection = await faceapi
-      .detectSingleFace(photoImg, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-    if (fullDetection && fullDetection.descriptor) {
-      faceDescriptor = Array.from(fullDetection.descriptor);
-    }
-  } catch (e) {
-    console.warn('Descriptor extraction warning:', e);
-  }
-
-  document.getElementById('livenessText').classList.add('hide');
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-    stream = null;
-  }
-  video.style.display = 'none';
-
-  const btn = document.getElementById('cameraBtn');
-  btn.innerHTML = '<i class="fas fa-check"></i> Face Verified';
-  btn.classList.add('verified');
-  btn.disabled = true;
-
-  document.getElementById('verifyStatus').textContent = 'Identity verified via live selfie';
-  livenessPassed = true;
-  checkButtonState();
-}
-
-function isValidDob(day, month, year) {
-  const d = parseInt(day, 10);
-  const m = parseInt(month, 10);
-  const y = parseInt(year, 10);
-  if (!d || !m || !y) return false;
-  if (d < 1 || d > 31 || m < 1 || m > 12) return false;
-  const currentYear = new Date().getFullYear();
-  if (y < 1900 || y > currentYear) return false;
-  const dt = new Date(y, m - 1, d);
-  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
-}
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function hasHumanCheck() {
-  const recaptchaToken = (typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse === 'function')
-    ? grecaptcha.getResponse()
-    : '';
-  const manualChecked = document.getElementById('humanCheck').checked;
-  return Boolean(recaptchaToken) || manualChecked;
-}
-
-function checkButtonState() {
-  const email = document.getElementById('email').value.trim();
-  const otp = document.getElementById('otp').value.trim();
-  const day = document.getElementById('day').value.trim();
-  const month = document.getElementById('month').value.trim();
-  const year = document.getElementById('year').value.trim();
-  const password = document.getElementById('password').value;
-
-  const humanOk = hasHumanCheck();
-  const sendBtn = document.getElementById('sendOtpBtn');
-  const signBtn = document.getElementById('signUpBtn');
-
-  if (isValidEmail(email) && humanOk) {
-    sendBtn.classList.add('active');
-    sendBtn.disabled = false;
-  } else {
-    sendBtn.classList.remove('active');
-    sendBtn.disabled = true;
-  }
-
-  const dobOk = year.length === 4 && isValidDob(day, month, year);
-  if (otpSent && otp.length === 6 && humanOk && livenessPassed && isValidEmail(email) && dobOk && password.length >= 6) {
-    signBtn.classList.add('active');
-    signBtn.disabled = false;
-  } else {
-    signBtn.classList.remove('active');
-    signBtn.disabled = true;
-  }
-}
-
-window.enableBtn = () => checkButtonState();
-window.manualCaptcha = () => checkButtonState();
-
-function updateTimer() {
-  const el = document.getElementById('otpTimer');
-  if (!el) return;
-  if (otpSeconds > 0) {
-    el.textContent = `Code expires in ${otpSeconds}s`;
-  } else {
-    el.textContent = 'Code expired - click Resend OTP';
-  }
-}
-
-async function parseJsonSafe(res) {
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { message: text || `HTTP ${res.status}` };
-  }
-}
-
-async function sendOTP() {
-  const email = document.getElementById('email').value.trim();
-  const btn = document.getElementById('sendOtpBtn');
-  setMessage('');
-
-  if (!isValidEmail(email)) {
-    setMessage('Please enter a valid email address.');
-    return;
-  }
-
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending OTP...';
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        name: localStorage.getItem('signup_name') || 'User'
-      })
-    });
-
-    const data = await parseJsonSafe(res);
-
-    if (data.alreadyExists) {
-      setMessage('An account already exists with this email. Redirecting to login...');
-      setTimeout(() => {
-        window.location.href = 'login.html';
-      }, 2000);
-      return;
-    }
-
-    if (!res.ok || data.success === false) {
-      const errMsg = data.message || data.error || data.code || `Failed to send OTP (HTTP ${res.status}).`;
-      setMessage(errMsg);
-      btn.innerHTML = 'Send OTP';
-      checkButtonState();
-      return;
-    }
-
-    otpSent = true;
-    document.getElementById('otpGroup').classList.remove('hide');
-    document.getElementById('otp').focus();
-    setMessage('6-digit OTP code sent to your email. Check Inbox or Spam.', true);
-
-    otpSeconds = 60;
-    updateTimer();
-    if (otpTimer) clearInterval(otpTimer);
-    otpTimer = setInterval(() => {
-      otpSeconds--;
-      updateTimer();
-      if (otpSeconds <= 0) {
-        clearInterval(otpTimer);
-      }
-    }, 1000);
-
-    btn.innerHTML = '<i class="fas fa-check"></i> OTP Sent';
-    setTimeout(() => {
-      btn.innerHTML = 'Resend OTP';
-      checkButtonState();
-    }, 3000);
-
-    checkButtonState();
-  } catch (err) {
-    console.error('Send OTP network/client error:', err);
-    setMessage('Network or server error while sending OTP: ' + (err.message || 'Unknown error'));
-    btn.innerHTML = 'Send OTP';
-    checkButtonState();
-  }
-}
-
-async function verifyOTPAndSignup() {
-  const email = document.getElementById('email').value.trim();
-  const otp = document.getElementById('otp').value.trim();
-  const password = document.getElementById('password').value;
-  const name = localStorage.getItem('signup_name') || 'User';
-  const day = document.getElementById('day').value.trim();
-  const month = document.getElementById('month').value.trim();
-  const year = document.getElementById('year').value.trim();
-
-  const btn = document.getElementById('signUpBtn');
-  setMessage('');
-
-  if (!isValidDob(day, month, year)) {
-    setMessage('Please enter a valid birthday (DD / MM / YYYY).');
-    return;
-  }
-
-  if (password.length < 6) {
-    setMessage('Password must be at least 6 characters long.');
-    return;
-  }
-
-  const dob = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        otp,
-        password,
-        profile: {
-          full_name: name,
-          dob,
-          selfieData,
-          faceDescriptor,
-          webauthnCredentialId
-        }
-      })
-    });
-
-    const data = await parseJsonSafe(res);
-
-    if (data.alreadyExists) {
-      setMessage('An account already exists with this email. Redirecting to login...');
-      setTimeout(() => {
-        window.location.href = 'login.html';
-      }, 2000);
-      return;
-    }
-
-    if (!res.ok || data.success === false) {
-      const errMsg = data.message || data.error || data.code || `Signup failed (HTTP ${res.status}).`;
-      setMessage(errMsg);
-      btn.innerHTML = 'Sign Up';
-      checkButtonState();
-      return;
-    }
-
-    if (supabaseClient) {
-      const { error: signInErr } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (signInErr) {
-        window.location.href = 'login.html?msg=signup_success';
-        return;
-      }
-    }
-
-    window.location.href = 'index.html';
-  } catch (err) {
-    console.error('Verify OTP / Signup error:', err);
-    setMessage('Error completing sign up: ' + (err.message || 'Unknown error'));
-    btn.innerHTML = 'Sign Up';
-    checkButtonState();
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  applyLanguage(currentLang);
-  buildLangList();
-  updateNamePreview();
-  checkButtonState();
-});
-</script>
-</body>
-    </html>
+  </html>
