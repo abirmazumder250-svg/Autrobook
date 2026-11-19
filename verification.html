@@ -431,7 +431,7 @@
           </button>
         </div>
         <p class="note-text" id="authHelperNote">
-          Uses Supabase Google OAuth when configured, and binds a WebAuthn passkey credential ID + challenge on supported HTTPS devices.
+          Requires an active Supabase Google OAuth session and binds a WebAuthn passkey credential ID + challenge on supported HTTPS devices.
         </p>
       </div>
 
@@ -538,14 +538,13 @@
       const CLOUD_URL = "https://gemyqaniztqrsilayblx.supabase.co";
       const CLOUD_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
       const DASHBOARD_ROW_ID = "default_dashboard";
-      const VER_META_KEY = "autro_verification_meta_v2";
+      const VER_META_KEY = "autro_verification_meta_v3";
       const THEME_STORAGE_KEY = "autro_theme_mode";
       const MAX_BYTES = 1024 * 1024; // strictly < 1 MB
       const ALLOWED_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
       const mediaQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
-      // Sensitive image payloads stay in memory only and are cleared after submission
       let memoryImages = {
         nidFrontData: "",
         nidBackData: "",
@@ -556,11 +555,9 @@
         fullName: "",
         googleConnected: false,
         googleUser: "",
+        accessToken: "",
         fingerprintVerified: false,
         credentialIdShort: "",
-        nidFrontSelected: false,
-        nidBackSelected: false,
-        selfieCaptured: false,
         livenessPassed: false,
         matchScore: 0,
         matched: false,
@@ -638,9 +635,7 @@
 
       function hasValidImageMagicBytes(bytes) {
         if (!bytes || bytes.length < 12) return false;
-        // JPEG: FF D8 FF
         const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-        // PNG: 89 50 4E 47 0D 0A 1A 0A
         const isPng =
           bytes[0] === 0x89 &&
           bytes[1] === 0x50 &&
@@ -650,7 +645,6 @@
           bytes[5] === 0x0a &&
           bytes[6] === 0x1a &&
           bytes[7] === 0x0a;
-        // WebP: RIFF....WEBP
         const isWebp =
           bytes[0] === 0x52 &&
           bytes[1] === 0x49 &&
@@ -661,6 +655,34 @@
           bytes[10] === 0x42 &&
           bytes[11] === 0x50;
         return isJpeg || isPng || isWebp;
+      }
+
+      async function verifySupabaseGoogleSession(token) {
+        if (!token) return false;
+        try {
+          const res = await fetch(`${CLOUD_URL}/auth/v1/user`, {
+            headers: {
+              apikey: CLOUD_KEY,
+              Authorization: "Bearer " + token
+            }
+          });
+          if (!res.ok) return false;
+          const user = await res.json();
+          if (user && (user.email || user.id)) {
+            metaState.googleConnected = true;
+            metaState.googleUser = user.email || "Google Verified";
+            metaState.accessToken = token;
+            saveMetaState();
+            return true;
+          }
+        } catch (e) {}
+        return false;
+      }
+
+      function extractTokenFromHash() {
+        if (!window.location.hash) return "";
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        return params.get("access_token") || "";
       }
 
       function refreshUI() {
@@ -749,15 +771,25 @@
         }
       }
 
-      // Google OAuth redirect via Supabase Auth
+      // Strict Google OAuth via Supabase Auth
       document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
-        if (window.location.hash && window.location.hash.includes("access_token")) {
-          metaState.googleConnected = true;
-          metaState.googleUser = "Google Authenticated";
-          saveMetaState();
-          refreshUI();
-          showToast("Google Auth connected");
-          return;
+        const hashToken = extractTokenFromHash();
+        if (hashToken) {
+          const valid = await verifySupabaseGoogleSession(hashToken);
+          if (valid) {
+            refreshUI();
+            showToast("Google account verified");
+            return;
+          }
+        }
+
+        if (metaState.accessToken) {
+          const validSaved = await verifySupabaseGoogleSession(metaState.accessToken);
+          if (validSaved) {
+            refreshUI();
+            showToast("Google session verified");
+            return;
+          }
         }
 
         try {
@@ -774,18 +806,12 @@
           }
         } catch (e) {}
 
-        metaState.googleConnected = true;
-        metaState.googleUser = "Google Session Active";
+        metaState.googleConnected = false;
+        metaState.googleUser = "";
         saveMetaState();
         refreshUI();
-        showToast("Google Auth active");
+        showToast("Enable Google provider & Redirect URL in Supabase Auth");
       });
-
-      if (window.location.hash && window.location.hash.includes("access_token")) {
-        metaState.googleConnected = true;
-        metaState.googleUser = "Google Authenticated";
-        saveMetaState();
-      }
 
       // Fingerprint / Passkey via WebAuthn with credential binding
       document.getElementById("fingerprintBtn")?.addEventListener("click", async () => {
@@ -888,8 +914,6 @@
             metaState.matched = false;
             metaState.matchScore = 0;
             metaState.submitted = false;
-            if (targetKey === "nidFrontData") metaState.nidFrontSelected = true;
-            if (targetKey === "nidBackData") metaState.nidBackSelected = true;
             if (note) note.textContent = `Verified ${file.name} (${kb} KB < 1 MB)`;
             saveMetaState();
             refreshUI();
@@ -1005,7 +1029,6 @@
         ctx.drawImage(videoEl, 0, 0, w, h);
 
         memoryImages.selfieData = canvas.toDataURL("image/jpeg", 0.8);
-        metaState.selfieCaptured = true;
         metaState.livenessPassed = Boolean(motionObserved);
         metaState.matched = false;
         metaState.matchScore = 0;
@@ -1086,7 +1109,6 @@
           return;
         }
         if (!metaState.livenessPassed) {
-          // Allow slight movement retry guidance while keeping security check clear
           if (resultBox) {
             resultBox.innerHTML = `<div><strong>Liveness Warning:</strong> No live camera motion detected. Open camera and move slightly, then capture again.</div>`;
           }
@@ -1155,23 +1177,42 @@
           metaState.submitted = true;
           metaState.lastSubmitAt = now;
 
-          // Clear raw sensitive images from memory after digesting & submitting
+          // Clear raw sensitive images from memory after digesting
           memoryImages.nidFrontData = "";
           memoryImages.nidBackData = "";
           memoryImages.selfieData = "";
-          metaState.nidFrontSelected = false;
-          metaState.nidBackSelected = false;
-          metaState.selfieCaptured = false;
 
           saveMetaState();
           refreshUI();
 
+          const authHeaders = {
+            apikey: CLOUD_KEY,
+            Authorization: "Bearer " + (metaState.accessToken || CLOUD_KEY),
+            "Content-Type": "application/json",
+            Prefer: "return=minimal"
+          };
+
+          await fetch(`${CLOUD_URL}/rest/v1/identity_verifications`, {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify([
+              {
+                full_name: metaState.fullName,
+                google_connected: Boolean(metaState.googleConnected),
+                fingerprint_verified: Boolean(metaState.fingerprintVerified),
+                credential_id_short: metaState.credentialIdShort || "",
+                liveness_passed: Boolean(metaState.livenessPassed),
+                match_score: Number(metaState.matchScore || 0),
+                digest_short: metaState.digestShort,
+                status: "verified"
+              }
+            ])
+          });
+
           await fetch(`${CLOUD_URL}/rest/v1/dashboard_state?on_conflict=id`, {
             method: "POST",
             headers: {
-              apikey: CLOUD_KEY,
-              Authorization: "Bearer " + CLOUD_KEY,
-              "Content-Type": "application/json",
+              ...authHeaders,
               Prefer: "resolution=merge-duplicates,return=minimal"
             },
             body: JSON.stringify([
@@ -1184,7 +1225,7 @@
           });
 
           if (statusEl) {
-            statusEl.textContent = `Submitted & synced (Ref: ${metaState.digestShort}) • Raw images cleared from memory`;
+            statusEl.textContent = `Submitted & synced (Ref: ${metaState.digestShort}) • Raw images cleared`;
           }
           showToast("Verification submitted securely");
         } catch (e) {
@@ -1197,10 +1238,25 @@
         }
       });
 
+      (async () => {
+        const hashToken = extractTokenFromHash();
+        if (hashToken) {
+          await verifySupabaseGoogleSession(hashToken);
+        } else if (metaState.accessToken) {
+          const ok = await verifySupabaseGoogleSession(metaState.accessToken);
+          if (!ok) {
+            metaState.googleConnected = false;
+            metaState.googleUser = "";
+            metaState.accessToken = "";
+            saveMetaState();
+          }
+        }
+        refreshUI();
+      })();
+
       window.addEventListener("beforeunload", stopCameraStream);
       if (mediaQuery) mediaQuery.addEventListener("change", applySystemDefaultTheme);
       applySystemDefaultTheme();
-      refreshUI();
     })();
   </script>
 </body>
