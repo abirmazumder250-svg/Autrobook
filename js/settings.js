@@ -45,7 +45,6 @@ const FEATURE_LINKS = {
   'apps and websites': 'apps-websites.html',
   'business integrations': 'business-integrations.html',
   'learn how to manage your information': 'manage-information.html',
-  'whatsapp': 'whatsapp-settings.html',
   'terms of service': 'public/terms/index.html',
   'privacy policy': 'public/privacy-policy/index.html',
   'cookies policy': 'cookies-policy.html',
@@ -124,6 +123,14 @@ function slugifyFeatureName(name) {
 function customizeSettingsPageUI() {
   applySystemDefaultTheme();
 
+  // Remove any WhatsApp entries if present in DOM
+  document.querySelectorAll('a, button, .setting-item, .settings-row, .list-item, li').forEach((item) => {
+    const txt = (item.textContent || '').trim().toLowerCase();
+    if (txt === 'whatsapp') {
+      item.remove();
+    }
+  });
+
   // Replace "Facebook" wording with "Autrobook" in text nodes
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
   let node;
@@ -136,7 +143,7 @@ function customizeSettingsPageUI() {
   // Update items, Meta Account -> Autro Account with "A" icon, and feature links
   const candidates = document.querySelectorAll('a, button, .setting-item, .settings-row, .list-item, li, div');
   candidates.forEach((el) => {
-    // Skip large containers
+    if (el.closest('#autrobookSystemFooter')) return;
     if (el.children.length > 5) return;
 
     const rawText = (el.textContent || '').trim();
@@ -145,7 +152,6 @@ function customizeSettingsPageUI() {
 
     if (!normalized) return;
 
-    // Replace "Meta Account" with "Autro Account" and swap icon for "A"
     if (normalized.includes('meta account')) {
       const svgOrIcon = el.querySelector('svg, img, i, .icon, .meta-icon');
       if (svgOrIcon) {
@@ -154,7 +160,6 @@ function customizeSettingsPageUI() {
       el.innerHTML = el.innerHTML.replace(/Meta Account/gi, 'Autro Account');
     }
 
-    // Link each recognized feature to its own link
     const matchedKey = Object.keys(FEATURE_LINKS).find((k) => normalized === k || normalized.startsWith(k + '\n'));
     if (matchedKey) {
       const targetUrl = FEATURE_LINKS[matchedKey] || slugifyFeatureName(matchedKey);
@@ -179,26 +184,6 @@ function customizeSettingsPageUI() {
       }
     }
   });
-
-  // Add Autrobook footer mark with system default theme note if not already present
-  if (!document.getElementById('autrobookFooterBrand')) {
-    const footer = document.createElement('div');
-    footer.id = 'autrobookFooterBrand';
-    footer.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 18px 12px 28px;
-      font-size: 12px;
-      opacity: 0.8;
-    `;
-    footer.appendChild(createBrandBadge('A', false));
-    const label = document.createElement('span');
-    label.textContent = `Autrobook • System Default Theme (${getSystemDefaultTheme()})`;
-    footer.appendChild(label);
-    document.body.appendChild(footer);
-  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -236,7 +221,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// 1. Change Password (Real Supabase Auth)
 async function changePassword() {
   const newPassInput = document.getElementById('newPass');
   const newPass = newPassInput ? newPassInput.value : '';
@@ -260,7 +244,6 @@ async function changePassword() {
   }
 }
 
-// 2. Global Logout (Real Supabase Auth)
 async function globalLogout() {
   isLoggingOut = true;
   toast('Logging out of all sessions...');
@@ -276,7 +259,6 @@ async function globalLogout() {
   }
 }
 
-// 3. Appeal Upload (Real Supabase Storage & DB)
 function updateFileText(input, spanId) {
   if (input.files && input.files[0]) {
     const span = document.getElementById(spanId);
@@ -345,7 +327,6 @@ async function submitAppeal() {
   }
 }
 
-// 4. Hack Detection Trigger
 async function triggerAccountDisable(reason) {
   localStorage.setItem('autrobook_account_status', 'disabled');
   showDisabledScreen();
@@ -368,7 +349,6 @@ function showDisabledScreen() {
   });
 }
 
-// 5. Report Problem (Real Supabase DB)
 async function submitReport() {
   const reason = document.getElementById('reportReason')?.value;
   const textEl = document.getElementById('reportText');
@@ -390,7 +370,6 @@ async function submitReport() {
   if (btn) btn.innerHTML = 'Submit to Server';
 }
 
-// 6. Real 2FA (Google Auth)
 function openModal(id) {
   if (id === 'm2FASetup' && window.OTPAuth && window.QRCode) {
     currentTOTPSecret = new OTPAuth.Secret({ size: 20 }).base32;
@@ -431,7 +410,6 @@ function enable2FA() {
   toast('✅ Authenticator linked!');
 }
 
-// 7. WebAuthn Passkey
 async function setupPasskey() {
   if (!window.PublicKeyCredential) return toast('Passkey not supported.');
   try {
@@ -457,7 +435,6 @@ async function setupPasskey() {
   }
 }
 
-// 8. Utils & UI
 function unlockApp() {
   sessionStorage.setItem('autrobook_unlocked', 'true');
   const autoLock = document.getElementById('autoLockScreen');
