@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tab Bar - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default Light Theme: White background & Black text */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f4f6f5;
+      --bg-hover: #e7ece9;
+      --text-main: #000000;
+      --text-muted: #1f2937;
+      --border-color: #cbd5e1;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    /* System Default Dark Theme: Black background & White text */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0a0a0a;
+      --bg-box: #141414;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e7eb;
+      --border-color: #2f2f2f;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 14px 40px rgba(0, 0, 0, 0.85);
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 108px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      overflow-x: hidden;
+    }
+
+    /* Sticky Topbar */
+    .tb-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .tb-title {
+      font-size: clamp(22px, 3.6vw, 30px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .tb-badge {
+      font-size: 12.5px;
+      font-weight: 800;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    /* Main Container */
+    .tb-wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 30px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .tb-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 26px;
+      padding: 32px 26px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    @media (min-width: 720px) {
+      .tb-card {
+        padding: 38px 36px;
+      }
+    }
+
+    .tb-heading {
+      font-size: clamp(20px, 2.6vw, 25px);
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .tb-desc {
+      font-size: 15.5px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* Bottom Navigation Tab Bar */
+    .autro-tab-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 80;
+      background-color: var(--bg-card);
+      border-top: 1px solid var(--border-color);
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .tab-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 9px 6px;
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--text-muted);
+      background-color: transparent;
+      border: 1px solid transparent;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+      min-width: 0;
+    }
+
+    .tab-item i {
+      font-size: 18px;
+    }
+
+    .tab-item span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .tab-item:hover {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+    }
+
+    .tab-item.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .tab-count {
+      position: absolute;
+      top: 4px;
+      right: 14px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      font-size: 10.5px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .tab-item.active .tab-count {
+      background-color: var(--accent-fg);
+      color: var(--accent-bg);
+      border-color: var(--accent-fg);
+    }
+
+    .tab-count.hidden {
+      display: none;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 12px 24px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="tb-header">
+    <h1 class="tb-title">Autrobook Tab Bar</h1>
+    <span class="tb-badge" id="activeTabBadge">HOME</span>
+  </header>
+
+  <main class="tb-wrap">
+    <section class="tb-card" id="tabViewPanel">
+      <h2 class="tb-heading" id="tabPanelTitle">Home Feed</h2>
+      <p class="tb-desc" id="tabPanelDesc">
+        Switch tabs below to navigate across Autrobook. System Default automatically pairs a white background with black text in light mode and a black background with white text in dark mode.
+      </p>
+    </section>
+  </main>
+
+  <nav class="autro-tab-bar" id="autroTabBar" aria-label="Primary Tab Bar">
+    <a href="index.html" class="tab-item active" data-tab="home" data-title="Home Feed" data-desc="View your main Autrobook feed, posts, and daily updates.">
+      <i class="fa-solid fa-house" aria-hidden="true"></i>
+      <span>Home</span>
+    </a>
+
+    <a href="pages.html" class="tab-item" data-tab="pages" data-title="Pages Hub" data-desc="Explore and manage Pages, follow creators, and check live counts.">
+      <i class="fa-regular fa-flag" aria-hidden="true"></i>
+      <span>Pages</span>
+      <span class="tab-count hidden" id="pagesTabCount">0</span>
+    </a>
+
+    <a href="create-page.html" class="tab-item" data-tab="create" data-title="Create Page" data-desc="Launch a new Page with custom category, bio, and initial post.">
+      <i class="fa-solid fa-circle-plus" aria-hidden="true"></i>
+      <span>Create</span>
+    </a>
+
+    <a href="18+guard-feature.html" class="tab-item" data-tab="guard" data-title="18+ Guard" data-desc="Manage 18+ protection, age confirmation, and sensitive media blur settings.">
+      <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+      <span>18+ Guard</span>
+    </a>
+
+    <a href="settings.html" class="tab-item" data-tab="settings" data-title="Settings" data-desc="Customize preferences, system theme appearance, and account controls.">
+      <i class="fa-solid fa-gear" aria-hidden="true"></i>
+      <span>Settings</span>
+    </a>
+  </nav>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const CLOUD_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+      const CLOUD_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const ROW_ID = "default_dashboard";
+      const TAB_STORAGE_KEY = "autro_active_tab_v1";
+      const PAGES_STORAGE_KEY = "autro_pages_hub_v3";
+      const THEME_STORAGE_KEY = "autro_theme_mode";
+
+      const mediaQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+      function applySystemDefaultTheme() {
+        let manual = null;
+        try {
+          manual = localStorage.getItem(THEME_STORAGE_KEY);
+        } catch (e) {}
+
+        const systemDark = Boolean(mediaQuery && mediaQuery.matches);
+        const isDark = manual === "dark" ? true : manual === "light" ? false : systemDark;
+
+        document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+        document.body.classList.toggle("dark", isDark);
+        document.body.classList.toggle("theme-dark", isDark);
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._tbToastTimer);
+        window._tbToastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      function syncPagesBadgeCount() {
+        const badge = document.getElementById("pagesTabCount");
+        if (!badge) return;
+        let count = 0;
+        try {
+          const raw = localStorage.getItem(PAGES_STORAGE_KEY);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) count = arr.length;
+          }
+        } catch (e) {}
+        badge.textContent = String(count);
+        badge.classList.toggle("hidden", count <= 0);
+      }
+
+      function detectInitialTab() {
+        const path = (window.location.pathname || "").toLowerCase();
+        if (path.includes("pages.html")) return "pages";
+        if (path.includes("create-page.html")) return "create";
+        if (path.includes("18+guard")) return "guard";
+        if (path.includes("settings.html")) return "settings";
+        try {
+          return localStorage.getItem(TAB_STORAGE_KEY) || "home";
+        } catch (e) {
+          return "home";
+        }
+      }
+
+      const tabBar = document.getElementById("autroTabBar");
+      const tabItems = Array.from(document.querySelectorAll("#autroTabBar .tab-item"));
+      const badgeEl = document.getElementById("activeTabBadge");
+      const panelTitle = document.getElementById("tabPanelTitle");
+      const panelDesc = document.getElementById("tabPanelDesc");
+
+      function setActiveTab(tabName) {
+        const chosen = tabItems.find((el) => el.getAttribute("data-tab") === tabName) || tabItems[0];
+        if (!chosen) return;
+
+        tabItems.forEach((el) => {
+          const isCurrent = el === chosen;
+          el.classList.toggle("active", isCurrent);
+          el.setAttribute("aria-current", isCurrent ? "page" : "false");
+        });
+
+        const key = chosen.getAttribute("data-tab") || "home";
+        try {
+          localStorage.setItem(TAB_STORAGE_KEY, key);
+        } catch (e) {}
+
+        if (badgeEl) badgeEl.textContent = key.toUpperCase();
+        if (panelTitle) panelTitle.textContent = chosen.getAttribute("data-title") || "Autrobook";
+        if (panelDesc) panelDesc.textContent = chosen.getAttribute("data-desc") || "";
+      }
+
+      async function syncActiveTabToSupabase(tabName) {
+        try {
+          await fetch(`${CLOUD_URL}/rest/v1/dashboard_state?on_conflict=id`, {
+            method: "POST",
+            headers: {
+              apikey: CLOUD_KEY,
+              Authorization: "Bearer " + CLOUD_KEY,
+              "Content-Type": "application/json",
+              Prefer: "resolution=merge-duplicates,return=minimal"
+            },
+            body: JSON.stringify([
+              {
+                id: ROW_ID,
+                quick_note: `ActiveTab: ${tabName}`,
+                updated_at: new Date().toISOString()
+              }
+            ])
+          });
+        } catch (e) {}
+      }
+
+      tabBar?.addEventListener("click", (e) => {
+        const link = e.target.closest(".tab-item");
+        if (!link) return;
+        const tabName = link.getAttribute("data-tab") || "home";
+        setActiveTab(tabName);
+        syncActiveTabToSupabase(tabName);
+        showToast(`${link.querySelector("span")?.textContent || "Tab"} selected`);
+      });
+
+      if (mediaQuery) {
+        mediaQuery.addEventListener("change", applySystemDefaultTheme);
+      }
+
+      applySystemDefaultTheme();
+      syncPagesBadgeCount();
+      setActiveTab(detectInitialTab());
+    })();
+  </script>
+</body>
+</html>
