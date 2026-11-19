@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Create Story</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f4f5;
+      --surface: #e4e4e7;
+      --card: #ffffff;
+      --text: #18181b;
+      --muted: #52525b;
+      --border: #d4d4d8;
+      --btn-sec: #e4e4e7;
+      --btn-sec-hover: #d4d4d8;
+      --btn-sec-border: #c4c4ca;
+      --btn-pri: #18181b;
+      --btn-pri-text: #ffffff;
+      --btn-pri-hover: #27272a;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 18px 42px rgba(0, 0, 0, 0.22);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090b;
+        --surface: #18181b;
+        --card: #121215;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --btn-sec: #18181b;
+        --btn-sec-hover: #27272a;
+        --btn-sec-border: #3f3f46;
+        --btn-pri: #f4f4f5;
+        --btn-pri-text: #09090b;
+        --btn-pri-hover: #e4e4e7;
+        --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.55);
+        --shadow-md: 0 22px 48px rgba(0, 0, 0, 0.85);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 84px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Header */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      height: 62px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.25px;
+      color: var(--text);
+    }
+
+    .shell {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Studio Tool Deck */
+    .studio-deck {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .quick-tools-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .quick-tools-row {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+
+    .quick-tool-card {
+      height: 88px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .quick-tool-card:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .quick-tool-card:active {
+      transform: scale(0.97);
+    }
+
+    .quick-tool-card i {
+      font-size: 20px;
+      color: var(--text);
+    }
+
+    .quick-tool-card span {
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    /* Gallery Panel */
+    .gallery-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .gallery-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .gallery-picker-btn {
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 11px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .gallery-picker-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .gallery-right-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .select-multi-btn {
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: background 0.16s ease;
+    }
+
+    .select-multi-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .select-multi-btn.active {
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      border-color: transparent;
+    }
+
+    .next-edit-btn {
+      height: 38px;
+      padding: 0 15px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+    }
+
+    .next-edit-btn:hover {
+      background: var(--btn-pri-hover);
+    }
+
+    /* Gallery Grid */
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    @media (min-width: 640px) {
+      .media-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+    }
+
+    .media-tile {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .media-tile img,
+    .media-tile video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .upload-tile {
+      flex-direction: column;
+      gap: 8px;
+      color: var(--text);
+      background: var(--surface);
+      border-style: dashed;
+      border-color: var(--btn-sec-border);
+    }
+
+    .upload-tile i {
+      font-size: 22px;
+    }
+
+    .upload-tile span {
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+
+    .select-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border-radius: 9px;
+      border: 1.5px solid var(--btn-sec-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .multi-mode .select-badge {
+      display: inline-flex;
+    }
+
+    .media-tile.selected {
+      border-color: var(--text);
+      box-shadow: 0 0 0 2px var(--text);
+    }
+
+    .media-tile.selected .select-badge {
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      border-color: transparent;
+    }
+
+    /* Story Editor Modal / Workspace */
+    .editor-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      backdrop-filter: blur(6px);
+    }
+
+    .editor-backdrop.open {
+      display: flex;
+    }
+
+    .editor-modal {
+      width: 100%;
+      max-width: 980px;
+      max-height: 94vh;
+      overflow-y: auto;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .editor-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    @media (min-width: 820px) {
+      .editor-layout {
+        grid-template-columns: 340px 1fr;
+        align-items: start;
+      }
+    }
+
+    /* Story Preview Stage */
+    .story-stage-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .story-canvas {
+      position: relative;
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 9 / 16;
+      border-radius: 22px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .canvas-hint {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .story-single-media {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: filter 0.2s ease, transform 0.25s ease;
+    }
+
+    .story-collage-grid {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px;
+    }
+
+    .story-collage-grid.single-col {
+      grid-template-columns: 1fr;
+    }
+
+    .story-collage-grid img,
+    .story-collage-grid video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+
+    .story-sticker-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      padding: 6px 12px;
+      border-radius: 11px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--btn-sec-border);
+      font-size: 12.5px;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .story-music-pill {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      max-width: 185px;
+      padding: 6px 11px;
+      border-radius: 11px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--btn-sec-border);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .story-text-overlay {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--btn-sec-border);
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.35;
+      word-break: break-word;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .story-text-overlay.pos-top { top: 54px; }
+    .story-text-overlay.pos-center { top: 50%; transform: translateY(-50%); }
+    .story-text-overlay.pos-bottom { bottom: 18px; }
+
+    /* Editor Controls Panel */
+    .editor-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .control-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control-label {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.45px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip-btn {
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 11px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .chip-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .chip-btn.active {
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      border-color: transparent;
+    }
+
+    .editor-input,
+    .editor-select {
+      width: 100%;
+      height: 42px;
+      padding: 0 12px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .editor-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .sec-btn {
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .sec-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .pri-btn {
+      height: 42px;
+      padding: 0 20px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .pri-btn:hover {
+      background: var(--btn-pri-hover);
+    }
+
+    /* Saved Stories Strip */
+    .saved-stories-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .saved-list {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .saved-story-item {
+      min-width: 136px;
+      width: 136px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      text-decoration: none;
+      color: var(--text);
+      display: block;
+    }
+
+    .saved-story-item img,
+    .saved-story-item video {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .saved-story-meta {
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(90px);
+      z-index: 150;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      padding: 11px 20px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="profile.html" id="closeToProfileLink" class="icon-btn" onclick="handleCloseClick(event)" title="Back to profile.html" aria-label="Back to profile.html">
+        <i class="fas fa-times"></i>
+      </a>
+      <h1 class="header-title">Create story</h1>
+      <button type="button" class="icon-btn" onclick="openEditor('settings')" title="Story settings" aria-label="Story settings">
+        <i class="fas fa-gear"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <!-- Top Quick Tools -->
+    <section class="studio-deck" aria-label="Story creation tools">
+      <div class="quick-tools-row">
+        <button type="button" class="quick-tool-card" onclick="openEditor('text')">
+          <span style="font-size:20px;font-weight:800;">Aa</span>
+          <span>Text</span>
+        </button>
+        <button type="button" class="quick-tool-card" onclick="openEditor('music')">
+          <i class="fas fa-music"></i>
+          <span>Music</span>
+        </button>
+        <button type="button" class="quick-tool-card" onclick="openEditor('collage')">
+          <i class="fas fa-table-cells-large"></i>
+          <span>Collage</span>
+        </button>
+        <button type="button" class="quick-tool-card" onclick="openEditor('templates')">
+          <i class="fas fa-layer-group"></i>
+          <span>Templates</span>
+        </button>
+        <button type="button" class="quick-tool-card" onclick="openEditor('boomerang')">
+          <i class="fas fa-infinity"></i>
+          <span>Boomerang</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Gallery Panel -->
+    <section class="gallery-panel" aria-label="Gallery media selector">
+      <div class="gallery-toolbar">
+        <button type="button" class="gallery-picker-btn" onclick="triggerGalleryInput()">
+          <span>Gallery</span>
+          <i class="fas fa-chevron-down" style="font-size:12px;"></i>
+        </button>
+
+        <div class="gallery-right-actions">
+          <button type="button" id="selectMultiBtn" class="select-multi-btn" onclick="toggleMultiSelect()">
+            <i class="far fa-images"></i>
+            <span>Select multiple</span>
+          </button>
+          <button type="button" id="nextFromGalleryBtn" class="next-edit-btn" onclick="openEditor('media')" style="display:none;">
+            <span>Edit</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <input type="file" id="galleryFileInput" accept="image/*,video/*" multiple style="display:none;">
+
+      <!-- Gallery Grid -->
+      <main id="galleryGrid" class="media-grid"></main>
+    </section>
+
+    <!-- Published Stories Preview (Links to story-card.html) -->
+    <section id="savedStoriesSection" class="saved-stories-card" style="display:none;">
+      <div style="font-size:15px;font-weight:800;">Recent stories</div>
+      <div id="savedStoriesList" class="saved-list"></div>
+    </section>
+  </div>
+
+  <!-- English Story Editor Modal -->
+  <div id="editorBackdrop" class="editor-backdrop" onclick="handleBackdropClick(event)">
+    <div class="editor-modal" role="dialog" aria-modal="true" aria-label="Story Editor">
+      <div class="editor-top">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button type="button" class="icon-btn" onclick="closeEditor()" title="Back">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <span id="editorModeTitle" style="font-size:18px;font-weight:800;">Edit story</span>
+        </div>
+        <button type="button" class="sec-btn" onclick="triggerGalleryInput()">
+          <i class="fas fa-folder-open"></i>
+          <span>Pick from gallery</span>
+        </button>
+      </div>
+
+      <div class="editor-layout">
+        <!-- Live Canvas Preview (Clicking center media opens story-card.html) -->
+        <div class="story-stage-wrap">
+          <div id="storyCanvas" class="story-canvas" onclick="handleCanvasCenterClick(event)" title="Click photo or video to open story card">
+            <div id="canvasMediaContainer" style="width:100%;height:100%;"></div>
+            <div id="canvasSticker" class="story-sticker-badge" style="display:none;"></div>
+            <div id="canvasMusic" class="story-music-pill" style="display:none;"></div>
+            <div id="canvasText" class="story-text-overlay pos-center" style="display:none;"></div>
+          </div>
+          <div class="canvas-hint">Click the photo or video in the center to open Story Card</div>
+        </div>
+
+        <!-- English Editing Controls -->
+        <div class="editor-controls">
+          <!-- Text Tool -->
+          <div class="control-box">
+            <span class="control-label">Text &amp; position</span>
+            <input id="storyTextInput" type="text" class="editor-input" placeholder="Type story caption or quote..." oninput="syncEditorToCanvas()">
+            <div class="chip-row">
+              <button type="button" class="chip-btn active" data-pos="top" onclick="setTextPosition('top', this)">Top</button>
+              <button type="button" class="chip-btn" data-pos="center" onclick="setTextPosition('center', this)">Center</button>
+              <button type="button" class="chip-btn" data-pos="bottom" onclick="setTextPosition('bottom', this)">Bottom</button>
+            </div>
+          </div>
+
+          <!-- Filter & Layout Tool -->
+          <div class="control-box">
+            <span class="control-label">Filter &amp; layout</span>
+            <div class="chip-row">
+              <button type="button" class="chip-btn active" onclick="setFilter('none', this)">Normal</button>
+              <button type="button" class="chip-btn" onclick="setFilter('contrast(1.15) saturate(1.3)', this)">Vivid</button>
+              <button type="button" class="chip-btn" onclick="setFilter('grayscale(1)', this)">B&amp;W</button>
+              <button type="button" class="chip-btn" onclick="setFilter('sepia(0.35) saturate(1.2)', this)">Warm</button>
+              <button type="button" class="chip-btn" onclick="setFilter('hue-rotate(15deg) saturate(1.1)', this)">Cool</button>
+            </div>
+            <div class="chip-row" style="margin-top:4px;">
+              <button type="button" class="chip-btn active" id="layoutSingleBtn" onclick="setLayoutMode('single')">Single</button>
+              <button type="button" class="chip-btn" id="layoutCollageBtn" onclick="setLayoutMode('collage')">Collage</button>
+              <button type="button" class="chip-btn" id="layoutBoomerangBtn" onclick="setLayoutMode('boomerang')">Boomerang</button>
+            </div>
+          </div>
+
+          <!-- Music & Sticker / Template -->
+          <div class="control-box">
+            <span class="control-label">Music &amp; sticker</span>
+            <select id="musicSelect" class="editor-select" onchange="syncEditorToCanvas()">
+              <option value="">No music</option>
+              <option value="Midnight Breeze — Chill Beats">Midnight Breeze — Chill Beats</option>
+              <option value="Golden Hour — Acoustic">Golden Hour — Acoustic</option>
+              <option value="Night Drive — Synthwave">Night Drive — Synthwave</option>
+              <option value="Morning Calm — Lo-Fi">Morning Calm — Lo-Fi</option>
+            </select>
+
+            <div class="chip-row" style="margin-top:4px;">
+              <button type="button" class="chip-btn active" onclick="setSticker('', this)">None</option>
+              <button type="button" class="chip-btn" onclick="setSticker('Good Vibes', this)">Good Vibes</button>
+              <button type="button" class="chip-btn" onclick="setSticker('On My Mind', this)">On My Mind</button>
+              <button type="button" class="chip-btn" onclick="setSticker('Highlight', this)">Highlight</button>
+              <button type="button" class="chip-btn" onclick="setSticker('Throwback', this)">Throwback</button>
+            </div>
+          </div>
+
+          <!-- Audience & Privacy -->
+          <div class="control-box">
+            <span class="control-label">Audience</span>
+            <select id="audienceSelect" class="editor-select">
+              <option value="Public">Public</option>
+              <option value="Friends">Friends</option>
+              <option value="Close friends">Close friends</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-footer">
+        <button type="button" class="sec-btn" onclick="openStoryCardFromSelection()">
+          <i class="fas fa-id-card"></i>
+          <span>Story card</span>
+        </button>
+        <button type="button" class="sec-btn" onclick="closeEditor()">Cancel</button>
+        <button type="button" class="pri-btn" onclick="shareStory()">
+          <i class="fas fa-paper-plane"></i>
+          <span>Share to story</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+    const STORY_CARD_PAGE = 'story-card.html';
+
+    let sb = null;
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        sb = null;
+      }
+    }
+
+    const SAMPLE_MEDIA = [
+      { id: 's1', type: 'image', url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop', label: 'Valley' },
+      { id: 's2', type: 'image', url: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800&auto=format&fit=crop', label: 'Ocean' },
+      { id: 's3', type: 'image', url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop', label: 'Misty Hill' },
+      { id: 's4', type: 'image', url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop', label: 'Lake' },
+      { id: 's5', type: 'image', url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop', label: 'Starry Peak' },
+      { id: 's6', type: 'image', url: 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=800&auto=format&fit=crop', label: 'Horizon' }
+    ];
+
+    let galleryItems = SAMPLE_MEDIA.slice();
+    let multiSelectMode = false;
+    let selectedIds = [SAMPLE_MEDIA[0].id];
+    let hasClickedSelectedMediaOnce = false;
+    let currentFilter = 'none';
+    let currentLayout = 'single';
+    let currentTextPos = 'top';
+    let currentSticker = '';
+    let publishedStories = [];
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
+
+    function buildStoryPayload(storyId = null) {
+      const chosen = selectedIds
+        .map(id => galleryItems.find(m => m.id === id))
+        .filter(Boolean);
+      const first = chosen[0] || galleryItems[0];
+      const caption = (document.getElementById('storyTextInput')?.value || '').trim();
+      const audience = document.getElementById('audienceSelect')?.value || 'Public';
+      const music = document.getElementById('musicSelect')?.value || '';
+
+      return {
+        id: storyId || ('story_' + Date.now()),
+        media_url: first ? first.url : '',
+        media_type: first ? first.type : 'image',
+        items: chosen.map(m => ({ url: m.url, type: m.type, label: m.label || 'Media' })),
+        title: caption || currentSticker || (first && first.label) || 'Story',
+        caption,
+        text_position: currentTextPos,
+        filter: currentFilter,
+        layout: currentLayout,
+        sticker: currentSticker,
+        music,
+        audience,
+        created_at: new Date().toISOString()
+      };
+    }
+
+    function openStoryCardPage(storyObj) {
+      const payload = storyObj || buildStoryPayload();
+      try {
+        localStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
+        const existingList = JSON.parse(localStorage.getItem('autrobook_stories') || '[]') || [];
+        const filtered = existingList.filter(s => s.id !== payload.id);
+        filtered.unshift(payload);
+        localStorage.setItem('autrobook_stories', JSON.stringify(filtered.slice(0, 25)));
+      } catch (e) {}
+
+      const targetUrl = `${STORY_CARD_PAGE}?id=${encodeURIComponent(payload.id)}`;
+      window.location.href = targetUrl;
+    }
+
+    function openStoryCardFromSelection() {
+      openStoryCardPage(buildStoryPayload());
+    }
+
+    function handleCanvasCenterClick(e) {
+      const target = e.target;
+      const isMediaEl = target && (
+        target.classList.contains('story-single-media') ||
+        target.tagName === 'IMG' ||
+        target.tagName === 'VIDEO' ||
+        target.id === 'canvasMediaContainer'
+      );
+      if (!isMediaEl) return;
+
+      if (hasClickedSelectedMediaOnce) {
+        hasClickedSelectedMediaOnce = false;
+        openStoryCardPage(buildStoryPayload());
+      } else {
+        hasClickedSelectedMediaOnce = true;
+        showToast('Click the photo or video again to open Story Card');
+        clearTimeout(window._doubleClickMediaTimer);
+        window._doubleClickMediaTimer = setTimeout(() => {
+          hasClickedSelectedMediaOnce = false;
+        }, 1600);
+      }
+    }
+
+    function triggerGalleryInput() {
+      const input = document.getElementById('galleryFileInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function toggleMultiSelect() {
+      multiSelectMode = !multiSelectMode;
+      const btn = document.getElementById('selectMultiBtn');
+      const nextBtn = document.getElementById('nextFromGalleryBtn');
+      if (btn) btn.classList.toggle('active', multiSelectMode);
+      if (nextBtn) nextBtn.style.display = multiSelectMode ? 'inline-flex' : 'none';
+      if (multiSelectMode && currentLayout === 'single') {
+        currentLayout = 'collage';
+      }
+      renderGallery();
+      showToast(multiSelectMode ? 'Multi-select enabled' : 'Single select mode');
+    }
+
+    function handleTileClick(id) {
+      if (multiSelectMode) {
+        const idx = selectedIds.indexOf(id);
+        if (idx >= 0) {
+          if (selectedIds.length > 1) selectedIds.splice(idx, 1);
+        } else {
+          selectedIds.push(id);
+        }
+        hasClickedSelectedMediaOnce = false;
+        renderGallery();
+      } else {
+        const alreadySelected = selectedIds.length === 1 && selectedIds[0] === id;
+        selectedIds = [id];
+        renderGallery();
+        if (alreadySelected) {
+          openStoryCardPage(buildStoryPayload());
+        } else {
+          hasClickedSelectedMediaOnce = true;
+          openEditor('media');
+        }
+      }
+    }
+
+    function renderGallery() {
+      const grid = document.getElementById('galleryGrid');
+      if (!grid) return;
+      grid.classList.toggle('multi-mode', multiSelectMode);
+
+      const uploadTileHtml = `
+        <div class="media-tile upload-tile" onclick="triggerGalleryInput()">
+          <i class="fas fa-plus"></i>
+          <span>Add from device</span>
+        </div>
+      `;
+
+      const itemsHtml = galleryItems.map(item => {
+        const selIdx = selectedIds.indexOf(item.id);
+        const isSelected = selIdx >= 0;
+        const badgeText = isSelected ? (selIdx + 1) : '';
+        const mediaTag = item.type === 'video'
+          ? `<video src="${item.url}" muted playsinline preload="metadata"></video>`
+          : `<img src="${item.url}" alt="${escapeHtml(item.label || 'Media')}">`;
+
+        return `
+          <div class="media-tile ${isSelected ? 'selected' : ''}" onclick="handleTileClick('${item.id}')">
+            ${mediaTag}
+            <span class="select-badge">${badgeText}</span>
+          </div>
+        `;
+      }).join('');
+
+      grid.innerHTML = uploadTileHtml + itemsHtml;
+    }
+
+    function bindGalleryUpload() {
+      const input = document.getElementById('galleryFileInput');
+      if (!input) return;
+      input.addEventListener('change', () => {
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+
+        const addedIds = [];
+        files.forEach((file, i) => {
+          const url = URL.createObjectURL(file);
+          const id = 'local_' + Date.now() + '_' + i;
+          const isVideo = file.type && file.type.startsWith('video/');
+          galleryItems.unshift({
+            id,
+            type: isVideo ? 'video' : 'image',
+            url,
+            label: file.name || 'Gallery item'
+          });
+          addedIds.push(id);
+        });
+
+        selectedIds = multiSelectMode ? addedIds.concat(selectedIds) : [addedIds[0]];
+        hasClickedSelectedMediaOnce = true;
+        renderGallery();
+        openEditor('media');
+        showToast(`${files.length} item${files.length > 1 ? 's' : ''} loaded`);
+      });
+    }
+
+    function openEditor(mode) {
+      const titles = {
+        text: 'Add text to story',
+        music: 'Add music to story',
+        collage: 'Story collage',
+        templates: 'Story template',
+        boomerang: 'Boomerang story',
+        settings: 'Story settings',
+        media: 'Edit story'
+      };
+      document.getElementById('editorModeTitle').textContent = titles[mode] || 'Edit story';
+
+      if (mode === 'collage' && selectedIds.length < 2 && galleryItems.length >= 2) {
+        selectedIds = galleryItems.slice(0, 2).map(x => x.id);
+        currentLayout = 'collage';
+      } else if (mode === 'boomerang') {
+        currentLayout = 'boomerang';
+      } else if (mode === 'templates') {
+        currentSticker = 'Highlight';
+      }
+
+      updateLayoutButtons();
+      syncEditorToCanvas();
+      document.getElementById('editorBackdrop').classList.add('open');
+      if (mode === 'text') {
+        setTimeout(() => document.getElementById('storyTextInput')?.focus(), 80);
+      }
+    }
+
+    function closeEditor() {
+      document.getElementById('editorBackdrop').classList.remove('open');
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === 'editorBackdrop') closeEditor();
+    }
+
+    function handleCloseClick(e) {
+      if (multiSelectMode) {
+        if (e) e.preventDefault();
+        toggleMultiSelect();
+        return;
+      }
+      window.location.href = 'profile.html';
+    }
+
+    function setTextPosition(pos, btn) {
+      currentTextPos = pos;
+      btn.parentElement?.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      syncEditorToCanvas();
+    }
+
+    function setFilter(filterVal, btn) {
+      currentFilter = filterVal;
+      btn.parentElement?.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      syncEditorToCanvas();
+    }
+
+    function updateLayoutButtons() {
+      document.getElementById('layoutSingleBtn')?.classList.toggle('active', currentLayout === 'single');
+      document.getElementById('layoutCollageBtn')?.classList.toggle('active', currentLayout === 'collage');
+      document.getElementById('layoutBoomerangBtn')?.classList.toggle('active', currentLayout === 'boomerang');
+    }
+
+    function setLayoutMode(mode) {
+      currentLayout = mode;
+      if (mode === 'collage' && selectedIds.length < 2 && galleryItems.length >= 2) {
+        selectedIds = galleryItems.slice(0, 2).map(x => x.id);
+      }
+      updateLayoutButtons();
+      syncEditorToCanvas();
+    }
+
+    function setSticker(stickerText, btn) {
+      currentSticker = stickerText;
+      btn.parentElement?.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      syncEditorToCanvas();
+    }
+
+    function syncEditorToCanvas() {
+      const container = document.getElementById('canvasMediaContainer');
+      const textEl = document.getElementById('canvasText');
+      const musicEl = document.getElementById('canvasMusic');
+      const stickerEl = document.getElementById('canvasSticker');
+
+      const chosen = selectedIds
+        .map(id => galleryItems.find(m => m.id === id))
+        .filter(Boolean);
+
+      if (!chosen.length && galleryItems.length) {
+        chosen.push(galleryItems[0]);
+      }
+
+      if (container) {
+        const extraClass = currentLayout === 'boomerang' ? 'boomerang-loop' : '';
+        if (currentLayout === 'collage' && chosen.length > 1) {
+          const singleColClass = chosen.length === 2 ? 'single-col' : '';
+          container.innerHTML = `
+            <div class="story-collage-grid ${singleColClass}">
+              ${chosen.slice(0, 4).map(m => m.type === 'video'
+                ? `<video src="${m.url}" style="filter:${currentFilter};" muted autoplay loop playsinline></video>`
+                : `<img src="${m.url}" style="filter:${currentFilter};" alt="Collage item">`
+              ).join('')}
+            </div>
+          `;
+        } else {
+          const first = chosen[0];
+          container.innerHTML = first
+            ? (first.type === 'video'
+                ? `<video src="${first.url}" class="story-single-media ${extraClass}" style="filter:${currentFilter};" muted autoplay loop playsinline></video>`
+                : `<img src="${first.url}" class="story-single-media ${extraClass}" style="filter:${currentFilter};" alt="Story preview">`)
+            : '';
+        }
+      }
+
+      const caption = (document.getElementById('storyTextInput')?.value || '').trim();
+      if (textEl) {
+        if (caption) {
+          textEl.style.display = 'block';
+          textEl.className = `story-text-overlay pos-${currentTextPos}`;
+          textEl.textContent = caption;
+        } else {
+          textEl.style.display = 'none';
+        }
+      }
+
+      const track = document.getElementById('musicSelect')?.value || '';
+      if (musicEl) {
+        if (track) {
+          musicEl.style.display = 'block';
+          musicEl.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(track)}`;
+        } else {
+          musicEl.style.display = 'none';
+        }
+      }
+
+      if (stickerEl) {
+        const label = currentSticker || (currentLayout === 'boomerang' ? 'Boomerang' : '');
+        if (label) {
+          stickerEl.style.display = 'block';
+          stickerEl.textContent = label;
+        } else {
+          stickerEl.style.display = 'none';
+        }
+      }
+    }
+
+    async function persistStoryToSupabase(storyObj) {
+      if (!sb) return;
+      try {
+        let userId = null;
+        if (sb.auth?.getUser) {
+          const { data } = await sb.auth.getUser();
+          userId = data?.user?.id || null;
+        }
+        await sb.from('stories').insert({
+          id: storyObj.id,
+          user_id: userId,
+          media_url: storyObj.media_url,
+          media_type: storyObj.media_type,
+          caption: storyObj.title,
+          audience: storyObj.audience,
+          created_at: storyObj.created_at
+        });
+      } catch (e) {
+        console.warn('Supabase story insert skipped:', e);
+      }
+    }
+
+    async function shareStory() {
+      const payload = buildStoryPayload();
+      if (!payload.media_url) return;
+
+      publishedStories.unshift(payload);
+      try {
+        localStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
+        localStorage.setItem('autrobook_stories', JSON.stringify(publishedStories.slice(0, 25)));
+      } catch (e) {}
+
+      await persistStoryToSupabase(payload);
+      renderSavedStories();
+      closeEditor();
+      openStoryCardPage(payload);
+    }
+
+    function renderSavedStories() {
+      const section = document.getElementById('savedStoriesSection');
+      const list = document.getElementById('savedStoriesList');
+      if (!section || !list || !publishedStories.length) return;
+      section.style.display = 'flex';
+      list.innerHTML = publishedStories.map(st => {
+        const href = `${STORY_CARD_PAGE}?id=${encodeURIComponent(st.id)}`;
+        return `
+          <a href="${href}" class="saved-story-item" onclick="event.preventDefault();openStoryCardPage(${escapeHtml(JSON.stringify(st))})">
+            ${st.media_type === 'video'
+              ? `<video src="${st.media_url}" muted playsinline></video>`
+              : `<img src="${st.media_url}" alt="${escapeHtml(st.title)}">`}
+            <div class="saved-story-meta">${escapeHtml(st.title)} · ${escapeHtml(st.audience)}</div>
+          </a>
+        `;
+      }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('autrobook_stories') || '[]') || [];
+        if (Array.isArray(stored) && stored.length) {
+          publishedStories = stored;
+          renderSavedStories();
+        }
+      } catch (e) {}
+      bindGalleryUpload();
+      renderGallery();
+    });
+  </script>
+</body>
+  </html>
