@@ -15,7 +15,16 @@ export default function handler(req, res) {
     });
   }
 
-  const provided = String(req.body?.verifyPassword || "").trim();
+  let parsedBody = req.body;
+  if (typeof parsedBody === "string") {
+    try {
+      parsedBody = JSON.parse(parsedBody);
+    } catch (e) {
+      parsedBody = {};
+    }
+  }
+
+  const provided = String(parsedBody?.verifyPassword || "").trim();
   if (!provided || provided !== expectedSecret.trim()) {
     return res.status(401).json({
       verified: false,
