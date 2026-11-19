@@ -14,6 +14,13 @@
     "/images/logo.png"
   ];
 
+  // Expose index integration hook if js/index.js provides a handler
+  window.AutroSettingsPage = {
+    homeUrl: "index.html",
+    stylesheetUrl: "css/index.css",
+    scriptUrl: "js/index.js"
+  };
+
   function resolveBrandLogos() {
     const imgs = Array.from(document.querySelectorAll("img[data-autro-logo]"));
     if (!imgs.length) return;
@@ -24,7 +31,9 @@
     function applyFallback() {
       imgs.forEach((img) => {
         img.style.display = "none";
-        const fb = img.parentElement?.querySelector("[data-autro-logo-fallback]") || img.nextElementSibling;
+        const fb =
+          img.parentElement?.querySelector("[data-autro-logo-fallback]") ||
+          img.nextElementSibling;
         if (fb && fb.hasAttribute("data-autro-logo-fallback")) {
           fb.style.display = "inline-flex";
         }
@@ -35,7 +44,9 @@
       imgs.forEach((img) => {
         img.src = validSrc;
         img.style.display = "block";
-        const fb = img.parentElement?.querySelector("[data-autro-logo-fallback]") || img.nextElementSibling;
+        const fb =
+          img.parentElement?.querySelector("[data-autro-logo-fallback]") ||
+          img.nextElementSibling;
         if (fb && fb.hasAttribute("data-autro-logo-fallback")) {
           fb.style.display = "none";
         }
@@ -56,12 +67,23 @@
     tryNext();
   }
 
+  const backBtn = document.getElementById("backToIndexBtn");
+  if (backBtn) {
+    backBtn.addEventListener("click", function (e) {
+      if (typeof window.onAutroBackToIndex === "function") {
+        e.preventDefault();
+        window.onAutroBackToIndex("index.html");
+      }
+    });
+  }
+
   const searchInput = document.getElementById("settingsSearchInput");
   const searchFocusBtn = document.getElementById("searchFocusBtn");
 
   if (searchFocusBtn && searchInput) {
     searchFocusBtn.addEventListener("click", function () {
       searchInput.focus();
+      searchInput.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
   }
 
@@ -69,7 +91,9 @@
     searchInput.addEventListener("input", function () {
       const q = searchInput.value.trim().toLowerCase();
       document.querySelectorAll(".settings-section").forEach(function (sec) {
-        const links = Array.from(sec.querySelectorAll(".setting-link-item, .autro-account-card"));
+        const links = Array.from(
+          sec.querySelectorAll(".setting-link-item, .autro-account-card")
+        );
         if (!links.length) return;
         let visibleCount = 0;
         links.forEach(function (item) {
@@ -83,8 +107,10 @@
   }
 
   function syncSystemTheme() {
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const savedTheme = localStorage.getItem("theme") || localStorage.getItem("autro_theme");
+    const prefersDark =
+      window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const savedTheme =
+      localStorage.getItem("theme") || localStorage.getItem("autro_theme");
     const mode = savedTheme || (prefersDark ? "dark" : "light");
     const isDark = mode === "dark";
 
@@ -96,6 +122,8 @@
   resolveBrandLogos();
   syncSystemTheme();
   if (window.matchMedia) {
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", syncSystemTheme);
   }
 })();
