@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Device Permissions - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f6f7f8;
+      --bg-hover: #eceef0;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .perm-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    /* Container */
+    .perm-container {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .perm-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-margin-top: 68px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .perm-heading {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .perm-text {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-chip {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Search & Filter */
+    .filter-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 8px 14px;
+    }
+
+    .search-row i {
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 13.5px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .filter-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Permission Rows */
+    .perm-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .perm-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .perm-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .perm-brand {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .perm-item-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .perm-name-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .perm-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .perm-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .state-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .state-pill.allowed {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .perm-bottom {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .browser-state-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .perm-controls-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-sm-outline {
+      padding: 7px 11px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .btn-sm-outline:hover {
+      background-color: var(--bg-hover);
+      border-color: var(--text-main);
+    }
+
+    /* Toggle Switch */
+    .switch-control {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .switch-control input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #737373;
+      border-radius: 999px;
+      transition: background-color 0.2s ease;
+    }
+
+    .switch-slider::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      top: 3px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+
+    .switch-control input:checked + .switch-slider {
+      background-color: var(--accent-bg);
+    }
+
+    .switch-control input:checked + .switch-slider::before {
+      transform: translateX(20px);
+      background-color: var(--accent-fg);
+    }
+
+    /* Notes & Actions */
+    .policy-bullets {
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-outline,
+    .btn-solid {
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--accent-bg);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .empty-state {
+      display: none;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    .empty-state p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Footer */
+    .perm-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="perm-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Device Permissions</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="status-pill" id="allowedCountPill">0 Allowed</span>
+      <button type="button" class="top-action-btn" id="syncBrowserPermsBtn" aria-label="Check browser permissions">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="perm-container">
+    <!-- Overview -->
+    <section class="perm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </span>
+          <h2 class="perm-heading">Manage Device Permissions</h2>
+        </div>
+        <span class="badge-tag">Device Access</span>
+      </div>
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+      </div>
+      <p class="perm-text">
+        Control how Autrobook uses device capabilities such as camera, microphone, location, notifications, photos/files, and clipboard. Some capabilities also require permission from your operating system or browser.
+      </p>
+    </section>
+
+    <!-- Search & Filter -->
+    <section class="filter-card" aria-label="Search and filter device permissions">
+      <div class="search-row">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input type="search" id="permSearchInput" class="search-input" placeholder="Search camera, microphone, location, notifications..." />
+      </div>
+      <div class="chip-row" id="permFilterChips">
+        <button type="button" class="filter-chip active" data-filter="all">All</button>
+        <button type="button" class="filter-chip" data-filter="allowed">Allowed</button>
+        <button type="button" class="filter-chip" data-filter="media">Media &amp; Capture</button>
+        <button type="button" class="filter-chip" data-filter="system">Alerts &amp; Location</button>
+      </div>
+    </section>
+
+    <!-- Permissions List -->
+    <section class="perm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-sliders"></i>
+          </span>
+          <h2 class="perm-heading">Device Capabilities</h2>
+        </div>
+        <span class="badge-tag" id="visiblePermsCount">6 Items</span>
+      </div>
+      <div class="perm-list" id="permissionsList"></div>
+      <div class="empty-state" id="emptyPermsState">
+        <strong>No matching device permissions</strong>
+        <p>Try another search keyword or choose All in the filter bar.</p>
+      </div>
+    </section>
+
+    <!-- Browser & OS Guidance -->
+    <section class="perm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-shield-halved"></i>
+          </span>
+          <h2 class="perm-heading">Browser &amp; System Settings</h2>
+        </div>
+        <span class="badge-tag">Help</span>
+      </div>
+      <ul class="policy-bullets">
+        <li>If your browser blocks camera, microphone, location, or notifications, use <strong>Check</strong> to prompt or inspect the current browser status where supported.</li>
+        <li>Turning off a permission here prevents Autrobook from using that feature preference in this browser.</li>
+        <li>See <a href="manage-information.html" style="color: var(--text-main); font-weight: 600;">Manage your information</a> and <a href="public/privacy-policy/index.html" style="color: var(--text-main); font-weight: 600;">Privacy Policy</a> for more details.</li>
+      </ul>
+      <div class="actions-row">
+        <button type="button" class="btn-outline" id="disableAllPermsBtn">Turn Off All</button>
+        <button type="button" class="btn-solid" id="savePermsBtn">
+          <i class="fa-regular fa-floppy-disk"></i>
+          <span>Save Permissions</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="perm-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "autro_device_permissions_state";
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      const DEFAULT_PERMS = [
+        {
+          id: "camera",
+          name: "Camera",
+          category: "media",
+          icon: "fa-solid fa-camera",
+          description: "Capture photos, profile pictures, and video clips for posts, stories, and reels.",
+          allowed: false,
+          browserStatus: "Not checked",
+          supportsLivePrompt: true
+        },
+        {
+          id: "microphone",
+          name: "Microphone",
+          category: "media",
+          icon: "fa-solid fa-microphone",
+          description: "Record audio for video clips, voice notes, and audio features.",
+          allowed: false,
+          browserStatus: "Not checked",
+          supportsLivePrompt: true
+        },
+        {
+          id: "photos-storage",
+          name: "Photos, Media & Files",
+          category: "media",
+          icon: "fa-regular fa-images",
+          description: "Select images, videos, and files from your device to upload or attach.",
+          allowed: true,
+          browserStatus: "File picker ready",
+          supportsLivePrompt: false
+        },
+        {
+          id: "notifications",
+          name: "Notifications",
+          category: "system",
+          icon: "fa-regular fa-bell",
+          description: "Receive alerts for replies, messages, activity, and account updates.",
+          allowed: false,
+          browserStatus: "Not checked",
+          supportsLivePrompt: true
+        },
+        {
+          id: "location",
+          name: "Location",
+          category: "system",
+          icon: "fa-solid fa-location-dot",
+          description: "Optionally tag places on posts or support location-aware features.",
+          allowed: false,
+          browserStatus: "Not checked",
+          supportsLivePrompt: true
+        },
+        {
+          id: "clipboard",
+          name: "Clipboard",
+          category: "system",
+          icon: "fa-regular fa-clipboard",
+          description: "Copy or paste links, text snippets, and shareable summaries easily.",
+          allowed: true,
+          browserStatus: "Copy/paste enabled",
+          supportsLivePrompt: false
+        }
+      ];
+
+      function cloneDefaults() {
+        return JSON.parse(JSON.stringify(DEFAULT_PERMS));
+      }
+
+      function readPerms() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return cloneDefaults();
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed) || !parsed.length) return cloneDefaults();
+          return parsed;
+        } catch (e) {
+          return cloneDefaults();
+        }
+      }
+
+      function writePerms(list) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        } catch (e) {}
+      }
+
+      let perms = readPerms();
+      let activeFilter = "all";
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._permToastTimer);
+        window._permToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      async function queryBrowserPermission(id) {
+        if (!navigator.permissions || !navigator.permissions.query) return null;
+        const map = {
+          camera: "camera",
+          microphone: "microphone",
+          notifications: "notifications",
+          location: "geolocation"
+        };
+        const name = map[id];
+        if (!name) return null;
+        try {
+          const status = await navigator.permissions.query({ name });
+          return status.state;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function probePermission(id) {
+        const target = perms.find((p) => p.id === id);
+        if (!target) return;
+
+        if (id === "camera" || id === "microphone") {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            target.browserStatus = "Media API unavailable";
+            writePerms(perms);
+            renderPerms();
+            showToast("Media API not supported here");
+            return;
+          }
+          try {
+            const constraints =
+              id === "camera"
+                ? { video: true, audio: false }
+                : { video: false, audio: true };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            stream.getTracks().forEach((track) => track.stop());
+            target.allowed = true;
+            target.browserStatus = "Browser: granted";
+            writePerms(perms);
+            renderPerms();
+            showToast(`${target.name} granted by browser`);
+          } catch (e) {
+            target.browserStatus = "Browser: denied or unavailable";
+            writePerms(perms);
+            renderPerms();
+            showToast(`${target.name} not granted in browser`);
+          }
+          return;
+        }
+
+        if (id === "notifications") {
+          if (!("Notification" in window)) {
+            target.browserStatus = "Notifications unsupported";
+            writePerms(perms);
+            renderPerms();
+            showToast("Notifications not supported");
+            return;
+          }
+          try {
+            const res = await Notification.requestPermission();
+            target.allowed = res === "granted";
+            target.browserStatus = `Browser: ${res}`;
+            writePerms(perms);
+            renderPerms();
+            showToast(`Notifications status: ${res}`);
+          } catch (e) {
+            target.browserStatus = "Browser: prompt unavailable";
+            writePerms(perms);
+            renderPerms();
+            showToast("Could not request notifications");
+          }
+          return;
+        }
+
+        if (id === "location") {
+          if (!navigator.geolocation) {
+            target.browserStatus = "Geolocation unsupported";
+            writePerms(perms);
+            renderPerms();
+            showToast("Location not supported here");
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            () => {
+              target.allowed = true;
+              target.browserStatus = "Browser: granted";
+              writePerms(perms);
+              renderPerms();
+              showToast("Location access granted");
+            },
+            () => {
+              target.browserStatus = "Browser: denied or unavailable";
+              writePerms(perms);
+              renderPerms();
+              showToast("Location not granted");
+            },
+            { timeout: 6000 }
+          );
+          return;
+        }
+
+        const state = await queryBrowserPermission(id);
+        target.browserStatus = state ? `Browser: ${state}` : "Managed locally";
+        writePerms(perms);
+        renderPerms();
+        showToast("Permission status checked");
+      }
+
+      async function checkAllBrowserStates() {
+        for (const item of perms) {
+          const st = await queryBrowserPermission(item.id);
+          if (st) {
+            item.browserStatus = `Browser: ${st}`;
+            if (st === "granted") item.allowed = true;
+          }
+        }
+        writePerms(perms);
+        renderPerms();
+        showToast("Browser permission states updated");
+      }
+
+      function renderPerms() {
+        const listEl = document.getElementById("permissionsList");
+        const emptyEl = document.getElementById("emptyPermsState");
+        const allowedPill = document.getElementById("allowedCountPill");
+        const visiblePill = document.getElementById("visiblePermsCount");
+        const query = (document.getElementById("permSearchInput")?.value || "")
+          .trim()
+          .toLowerCase();
+
+        const allowedCount = perms.filter((p) => p.allowed).length;
+        if (allowedPill) allowedPill.textContent = `${allowedCount} Allowed`;
+
+        const filtered = perms.filter((item) => {
+          const matchesFilter =
+            activeFilter === "all" ||
+            (activeFilter === "allowed" && item.allowed) ||
+            item.category === activeFilter;
+
+          const haystack = `${item.name} ${item.category} ${item.description} ${item.browserStatus}`.toLowerCase();
+          const matchesQuery = !query || haystack.includes(query);
+          return matchesFilter && matchesQuery;
+        });
+
+        if (visiblePill) {
+          visiblePill.textContent = `${filtered.length} ${filtered.length === 1 ? "Item" : "Items"}`;
+        }
+
+        if (!listEl) return;
+
+        if (!filtered.length) {
+          listEl.innerHTML = "";
+          if (emptyEl) emptyEl.classList.add("visible");
+          return;
+        }
+
+        if (emptyEl) emptyEl.classList.remove("visible");
+
+        listEl.innerHTML = filtered
+          .map(
+            (item) => `
+              <article class="perm-item" data-id="${item.id}">
+                <div class="perm-top">
+                  <div class="perm-brand">
+                    <span class="perm-item-icon" aria-hidden="true">
+                      <i class="${item.icon}"></i>
+                    </span>
+                    <div class="perm-name-wrap">
+                      <h3 class="perm-name">${item.name}</h3>
+                      <p class="perm-desc">${item.description}</p>
+                    </div>
+                  </div>
+                  <span class="state-pill ${item.allowed ? "allowed" : ""}">
+                    ${item.allowed ? "Allowed" : "Off"}
+                  </span>
+                </div>
+
+                <div class="perm-bottom">
+                  <span class="browser-state-text">${item.browserStatus || "Preference saved"}</span>
+                  <div class="perm-controls-right">
+                    ${
+                      item.supportsLivePrompt
+                        ? `<button type="button" class="btn-sm-outline check-perm-btn" data-id="${item.id}">
+                             <i class="fa-solid fa-circle-check"></i>
+                             <span>Check</span>
+                           </button>`
+                        : ""
+                    }
+                    <label class="switch-control" aria-label="${item.name}">
+                      <input type="checkbox" class="perm-toggle" data-id="${item.id}" ${item.allowed ? "checked" : ""} />
+                      <span class="switch-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </article>
+            `
+          )
+          .join("");
+
+        listEl.querySelectorAll(".perm-toggle").forEach((chk) => {
+          chk.addEventListener("change", () => {
+            const id = chk.getAttribute("data-id");
+            const target = perms.find((p) => p.id === id);
+            if (!target) return;
+            target.allowed = Boolean(chk.checked);
+            writePerms(perms);
+            renderPerms();
+            showToast(`${target.name} ${target.allowed ? "allowed" : "turned off"}`);
+          });
+        });
+
+        listEl.querySelectorAll(".check-perm-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            if (id) probePermission(id);
+          });
+        });
+      }
+
+      document.querySelectorAll("#permFilterChips .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          activeFilter = chip.getAttribute("data-filter") || "all";
+          document.querySelectorAll("#permFilterChips .filter-chip").forEach((c) => {
+            c.classList.toggle("active", c === chip);
+          });
+          renderPerms();
+        });
+      });
+
+      document.getElementById("permSearchInput")?.addEventListener("input", renderPerms);
+
+      document.getElementById("savePermsBtn")?.addEventListener("click", () => {
+        writePerms(perms);
+        showToast("Device permissions saved");
+      });
+
+      document.getElementById("disableAllPermsBtn")?.addEventListener("click", () => {
+        perms = perms.map((p) => ({ ...p, allowed: false }));
+        writePerms(perms);
+        renderPerms();
+        showToast("All device permissions turned off");
+      });
+
+      document.getElementById("syncBrowserPermsBtn")?.addEventListener("click", checkAllBrowserStates);
+
+      syncSystemTheme();
+      loadFooterLogo();
+      renderPerms();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+</html>
