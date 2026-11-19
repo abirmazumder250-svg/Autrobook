@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile Locking - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f5f6f7;
+      --bg-hover: #eaecef;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 44px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .lock-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(14px, 3.6vw, 17px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .lock-pill {
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .lock-pill.locked {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Main Container */
+    .lock-container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Cards */
+    .lock-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      scroll-margin-top: 64px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .lock-heading {
+      font-size: 15.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .lock-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .meta-chip {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Master Lock Box */
+    .master-lock-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .master-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .master-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .master-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .state-badge {
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .state-badge.on {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .master-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Switch */
+    .switch-control {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 27px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .switch-control input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #737373;
+      border-radius: 999px;
+      transition: background-color 0.2s ease;
+    }
+
+    .switch-slider::before {
+      content: "";
+      position: absolute;
+      width: 21px;
+      height: 21px;
+      left: 3px;
+      top: 3px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+
+    .switch-control input:checked + .switch-slider {
+      background-color: var(--accent-bg);
+    }
+
+    .switch-control input:checked + .switch-slider::before {
+      transform: translateX(21px);
+      background-color: var(--accent-fg);
+    }
+
+    /* Segmented Quick Buttons */
+    .segmented-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .seg-btn {
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .seg-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .seg-btn.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Controls & Rules */
+    .select-row {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 11px 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .option-copy strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .option-copy span {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .lock-select,
+    .lock-input {
+      padding: 8px 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .lock-input {
+      width: 100%;
+      font-weight: 400;
+      background-color: var(--bg-box);
+    }
+
+    .lock-input:focus,
+    .lock-select:focus {
+      border-color: var(--text-main);
+    }
+
+    .rules-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .rule-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 11px 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    /* Status Preview */
+    .lock-preview-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 13px;
+      padding: 12px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .preview-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .preview-detail {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Actions */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn-outline,
+    .btn-solid {
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--accent-bg);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn-outline {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    /* Footer */
+    .lock-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 13px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="lock-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Profile Locking</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="lock-pill" id="topbarLockPill">Unlocked</span>
+      <button type="button" class="top-action-btn" id="reloadLockBtn" aria-label="Sync profile locking with Supabase">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="lock-container">
+    <!-- Master Profile Lock Control -->
+    <section class="lock-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-user-shield"></i>
+          </span>
+          <h2 class="lock-heading">Profile Lock Status</h2>
+        </div>
+        <span class="badge-tag">Privacy</span>
+      </div>
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+        <span class="meta-chip" id="supabaseStatusChip">Supabase: Ready</span>
+      </div>
+      <p class="lock-text">
+        Lock your profile to restrict non-connections from viewing your photos, posts, and connection details. Save anytime to sync with Supabase.
+      </p>
+
+      <div class="master-lock-box">
+        <div class="master-copy">
+          <div class="master-title-row">
+            <span class="master-title">Lock Your Profile</span>
+            <span class="state-badge" id="lockStateBadge">UNLOCKED</span>
+          </div>
+          <span class="master-desc" id="lockStateDesc">
+            Your profile is currently unlocked.
+          </span>
+        </div>
+        <label class="switch-control" aria-label="Lock Your Profile">
+          <input type="checkbox" id="profileLockSwitch" />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="segmented-row" role="group" aria-label="Quick Profile Lock Actions">
+        <button type="button" class="seg-btn" id="lockNowBtn">
+          <i class="fa-solid fa-lock"></i>
+          <span>Lock Profile</span>
+        </button>
+        <button type="button" class="seg-btn active" id="unlockNowBtn">
+          <i class="fa-solid fa-lock-open"></i>
+          <span>Unlock Profile</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Protection Rules -->
+    <section class="lock-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-sliders"></i>
+          </span>
+          <h2 class="lock-heading">Lock Protection Rules</h2>
+        </div>
+        <span class="badge-tag">Controls</span>
+      </div>
+
+      <div class="select-row">
+        <div class="option-copy">
+          <strong>Protection Mode</strong>
+          <span>Choose how strictly non-connections are restricted</span>
+        </div>
+        <select id="lockLevelSelect" class="lock-select" aria-label="Protection Mode">
+          <option value="standard">Standard Lock</option>
+          <option value="strict" selected>Strict Lock</option>
+        </select>
+      </div>
+
+      <div class="rules-list">
+        <div class="rule-item">
+          <div class="option-copy">
+            <strong>Hide Photos &amp; Media from Non-Connections</strong>
+            <span>Restrict gallery and photo albums to approved connections</span>
+          </div>
+          <label class="switch-control" aria-label="Hide Photos and Media">
+            <input type="checkbox" id="hidePhotosToggle" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="rule-item">
+          <div class="option-copy">
+            <strong>Hide Posts &amp; Updates from Non-Connections</strong>
+            <span>Limit timeline posts to connected accounts</span>
+          </div>
+          <label class="switch-control" aria-label="Hide Posts and Updates">
+            <input type="checkbox" id="hidePostsToggle" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="rule-item">
+          <div class="option-copy">
+            <strong>Hide Connections List</strong>
+            <span>Prevent non-connections from browsing your connections</span>
+          </div>
+          <label class="switch-control" aria-label="Hide Connections List">
+            <input type="checkbox" id="hideFriendsToggle" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="rule-item">
+          <div class="option-copy">
+            <strong>Screenshot &amp; Save Deterrent Notice</strong>
+            <span>Display a privacy notice on locked profile views</span>
+          </div>
+          <label class="switch-control" aria-label="Screenshot Notice">
+            <input type="checkbox" id="blockScreenshotsToggle" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label for="lockNoteInput" class="option-copy">
+          <strong>Optional Lock Note (For Your Reference)</strong>
+        </label>
+        <input type="text" id="lockNoteInput" class="lock-input" maxlength="120" placeholder="e.g., Keeping profile private for a few days..." />
+      </div>
+    </section>
+
+    <!-- Preview & Save -->
+    <section class="lock-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-regular fa-eye"></i>
+          </span>
+          <h2 class="lock-heading">Current Lock Summary</h2>
+        </div>
+        <span class="badge-tag">Supabase</span>
+      </div>
+
+      <div class="lock-preview-box">
+        <strong class="preview-title" id="lockSummaryTitle">Profile is Unlocked</strong>
+        <p class="preview-detail" id="lockSummaryDetail">
+          Standard visibility rules apply. Toggle Lock Your Profile to restrict non-connections.
+        </p>
+      </div>
+
+      <div class="actions-row">
+        <a href="privacy-center.html" class="btn-outline">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Privacy Center</span>
+        </a>
+        <button type="button" class="btn-solid" id="saveLockBtn">
+          <i class="fa-regular fa-floppy-disk"></i>
+          <span>Save</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="lock-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+      const SUPABASE_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const ROW_ID = "default_lock";
+      const LOCAL_KEY = "autro_profile_locking_v1";
+
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      function defaultLockState() {
+        return {
+          locked: false,
+          lock_level: "strict",
+          hide_photos: true,
+          hide_posts: true,
+          hide_friends_list: true,
+          block_screenshots: false,
+          lock_reason: ""
+        };
+      }
+
+      function readLocal() {
+        try {
+          const raw = localStorage.getItem(LOCAL_KEY);
+          if (!raw) return defaultLockState();
+          return Object.assign(defaultLockState(), JSON.parse(raw));
+        } catch (e) {
+          return defaultLockState();
+        }
+      }
+
+      function writeLocal(next) {
+        try {
+          localStorage.setItem(LOCAL_KEY, JSON.stringify(next));
+        } catch (e) {}
+      }
+
+      let lockState = readLocal();
+
+      function sbHeaders(extra) {
+        return Object.assign(
+          {
+            apikey: SUPABASE_KEY,
+            Authorization: "Bearer " + SUPABASE_KEY,
+            "Content-Type": "application/json"
+          },
+          extra || {}
+        );
+      }
+
+      function setSupabaseChip(text) {
+        const chip = document.getElementById("supabaseStatusChip");
+        if (chip) chip.textContent = text;
+      }
+
+      function collectForm() {
+        lockState = {
+          locked: Boolean(document.getElementById("profileLockSwitch")?.checked),
+          lock_level: document.getElementById("lockLevelSelect")?.value || "strict",
+          hide_photos: Boolean(document.getElementById("hidePhotosToggle")?.checked),
+          hide_posts: Boolean(document.getElementById("hidePostsToggle")?.checked),
+          hide_friends_list: Boolean(document.getElementById("hideFriendsToggle")?.checked),
+          block_screenshots: Boolean(
+            document.getElementById("blockScreenshotsToggle")?.checked
+          ),
+          lock_reason: (document.getElementById("lockNoteInput")?.value || "").trim()
+        };
+      }
+
+      function renderLockUI() {
+        const isLocked = Boolean(lockState.locked);
+
+        const sw = document.getElementById("profileLockSwitch");
+        const badge = document.getElementById("lockStateBadge");
+        const topPill = document.getElementById("topbarLockPill");
+        const desc = document.getElementById("lockStateDesc");
+        const lockBtn = document.getElementById("lockNowBtn");
+        const unlockBtn = document.getElementById("unlockNowBtn");
+
+        const levelSel = document.getElementById("lockLevelSelect");
+        const photosTgl = document.getElementById("hidePhotosToggle");
+        const postsTgl = document.getElementById("hidePostsToggle");
+        const friendsTgl = document.getElementById("hideFriendsToggle");
+        const shotTgl = document.getElementById("blockScreenshotsToggle");
+        const noteInp = document.getElementById("lockNoteInput");
+
+        const sumTitle = document.getElementById("lockSummaryTitle");
+        const sumDetail = document.getElementById("lockSummaryDetail");
+
+        if (sw) sw.checked = isLocked;
+        if (badge) {
+          badge.textContent = isLocked ? "LOCKED" : "UNLOCKED";
+          badge.classList.toggle("on", isLocked);
+        }
+        if (topPill) {
+          topPill.textContent = isLocked ? "Locked" : "Unlocked";
+          topPill.classList.toggle("locked", isLocked);
+        }
+        if (desc) {
+          desc.textContent = isLocked
+            ? "Your profile is locked. Non-connections have restricted access."
+            : "Your profile is currently unlocked.";
+        }
+        if (lockBtn) lockBtn.classList.toggle("active", isLocked);
+        if (unlockBtn) unlockBtn.classList.toggle("active", !isLocked);
+
+        if (levelSel) levelSel.value = lockState.lock_level || "strict";
+        if (photosTgl) photosTgl.checked = Boolean(lockState.hide_photos);
+        if (postsTgl) postsTgl.checked = Boolean(lockState.hide_posts);
+        if (friendsTgl) friendsTgl.checked = Boolean(lockState.hide_friends_list);
+        if (shotTgl) shotTgl.checked = Boolean(lockState.block_screenshots);
+        if (noteInp && document.activeElement !== noteInp) {
+          noteInp.value = lockState.lock_reason || "";
+        }
+
+        const activeRules = [];
+        if (lockState.hide_photos) activeRules.push("Photos hidden");
+        if (lockState.hide_posts) activeRules.push("Posts hidden");
+        if (lockState.hide_friends_list) activeRules.push("Connections hidden");
+        if (lockState.block_screenshots) activeRules.push("Privacy notice on");
+
+        if (sumTitle) {
+          sumTitle.textContent = isLocked
+            ? `Profile is Locked (${lockState.lock_level === "strict" ? "Strict" : "Standard"})`
+            : "Profile is Unlocked";
+        }
+        if (sumDetail) {
+          const rulesText = activeRules.length ? activeRules.join(" • ") : "No extra rules active";
+          const noteText = lockState.lock_reason ? ` • Note: ${lockState.lock_reason}` : "";
+          sumDetail.textContent = rulesText + noteText;
+        }
+      }
+
+      async function loadFromSupabase() {
+        try {
+          setSupabaseChip("Supabase: Loading...");
+          const url = `${SUPABASE_URL}/rest/v1/profile_locking_settings?id=eq.${encodeURIComponent(
+            ROW_ID
+          )}&select=*`;
+          const res = await fetch(url, {
+            method: "GET",
+            headers: sbHeaders()
+          });
+          if (!res.ok) {
+            setSupabaseChip("Supabase: Ready");
+            return;
+          }
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            const r = rows[0];
+            lockState = Object.assign(defaultLockState(), {
+              locked: Boolean(r.locked),
+              lock_level: r.lock_level || "strict",
+              hide_photos: typeof r.hide_photos === "boolean" ? r.hide_photos : true,
+              hide_posts: typeof r.hide_posts === "boolean" ? r.hide_posts : true,
+              hide_friends_list:
+                typeof r.hide_friends_list === "boolean" ? r.hide_friends_list : true,
+              block_screenshots: Boolean(r.block_screenshots),
+              lock_reason: r.lock_reason || ""
+            });
+            writeLocal(lockState);
+            renderLockUI();
+            setSupabaseChip("Supabase: Synced");
+          } else {
+            setSupabaseChip("Supabase: Connected");
+          }
+        } catch (err) {
+          setSupabaseChip("Supabase: Offline");
+        }
+      }
+
+      async function saveToSupabase(stateObj) {
+        try {
+          setSupabaseChip("Supabase: Saving...");
+          const payload = [
+            Object.assign(
+              {
+                id: ROW_ID,
+                updated_at: new Date().toISOString()
+              },
+              stateObj
+            )
+          ];
+          const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/profile_locking_settings?on_conflict=id`,
+            {
+              method: "POST",
+              headers: sbHeaders({
+                Prefer: "resolution=merge-duplicates,return=minimal"
+              }),
+              body: JSON.stringify(payload)
+            }
+          );
+          if (res.ok) {
+            setSupabaseChip("Supabase: Saved");
+            return true;
+          }
+          setSupabaseChip("Supabase: Local Saved");
+          return false;
+        } catch (err) {
+          setSupabaseChip("Supabase: Offline");
+          return false;
+        }
+      }
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._lockToastTimer);
+        window._lockToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      document.getElementById("profileLockSwitch")?.addEventListener("change", (e) => {
+        lockState.locked = Boolean(e.target.checked);
+        writeLocal(lockState);
+        renderLockUI();
+        showToast(lockState.locked ? "Profile locked (click Save to sync)" : "Profile unlocked");
+      });
+
+      document.getElementById("lockNowBtn")?.addEventListener("click", () => {
+        lockState.locked = true;
+        writeLocal(lockState);
+        renderLockUI();
+        showToast("Profile set to Locked");
+      });
+
+      document.getElementById("unlockNowBtn")?.addEventListener("click", () => {
+        lockState.locked = false;
+        writeLocal(lockState);
+        renderLockUI();
+        showToast("Profile set to Unlocked");
+      });
+
+      [
+        "lockLevelSelect",
+        "hidePhotosToggle",
+        "hidePostsToggle",
+        "hideFriendsToggle",
+        "blockScreenshotsToggle",
+        "lockNoteInput"
+      ].forEach((id) => {
+        document.getElementById(id)?.addEventListener("input", () => {
+          collectForm();
+          writeLocal(lockState);
+          renderLockUI();
+        });
+        document.getElementById(id)?.addEventListener("change", () => {
+          collectForm();
+          writeLocal(lockState);
+          renderLockUI();
+        });
+      });
+
+      document.getElementById("saveLockBtn")?.addEventListener("click", async () => {
+        collectForm();
+        writeLocal(lockState);
+        renderLockUI();
+        const saved = await saveToSupabase(lockState);
+        showToast(saved ? "Saved to Supabase" : "Saved locally");
+      });
+
+      document.getElementById("reloadLockBtn")?.addEventListener("click", async () => {
+        await loadFromSupabase();
+        showToast("Synced profile locking");
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      renderLockUI();
+      loadFromSupabase();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+  </html>
