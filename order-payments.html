@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orders and Payments - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f6f7f8;
+      --bg-hover: #eceef0;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .pay-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .summary-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    /* Container */
+    .pay-container {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .pay-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-margin-top: 68px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .pay-heading {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .pay-text {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-chip {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Payment Methods */
+    .methods-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .method-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 13px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .method-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .method-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .method-info strong {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .method-info span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .btn-sm-outline,
+    .btn-sm-solid {
+      padding: 7px 11px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--accent-bg);
+      white-space: nowrap;
+    }
+
+    .btn-sm-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .btn-sm-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-sm-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    /* Search & Filter */
+    .filter-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 8px 14px;
+    }
+
+    .search-row i {
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 13.5px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .filter-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Orders List */
+    .orders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .order-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .order-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .order-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .order-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .order-id {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .status-badge.paid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .order-bottom {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-color);
+      font-size: 12.5px;
+    }
+
+    .order-amount {
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .order-meta {
+      color: var(--text-muted);
+    }
+
+    /* Notes & Actions */
+    .policy-bullets {
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-outline,
+    .btn-solid {
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--accent-bg);
+      text-decoration: none;
+    }
+
+    .btn-outline {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .empty-state {
+      display: none;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    .empty-state p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Footer */
+    .pay-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="pay-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Orders and Payments</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="summary-pill" id="ordersCountPill">0 Records</span>
+      <button type="button" class="top-action-btn" id="resetBillingBtn" aria-label="Reset billing sample state">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="pay-container">
+    <!-- Overview -->
+    <section class="pay-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-regular fa-credit-card"></i>
+          </span>
+          <h2 class="pay-heading">Orders, Billing &amp; Payment Methods</h2>
+        </div>
+        <span class="badge-tag">Billing</span>
+      </div>
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+      </div>
+      <p class="pay-text">
+        Manage your preferred payment methods, review order receipts, and track billing records associated with your Autrobook account.
+      </p>
+    </section>
+
+    <!-- Saved Payment Methods -->
+    <section class="pay-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-wallet"></i>
+          </span>
+          <h2 class="pay-heading">Payment Methods</h2>
+        </div>
+        <span class="badge-tag" id="defaultMethodBadge">Default: Card</span>
+      </div>
+      <div class="methods-list" id="paymentMethodsList"></div>
+    </section>
+
+    <!-- Search & Filter -->
+    <section class="filter-card" aria-label="Search and filter orders and payments">
+      <div class="search-row">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input type="search" id="ordersSearchInput" class="search-input" placeholder="Search order ID, item name, method, or status..." />
+      </div>
+      <div class="chip-row" id="ordersFilterChips">
+        <button type="button" class="filter-chip active" data-filter="all">All</button>
+        <button type="button" class="filter-chip" data-filter="paid">Paid</button>
+        <button type="button" class="filter-chip" data-filter="free">Free Tier</button>
+        <button type="button" class="filter-chip" data-filter="refunded">Refunded</button>
+      </div>
+    </section>
+
+    <!-- Orders & Billing History -->
+    <section class="pay-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-receipt"></i>
+          </span>
+          <h2 class="pay-heading">Order &amp; Transaction History</h2>
+        </div>
+        <span class="badge-tag" id="visibleOrdersPill">0 Shown</span>
+      </div>
+      <div class="orders-list" id="ordersList"></div>
+      <div class="empty-state" id="emptyOrdersState">
+        <strong>No matching orders or payments</strong>
+        <p>Try another search term or choose All in the filter bar.</p>
+      </div>
+    </section>
+
+    <!-- Billing Notes & Shortcuts -->
+    <section class="pay-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-shield-halved"></i>
+          </span>
+          <h2 class="pay-heading">Billing &amp; Subscription Notes</h2>
+        </div>
+        <span class="badge-tag">Support</span>
+      </div>
+      <ul class="policy-bullets">
+        <li>Core social access on Autrobook is 18+ Free; optional add-ons or promotions appear here when billed.</li>
+        <li>You can export a JSON copy of your local billing preferences and records anytime.</li>
+      </ul>
+      <div class="actions-row">
+        <button type="button" class="btn-outline" id="exportBillingBtn">
+          <i class="fa-solid fa-download"></i>
+          <span>Export JSON</span>
+        </button>
+        <a href="public/terms/index.html" class="btn-solid">
+          <i class="fa-solid fa-book-open"></i>
+          <span>Terms</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="pay-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "autro_orders_payments_state";
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      const DEFAULT_BILLING = {
+        defaultMethodId: "pm-card",
+        methods: [
+          {
+            id: "pm-card",
+            label: "Debit / Credit Card",
+            detail: "Primary card ending in •••• 4821",
+            icon: "fa-regular fa-credit-card",
+            enabled: true
+          },
+          {
+            id: "pm-wallet",
+            label: "Mobile Wallet / Digital Pay",
+            detail: "Quick checkout option for eligible items",
+            icon: "fa-solid fa-mobile-screen",
+            enabled: true
+          }
+        ],
+        orders: [
+          {
+            id: "ORD-2026-101",
+            title: "Autrobook Standard Access",
+            amount: "$0.00",
+            status: "free",
+            method: "18+ Free Platform",
+            date: "Nov 2026"
+          },
+          {
+            id: "ORD-2026-102",
+            title: "Creator Boost Pack (Monthly)",
+            amount: "$4.99",
+            status: "paid",
+            method: "Card •••• 4821",
+            date: "Oct 2026"
+          },
+          {
+            id: "ORD-2026-103",
+            title: "Page Promotion Credit",
+            amount: "$2.50",
+            status: "refunded",
+            method: "Card •••• 4821",
+            date: "Sep 2026"
+          }
+        ]
+      };
+
+      function cloneDefaults() {
+        return JSON.parse(JSON.stringify(DEFAULT_BILLING));
+      }
+
+      function readBilling() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return cloneDefaults();
+          const parsed = JSON.parse(raw);
+          if (!parsed || !Array.isArray(parsed.orders) || !Array.isArray(parsed.methods)) {
+            return cloneDefaults();
+          }
+          return parsed;
+        } catch (e) {
+          return cloneDefaults();
+        }
+      }
+
+      function writeBilling(data) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {}
+      }
+
+      let billing = readBilling();
+      let activeFilter = "all";
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._payToastTimer);
+        window._payToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function statusLabel(st) {
+        const map = {
+          paid: "Paid",
+          free: "Free",
+          refunded: "Refunded"
+        };
+        return map[st] || "Recorded";
+      }
+
+      function renderMethods() {
+        const listEl = document.getElementById("paymentMethodsList");
+        const badgeEl = document.getElementById("defaultMethodBadge");
+        if (!listEl) return;
+
+        const activeMethod = billing.methods.find((m) => m.id === billing.defaultMethodId);
+        if (badgeEl && activeMethod) {
+          badgeEl.textContent = `Default: ${activeMethod.label}`;
+        }
+
+        listEl.innerHTML = billing.methods
+          .map((m) => {
+            const isDefault = m.id === billing.defaultMethodId;
+            return `
+              <div class="method-item">
+                <div class="method-left">
+                  <span class="method-icon" aria-hidden="true">
+                    <i class="${m.icon}"></i>
+                  </span>
+                  <div class="method-info">
+                    <strong>${m.label}</strong>
+                    <span>${m.detail}</span>
+                  </div>
+                </div>
+                <button type="button" class="${isDefault ? "btn-sm-solid" : "btn-sm-outline"} set-default-method-btn" data-id="${m.id}">
+                  <span>${isDefault ? "Default" : "Set Default"}</span>
+                </button>
+              </div>
+            `;
+          })
+          .join("");
+
+        listEl.querySelectorAll(".set-default-method-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            billing.defaultMethodId = id;
+            writeBilling(billing);
+            renderMethods();
+            showToast("Default payment method updated");
+          });
+        });
+      }
+
+      function renderOrders() {
+        const listEl = document.getElementById("ordersList");
+        const emptyEl = document.getElementById("emptyOrdersState");
+        const countPill = document.getElementById("ordersCountPill");
+        const visiblePill = document.getElementById("visibleOrdersPill");
+        const query = (document.getElementById("ordersSearchInput")?.value || "")
+          .trim()
+          .toLowerCase();
+
+        if (countPill) {
+          countPill.textContent = `${billing.orders.length} ${billing.orders.length === 1 ? "Record" : "Records"}`;
+        }
+
+        const filtered = billing.orders.filter((ord) => {
+          const matchesStatus = activeFilter === "all" || ord.status === activeFilter;
+          const haystack = `${ord.id} ${ord.title} ${ord.amount} ${ord.method} ${ord.status} ${ord.date}`.toLowerCase();
+          const matchesQuery = !query || haystack.includes(query);
+          return matchesStatus && matchesQuery;
+        });
+
+        if (visiblePill) {
+          visiblePill.textContent = `${filtered.length} Shown`;
+        }
+
+        if (!listEl) return;
+
+        if (!filtered.length) {
+          listEl.innerHTML = "";
+          if (emptyEl) emptyEl.classList.add("visible");
+          return;
+        }
+
+        if (emptyEl) emptyEl.classList.remove("visible");
+
+        listEl.innerHTML = filtered
+          .map(
+            (ord) => `
+              <article class="order-item">
+                <div class="order-top">
+                  <div class="order-title-wrap">
+                    <h3 class="order-title">${ord.title}</h3>
+                    <span class="order-id">${ord.id} • ${ord.date}</span>
+                  </div>
+                  <span class="status-badge ${ord.status === "paid" ? "paid" : ""}">
+                    ${statusLabel(ord.status)}
+                  </span>
+                </div>
+                <div class="order-bottom">
+                  <span class="order-amount">${ord.amount}</span>
+                  <span class="order-meta">${ord.method}</span>
+                </div>
+              </article>
+            `
+          )
+          .join("");
+      }
+
+      document.querySelectorAll("#ordersFilterChips .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          activeFilter = chip.getAttribute("data-filter") || "all";
+          document.querySelectorAll("#ordersFilterChips .filter-chip").forEach((c) => {
+            c.classList.toggle("active", c === chip);
+          });
+          renderOrders();
+        });
+      });
+
+      document.getElementById("ordersSearchInput")?.addEventListener("input", renderOrders);
+
+      document.getElementById("exportBillingBtn")?.addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(billing, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "autrobook-orders-payments.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Billing summary exported");
+      });
+
+      document.getElementById("resetBillingBtn")?.addEventListener("click", () => {
+        billing = cloneDefaults();
+        writeBilling(billing);
+        renderMethods();
+        renderOrders();
+        showToast("Billing state reset");
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      renderMethods();
+      renderOrders();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+</html>
