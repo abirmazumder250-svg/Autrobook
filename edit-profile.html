@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Edit Profile — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f4f5;
+      --surface: #e4e4e7;
+      --card: #ffffff;
+      --text: #18181b;
+      --muted: #52525b;
+      --border: #d4d4d8;
+      --btn-sec: #e4e4e7;
+      --btn-sec-hover: #d4d4d8;
+      --btn-sec-border: #c4c4ca;
+      --btn-pri: #18181b;
+      --btn-pri-text: #ffffff;
+      --btn-pri-hover: #27272a;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 16px 36px rgba(0, 0, 0, 0.16);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090b;
+        --surface: #18181b;
+        --card: #111114;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --btn-sec: #18181b;
+        --btn-sec-hover: #27272a;
+        --btn-sec-border: #3f3f46;
+        --btn-pri: #f4f4f5;
+        --btn-pri-text: #09090b;
+        --btn-pri-hover: #e4e4e7;
+        --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.5);
+        --shadow-md: 0 20px 44px rgba(0, 0, 0, 0.8);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 84px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      height: 64px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .topbar-inner {
+      width: 100%;
+      max-width: 920px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.25px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .save-all-btn {
+      height: 40px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .save-all-btn:hover {
+      background: var(--btn-pri-hover);
+    }
+
+    .save-all-btn:active {
+      transform: scale(0.96);
+    }
+
+    .save-all-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Shell */
+    .page-shell {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 18px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Media Card */
+    .studio-media-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .cover-stage {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      background: var(--surface);
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    @media (min-width: 768px) {
+      .cover-stage {
+        height: 265px;
+      }
+    }
+
+    .cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .cover-img.has-img {
+      display: block;
+    }
+
+    .cover-empty-state {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      padding: 20px 16px 60px;
+      text-align: center;
+    }
+
+    .cover-empty-state.hidden {
+      display: none;
+    }
+
+    .cover-empty-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .cover-action-bar {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 5;
+      flex-wrap: wrap;
+    }
+
+    .studio-pill-btn {
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 11px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .studio-pill-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .studio-pill-btn:active {
+      transform: scale(0.96);
+    }
+
+    .avatar-dock {
+      padding: 16px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+    }
+
+    .avatar-identity {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      flex: 1 1 250px;
+    }
+
+    .avatar-frame {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      border-radius: 24px;
+      background: var(--surface);
+      border: 1.5px solid var(--btn-sec-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+    }
+
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .avatar-img.has-img {
+      display: block;
+    }
+
+    .avatar-fallback {
+      font-size: 28px;
+      color: var(--muted);
+    }
+
+    .avatar-fallback.hidden {
+      display: none;
+    }
+
+    .avatar-meta {
+      min-width: 0;
+    }
+
+    .avatar-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.25;
+    }
+
+    .avatar-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .avatar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .sec-btn {
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: background 0.16s ease;
+    }
+
+    .sec-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .pri-btn {
+      height: 38px;
+      padding: 0 15px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: background 0.16s ease;
+    }
+
+    .pri-btn:hover {
+      background: var(--btn-pri-hover);
+    }
+
+    /* Accordion Sections */
+    .section-card {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--card);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .section-toggle {
+      width: 100%;
+      padding: 16px 18px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      cursor: pointer;
+    }
+
+    .section-toggle i {
+      font-size: 14px;
+      color: var(--muted);
+      transition: transform 0.2s ease;
+    }
+
+    .section-card.collapsed .section-toggle i {
+      transform: rotate(180deg);
+    }
+
+    .section-body {
+      padding: 2px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-card.collapsed .section-body {
+      display: none;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      padding: 12px 14px;
+      border-radius: 15px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: background 0.16s ease;
+    }
+
+    .field-row:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .field-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .field-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .field-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .field-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .field-value {
+      font-size: 13.5px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .field-value.placeholder {
+      opacity: 0.78;
+    }
+
+    .field-privacy {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-top: 7px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+
+    .edit-pencil-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13.5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Family Tag Builder */
+    .family-builder {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .family-controls {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr auto;
+      gap: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .family-controls {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .family-add-btn {
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .family-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .family-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .family-chip-role {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .family-chip-remove {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    /* Relationship Choice List & Remove Button */
+    .rel-picker-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 6px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .rel-option-btn {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      font-size: 14.5px;
+      font-weight: 600;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .rel-option-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .rel-option-btn.selected {
+      background: var(--card);
+      border-color: var(--btn-sec-border);
+      font-weight: 700;
+    }
+
+    .remove-field-btn {
+      width: 100%;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .remove-field-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    /* Modal Sheet */
+    .editor-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    .editor-backdrop.open {
+      display: flex;
+    }
+
+    .editor-sheet {
+      width: 100%;
+      max-width: 660px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--card);
+      color: var(--text);
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .sheet-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sheet-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .sheet-input,
+    .sheet-textarea,
+    .sheet-select {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14.5px;
+      outline: none;
+    }
+
+    .sheet-textarea {
+      height: auto;
+      min-height: 105px;
+      padding: 12px 14px;
+      resize: vertical;
+    }
+
+    .sheet-input:focus,
+    .sheet-textarea:focus,
+    .sheet-select:focus {
+      border-color: var(--text);
+      background: var(--card);
+    }
+
+    /* Photo Review Box */
+    .review-preview-frame {
+      width: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .review-cover-img {
+      width: 100%;
+      max-height: 240px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .review-avatar-img {
+      width: 156px;
+      height: 156px;
+      object-fit: cover;
+      border-radius: 32px;
+      border: 2px solid var(--border);
+    }
+
+    .sheet-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .btn-cancel {
+      flex: 1;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 14.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-cancel:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .btn-apply {
+      flex: 1;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 14.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-apply:hover {
+      background: var(--btn-pri-hover);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(90px);
+      z-index: 150;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      padding: 11px 20px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        <a href="profile.html" class="icon-btn" title="Back to profile.html" aria-label="Back to profile.html">
+          <i class="fas fa-chevron-left"></i>
+        </a>
+        <h1 class="page-title">Edit profile</h1>
+      </div>
+      <button type="button" id="saveAllBtn" class="save-all-btn">
+        <i class="fas fa-check"></i>
+        <span>Save</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="page-shell">
+    <!-- Media Card -->
+    <section class="studio-media-card" aria-label="Profile & Cover Studio">
+      <div class="cover-stage" id="coverStage" onclick="triggerPhotoInput('cover')">
+        <div id="coverPlaceholder" class="cover-empty-state">
+          <div class="cover-empty-icon"><i class="fas fa-panorama"></i></div>
+          <div style="font-size:15px;font-weight:800;color:var(--text);">Cover banner</div>
+          <div style="font-size:13px;color:var(--muted);">Tap to choose a cover photo and review before saving</div>
+        </div>
+        <img id="coverImg" class="cover-img" alt="Cover photo">
+        <div class="cover-action-bar" onclick="event.stopPropagation()">
+          <button type="button" class="studio-pill-btn" onclick="triggerPhotoInput('cover')">
+            <i class="fas fa-camera"></i>
+            <span>Choose cover</span>
+          </button>
+          <button type="button" id="reviewCoverBtn" class="studio-pill-btn" onclick="reviewCurrentPhoto('cover')" style="display:none;">
+            <i class="fas fa-eye"></i>
+            <span>Review</span>
+          </button>
+        </div>
+      </div>
+      <input type="file" id="coverFileInput" accept="image/*" style="display:none;">
+
+      <div class="avatar-dock">
+        <div class="avatar-identity">
+          <div class="avatar-frame" onclick="triggerPhotoInput('avatar')">
+            <span id="avatarPlaceholder" class="avatar-fallback"><i class="fas fa-user"></i></span>
+            <img id="avatarImg" class="avatar-img" alt="Profile photo">
+          </div>
+          <div class="avatar-meta">
+            <div class="avatar-title" id="studioDisplayName">Profile &amp; Cover Studio</div>
+            <div class="avatar-sub" id="studioDisplaySub">Select profile or cover photo to open review before saving</div>
+          </div>
+        </div>
+
+        <div class="avatar-actions">
+          <button type="button" class="sec-btn" onclick="triggerPhotoInput('avatar')">
+            <i class="fas fa-camera"></i>
+            <span>Profile photo</span>
+          </button>
+          <button type="button" id="reviewAvatarBtn" class="pri-btn" onclick="reviewCurrentPhoto('avatar')" style="display:none;">
+            <i class="fas fa-check-circle"></i>
+            <span>Review photo</span>
+          </button>
+        </div>
+      </div>
+      <input type="file" id="avatarFileInput" accept="image/*" style="display:none;">
+    </section>
+
+    <!-- Editable Sections -->
+    <main id="sectionsContainer" style="display:flex;flex-direction:column;gap:14px;"></main>
+  </div>
+
+  <!-- Field / Family / Relationship / Photo Review Modal -->
+  <div id="editorBackdrop" class="editor-backdrop" onclick="handleBackdropClick(event)">
+    <div class="editor-sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head">
+        <span id="sheetTitle" class="sheet-title">Edit</span>
+        <button type="button" class="sheet-close" onclick="closeEditorSheet()" title="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div id="sheetFields"></div>
+
+      <div id="privacyWrap">
+        <label for="sheetPrivacy" class="sheet-label">Audience</label>
+        <select id="sheetPrivacy" class="sheet-select">
+          <option value="Public">Public</option>
+          <option value="Friends">Friends</option>
+          <option value="Your friends of friends">Your friends of friends</option>
+          <option value="Only me">Only me</option>
+        </select>
+      </div>
+
+      <div class="sheet-actions">
+        <button type="button" class="btn-cancel" onclick="closeEditorSheet()">Cancel</button>
+        <button type="button" id="sheetConfirmBtn" class="btn-apply" onclick="confirmModalAction()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+    let sb = null;
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        sb = null;
+      }
+    }
+
+    let activeUserId = null;
+    let modalMode = null; // 'field' | 'photo_review'
+    let activeFieldKey = null;
+    let pendingPhoto = null; // { kind: 'avatar'|'cover', dataUrl: string, fileName: string }
+    let draftFamilyMembers = [];
+
+    const FAMILY_ROLES = ['Father', 'Mother', 'Brother', 'Sister', 'Husband', 'Wife'];
+    const RELATIONSHIP_OPTIONS = [
+      'Single',
+      'In a relationship',
+      'Engaged',
+      'Married',
+      'In a civil union',
+      'In a domestic partnership',
+      'In an open relationship',
+      "It's complicated",
+      'Separated',
+      'Divorced',
+      'Widowed'
+    ];
+
+    const DEFAULT_STATE = {
+      full_name: '',
+      username: '',
+      avatar_url: '',
+      cover_url: '',
+      bio: '',
+      bio_privacy: 'Public',
+      pinned_details: '',
+      pinned_privacy: 'Public',
+      location: '',
+      location_privacy: 'Public',
+      hometown: '',
+      hometown_privacy: 'Public',
+      dob: '',
+      dob_privacy: 'Public',
+      relationship: '',
+      relationship_privacy: 'Public',
+      family: '',
+      family_members: [],
+      family_privacy: 'Public',
+      gender: '',
+      gender_privacy: 'Public',
+      language: '',
+      language_privacy: 'Public',
+      work_company: '',
+      work_role: '',
+      work_period: '',
+      work_privacy: 'Public',
+      education_university: '',
+      education_college: '',
+      education_school: '',
+      education_privacy: 'Public',
+      hobbies: '',
+      hobbies_privacy: 'Your friends of friends',
+      interest_music: '',
+      interest_tv: '',
+      interest_movies: '',
+      interest_games: '',
+      interest_sports: '',
+      interests_privacy: 'Your friends of friends',
+      travel_places: '',
+      travel_privacy: 'Your friends of friends',
+      website_url: '',
+      website_privacy: 'Public',
+      social_link: '',
+      email: '',
+      phone: ''
+    };
+
+    let state = Object.assign({}, DEFAULT_STATE);
+
+    function formatFamilySummary(members) {
+      if (!Array.isArray(members) || !members.length) return '';
+      return members.map(m => `${m.tag} (${m.role})`).join(' · ');
+    }
+
+    const SECTIONS = [
+      {
+        id: 'intro',
+        title: 'Intro',
+        items: [
+          {
+            key: 'bio',
+            label: 'Bio',
+            placeholder: 'Write something about yourself...',
+            icon: 'fa-hand-paper',
+            privacyKey: 'bio_privacy',
+            type: 'textarea',
+            getValue: s => s.bio
+          },
+          {
+            key: 'pinned',
+            label: 'Pinned details',
+            placeholder: 'Add pinned details...',
+            icon: 'fa-thumbtack',
+            privacyKey: 'pinned_privacy',
+            type: 'text',
+            getValue: s => s.pinned_details
+          }
+        ]
+      },
+      {
+        id: 'personal',
+        title: 'Personal details',
+        items: [
+          {
+            key: 'location',
+            label: 'Current city',
+            placeholder: 'Add current city',
+            icon: 'fa-location-dot',
+            privacyKey: 'location_privacy',
+            type: 'text',
+            getValue: s => s.location
+          },
+          {
+            key: 'hometown',
+            label: 'Hometown',
+            placeholder: 'Add hometown',
+            icon: 'fa-house-chimney',
+            privacyKey: 'hometown_privacy',
+            type: 'text',
+            getValue: s => s.hometown
+          },
+          {
+            key: 'dob',
+            label: 'Birthday',
+            placeholder: 'Add birthday',
+            icon: 'fa-cake-candles',
+            privacyKey: 'dob_privacy',
+            type: 'text',
+            getValue: s => s.dob
+          },
+          {
+            key: 'relationship',
+            label: 'Relationship status',
+            placeholder: 'Select relationship status',
+            icon: 'fa-heart',
+            privacyKey: 'relationship_privacy',
+            type: 'relationship_picker',
+            getValue: s => s.relationship
+          },
+          {
+            key: 'family',
+            label: 'Family',
+            placeholder: 'Tag family members with @ and select role',
+            icon: 'fa-sitemap',
+            privacyKey: 'family_privacy',
+            type: 'family_group',
+            getValue: s => formatFamilySummary(s.family_members) || s.family
+          },
+          {
+            key: 'gender',
+            label: 'Gender & pronouns',
+            placeholder: 'Add gender and pronouns',
+            icon: 'fa-venus-mars',
+            privacyKey: 'gender_privacy',
+            type: 'text',
+            getValue: s => s.gender
+          },
+          {
+            key: 'language',
+            label: 'Languages',
+            placeholder: 'Add languages',
+            icon: 'fa-language',
+            privacyKey: 'language_privacy',
+            type: 'text',
+            getValue: s => s.language
+          }
+        ]
+      },
+      {
+        id: 'work',
+        title: 'Work',
+        items: [
+          {
+            key: 'work',
+            label: 'Work experience',
+            placeholder: 'Add workplace, role & duration',
+            icon: 'fa-briefcase',
+            privacyKey: 'work_privacy',
+            type: 'work_group',
+            getValue: s => [s.work_company, s.work_role, s.work_period].filter(Boolean).join(' · ')
+          }
+        ]
+      },
+      {
+        id: 'education',
+        title: 'Education',
+        items: [
+          {
+            key: 'education',
+            label: 'High school, college or university',
+            placeholder: 'Add school, college or university',
+            icon: 'fa-graduation-cap',
+            privacyKey: 'education_privacy',
+            type: 'edu_group',
+            getValue: s => [s.education_university, s.education_college, s.education_school].filter(Boolean).join(' · ')
+          }
+        ]
+      },
+      {
+        id: 'hobbies',
+        title: 'Hobbies',
+        items: [
+          {
+            key: 'hobbies',
+            label: 'Hobbies',
+            placeholder: 'Add hobbies',
+            icon: 'fa-shapes',
+            privacyKey: 'hobbies_privacy',
+            type: 'text',
+            getValue: s => s.hobbies
+          }
+        ]
+      },
+      {
+        id: 'interests',
+        title: 'Interests',
+        items: [
+          {
+            key: 'music',
+            label: 'Music',
+            placeholder: 'Add favorite music or artist',
+            icon: 'fa-music',
+            privacyKey: 'interests_privacy',
+            type: 'text',
+            getValue: s => s.interest_music
+          },
+          {
+            key: 'tv',
+            label: 'TV shows',
+            placeholder: 'Add favorite TV shows',
+            icon: 'fa-tv',
+            privacyKey: 'interests_privacy',
+            type: 'text',
+            getValue: s => s.interest_tv
+          },
+          {
+            key: 'movies',
+            label: 'Movies',
+            placeholder: 'Add favorite movies',
+            icon: 'fa-film',
+            privacyKey: 'interests_privacy',
+            type: 'text',
+            getValue: s => s.interest_movies
+          },
+          {
+            key: 'games',
+            label: 'Games',
+            placeholder: 'Add favorite games',
+            icon: 'fa-gamepad',
+            privacyKey: 'interests_privacy',
+            type: 'text',
+            getValue: s => s.interest_games
+          },
+          {
+            key: 'sports',
+            label: 'Sports teams and athletes',
+            placeholder: 'Add favorite teams or athletes',
+            icon: 'fa-shirt',
+            privacyKey: 'interests_privacy',
+            type: 'text',
+            getValue: s => s.interest_sports
+          }
+        ]
+      },
+      {
+        id: 'travel',
+        title: 'Travel',
+        items: [
+          {
+            key: 'travel',
+            label: 'Places',
+            placeholder: 'Add places visited',
+            icon: 'fa-map-pin',
+            privacyKey: 'travel_privacy',
+            type: 'text',
+            getValue: s => s.travel_places
+          }
+        ]
+      },
+      {
+        id: 'links',
+        title: 'Links',
+        items: [
+          {
+            key: 'website',
+            label: 'Websites, blogs, portfolios',
+            placeholder: 'Add website or portfolio link',
+            icon: 'fa-link',
+            privacyKey: 'website_privacy',
+            type: 'text',
+            getValue: s => s.website_url
+          }
+        ]
+      },
+      {
+        id: 'contact',
+        title: 'Contact info',
+        items: [
+          {
+            key: 'social',
+            label: 'Social media',
+            placeholder: 'Add social handle or link',
+            icon: 'fa-at',
+            privacyKey: 'website_privacy',
+            type: 'text',
+            getValue: s => s.social_link
+          },
+          {
+            key: 'email',
+            label: 'Email',
+            placeholder: 'Add email address',
+            icon: 'fa-envelope',
+            privacyKey: 'website_privacy',
+            type: 'text',
+            getValue: s => s.email
+          },
+          {
+            key: 'phone',
+            label: 'Phone number',
+            placeholder: 'Add phone number',
+            icon: 'fa-phone',
+            privacyKey: 'website_privacy',
+            type: 'text',
+            getValue: s => s.phone
+          }
+        ]
+      }
+    ];
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+    }
+
+    function getPrivacyIcon(p) {
+      if (p === 'Only me') return 'fa-lock';
+      if (p === 'Friends' || p === 'Your friends of friends') return 'fa-user-friends';
+      return 'fa-globe-americas';
+    }
+
+    function triggerPhotoInput(kind) {
+      const inputId = kind === 'cover' ? 'coverFileInput' : 'avatarFileInput';
+      const inputEl = document.getElementById(inputId);
+      if (inputEl) {
+        inputEl.value = '';
+        inputEl.click();
+      }
+    }
+
+    function reviewCurrentPhoto(kind) {
+      const url = kind === 'cover' ? state.cover_url : state.avatar_url;
+      if (!url) return;
+      openPhotoReview(kind, url, kind === 'cover' ? 'Current cover' : 'Current photo');
+    }
+
+    function renderMedia() {
+      const coverImg = document.getElementById('coverImg');
+      const coverPh = document.getElementById('coverPlaceholder');
+      const reviewCoverBtn = document.getElementById('reviewCoverBtn');
+      const avatarImg = document.getElementById('avatarImg');
+      const avatarPh = document.getElementById('avatarPlaceholder');
+      const reviewAvatarBtn = document.getElementById('reviewAvatarBtn');
+      const nameEl = document.getElementById('studioDisplayName');
+      const subEl = document.getElementById('studioDisplaySub');
+
+      if (state.cover_url) {
+        coverImg.src = state.cover_url;
+        coverImg.classList.add('has-img');
+        coverPh.classList.add('hidden');
+        if (reviewCoverBtn) reviewCoverBtn.style.display = 'inline-flex';
+      } else {
+        coverImg.removeAttribute('src');
+        coverImg.classList.remove('has-img');
+        coverPh.classList.remove('hidden');
+        if (reviewCoverBtn) reviewCoverBtn.style.display = 'none';
+      }
+
+      if (state.avatar_url) {
+        avatarImg.src = state.avatar_url;
+        avatarImg.classList.add('has-img');
+        avatarPh.classList.add('hidden');
+        if (reviewAvatarBtn) reviewAvatarBtn.style.display = 'inline-flex';
+      } else {
+        avatarImg.removeAttribute('src');
+        avatarImg.classList.remove('has-img');
+        avatarPh.classList.remove('hidden');
+        if (reviewAvatarBtn) reviewAvatarBtn.style.display = 'none';
+      }
+
+      if (nameEl) {
+        nameEl.textContent = state.full_name || state.username || 'Profile & Cover Studio';
+      }
+      if (subEl) {
+        const handle = state.username ? `@${state.username.replace(/^@+/, '')} · ` : '';
+        subEl.textContent = `${handle}Review & save cover and profile visuals`;
+      }
+    }
+
+    function renderSections() {
+      const container = document.getElementById('sectionsContainer');
+      if (!container) return;
+
+      container.innerHTML = SECTIONS.map(sec => {
+        const rowsHtml = sec.items.map(item => {
+          const val = (item.getValue(state) || '').trim();
+          const hasVal = Boolean(val);
+          const priv = state[item.privacyKey] || 'Public';
+          return `
+            <div class="field-row" onclick="openFieldEditor('${item.key}')">
+              <div class="field-left">
+                <div class="field-icon"><i class="fas ${item.icon}"></i></div>
+                <div class="field-content">
+                  <div class="field-label">${escapeHtml(item.label)}</div>
+                  <div class="field-value ${hasVal ? '' : 'placeholder'}">${escapeHtml(hasVal ? val : item.placeholder)}</div>
+                  <div class="field-privacy">
+                    <i class="fas ${getPrivacyIcon(priv)}" style="font-size:11px;"></i>
+                    <span>${escapeHtml(priv)}</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="edit-pencil-btn" title="Edit ${escapeHtml(item.label)}">
+                <i class="fas fa-pen"></i>
+              </button>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <section class="section-card" id="sec-${sec.id}">
+            <button type="button" class="section-toggle" onclick="toggleSection('${sec.id}')">
+              <span>${escapeHtml(sec.title)}</span>
+              <i class="fas fa-chevron-up"></i>
+            </button>
+            <div class="section-body">${rowsHtml}</div>
+          </section>
+        `;
+      }).join('');
+    }
+
+    function toggleSection(secId) {
+      document.getElementById('sec-' + secId)?.classList.toggle('collapsed');
+    }
+
+    function findItemByKey(key) {
+      for (const sec of SECTIONS) {
+        const found = sec.items.find(i => i.key === key);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function renderFamilyChips() {
+      const box = document.getElementById('familyChipsList');
+      if (!box) return;
+      if (!draftFamilyMembers.length) {
+        box.innerHTML = `<span style="font-size:13px;color:var(--muted);">No family tags added yet.</span>`;
+        return;
+      }
+      box.innerHTML = draftFamilyMembers.map((m, idx) => `
+        <span class="family-chip">
+          <span>${escapeHtml(m.tag)}</span>
+          <span class="family-chip-role">${escapeHtml(m.role)}</span>
+          <button type="button" class="family-chip-remove" title="Remove" onclick="removeFamilyDraft(${idx})">
+            <i class="fas fa-times"></i>
+          </button>
+        </span>
+      `).join('');
+    }
+
+    function addFamilyDraft() {
+      const tagInput = document.getElementById('familyTagInput');
+      const roleSelect = document.getElementById('familyRoleSelect');
+      let raw = (tagInput?.value || '').trim();
+      if (!raw) return;
+      if (!raw.startsWith('@')) {
+        raw = '@' + raw.replace(/^@+/, '');
+      }
+      const role = roleSelect?.value || 'Father';
+      draftFamilyMembers.push({ tag: raw, role });
+      if (tagInput) {
+        tagInput.value = '';
+        tagInput.focus();
+      }
+      renderFamilyChips();
+    }
+
+    function removeFamilyDraft(index) {
+      draftFamilyMembers.splice(index, 1);
+      renderFamilyChips();
+    }
+
+    function selectRelationshipChoice(optionText) {
+      const selectEl = document.getElementById('relationshipSelect');
+      if (selectEl) selectEl.value = optionText;
+      document.querySelectorAll('.rel-option-btn').forEach(btn => {
+        const isMatch = btn.dataset.val === optionText;
+        btn.classList.toggle('selected', isMatch);
+        const icon = btn.querySelector('.rel-check');
+        if (icon) icon.style.visibility = isMatch ? 'visible' : 'hidden';
+      });
+    }
+
+    function clearFieldStateByKey(key) {
+      if (key === 'relationship') {
+        state.relationship = '';
+      } else if (key === 'family') {
+        state.family_members = [];
+        state.family = '';
+        draftFamilyMembers = [];
+      } else if (key === 'bio') {
+        state.bio = '';
+      } else if (key === 'pinned') {
+        state.pinned_details = '';
+      } else if (key === 'location') {
+        state.location = '';
+      } else if (key === 'hometown') {
+        state.hometown = '';
+      } else if (key === 'dob') {
+        state.dob = '';
+      } else if (key === 'gender') {
+        state.gender = '';
+      } else if (key === 'language') {
+        state.language = '';
+      } else if (key === 'work') {
+        state.work_company = '';
+        state.work_role = '';
+        state.work_period = '';
+      } else if (key === 'education') {
+        state.education_university = '';
+        state.education_college = '';
+        state.education_school = '';
+      } else if (key === 'hobbies') {
+        state.hobbies = '';
+      } else if (key === 'music') {
+        state.interest_music = '';
+      } else if (key === 'tv') {
+        state.interest_tv = '';
+      } else if (key === 'movies') {
+        state.interest_movies = '';
+      } else if (key === 'games') {
+        state.interest_games = '';
+      } else if (key === 'sports') {
+        state.interest_sports = '';
+      } else if (key === 'travel') {
+        state.travel_places = '';
+      } else if (key === 'website') {
+        state.website_url = '';
+      } else if (key === 'social') {
+        state.social_link = '';
+      } else if (key === 'email') {
+        state.email = '';
+      } else if (key === 'phone') {
+        state.phone = '';
+      }
+    }
+
+    async function removeActiveFieldValue() {
+      if (!activeFieldKey) return;
+      clearFieldStateByKey(activeFieldKey);
+      persistLocal();
+      renderSections();
+      closeEditorSheet();
+      await saveProfileToSupabase();
+    }
+
+    function openFieldEditor(key) {
+      const item = findItemByKey(key);
+      if (!item) return;
+      modalMode = 'field';
+      activeFieldKey = key;
+
+      document.getElementById('sheetTitle').textContent = item.label;
+      document.getElementById('privacyWrap').style.display = 'block';
+      document.getElementById('sheetPrivacy').value = state[item.privacyKey] || 'Public';
+      document.getElementById('sheetConfirmBtn').textContent = 'Save';
+
+      const fieldsBox = document.getElementById('sheetFields');
+      const removeBtnHtml = `
+        <button type="button" class="remove-field-btn" onclick="removeActiveFieldValue()">
+          <i class="fas fa-trash-alt"></i>
+          <span>Remove</span>
+        </button>
+      `;
+
+      if (item.type === 'relationship_picker') {
+        const currentRel = state.relationship || 'Single';
+        const optionButtons = RELATIONSHIP_OPTIONS.map(opt => {
+          const active = opt === currentRel;
+          return `
+            <button
+              type="button"
+              class="rel-option-btn ${active ? 'selected' : ''}"
+              data-val="${escapeHtml(opt)}"
+              onclick="selectRelationshipChoice('${escapeHtml(opt).replace(/'/g, "\\'")}')"
+            >
+              <span>${escapeHtml(opt)}</span>
+              <i class="fas fa-check rel-check" style="visibility:${active ? 'visible' : 'hidden'};"></i>
+            </button>
+          `;
+        }).join('');
+
+        fieldsBox.innerHTML = `
+          <label class="sheet-label" for="relationshipSelect">Status</label>
+          <select id="relationshipSelect" class="sheet-select" onchange="selectRelationshipChoice(this.value)">
+            ${RELATIONSHIP_OPTIONS.map(opt => `<option value="${escapeHtml(opt)}" ${opt === currentRel ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+          </select>
+          <div class="rel-picker-list">${optionButtons}</div>
+          ${removeBtnHtml}
+        `;
+      } else if (item.type === 'textarea') {
+        fieldsBox.innerHTML = `
+          <label class="sheet-label" for="inputSingle">Details</label>
+          <textarea id="inputSingle" class="sheet-textarea" placeholder="${escapeHtml(item.placeholder)}">${escapeHtml(state.bio || '')}</textarea>
+          ${removeBtnHtml}
+        `;
+      } else if (item.type === 'family_group') {
+        draftFamilyMembers = Array.isArray(state.family_members) ? state.family_members.slice() : [];
+        const roleOptions = FAMILY_ROLES.map(r => `<option value="${r}">${r}</option>`).join('');
+        fieldsBox.innerHTML = `
+          <div class="family-builder">
+            <label class="sheet-label" for="familyTagInput">Tag friend (@username or name) &amp; choose relation</label>
+            <div class="family-controls">
+              <input id="familyTagInput" type="text" class="sheet-input" placeholder="@friend_name" onkeydown="if(event.key==='Enter'){event.preventDefault();addFamilyDraft();}">
+              <select id="familyRoleSelect" class="sheet-select">${roleOptions}</select>
+              <button type="button" class="family-add-btn" onclick="addFamilyDraft()">Add</button>
+            </div>
+            <div id="familyChipsList" class="family-chips"></div>
+            ${removeBtnHtml}
+          </div>
+        `;
+        renderFamilyChips();
+      } else if (item.type === 'work_group') {
+        fieldsBox.innerHTML = `
+          <label class="sheet-label" for="workCompany">Organization / Workplace</label>
+          <input id="workCompany" class="sheet-input" value="${escapeHtml(state.work_company || '')}" placeholder="Organization or company name" style="margin-bottom:10px;">
+          <label class="sheet-label" for="workRole">Role / Title</label>
+          <input id="workRole" class="sheet-input" value="${escapeHtml(state.work_role || '')}" placeholder="Role or position" style="margin-bottom:10px;">
+          <label class="sheet-label" for="workPeriod">Period</label>
+          <input id="workPeriod" class="sheet-input" value="${escapeHtml(state.work_period || '')}" placeholder="e.g. Jan 2024 - Present" style="margin-bottom:8px;">
+          ${removeBtnHtml}
+        `;
+      } else if (item.type === 'edu_group') {
+        fieldsBox.innerHTML = `
+          <label class="sheet-label" for="eduUni">University</label>
+          <input id="eduUni" class="sheet-input" value="${escapeHtml(state.education_university || '')}" placeholder="University name" style="margin-bottom:10px;">
+          <label class="sheet-label" for="eduCol">College</label>
+          <input id="eduCol" class="sheet-input" value="${escapeHtml(state.education_college || '')}" placeholder="College name" style="margin-bottom:10px;">
+          <label class="sheet-label" for="eduSch">High school</label>
+          <input id="eduSch" class="sheet-input" value="${escapeHtml(state.education_school || '')}" placeholder="School name" style="margin-bottom:8px;">
+          ${removeBtnHtml}
+        `;
+      } else {
+        const mapVal = {
+          pinned: state.pinned_details,
+          location: state.location,
+          hometown: state.hometown,
+          dob: state.dob,
+          gender: state.gender,
+          language: state.language,
+          hobbies: state.hobbies,
+          music: state.interest_music,
+          tv: state.interest_tv,
+          movies: state.interest_movies,
+          games: state.interest_games,
+          sports: state.interest_sports,
+          travel: state.travel_places,
+          website: state.website_url,
+          social: state.social_link,
+          email: state.email,
+          phone: state.phone
+        };
+        fieldsBox.innerHTML = `
+          <label class="sheet-label" for="inputSingle">${escapeHtml(item.label)}</label>
+          <input id="inputSingle" type="text" class="sheet-input" value="${escapeHtml(mapVal[key] || '')}" placeholder="${escapeHtml(item.placeholder)}" style="margin-bottom:8px;">
+          ${removeBtnHtml}
+        `;
+      }
+
+      document.getElementById('editorBackdrop').classList.add('open');
+    }
+
+    function openPhotoReview(kind, dataUrl, fileName = '') {
+      modalMode = 'photo_review';
+      pendingPhoto = { kind, dataUrl, fileName };
+      const isCover = kind === 'cover';
+
+      document.getElementById('sheetTitle').textContent = isCover ? 'Cover Photo Review' : 'Profile Photo Review';
+      document.getElementById('privacyWrap').style.display = 'none';
+      document.getElementById('sheetConfirmBtn').textContent = 'Save';
+
+      document.getElementById('sheetFields').innerHTML = `
+        <p style="font-size:13.5px;color:var(--muted);">
+          Review your ${isCover ? 'cover banner' : 'profile photo'} (${escapeHtml(fileName || 'selected image')}) and click <strong>Save</strong> to apply.
+        </p>
+        <div class="review-preview-frame">
+          <img src="${dataUrl}" alt="Photo review" class="${isCover ? 'review-cover-img' : 'review-avatar-img'}">
+          <button type="button" class="sec-btn" onclick="triggerPhotoInput('${kind}')">
+            <i class="fas fa-rotate"></i>
+            <span>Choose another</span>
+          </button>
+        </div>
+      `;
+
+      document.getElementById('editorBackdrop').classList.add('open');
+    }
+
+    function closeEditorSheet() {
+      modalMode = null;
+      activeFieldKey = null;
+      pendingPhoto = null;
+      document.getElementById('editorBackdrop').classList.remove('open');
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === 'editorBackdrop') {
+        closeEditorSheet();
+      }
+    }
+
+    async function confirmModalAction() {
+      if (modalMode === 'photo_review' && pendingPhoto) {
+        if (pendingPhoto.kind === 'cover') {
+          state.cover_url = pendingPhoto.dataUrl;
+        } else {
+          state.avatar_url = pendingPhoto.dataUrl;
+        }
+        persistLocal();
+        renderMedia();
+        closeEditorSheet();
+        await saveProfileToSupabase();
+        return;
+      }
+
+      const item = findItemByKey(activeFieldKey);
+      if (!item) return;
+
+      const privVal = document.getElementById('sheetPrivacy')?.value || 'Public';
+      state[item.privacyKey] = privVal;
+
+      if (item.type === 'relationship_picker') {
+        state.relationship = (document.getElementById('relationshipSelect')?.value || '').trim();
+      } else if (item.type === 'family_group') {
+        state.family_members = draftFamilyMembers.slice();
+        state.family = formatFamilySummary(state.family_members);
+      } else if (item.type === 'work_group') {
+        state.work_company = (document.getElementById('workCompany')?.value || '').trim();
+        state.work_role = (document.getElementById('workRole')?.value || '').trim();
+        state.work_period = (document.getElementById('workPeriod')?.value || '').trim();
+      } else if (item.type === 'edu_group') {
+        state.education_university = (document.getElementById('eduUni')?.value || '').trim();
+        state.education_college = (document.getElementById('eduCol')?.value || '').trim();
+        state.education_school = (document.getElementById('eduSch')?.value || '').trim();
+      } else {
+        const val = (document.getElementById('inputSingle')?.value || '').trim();
+        const keyMap = {
+          bio: 'bio',
+          pinned: 'pinned_details',
+          location: 'location',
+          hometown: 'hometown',
+          dob: 'dob',
+          gender: 'gender',
+          language: 'language',
+          hobbies: 'hobbies',
+          music: 'interest_music',
+          tv: 'interest_tv',
+          movies: 'interest_movies',
+          games: 'interest_games',
+          sports: 'interest_sports',
+          travel: 'travel_places',
+          website: 'website_url',
+          social: 'social_link',
+          email: 'email',
+          phone: 'phone'
+        };
+        const targetProp = keyMap[item.key];
+        if (targetProp) state[targetProp] = val;
+      }
+
+      persistLocal();
+      renderSections();
+      closeEditorSheet();
+      await saveProfileToSupabase();
+    }
+
+    function processPickedFile(file, kind) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result || '';
+        if (!dataUrl) return;
+        openPhotoReview(kind, dataUrl, file.name || '');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function bindPhotoInputs() {
+      const coverInput = document.getElementById('coverFileInput');
+      const avatarInput = document.getElementById('avatarFileInput');
+
+      if (coverInput) {
+        const onCover = () => {
+          const f = coverInput.files && coverInput.files[0];
+          if (f) processPickedFile(f, 'cover');
+        };
+        coverInput.addEventListener('change', onCover);
+        coverInput.addEventListener('input', onCover);
+      }
+
+      if (avatarInput) {
+        const onAvatar = () => {
+          const f = avatarInput.files && avatarInput.files[0];
+          if (f) processPickedFile(f, 'avatar');
+        };
+        avatarInput.addEventListener('change', onAvatar);
+        avatarInput.addEventListener('input', onAvatar);
+      }
+    }
+
+    function persistLocal() {
+      try {
+        const existing = JSON.parse(localStorage.getItem('autrobook_user') || '{}') || {};
+        const merged = Object.assign({}, existing, state);
+        localStorage.setItem('autrobook_user', JSON.stringify(merged));
+        if (state.avatar_url) {
+          localStorage.setItem('autro_avatar_url', state.avatar_url);
+        } else {
+          localStorage.removeItem('autro_avatar_url');
+        }
+        if (state.cover_url) {
+          localStorage.setItem('autro_cover_url', state.cover_url);
+        } else {
+          localStorage.removeItem('autro_cover_url');
+        }
+      } catch (e) {}
+    }
+
+    async function resolveActiveUserId() {
+      if (activeUserId) return activeUserId;
+      if (sb && sb.auth) {
+        try {
+          if (typeof sb.auth.getUser === 'function') {
+            const { data } = await sb.auth.getUser();
+            if (data?.user?.id) {
+              activeUserId = data.user.id;
+              return activeUserId;
+            }
+          }
+          if (typeof sb.auth.getSession === 'function') {
+            const { data } = await sb.auth.getSession();
+            if (data?.session?.user?.id) {
+              activeUserId = data.session.user.id;
+              return activeUserId;
+            }
+          }
+        } catch (e) {}
+      }
+      try {
+        const localSaved = JSON.parse(localStorage.getItem('autrobook_user') || '{}') || {};
+        if (localSaved.id) {
+          activeUserId = localSaved.id;
+          return activeUserId;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    async function saveProfileToSupabase() {
+      const btn = document.getElementById('saveAllBtn');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Saving...</span>';
+      }
+
+      try {
+        persistLocal();
+        renderMedia();
+        renderSections();
+
+        const userId = await resolveActiveUserId();
+        if (!sb || !userId) {
+          showToast('Saved');
+          return;
+        }
+
+        const basePayload = {
+          id: userId,
+          avatar_url: state.avatar_url || '',
+          cover_url: state.cover_url || '',
+          thought: state.bio || '',
+          location: state.location || '',
+          hometown: state.hometown || '',
+          dob: state.dob || '',
+          relationship: state.relationship || '',
+          gender: state.gender || '',
+          language: state.language || '',
+          updated_at: new Date().toISOString()
+        };
+
+        const extendedPayload = Object.assign({}, basePayload, {
+          pinned_details: state.pinned_details || '',
+          family: state.family || '',
+          family_members: state.family_members || [],
+          work_company: state.work_company || '',
+          work_role: state.work_role || '',
+          work_period: state.work_period || '',
+          education_university: state.education_university || '',
+          education_college: state.education_college || '',
+          education_school: state.education_school || '',
+          hobbies: state.hobbies || '',
+          interest_music: state.interest_music || '',
+          interest_tv: state.interest_tv || '',
+          interest_movies: state.interest_movies || '',
+          interest_games: state.interest_games || '',
+          interest_sports: state.interest_sports || '',
+          travel_places: state.travel_places || '',
+          website_url: state.website_url || '',
+          social_link: state.social_link || '',
+          email: state.email || '',
+          phone: state.phone || ''
+        });
+
+        let { error } = await sb.from('profiles').upsert(extendedPayload, { onConflict: 'id' });
+        if (error) {
+          const fallback = await sb.from('profiles').upsert(basePayload, { onConflict: 'id' });
+          error = fallback.error;
+        }
+
+        if (error) {
+          console.warn('Supabase profiles upsert warning:', error);
+          showToast('Saved');
+        } else {
+          showToast('Saved');
+        }
+      } catch (err) {
+        console.warn('Save error:', err);
+        showToast('Saved');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml || '<i class="fas fa-check"></i><span>Save</span>';
+        }
+      }
+    }
+
+    async function initEditProfile() {
+      bindPhotoInputs();
+
+      const saveBtn = document.getElementById('saveAllBtn');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          saveProfileToSupabase();
+        });
+      }
+
+      try {
+        const localSaved = JSON.parse(localStorage.getItem('autrobook_user') || '{}') || {};
+        state = Object.assign({}, DEFAULT_STATE, localSaved);
+        if (!Array.isArray(state.family_members)) state.family_members = [];
+        if (localSaved.id) activeUserId = localSaved.id;
+        if (!state.avatar_url && localStorage.getItem('autro_avatar_url')) {
+          state.avatar_url = localStorage.getItem('autro_avatar_url');
+        }
+        if (!state.cover_url && localStorage.getItem('autro_cover_url')) {
+          state.cover_url = localStorage.getItem('autro_cover_url');
+        }
+      } catch (e) {}
+
+      renderMedia();
+      renderSections();
+
+      if (!sb) return;
+      try {
+        const { data: sessionData } = await sb.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (!user) return;
+        activeUserId = user.id;
+
+        const { data: row } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+        if (row) {
+          state = Object.assign({}, state, {
+            full_name: row.full_name || state.full_name,
+            username: row.username || state.username,
+            avatar_url: row.avatar_url || state.avatar_url,
+            cover_url: row.cover_url || state.cover_url,
+            bio: row.thought || state.bio,
+            pinned_details: row.pinned_details ?? state.pinned_details,
+            location: row.location || state.location,
+            hometown: row.hometown || state.hometown,
+            dob: row.dob || state.dob,
+            relationship: row.relationship || state.relationship,
+            family: row.family ?? state.family,
+            family_members: Array.isArray(row.family_members) ? row.family_members : state.family_members,
+            gender: row.gender || state.gender,
+            language: row.language || state.language,
+            work_company: row.work_company ?? state.work_company,
+            work_role: row.work_role ?? state.work_role,
+            work_period: row.work_period ?? state.work_period,
+            education_university: row.education_university ?? state.education_university,
+            education_college: row.education_college ?? state.education_college,
+            education_school: row.education_school ?? state.education_school,
+            hobbies: row.hobbies ?? state.hobbies,
+            interest_music: row.interest_music ?? state.interest_music,
+            interest_tv: row.interest_tv ?? state.interest_tv,
+            interest_movies: row.interest_movies ?? state.interest_movies,
+            interest_games: row.interest_games ?? state.interest_games,
+            interest_sports: row.interest_sports ?? state.interest_sports,
+            travel_places: row.travel_places ?? state.travel_places,
+            website_url: row.website_url ?? state.website_url,
+            social_link: row.social_link ?? state.social_link,
+            email: row.email ?? state.email,
+            phone: row.phone ?? state.phone
+          });
+          persistLocal();
+          renderMedia();
+          renderSections();
+        }
+      } catch (e) {
+        console.warn('Session check skipped:', e);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initEditProfile);
+  </script>
+</body>
+            </html>
