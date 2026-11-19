@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activity Log - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f6f7f8;
+      --bg-hover: #eceef0;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .log-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .count-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    /* Main Container */
+    .log-container {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .log-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-margin-top: 68px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .log-heading {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .log-text {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-chip {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Quick Log Form */
+    .quick-log-form {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+
+    @media (max-width: 520px) {
+      .quick-log-form {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .log-input,
+    .log-select {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .log-input:focus,
+    .log-select:focus {
+      border-color: var(--text-main);
+    }
+
+    .form-controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* Search & Filter */
+    .filter-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 8px 14px;
+    }
+
+    .search-row i {
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 13.5px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .filter-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Activity List */
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .activity-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 13px 14px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .activity-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .activity-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .activity-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .activity-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .activity-detail {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .activity-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .activity-cat-tag {
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .delete-item-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12.5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .delete-item-btn:hover {
+      background-color: var(--bg-hover);
+      border-color: var(--text-main);
+    }
+
+    /* Buttons */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-outline,
+    .btn-solid {
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--accent-bg);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .empty-state {
+      display: none;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    .empty-state p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Footer */
+    .log-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="log-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Activity Log</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="count-pill" id="activityCountPill">0 Entries</span>
+      <button type="button" class="top-action-btn" id="restoreDefaultLogsBtn" aria-label="Restore sample log entries">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="log-container">
+    <!-- Overview & Add Note -->
+    <section class="log-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-list-check"></i>
+          </span>
+          <h2 class="log-heading">Your Account &amp; Session Activity</h2>
+        </div>
+        <span class="badge-tag">History</span>
+      </div>
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+      </div>
+      <p class="log-text">
+        Review recent settings updates, privacy actions, and session notes recorded in your browser activity log. You can filter entries, add a personal note, remove single items, or clear the log.
+      </p>
+
+      <form class="quick-log-form" id="addLogForm">
+        <input type="text" id="newLogInput" class="log-input" placeholder="Add a custom activity note (e.g., Updated privacy settings)..." maxlength="140" />
+        <button type="submit" class="btn-solid">
+          <i class="fa-solid fa-plus"></i>
+          <span>Add Note</span>
+        </button>
+      </form>
+      <div class="form-controls-row">
+        <select id="newLogCategorySelect" class="log-select" aria-label="Activity category" style="max-width: 220px;">
+          <option value="settings">Settings</option>
+          <option value="privacy">Privacy &amp; Cookies</option>
+          <option value="connections">Apps &amp; Integrations</option>
+          <option value="session">Session</option>
+        </select>
+        <span class="log-text" style="font-size: 12px;">Stored locally in this browser</span>
+      </div>
+    </section>
+
+    <!-- Search & Filter -->
+    <section class="filter-card" aria-label="Search and filter activity log">
+      <div class="search-row">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input type="search" id="logSearchInput" class="search-input" placeholder="Search activity log entries, dates, or categories..." />
+      </div>
+      <div class="chip-row" id="logFilterChips">
+        <button type="button" class="filter-chip active" data-filter="all">All</button>
+        <button type="button" class="filter-chip" data-filter="settings">Settings</button>
+        <button type="button" class="filter-chip" data-filter="privacy">Privacy &amp; Cookies</button>
+        <button type="button" class="filter-chip" data-filter="connections">Apps &amp; Integrations</button>
+        <button type="button" class="filter-chip" data-filter="session">Session</button>
+      </div>
+    </section>
+
+    <!-- Activity Entries -->
+    <section class="log-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-regular fa-clock"></i>
+          </span>
+          <h2 class="log-heading">Recorded Activity</h2>
+        </div>
+        <span class="badge-tag" id="visibleEntriesPill">0 Shown</span>
+      </div>
+      <div class="activity-list" id="activityList"></div>
+      <div class="empty-state" id="emptyLogState">
+        <strong>No activity entries found</strong>
+        <p>Try another filter or add a new activity note above.</p>
+      </div>
+    </section>
+
+    <!-- Log Management Actions -->
+    <section class="log-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-sliders"></i>
+          </span>
+          <h2 class="log-heading">Log Controls</h2>
+        </div>
+        <span class="badge-tag">Local Storage</span>
+      </div>
+      <p class="log-text">
+        Need to clean up your local history or review your stored browser keys? Use the controls below anytime.
+      </p>
+      <div class="actions-row">
+        <a href="manage-information.html" class="btn-outline" style="text-decoration: none;">
+          <i class="fa-solid fa-database"></i>
+          <span>Manage Information</span>
+        </a>
+        <button type="button" class="btn-outline" id="clearAllLogsBtn">
+          <i class="fa-regular fa-trash-can"></i>
+          <span>Clear Log</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="log-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "autro_activity_log_entries";
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      const DEFAULT_ENTRIES = [
+        {
+          id: "act-1",
+          title: "Viewed Settings & Privacy Hub",
+          detail: "Opened account preferences and policy pages on Autrobook.",
+          category: "settings",
+          icon: "fa-solid fa-gear",
+          timestamp: "Today"
+        },
+        {
+          id: "act-2",
+          title: "Checked Cookie Consent Preferences",
+          detail: "Reviewed storage categories and browser preference controls.",
+          category: "privacy",
+          icon: "fa-solid fa-cookie-bite",
+          timestamp: "Today"
+        },
+        {
+          id: "act-3",
+          title: "Reviewed Connected Apps & Integrations",
+          detail: "Inspected third-party and business integration access states.",
+          category: "connections",
+          icon: "fa-solid fa-plug",
+          timestamp: "Yesterday"
+        },
+        {
+          id: "act-4",
+          title: "Browser Session Started",
+          detail: "Opened Autrobook web interface in current browser session.",
+          category: "session",
+          icon: "fa-solid fa-arrow-right-to-bracket",
+          timestamp: "2 days ago"
+        }
+      ];
+
+      function cloneDefaults() {
+        return JSON.parse(JSON.stringify(DEFAULT_ENTRIES));
+      }
+
+      function readEntries() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return cloneDefaults();
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : cloneDefaults();
+        } catch (e) {
+          return cloneDefaults();
+        }
+      }
+
+      function writeEntries(list) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        } catch (e) {}
+      }
+
+      let entries = readEntries();
+      let activeFilter = "all";
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._logToastTimer);
+        window._logToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function categoryLabel(cat) {
+        const map = {
+          settings: "Settings",
+          privacy: "Privacy & Cookies",
+          connections: "Apps & Integrations",
+          session: "Session"
+        };
+        return map[cat] || "Activity";
+      }
+
+      function categoryIcon(cat) {
+        const map = {
+          settings: "fa-solid fa-gear",
+          privacy: "fa-solid fa-shield-halved",
+          connections: "fa-solid fa-plug",
+          session: "fa-solid fa-clock"
+        };
+        return map[cat] || "fa-regular fa-note-sticky";
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function renderLog() {
+        const listEl = document.getElementById("activityList");
+        const emptyEl = document.getElementById("emptyLogState");
+        const countPill = document.getElementById("activityCountPill");
+        const visiblePill = document.getElementById("visibleEntriesPill");
+        const query = (document.getElementById("logSearchInput")?.value || "")
+          .trim()
+          .toLowerCase();
+
+        if (countPill) {
+          countPill.textContent = `${entries.length} ${entries.length === 1 ? "Entry" : "Entries"}`;
+        }
+
+        const filtered = entries.filter((item) => {
+          const matchesCat = activeFilter === "all" || item.category === activeFilter;
+          const haystack = `${item.title} ${item.detail || ""} ${item.category} ${item.timestamp || ""}`.toLowerCase();
+          const matchesQuery = !query || haystack.includes(query);
+          return matchesCat && matchesQuery;
+        });
+
+        if (visiblePill) {
+          visiblePill.textContent = `${filtered.length} Shown`;
+        }
+
+        if (!listEl) return;
+
+        if (!filtered.length) {
+          listEl.innerHTML = "";
+          if (emptyEl) emptyEl.classList.add("visible");
+          return;
+        }
+
+        if (emptyEl) emptyEl.classList.remove("visible");
+
+        listEl.innerHTML = filtered
+          .map(
+            (item) => `
+              <article class="activity-item" data-id="${escapeHtml(item.id)}">
+                <div class="activity-left">
+                  <span class="activity-icon" aria-hidden="true">
+                    <i class="${escapeHtml(item.icon || categoryIcon(item.category))}"></i>
+                  </span>
+                  <div class="activity-body">
+                    <h3 class="activity-title">${escapeHtml(item.title)}</h3>
+                    ${item.detail ? `<p class="activity-detail">${escapeHtml(item.detail)}</p>` : ""}
+                    <div class="activity-meta">
+                      <span class="activity-cat-tag">${escapeHtml(categoryLabel(item.category))}</span>
+                      <span>${escapeHtml(item.timestamp || "Recent")}</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="delete-item-btn" data-id="${escapeHtml(item.id)}" aria-label="Remove entry">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </article>
+            `
+          )
+          .join("");
+
+        listEl.querySelectorAll(".delete-item-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            entries = entries.filter((e) => e.id !== id);
+            writeEntries(entries);
+            renderLog();
+            showToast("Entry removed");
+          });
+        });
+      }
+
+      document.getElementById("addLogForm")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = document.getElementById("newLogInput");
+        const select = document.getElementById("newLogCategorySelect");
+        const title = (input?.value || "").trim();
+        if (!title) {
+          showToast("Please enter an activity note");
+          input?.focus();
+          return;
+        }
+        const category = select?.value || "settings";
+        const newItem = {
+          id: "act-" + Date.now(),
+          title,
+          detail: "Added manually in Activity Log.",
+          category,
+          icon: categoryIcon(category),
+          timestamp: "Just now"
+        };
+        entries.unshift(newItem);
+        writeEntries(entries);
+        if (input) input.value = "";
+        renderLog();
+        showToast("Activity note added");
+      });
+
+      document.querySelectorAll("#logFilterChips .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          activeFilter = chip.getAttribute("data-filter") || "all";
+          document.querySelectorAll("#logFilterChips .filter-chip").forEach((c) => {
+            c.classList.toggle("active", c === chip);
+          });
+          renderLog();
+        });
+      });
+
+      document.getElementById("logSearchInput")?.addEventListener("input", renderLog);
+
+      document.getElementById("clearAllLogsBtn")?.addEventListener("click", () => {
+        entries = [];
+        writeEntries(entries);
+        renderLog();
+        showToast("Activity log cleared");
+      });
+
+      document.getElementById("restoreDefaultLogsBtn")?.addEventListener("click", () => {
+        entries = cloneDefaults();
+        writeEntries(entries);
+        renderLog();
+        showToast("Default activity log restored");
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      renderLog();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+</html>
