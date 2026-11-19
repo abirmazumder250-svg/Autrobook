@@ -586,7 +586,7 @@
         </div>
 
         <div class="actions-bar">
-          <span class="status-note" id="recieverSyncStatus">Ready to save &amp; sync</span>
+          <span class="status-note" id="recieverSyncStatus">Connecting live count from Supabase...</span>
           <button type="submit" class="primary-btn">
             <i class="fa-regular fa-paper-plane"></i>
             <span>Save Receiver</span>
@@ -724,6 +724,36 @@
         (v) => { backPic = v; }
       );
 
+      async function fetchLiveCountFromSupabase() {
+        const statusEl = document.getElementById("recieverSyncStatus");
+        const totalEl = document.getElementById("statReceiverTotal");
+        const localCount = readList(RECEIVERS_KEY).length;
+
+        try {
+          const res = await fetch(
+            `${CLOUD_URL}/rest/v1/dashboard_state?id=eq.${encodeURIComponent(ROW_ID)}&select=quick_note,updated_at`,
+            {
+              headers: {
+                apikey: CLOUD_KEY,
+                Authorization: "Bearer " + CLOUD_KEY
+              }
+            }
+          );
+          if (!res.ok) throw new Error("fetch failed");
+          const rows = await res.json();
+          const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+          const note = row && typeof row.quick_note === "string" ? row.quick_note : "";
+          const match = note.match(/receivers=(\d+)/);
+          const liveReceivers = localCount > 0 ? localCount : match ? Number(match[1]) : 0;
+
+          if (totalEl) totalEl.textContent = String(liveReceivers);
+          if (statusEl) statusEl.textContent = `Live from Supabase (${liveReceivers} receivers)`;
+        } catch (e) {
+          if (totalEl) totalEl.textContent = String(localCount);
+          if (statusEl) statusEl.textContent = `Live local (${localCount} receivers)`;
+        }
+      }
+
       async function syncToSupabase(receiversCount) {
         const statusEl = document.getElementById("recieverSyncStatus");
         const donorsCount = readList(DONORS_KEY).length;
@@ -739,18 +769,18 @@
             body: JSON.stringify([
               {
                 id: ROW_ID,
-                quick_note: `Blood: donors=${donorsCount} | receivers=${receiversCount}`,
+                quick_note: `Blood: donators=${donorsCount} | receivers=${receiversCount}`,
                 updated_at: new Date().toISOString()
               }
             ])
           });
           if (statusEl) {
             statusEl.textContent = res.ok
-              ? `Synced (${receiversCount} receivers) with Supabase`
-              : `Saved locally (${receiversCount} receivers)`;
+              ? `Live (${receiversCount} receivers) • Synced with Supabase`
+              : `Live (${receiversCount} receivers) • Saved locally`;
           }
         } catch (e) {
-          if (statusEl) statusEl.textContent = `Saved locally (${receiversCount} receivers)`;
+          if (statusEl) statusEl.textContent = `Live (${receiversCount} receivers) • Saved locally`;
         }
       }
 
@@ -854,6 +884,7 @@
       if (mediaQuery) mediaQuery.addEventListener("change", applySystemDefaultTheme);
       applySystemDefaultTheme();
       renderList();
+      fetchLiveCountFromSupabase();
     })();
   </script>
 </body>
