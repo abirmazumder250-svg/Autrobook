@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Autro Account - Autrobook</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -181,9 +183,10 @@
     }
 
     .hero-avatar-wrap {
-      width: 62px;
-      height: 62px;
-      border-radius: 16px;
+      position: relative;
+      width: 68px;
+      height: 68px;
+      border-radius: 18px;
       background-color: var(--bg-box);
       border: 1.5px solid var(--border-box);
       display: flex;
@@ -191,12 +194,36 @@
       justify-content: center;
       overflow: hidden;
       flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .hero-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
     }
 
     .hero-avatar-fallback {
       font-size: 24px;
       font-weight: 800;
       color: var(--text-main);
+    }
+
+    .avatar-edit-badge {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background-color: var(--bg-chip-active);
+      color: var(--text-invert);
+      border: 1px solid var(--border-box);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
     }
 
     .hero-info {
@@ -315,6 +342,64 @@
 
     .field-label i {
       color: var(--text-main);
+    }
+
+    .avatar-picker-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .avatar-thumb-box {
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      border: 1px solid var(--border-box);
+      background-color: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .avatar-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .avatar-thumb-fallback {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .avatar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-mini-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-box);
+      background-color: var(--bg-input);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-mini-action:hover {
+      border-color: var(--accent);
     }
 
     .text-input,
@@ -643,8 +728,12 @@
 
   <main class="account-container">
     <section class="account-hero-card">
-      <div class="hero-avatar-wrap">
+      <div class="hero-avatar-wrap" id="heroAvatarClickBox" title="Click to change profile picture">
+        <img alt="User Profile Picture" class="hero-avatar-img" id="heroAvatarImg" />
         <span id="heroAvatarFallback" class="hero-avatar-fallback">A</span>
+        <span class="avatar-edit-badge" aria-hidden="true">
+          <i class="fa-solid fa-camera"></i>
+        </span>
       </div>
       <div class="hero-info">
         <div class="hero-name-row">
@@ -664,9 +753,34 @@
       <div class="section-header-row">
         <div>
           <h3 id="personalDetailsHeading" class="section-title">Personal Details &amp; Email</h3>
-          <p class="section-desc">Update your Name, Username, and Email address.</p>
+          <p class="section-desc">Synced with your profile.html picture, Name, Username, and Email.</p>
         </div>
         <span class="section-badge">Account</span>
+      </div>
+
+      <div class="inner-box">
+        <label class="field-label">
+          <i class="fa-regular fa-image"></i>
+          <span>Profile Picture (Synced with profile.html)</span>
+        </label>
+        <div class="avatar-picker-row">
+          <div class="avatar-thumb-box">
+            <img alt="Selected Profile Picture" class="avatar-thumb-img" id="thumbAvatarImg" />
+            <span class="avatar-thumb-fallback" id="thumbAvatarFallback">A</span>
+          </div>
+          <div class="avatar-actions">
+            <input type="file" id="profilePicInput" accept="image/*" hidden />
+            <button type="button" class="btn-mini-action" id="chooseProfilePicBtn">
+              <i class="fa-solid fa-upload"></i>
+              <span>Choose Photo</span>
+            </button>
+            <button type="button" class="btn-mini-action" id="removeProfilePicBtn">
+              <i class="fa-solid fa-trash"></i>
+              <span>Remove</span>
+            </button>
+          </div>
+        </div>
+        <small class="field-help" id="profilePicHelp">Automatically reads and syncs the same photo used on profile.html.</small>
       </div>
 
       <div class="inner-box">
@@ -735,18 +849,18 @@
       </div>
 
       <div class="link-rows-list">
-        <a href="password.html" class="account-nav-row" id="passwordLinkRow">
+        <a href="./password.html" class="account-nav-row" id="passwordLinkRow">
           <div class="row-icon-box">
             <i class="fa-solid fa-key"></i>
           </div>
           <div class="row-text-content">
             <strong>Password</strong>
-            <span>Change password and manage sign-in security</span>
+            <span id="passwordRowDesc">Change password and manage sign-in security</span>
           </div>
           <i class="fa-solid fa-chevron-right row-arrow"></i>
         </a>
 
-        <a href="verification.html" class="account-nav-row" id="verificationLinkRow">
+        <a href="./verification.html" class="account-nav-row" id="verificationLinkRow">
           <div class="row-icon-box">
             <i class="fa-solid fa-circle-check"></i>
           </div>
@@ -890,7 +1004,6 @@
       const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
       const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-      // Add a full URL here if testing in an online editor without local logo.png
       const LOGO_CANDIDATES = [
         'logo.png',
         './logo.png',
@@ -910,14 +1023,35 @@
         profile: 'autro_account_profile',
         cross: 'autro_cross_profile_settings',
         ads: 'autro_ad_preferences',
-        clientId: 'autro_account_client_id'
+        clientId: 'autro_account_client_id',
+        sharedAvatar: 'autro_shared_profile_avatar'
       };
+
+      const PROFILE_AVATAR_KEYS = [
+        'autro_shared_profile_avatar',
+        'autro_profile_pic',
+        'autro_avatar_url',
+        'profile_avatar',
+        'profile_pic',
+        'user_avatar',
+        'avatar_url',
+        'avatar'
+      ];
+
+      const PROFILE_OBJECT_KEYS = [
+        'autro_user_profile',
+        'autro_profile_data',
+        'autro_profile',
+        'user_profile',
+        'profile_data'
+      ];
 
       window.__autroMemoryStore = window.__autroMemoryStore || {};
 
       let sb = null;
       let activeKeyId = null;
       let manualPreviewTheme = null;
+      let currentAvatarDataUrl = '';
 
       function loadBrandLogo() {
         const img = document.getElementById('topBrandLogo');
@@ -966,6 +1100,94 @@
         } catch (e) {
           return fallbackObj;
         }
+      }
+
+      function readRawValue(key) {
+        let val = null;
+        try {
+          val = localStorage.getItem(key);
+        } catch (e) {}
+        if (!val) {
+          val = window.__autroMemoryStore[key] || null;
+        }
+        return typeof val === 'string' ? val.trim() : '';
+      }
+
+      function writeRawValue(key, val) {
+        const clean = typeof val === 'string' ? val : '';
+        window.__autroMemoryStore[key] = clean;
+        try {
+          if (clean) localStorage.setItem(key, clean);
+          else localStorage.removeItem(key);
+        } catch (e) {}
+      }
+
+      function syncAvatarEverywhere(avatarUrl) {
+        const cleanUrl = (avatarUrl || '').trim();
+        currentAvatarDataUrl = cleanUrl;
+        writeRawValue(KEYS.sharedAvatar, cleanUrl);
+
+        PROFILE_AVATAR_KEYS.forEach((k) => {
+          writeRawValue(k, cleanUrl);
+        });
+
+        PROFILE_OBJECT_KEYS.forEach((objKey) => {
+          const existingObj = readStore(objKey, null);
+          if (existingObj && typeof existingObj === 'object') {
+            writeStore(objKey, {
+              ...existingObj,
+              avatar_url: cleanUrl,
+              avatar: cleanUrl,
+              profile_pic: cleanUrl,
+              profilePic: cleanUrl
+            });
+          }
+        });
+      }
+
+      function discoverProfileFromStorage() {
+        const savedProfile = readStore(KEYS.profile, {});
+        let discoveredName = savedProfile.full_name || '';
+        let discoveredUser = savedProfile.username || '';
+        let discoveredEmail = savedProfile.email || '';
+        let discoveredAvatar = savedProfile.avatar_url || '';
+
+        for (const objKey of PROFILE_OBJECT_KEYS) {
+          const obj = readStore(objKey, null);
+          if (obj && typeof obj === 'object') {
+            if (!discoveredName) {
+              discoveredName = obj.full_name || obj.fullName || obj.name || obj.display_name || '';
+            }
+            if (!discoveredUser) {
+              discoveredUser = obj.username || obj.user_name || obj.handle || '';
+            }
+            if (!discoveredEmail) {
+              discoveredEmail = obj.email || '';
+            }
+            if (!discoveredAvatar) {
+              discoveredAvatar =
+                obj.avatar_url || obj.avatar || obj.profile_pic || obj.profilePic || obj.photo || '';
+            }
+          }
+        }
+
+        if (!discoveredAvatar) {
+          for (const k of PROFILE_AVATAR_KEYS) {
+            const candidate = readRawValue(k);
+            if (candidate && (candidate.startsWith('data:image/') || candidate.startsWith('http') || candidate.startsWith('/') || candidate.startsWith('./'))) {
+              discoveredAvatar = candidate;
+              break;
+            }
+          }
+        }
+
+        return {
+          ...savedProfile,
+          full_name: discoveredName,
+          username: discoveredUser,
+          email: discoveredEmail,
+          avatar_url: discoveredAvatar
+        };
       }
 
       function getOrCreateClientId() {
@@ -1028,7 +1250,52 @@
         toast('Preview: ' + manualPreviewTheme.toUpperCase() + ' (System Default: ' + sys.toUpperCase() + ')');
       }
 
-      function updateHero(name, username, email, verified) {
+      function renderAvatar(avatarUrl, initialChar) {
+        const heroImg = document.getElementById('heroAvatarImg');
+        const heroFallback = document.getElementById('heroAvatarFallback');
+        const thumbImg = document.getElementById('thumbAvatarImg');
+        const thumbFallback = document.getElementById('thumbAvatarFallback');
+
+        const letter = (initialChar || 'A').charAt(0).toUpperCase() || 'A';
+        if (heroFallback) heroFallback.textContent = letter;
+        if (thumbFallback) thumbFallback.textContent = letter;
+
+        if (avatarUrl) {
+          if (heroImg) {
+            heroImg.src = avatarUrl;
+            heroImg.style.display = 'block';
+            heroImg.onerror = () => {
+              heroImg.style.display = 'none';
+              if (heroFallback) heroFallback.style.display = 'inline';
+            };
+          }
+          if (heroFallback) heroFallback.style.display = 'none';
+
+          if (thumbImg) {
+            thumbImg.src = avatarUrl;
+            thumbImg.style.display = 'block';
+            thumbImg.onerror = () => {
+              thumbImg.style.display = 'none';
+              if (thumbFallback) thumbFallback.style.display = 'inline';
+            };
+          }
+          if (thumbFallback) thumbFallback.style.display = 'none';
+        } else {
+          if (heroImg) {
+            heroImg.removeAttribute('src');
+            heroImg.style.display = 'none';
+          }
+          if (heroFallback) heroFallback.style.display = 'inline';
+
+          if (thumbImg) {
+            thumbImg.removeAttribute('src');
+            thumbImg.style.display = 'none';
+          }
+          if (thumbFallback) thumbFallback.style.display = 'inline';
+        }
+      }
+
+      function updateHero(name, username, email, verified, avatarUrl) {
         const cleanName = (name || 'Autro Member').trim();
         const cleanUser = (username || 'autro_user').replace(/^@+/, '').trim() || 'autro_user';
         const cleanEmail = (email || '').trim();
@@ -1036,7 +1303,6 @@
         const nameEl = document.getElementById('heroDisplayName');
         const userEl = document.getElementById('heroUsernameText');
         const emailEl = document.getElementById('heroEmailText');
-        const fallbackEl = document.getElementById('heroAvatarFallback');
         const previewEl = document.getElementById('usernamePreviewText');
         const chipEl = document.getElementById('verificationStatusChip');
         const chipTextEl = document.getElementById('verificationChipText');
@@ -1044,13 +1310,39 @@
         if (nameEl) nameEl.textContent = cleanName;
         if (userEl) userEl.textContent = '@' + cleanUser;
         if (emailEl) emailEl.textContent = cleanEmail || 'No email set yet';
-        if (fallbackEl) fallbackEl.textContent = cleanName.charAt(0).toUpperCase() || 'A';
         if (previewEl) previewEl.textContent = 'Profile handle: @' + cleanUser;
 
         if (chipEl && chipTextEl) {
           chipEl.classList.toggle('is-verified', Boolean(verified));
           chipTextEl.textContent = verified ? 'Verified' : 'Unverified';
         }
+
+        renderAvatar(avatarUrl !== undefined ? avatarUrl : currentAvatarDataUrl, cleanName);
+      }
+
+      function hydrateSecurityNotes() {
+        const pwDescEl = document.getElementById('passwordRowDesc');
+        const verDescEl = document.getElementById('verificationRowDesc');
+
+        try {
+          const pwRaw = localStorage.getItem('autro_password_meta_v2');
+          if (pwRaw && pwDescEl) {
+            const pwMeta = JSON.parse(pwRaw);
+            if (pwMeta && pwMeta.digest) {
+              pwDescEl.textContent = `Change password • Last ref: ${pwMeta.digest}`;
+            }
+          }
+        } catch (e) {}
+
+        try {
+          const verRaw = localStorage.getItem('autro_verification_meta_v3');
+          if (verRaw && verDescEl) {
+            const verMeta = JSON.parse(verRaw);
+            if (verMeta && verMeta.submitted) {
+              verDescEl.textContent = `Verified • Match ${verMeta.matchScore || 0}% (Ref: ${verMeta.digestShort || 'ok'})`;
+            }
+          }
+        } catch (e) {}
       }
 
       function hydrateUI(profile, cross, ads) {
@@ -1062,11 +1354,14 @@
         if (userInput && profile.username) userInput.value = profile.username;
         if (emailInput && profile.email) emailInput.value = profile.email;
 
+        currentAvatarDataUrl = profile.avatar_url || '';
+
         updateHero(
           profile.full_name,
           profile.username,
           profile.email,
-          Boolean(profile.is_verified)
+          Boolean(profile.is_verified),
+          currentAvatarDataUrl
         );
 
         if (typeof cross.sharedSwitching === 'boolean') {
@@ -1092,14 +1387,58 @@
         document.querySelectorAll('#adTopicsWrap .topic-chip').forEach((chip) => {
           chip.classList.toggle('active', selectedTopics.includes(chip.getAttribute('data-topic')));
         });
+
+        hydrateSecurityNotes();
+      }
+
+      function handleAvatarFileSelect(file) {
+        if (!file) return;
+        if (!file.type || !file.type.startsWith('image/')) {
+          toast('Please select a valid image file.');
+          return;
+        }
+        if (file.size > 1.5 * 1024 * 1024) {
+          toast('Please choose an image smaller than 1.5 MB.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+          if (!dataUrl) return;
+
+          syncAvatarEverywhere(dataUrl);
+
+          const existing = discoverProfileFromStorage();
+          const nameVal = (document.getElementById('fullNameInput')?.value || existing.full_name || 'Autro Member').trim();
+          const userVal = (document.getElementById('usernameInput')?.value || existing.username || 'autro_user').trim();
+          const emailVal = (document.getElementById('emailChangeInput')?.value || existing.email || '').trim();
+
+          writeStore(KEYS.profile, {
+            ...existing,
+            full_name: nameVal,
+            username: userVal,
+            email: emailVal,
+            avatar_url: currentAvatarDataUrl,
+            updated_at: new Date().toISOString()
+          });
+
+          updateHero(nameVal, userVal, emailVal, Boolean(existing.is_verified), currentAvatarDataUrl);
+          toast('Profile picture synced with profile.html!');
+        };
+        reader.readAsDataURL(file);
       }
 
       async function initAndLoad() {
         activeKeyId = getOrCreateClientId();
 
-        let profile = readStore(KEYS.profile, {});
+        let profile = discoverProfileFromStorage();
         let cross = readStore(KEYS.cross, {});
         let ads = readStore(KEYS.ads, {});
+
+        if (profile.avatar_url) {
+          syncAvatarEverywhere(profile.avatar_url);
+        }
 
         hydrateUI(profile, cross, ads);
 
@@ -1132,10 +1471,14 @@
             }
 
             if (row) {
+              const dbAvatar =
+                row.avatar_url || row.profile_pic || row.avatar || profile.avatar_url || '';
+
               profile = {
                 full_name: row.full_name || profile.full_name || '',
                 username: row.username || profile.username || '',
                 email: row.email || profile.email || '',
+                avatar_url: dbAvatar,
                 is_verified: Boolean(row.is_verified)
               };
               cross = {
@@ -1156,6 +1499,10 @@
                   : ['Technology', 'Design & UI']
               };
 
+              if (dbAvatar) {
+                syncAvatarEverywhere(dbAvatar);
+              }
+
               writeStore(KEYS.profile, profile);
               writeStore(KEYS.cross, cross);
               writeStore(KEYS.ads, ads);
@@ -1171,7 +1518,7 @@
         if (!sb) return { ok: false, reason: 'Supabase client unavailable' };
         if (!activeKeyId) activeKeyId = getOrCreateClientId();
 
-        const currentProfile = readStore(KEYS.profile, {});
+        const currentProfile = discoverProfileFromStorage();
         const currentCross = readStore(KEYS.cross, {
           sharedSwitching: true,
           syncIdentity: true,
@@ -1220,6 +1567,12 @@
           updated_at: new Date().toISOString()
         };
 
+        if (fields.avatar_url !== undefined) {
+          payload.avatar_url = fields.avatar_url;
+        } else if (currentProfile.avatar_url) {
+          payload.avatar_url = currentProfile.avatar_url;
+        }
+
         try {
           const { error } = await sb
             .from('account_settings')
@@ -1266,12 +1619,15 @@
         if (userInput) userInput.value = username;
         if (btn) btn.disabled = true;
 
-        const existing = readStore(KEYS.profile, {});
+        syncAvatarEverywhere(currentAvatarDataUrl);
+
+        const existing = discoverProfileFromStorage();
         const updatedProfile = {
           ...existing,
           full_name: fullName,
           username,
           email: newEmail || existing.email || '',
+          avatar_url: currentAvatarDataUrl || '',
           updated_at: new Date().toISOString()
         };
 
@@ -1280,19 +1636,21 @@
           fullName,
           username,
           updatedProfile.email,
-          Boolean(updatedProfile.is_verified)
+          Boolean(updatedProfile.is_verified),
+          currentAvatarDataUrl
         );
 
         const res = await persistToSupabase({
           full_name: fullName,
           username,
-          email: updatedProfile.email || null
+          email: updatedProfile.email || null,
+          avatar_url: currentAvatarDataUrl || null
         });
 
         if (btn) btn.disabled = false;
 
         if (res.ok) {
-          toast('Details & Email saved!');
+          toast('Details, Photo & Email saved!');
         } else {
           toast('Saved! (DB note: ' + res.reason + ')');
         }
@@ -1368,13 +1726,60 @@
         applySystemDefaultTheme();
         initAndLoad();
 
+        window.addEventListener('storage', (e) => {
+          if (!e || !e.key) return;
+          if (PROFILE_AVATAR_KEYS.includes(e.key) || PROFILE_OBJECT_KEYS.includes(e.key) || e.key === KEYS.profile) {
+            const updated = discoverProfileFromStorage();
+            currentAvatarDataUrl = updated.avatar_url || '';
+            updateHero(
+              updated.full_name,
+              updated.username,
+              updated.email,
+              Boolean(updated.is_verified),
+              currentAvatarDataUrl
+            );
+          }
+        });
+
         document.getElementById('themeToggleBtn')?.addEventListener('click', toggleThemePreview);
+
+        const picInput = document.getElementById('profilePicInput');
+        document.getElementById('chooseProfilePicBtn')?.addEventListener('click', () => picInput?.click());
+        document.getElementById('heroAvatarClickBox')?.addEventListener('click', () => picInput?.click());
+
+        picInput?.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          handleAvatarFileSelect(file);
+          e.target.value = '';
+        });
+
+        document.getElementById('removeProfilePicBtn')?.addEventListener('click', () => {
+          syncAvatarEverywhere('');
+          const existing = discoverProfileFromStorage();
+          writeStore(KEYS.profile, { ...existing, avatar_url: '' });
+          const nameVal = (document.getElementById('fullNameInput')?.value || existing.full_name || 'Autro Member').trim();
+          const userVal = (document.getElementById('usernameInput')?.value || existing.username || 'autro_user').trim();
+          const emailVal = (document.getElementById('emailChangeInput')?.value || existing.email || '').trim();
+          updateHero(nameVal, userVal, emailVal, Boolean(existing.is_verified), '');
+          toast('Profile picture removed.');
+        });
+
+        document.getElementById('fullNameInput')?.addEventListener('input', (e) => {
+          const val = (e.target.value || 'Autro Member').trim() || 'Autro Member';
+          const nameEl = document.getElementById('heroDisplayName');
+          if (nameEl) nameEl.textContent = val;
+          if (!currentAvatarDataUrl) {
+            renderAvatar('', val);
+          }
+        });
 
         document.getElementById('usernameInput')?.addEventListener('input', (e) => {
           const handle =
             (e.target.value || 'your_username').replace(/^@+/, '').trim() || 'your_username';
           const preview = document.getElementById('usernamePreviewText');
+          const heroUser = document.getElementById('heroUsernameText');
           if (preview) preview.textContent = 'Profile handle: @' + handle;
+          if (heroUser) heroUser.textContent = '@' + handle;
         });
 
         document
@@ -1403,4 +1808,4 @@
     })();
   </script>
 </body>
-              </html>
+  </html>
