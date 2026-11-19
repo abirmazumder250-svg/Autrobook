@@ -1,21 +1,21 @@
 (function () {
   const LOGO_CANDIDATES = [
-    'logo.png',
-    './logo.png',
-    '/logo.png',
-    'Logo.png',
-    './Logo.png',
-    '/Logo.png',
-    'assets/logo.png',
-    './assets/logo.png',
-    '/assets/logo.png',
-    'images/logo.png',
-    './images/logo.png',
-    '/images/logo.png'
+    "logo.png",
+    "./logo.png",
+    "/logo.png",
+    "Logo.png",
+    "./Logo.png",
+    "/Logo.png",
+    "assets/logo.png",
+    "./assets/logo.png",
+    "/assets/logo.png",
+    "images/logo.png",
+    "./images/logo.png",
+    "/images/logo.png"
   ];
 
   function resolveBrandLogos() {
-    const imgs = Array.from(document.querySelectorAll('img[data-autro-logo]'));
+    const imgs = Array.from(document.querySelectorAll("img[data-autro-logo]"));
     if (!imgs.length) return;
 
     const probe = new Image();
@@ -23,10 +23,10 @@
 
     function applyFallback() {
       imgs.forEach((img) => {
-        img.style.display = 'none';
-        const fb = img.parentElement?.querySelector('[data-autro-logo-fallback]') || img.nextElementSibling;
-        if (fb && fb.hasAttribute('data-autro-logo-fallback')) {
-          fb.style.display = 'inline-flex';
+        img.style.display = "none";
+        const fb = img.parentElement?.querySelector("[data-autro-logo-fallback]") || img.nextElementSibling;
+        if (fb && fb.hasAttribute("data-autro-logo-fallback")) {
+          fb.style.display = "inline-flex";
         }
       });
     }
@@ -34,10 +34,10 @@
     function applyImage(validSrc) {
       imgs.forEach((img) => {
         img.src = validSrc;
-        img.style.display = img.classList.contains('footer-small-logo') ? 'inline-block' : 'block';
-        const fb = img.parentElement?.querySelector('[data-autro-logo-fallback]') || img.nextElementSibling;
-        if (fb && fb.hasAttribute('data-autro-logo-fallback')) {
-          fb.style.display = 'none';
+        img.style.display = "block";
+        const fb = img.parentElement?.querySelector("[data-autro-logo-fallback]") || img.nextElementSibling;
+        if (fb && fb.hasAttribute("data-autro-logo-fallback")) {
+          fb.style.display = "none";
         }
       });
     }
@@ -56,46 +56,46 @@
     tryNext();
   }
 
-  const searchInput = document.getElementById('settingsSearchInput');
-  const searchFocusBtn = document.getElementById('searchFocusBtn');
+  const searchInput = document.getElementById("settingsSearchInput");
+  const searchFocusBtn = document.getElementById("searchFocusBtn");
 
   if (searchFocusBtn && searchInput) {
-    searchFocusBtn.addEventListener('click', function () {
+    searchFocusBtn.addEventListener("click", function () {
       searchInput.focus();
     });
   }
 
   if (searchInput) {
-    searchInput.addEventListener('input', function () {
+    searchInput.addEventListener("input", function () {
       const q = searchInput.value.trim().toLowerCase();
-      document.querySelectorAll('.settings-section').forEach(function (sec) {
-        const links = Array.from(sec.querySelectorAll('.setting-link-item, .autro-account-card'));
+      document.querySelectorAll(".settings-section").forEach(function (sec) {
+        const links = Array.from(sec.querySelectorAll(".setting-link-item, .autro-account-card"));
         if (!links.length) return;
         let visibleCount = 0;
         links.forEach(function (item) {
           const matched = !q || item.textContent.toLowerCase().includes(q);
-          item.style.display = matched ? '' : 'none';
+          item.style.display = matched ? "" : "none";
           if (matched) visibleCount++;
         });
-        sec.style.display = visibleCount > 0 ? '' : 'none';
+        sec.style.display = visibleCount > 0 ? "" : "none";
       });
     });
   }
 
   function syncSystemTheme() {
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedTheme = localStorage.getItem('theme') || localStorage.getItem('autro_theme');
-    const mode = savedTheme || (prefersDark ? 'dark' : 'light');
-    const isDark = mode === 'dark';
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const savedTheme = localStorage.getItem("theme") || localStorage.getItem("autro_theme");
+    const mode = savedTheme || (prefersDark ? "dark" : "light");
+    const isDark = mode === "dark";
 
-    document.documentElement.setAttribute('data-theme', mode);
-    document.body.classList.toggle('theme-dark', isDark);
-    document.body.classList.toggle('dark', isDark);
+    document.documentElement.setAttribute("data-theme", mode);
+    document.body.classList.toggle("theme-dark", isDark);
+    document.body.classList.toggle("dark", isDark);
   }
 
   resolveBrandLogos();
   syncSystemTheme();
   if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncSystemTheme);
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
   }
 })();
