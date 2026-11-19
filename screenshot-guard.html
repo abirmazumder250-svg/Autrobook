@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Screenshot Guard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f4f5;
+      --surface: #e4e4e7;
+      --card: #ffffff;
+      --text: #18181b;
+      --muted: #52525b;
+      --border: #d4d4d8;
+      --btn-sec: #e4e4e7;
+      --btn-sec-hover: #d4d4d8;
+      --btn-sec-border: #c4c4ca;
+      --dg-pri: #0B3D20;
+      --dg-pri-hover: #0a7d3b;
+      --dg-text: #ffffff;
+      --dg-border: #14532d;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 22px 48px rgba(0, 0, 0, 0.22);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090b;
+        --surface: #18181b;
+        --card: #121215;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --btn-sec: #18181b;
+        --btn-sec-hover: #27272a;
+        --btn-sec-border: #3f3f46;
+        --dg-pri: #0B3D20;
+        --dg-pri-hover: #0a7d3b;
+        --dg-text: #ffffff;
+        --dg-border: #166534;
+        --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.55);
+        --shadow-md: 0 24px 54px rgba(0, 0, 0, 0.88);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body.guard-active {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    /* Fullscreen Blackout Shield */
+    .blackout-shield {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000000;
+      color: #a1a1aa;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .blackout-shield.visible {
+      display: flex;
+    }
+
+    /* Subtle Watermark Layer */
+    .watermark-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      display: none;
+      opacity: 0.08;
+      background-image: repeating-linear-gradient(
+        -28deg,
+        transparent,
+        transparent 110px,
+        currentColor 110px,
+        currentColor 111px
+      );
+    }
+
+    .watermark-layer.visible {
+      display: block;
+    }
+
+    .page-wrap {
+      max-width: 680px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 16px 16px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .topbar-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease, transform 0.12s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    .card-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .setting-title {
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .setting-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-top: 3px;
+    }
+
+    .switch-btn {
+      width: 52px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--surface);
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.18s ease;
+    }
+
+    .switch-btn::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--text);
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    .switch-btn.on {
+      background: var(--dg-pri);
+      border-color: var(--dg-border);
+    }
+
+    .switch-btn.on::after {
+      transform: translateX(22px);
+      background: var(--dg-text);
+    }
+
+    .notice-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 14px;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .save-btn {
+      height: 44px;
+      padding: 0 22px;
+      border-radius: 14px;
+      border: 1px solid var(--dg-border);
+      background: var(--dg-pri);
+      color: var(--dg-text);
+      font-size: 14px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease;
+    }
+
+    .save-btn:hover {
+      background: var(--dg-pri-hover);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(90px);
+      z-index: 400;
+      background: var(--dg-pri);
+      color: var(--dg-text);
+      padding: 11px 22px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="blackoutShield" class="blackout-shield" aria-hidden="true">
+    <i class="fas fa-shield-halved" style="font-size:28px;"></i>
+    <div style="font-size:15px;font-weight:800;color:#ffffff;">Screenshot Guard Protected</div>
+    <div style="font-size:12.5px;max-width:300px;">Screen hidden during tab switch, blur, or capture attempt.</div>
+  </div>
+
+  <div id="watermarkLayer" class="watermark-layer" aria-hidden="true"></div>
+
+  <div class="page-wrap">
+    <header class="topbar">
+      <a href="story-card.html" class="icon-btn" title="Back to Story Card" aria-label="Back to Story Card" onclick="saveGuardSettings()">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+      <span class="topbar-title">Screenshot Guard</span>
+      <span style="width:40px;"></span>
+    </header>
+
+    <section class="card-box">
+      <div class="setting-row">
+        <div>
+          <div class="setting-title">Enable Screenshot Guard</div>
+          <div id="mainGuardDesc" class="setting-desc">
+            Blackouts screen on tab/app switch, blocks shortcuts &amp; context menu, and adds watermark.
+          </div>
+        </div>
+        <button type="button" id="toggleGuardBtn" class="switch-btn" onclick="toggleGuard()" aria-label="Enable Screenshot Guard"></button>
+      </div>
+    </section>
+
+    <section class="card-box">
+      <div class="setting-row">
+        <div>
+          <div class="setting-title">Blackout on Tab / App Switch</div>
+          <div class="setting-desc">Immediately blacks out the screen when switching tabs or minimizing.</div>
+        </div>
+        <button type="button" id="toggleBlurBtn" class="switch-btn on" onclick="toggleOption('blackoutOnSwitch', 'toggleBlurBtn')" aria-label="Toggle blackout on tab switch"></button>
+      </div>
+
+      <div class="setting-row">
+        <div>
+          <div class="setting-title">Watermark Protection</div>
+          <div class="setting-desc">Shows a subtle protective pattern over protected views.</div>
+        </div>
+        <button type="button" id="toggleWatermarkBtn" class="switch-btn on" onclick="toggleOption('watermark', 'toggleWatermarkBtn')" aria-label="Toggle watermark"></button>
+      </div>
+
+      <div class="notice-box">
+        <strong>Browser limitation:</strong> Unlike native mobile apps (such as Facebook/Messenger using OS-level secure surfaces), web browsers cannot block hardware screenshot buttons directly. This guard applies the strongest web-level protection available.
+      </div>
+
+      <button type="button" class="save-btn" onclick="saveAndGoBack()">
+        <i class="fas fa-check"></i>
+        <span>Save &amp; Return to Story Card</span>
+      </button>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+    let sb = null;
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        sb = null;
+      }
+    }
+
+    const guardConfig = {
+      enabled: false,
+      blackoutOnSwitch: true,
+      watermark: true
+    };
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window._guardToast);
+      window._guardToast = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    function setShield(visible) {
+      const shield = document.getElementById('blackoutShield');
+      if (!shield) return;
+      shield.classList.toggle('visible', Boolean(visible && guardConfig.enabled));
+    }
+
+    function applyGuardUI() {
+      document.body.classList.toggle('guard-active', Boolean(guardConfig.enabled));
+      document.getElementById('toggleGuardBtn')?.classList.toggle('on', Boolean(guardConfig.enabled));
+      document.getElementById('toggleBlurBtn')?.classList.toggle('on', Boolean(guardConfig.blackoutOnSwitch));
+      document.getElementById('toggleWatermarkBtn')?.classList.toggle('on', Boolean(guardConfig.watermark));
+      document.getElementById('watermarkLayer')?.classList.toggle('visible', Boolean(guardConfig.enabled && guardConfig.watermark));
+
+      const desc = document.getElementById('mainGuardDesc');
+      if (desc) {
+        desc.textContent = guardConfig.enabled
+          ? 'Active — Tab switch blackout, shortcut deterrence & watermark are on.'
+          : 'Off — Enable to turn on tab switch blackout, shortcut deterrence & watermark.';
+      }
+
+      if (!guardConfig.enabled) {
+        setShield(false);
+      }
+    }
+
+    async function saveGuardSettings() {
+      try {
+        localStorage.setItem('autrobook_screenshots_guard', JSON.stringify(Boolean(guardConfig.enabled)));
+        localStorage.setItem('autrobook_guard_config', JSON.stringify(guardConfig));
+
+        const activeRaw = localStorage.getItem('autrobook_active_story_card');
+        if (activeRaw) {
+          const parsed = JSON.parse(activeRaw);
+          if (parsed && typeof parsed === 'object') {
+            parsed.screenshots_guard = Boolean(guardConfig.enabled);
+            localStorage.setItem('autrobook_active_story_card', JSON.stringify(parsed));
+
+            if (sb && parsed.id) {
+              await sb
+                .from('stories')
+                .update({ screenshots_guard: Boolean(guardConfig.enabled) })
+                .eq('id', parsed.id);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function saveAndGoBack() {
+      await saveGuardSettings();
+      window.location.href = 'story-card.html';
+    }
+
+    function toggleGuard() {
+      guardConfig.enabled = !guardConfig.enabled;
+      applyGuardUI();
+      saveGuardSettings();
+      showToast(guardConfig.enabled ? 'Screenshot Guard ON' : 'Screenshot Guard OFF');
+    }
+
+    function toggleOption(key, btnId) {
+      guardConfig[key] = !guardConfig[key];
+      document.getElementById(btnId)?.classList.toggle('on', Boolean(guardConfig[key]));
+      applyGuardUI();
+      saveGuardSettings();
+      showToast('Guard setting updated');
+    }
+
+    /* Event Protections */
+    document.addEventListener('visibilitychange', () => {
+      if (!guardConfig.enabled || !guardConfig.blackoutOnSwitch) return;
+      if (document.hidden) {
+        setShield(true);
+      } else {
+        setTimeout(() => setShield(false), 300);
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      if (guardConfig.enabled && guardConfig.blackoutOnSwitch) {
+        setShield(true);
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      setTimeout(() => setShield(false), 250);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (!guardConfig.enabled) return;
+      const isCaptureKey =
+        e.key === 'PrintScreen' ||
+        (e.metaKey && e.shiftKey && ['3', '4', '5', 's', 'S'].includes(e.key)) ||
+        (e.ctrlKey && e.shiftKey && ['s', 'S', 'i', 'I'].includes(e.key));
+
+      if (isCaptureKey) {
+        setShield(true);
+        showToast('Screen capture attempt detected');
+        setTimeout(() => setShield(false), 2200);
+      }
+    });
+
+    document.addEventListener('contextmenu', (e) => {
+      if (guardConfig.enabled) {
+        e.preventDefault();
+        showToast('Context menu disabled by Screenshot Guard');
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        const cfgRaw = localStorage.getItem('autrobook_guard_config');
+        if (cfgRaw) {
+          Object.assign(guardConfig, JSON.parse(cfgRaw));
+        }
+        const guardFlag = localStorage.getItem('autrobook_screenshots_guard');
+        if (guardFlag !== null) {
+          guardConfig.enabled = Boolean(JSON.parse(guardFlag));
+        }
+      } catch (e) {}
+
+      applyGuardUI();
+    });
+  </script>
+</body>
+</html>
