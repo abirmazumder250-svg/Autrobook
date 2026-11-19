@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blocking - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f6f7f8;
+      --bg-hover: #eceef0;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .block-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .count-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    /* Container */
+    .block-container {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .block-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-margin-top: 68px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .block-heading {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .block-text {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-chip {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Add to Block Form */
+    .add-block-form {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+    }
+
+    @media (max-width: 560px) {
+      .add-block-form {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .block-input,
+    .block-select {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .block-input:focus,
+    .block-select:focus {
+      border-color: var(--text-main);
+    }
+
+    /* Search & Filter */
+    .filter-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 8px 14px;
+    }
+
+    .search-row i {
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 13.5px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .filter-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Blocked List */
+    .blocked-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .blocked-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 13px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .blocked-left {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .blocked-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13.5px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .blocked-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .blocked-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .blocked-sub {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .type-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-sm-outline,
+    .btn-outline,
+    .btn-solid {
+      padding: 8px 13px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--accent-bg);
+      white-space: nowrap;
+    }
+
+    .btn-sm-outline,
+    .btn-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .btn-sm-outline:hover,
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    /* Info & Footer Actions */
+    .policy-bullets {
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .empty-state {
+      display: none;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    .empty-state p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Footer */
+    .block-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="block-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Blocking</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="count-pill" id="blockedCountPill">0 Blocked</span>
+      <button type="button" class="top-action-btn" id="restoreDefaultBlocksBtn" aria-label="Restore sample blocked list">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="block-container">
+    <!-- Overview & Add to Block List -->
+    <section class="block-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-ban"></i>
+          </span>
+          <h2 class="block-heading">Manage Blocked Users &amp; Restrictions</h2>
+        </div>
+        <span class="badge-tag">Safety</span>
+      </div>
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+      </div>
+      <p class="block-text">
+        Add people or handles to your block list so they cannot message you, view restricted profile updates, or send unwanted interaction requests. You can unblock anyone at any time.
+      </p>
+
+      <form class="add-block-form" id="addBlockForm">
+        <input type="text" id="blockNameInput" class="block-input" placeholder="Enter name or @username to block..." maxlength="80" />
+        <select id="blockTypeSelect" class="block-select" aria-label="Block type">
+          <option value="user">Profile Block</option>
+          <option value="messages">Messages Only</option>
+          <option value="invites">Invites Only</option>
+        </select>
+        <button type="submit" class="btn-solid">
+          <i class="fa-solid fa-user-slash"></i>
+          <span>Block</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- Search & Filter -->
+    <section class="filter-card" aria-label="Search and filter blocked list">
+      <div class="search-row">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input type="search" id="blockSearchInput" class="search-input" placeholder="Search blocked profiles, handles, or restriction type..." />
+      </div>
+      <div class="chip-row" id="blockFilterChips">
+        <button type="button" class="filter-chip active" data-filter="all">All</button>
+        <button type="button" class="filter-chip" data-filter="user">Profile Block</button>
+        <button type="button" class="filter-chip" data-filter="messages">Messages Only</button>
+        <button type="button" class="filter-chip" data-filter="invites">Invites Only</button>
+      </div>
+    </section>
+
+    <!-- Blocked List -->
+    <section class="block-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-user-lock"></i>
+          </span>
+          <h2 class="block-heading">Blocked List</h2>
+        </div>
+        <span class="badge-tag" id="visibleBlockedPill">0 Shown</span>
+      </div>
+      <div class="blocked-list" id="blockedList"></div>
+      <div class="empty-state" id="emptyBlockedState">
+        <strong>No blocked entries found</strong>
+        <p>Add a name above or choose another filter.</p>
+      </div>
+    </section>
+
+    <!-- What Blocking Does -->
+    <section class="block-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-circle-info"></i>
+          </span>
+          <h2 class="block-heading">How Blocking Works</h2>
+        </div>
+        <span class="badge-tag">Guide</span>
+      </div>
+      <ul class="policy-bullets">
+        <li>Blocked accounts are hidden from direct interaction according to the block type selected.</li>
+        <li>Unblocking removes the restriction in your browser list immediately, though re-connecting may require a new request.</li>
+      </ul>
+      <div class="actions-row">
+        <button type="button" class="btn-outline" id="unblockAllBtn">
+          <i class="fa-solid fa-unlock"></i>
+          <span>Unblock All</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="block-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "autro_blocked_users_list";
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      const DEFAULT_BLOCKS = [
+        {
+          id: "blk-1",
+          name: "Spam Promo Account",
+          handle: "@promo_bot_99",
+          type: "user",
+          addedAt: "Nov 2026"
+        },
+        {
+          id: "blk-2",
+          name: "Unknown Sender",
+          handle: "@msg_only_user",
+          type: "messages",
+          addedAt: "Oct 2026"
+        },
+        {
+          id: "blk-3",
+          name: "Event Invite Bot",
+          handle: "@event_spam_24",
+          type: "invites",
+          addedAt: "Sep 2026"
+        }
+      ];
+
+      function cloneDefaults() {
+        return JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+      }
+
+      function readBlocks() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return cloneDefaults();
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : cloneDefaults();
+        } catch (e) {
+          return cloneDefaults();
+        }
+      }
+
+      function writeBlocks(list) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        } catch (e) {}
+      }
+
+      let blockedList = readBlocks();
+      let activeFilter = "all";
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._blockToastTimer);
+        window._blockToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function typeLabel(type) {
+        const map = {
+          user: "Profile Block",
+          messages: "Messages Only",
+          invites: "Invites Only"
+        };
+        return map[type] || "Blocked";
+      }
+
+      function initials(name) {
+        const clean = String(name || "U").trim();
+        return clean ? clean[0].toUpperCase() : "U";
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function renderBlocked() {
+        const listEl = document.getElementById("blockedList");
+        const emptyEl = document.getElementById("emptyBlockedState");
+        const countPill = document.getElementById("blockedCountPill");
+        const visiblePill = document.getElementById("visibleBlockedPill");
+        const query = (document.getElementById("blockSearchInput")?.value || "")
+          .trim()
+          .toLowerCase();
+
+        if (countPill) {
+          countPill.textContent = `${blockedList.length} Blocked`;
+        }
+
+        const filtered = blockedList.filter((item) => {
+          const matchesType = activeFilter === "all" || item.type === activeFilter;
+          const haystack = `${item.name} ${item.handle || ""} ${item.type} ${item.addedAt || ""}`.toLowerCase();
+          const matchesQuery = !query || haystack.includes(query);
+          return matchesType && matchesQuery;
+        });
+
+        if (visiblePill) {
+          visiblePill.textContent = `${filtered.length} Shown`;
+        }
+
+        if (!listEl) return;
+
+        if (!filtered.length) {
+          listEl.innerHTML = "";
+          if (emptyEl) emptyEl.classList.add("visible");
+          return;
+        }
+
+        if (emptyEl) emptyEl.classList.remove("visible");
+
+        listEl.innerHTML = filtered
+          .map(
+            (item) => `
+              <article class="blocked-item" data-id="${escapeHtml(item.id)}">
+                <div class="blocked-left">
+                  <span class="blocked-avatar" aria-hidden="true">${escapeHtml(initials(item.name))}</span>
+                  <div class="blocked-info">
+                    <h3 class="blocked-name">${escapeHtml(item.name)}</h3>
+                    <div class="blocked-sub">
+                      <span class="type-pill">${escapeHtml(typeLabel(item.type))}</span>
+                      ${item.handle ? `<span>${escapeHtml(item.handle)}</span>` : ""}
+                      <span>${escapeHtml(item.addedAt || "Recent")}</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn-sm-outline unblock-btn" data-id="${escapeHtml(item.id)}">
+                  <span>Unblock</span>
+                </button>
+              </article>
+            `
+          )
+          .join("");
+
+        listEl.querySelectorAll(".unblock-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            const target = blockedList.find((b) => b.id === id);
+            blockedList = blockedList.filter((b) => b.id !== id);
+            writeBlocks(blockedList);
+            renderBlocked();
+            showToast(target ? `Unblocked ${target.name}` : "Entry unblocked");
+          });
+        });
+      }
+
+      document.getElementById("addBlockForm")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = document.getElementById("blockNameInput");
+        const select = document.getElementById("blockTypeSelect");
+        const rawVal = (input?.value || "").trim();
+        if (!rawVal) {
+          showToast("Please enter a name or @username");
+          input?.focus();
+          return;
+        }
+
+        const isHandle = rawVal.startsWith("@");
+        const displayName = isHandle ? rawVal.slice(1) : rawVal;
+        const handle = isHandle
+          ? rawVal.toLowerCase()
+          : "@" + rawVal.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+
+        const entry = {
+          id: "blk-" + Date.now(),
+          name: displayName,
+          handle,
+          type: select?.value || "user",
+          addedAt: "Just now"
+        };
+
+        blockedList.unshift(entry);
+        writeBlocks(blockedList);
+        if (input) input.value = "";
+        renderBlocked();
+        showToast(`Blocked ${entry.name}`);
+      });
+
+      document.querySelectorAll("#blockFilterChips .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          activeFilter = chip.getAttribute("data-filter") || "all";
+          document.querySelectorAll("#blockFilterChips .filter-chip").forEach((c) => {
+            c.classList.toggle("active", c === chip);
+          });
+          renderBlocked();
+        });
+      });
+
+      document.getElementById("blockSearchInput")?.addEventListener("input", renderBlocked);
+
+      document.getElementById("unblockAllBtn")?.addEventListener("click", () => {
+        if (!blockedList.length) {
+          showToast("Block list is already empty");
+          return;
+        }
+        blockedList = [];
+        writeBlocks(blockedList);
+        renderBlocked();
+        showToast("All entries unblocked");
+      });
+
+      document.getElementById("restoreDefaultBlocksBtn")?.addEventListener("click", () => {
+        blockedList = cloneDefaults();
+        writeBlocks(blockedList);
+        renderBlocked();
+        showToast("Default blocked list restored");
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      renderBlocked();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+</html>
