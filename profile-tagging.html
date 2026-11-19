@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile and Tagging - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f6f7f8;
+      --bg-hover: #eceef0;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .tag-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    /* Main Container */
+    .tag-container {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .tag-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-margin-top: 68px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .tag-heading {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tag-text {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-chip {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Setting Rows */
+    .option-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 13px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .option-copy strong {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .option-copy span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .select-row {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 13px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .tag-select {
+      padding: 8px 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 700;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Toggle Switch */
+    .switch-control {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .switch-control input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #737373;
+      border-radius: 999px;
+      transition: background-color 0.2s ease;
+    }
+
+    .switch-slider::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      top: 3px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+
+    .switch-control input:checked + .switch-slider {
+      background-color: var(--accent-bg);
+    }
+
+    .switch-control input:checked + .switch-slider::before {
+      transform: translateX(20px);
+      background-color: var(--accent-fg);
+    }
+
+    /* Tagged Items List */
+    .tagged-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tagged-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 13px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tagged-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .tagged-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .tagged-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .tagged-author {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .tag-status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tag-status-pill.shown {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .tagged-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .tagged-date {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-sm-outline,
+    .btn-sm-solid,
+    .btn-outline,
+    .btn-solid {
+      padding: 7px 12px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--accent-bg);
+      white-space: nowrap;
+    }
+
+    .btn-sm-outline,
+    .btn-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .btn-sm-outline:hover,
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-sm-solid,
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .empty-state {
+      display: none;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 22px 16px;
+      text-align: center;
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
+
+    /* Footer */
+    .tag-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="tag-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Profile and Tagging</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="status-pill" id="shownTagsPill">0 Shown</span>
+      <button type="button" class="top-action-btn" id="resetTaggingBtn" aria-label="Reset profile and tagging settings">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="tag-container">
+    <!-- Overview -->
+    <section class="tag-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-user-tag"></i>
+          </span>
+          <h2 class="tag-heading">Profile Visibility &amp; Tag Controls</h2>
+        </div>
+        <span class="badge-tag">Profile</span>
+      </div>
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+      </div>
+      <p class="tag-text">
+        Control who can tag you in posts or mentions, whether new tags require your review before appearing on your profile, and how tagged items are displayed.
+      </p>
+    </section>
+
+    <!-- Tagging & Profile Preferences -->
+    <section class="tag-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-sliders"></i>
+          </span>
+          <h2 class="tag-heading">Tagging &amp; Mention Settings</h2>
+        </div>
+        <span class="badge-tag">Controls</span>
+      </div>
+
+      <div class="select-row">
+        <div class="option-copy">
+          <strong>Who Can Tag You</strong>
+          <span>Choose who is allowed to tag your profile</span>
+        </div>
+        <select id="whoCanTagSelect" class="tag-select" aria-label="Who Can Tag You">
+          <option value="everyone">Everyone</option>
+          <option value="connections" selected>Connections</option>
+          <option value="no-one">No One</option>
+        </select>
+      </div>
+
+      <div class="select-row">
+        <div class="option-copy">
+          <strong>Who Can See Tagged Posts</strong>
+          <span>Audience allowed to view posts where you are tagged</span>
+        </div>
+        <select id="tagAudienceSelect" class="tag-select" aria-label="Who Can See Tagged Posts">
+          <option value="public">Public</option>
+          <option value="connections" selected>Connections</option>
+          <option value="only-me">Only Me</option>
+        </select>
+      </div>
+
+      <div class="option-list">
+        <div class="option-item">
+          <div class="option-copy">
+            <strong>Review Tags Before Posting</strong>
+            <span>Approve new tags manually before they show on your profile</span>
+          </div>
+          <label class="switch-control" aria-label="Review Tags Before Posting">
+            <input type="checkbox" id="reviewTagsToggle" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="option-item">
+          <div class="option-copy">
+            <strong>Allow @Mentions</strong>
+            <span>Let allowed people mention your handle in comments or posts</span>
+          </div>
+          <label class="switch-control" aria-label="Allow Mentions">
+            <input type="checkbox" id="allowMentionsToggle" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-solid" id="saveTagSettingsBtn">
+          <i class="fa-regular fa-floppy-disk"></i>
+          <span>Save Preferences</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Tagged Content Management -->
+    <section class="tag-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-tags"></i>
+          </span>
+          <h2 class="tag-heading">Tagged Items on Your Profile</h2>
+        </div>
+        <span class="badge-tag" id="totalTagsCountBadge">0 Items</span>
+      </div>
+
+      <div class="tagged-list" id="taggedItemsList"></div>
+
+      <div class="empty-state" id="emptyTaggedState">
+        <strong>No tagged items in your list</strong>
+        <p>Reset defaults if you want to restore sample items.</p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="tag-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "autro_profile_tagging_state";
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      const DEFAULT_STATE = {
+        whoCanTag: "connections",
+        tagAudience: "connections",
+        reviewTags: true,
+        allowMentions: true,
+        taggedItems: [
+          {
+            id: "tag-1",
+            title: "Evening Story Showcase",
+            author: "@kahini_stories",
+            date: "Today",
+            shownOnProfile: true
+          },
+          {
+            id: "tag-2",
+            title: "Community Creator Meetup Notes",
+            author: "@autro_creators",
+            date: "Yesterday",
+            shownOnProfile: false
+          },
+          {
+            id: "tag-3",
+            title: "Weekend Visual Collage",
+            author: "@studio_frame",
+            date: "3 days ago",
+            shownOnProfile: true
+          }
+        ]
+      };
+
+      function cloneDefaults() {
+        return JSON.parse(JSON.stringify(DEFAULT_STATE));
+      }
+
+      function readState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return cloneDefaults();
+          const parsed = JSON.parse(raw);
+          if (!parsed || !Array.isArray(parsed.taggedItems)) return cloneDefaults();
+          return {
+            whoCanTag: parsed.whoCanTag || "connections",
+            tagAudience: parsed.tagAudience || "connections",
+            reviewTags: typeof parsed.reviewTags === "boolean" ? parsed.reviewTags : true,
+            allowMentions:
+              typeof parsed.allowMentions === "boolean" ? parsed.allowMentions : true,
+            taggedItems: parsed.taggedItems
+          };
+        } catch (e) {
+          return cloneDefaults();
+        }
+      }
+
+      function writeState(next) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch (e) {}
+      }
+
+      let state = readState();
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._tagToastTimer);
+        window._tagToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function renderTagging() {
+        const whoSel = document.getElementById("whoCanTagSelect");
+        const audSel = document.getElementById("tagAudienceSelect");
+        const revToggle = document.getElementById("reviewTagsToggle");
+        const menToggle = document.getElementById("allowMentionsToggle");
+        const listEl = document.getElementById("taggedItemsList");
+        const emptyEl = document.getElementById("emptyTaggedState");
+        const shownPill = document.getElementById("shownTagsPill");
+        const totalBadge = document.getElementById("totalTagsCountBadge");
+
+        if (whoSel) whoSel.value = state.whoCanTag;
+        if (audSel) audSel.value = state.tagAudience;
+        if (revToggle) revToggle.checked = Boolean(state.reviewTags);
+        if (menToggle) menToggle.checked = Boolean(state.allowMentions);
+
+        const shownCount = state.taggedItems.filter((t) => t.shownOnProfile).length;
+        if (shownPill) shownPill.textContent = `${shownCount} Shown`;
+        if (totalBadge) {
+          totalBadge.textContent = `${state.taggedItems.length} ${state.taggedItems.length === 1 ? "Item" : "Items"}`;
+        }
+
+        if (!listEl) return;
+
+        if (!state.taggedItems.length) {
+          listEl.innerHTML = "";
+          if (emptyEl) emptyEl.classList.add("visible");
+          return;
+        }
+
+        if (emptyEl) emptyEl.classList.remove("visible");
+
+        listEl.innerHTML = state.taggedItems
+          .map(
+            (item) => `
+              <article class="tagged-item" data-id="${item.id}">
+                <div class="tagged-top">
+                  <div class="tagged-title-wrap">
+                    <h3 class="tagged-title">${item.title}</h3>
+                    <span class="tagged-author">Tagged by ${item.author}</span>
+                  </div>
+                  <span class="tag-status-pill ${item.shownOnProfile ? "shown" : ""}">
+                    ${item.shownOnProfile ? "On Profile" : "Hidden"}
+                  </span>
+                </div>
+                <div class="tagged-actions">
+                  <span class="tagged-date">${item.date}</span>
+                  <div class="btn-group">
+                    <button type="button" class="${item.shownOnProfile ? "btn-sm-outline" : "btn-sm-solid"} toggle-show-btn" data-id="${item.id}">
+                      <span>${item.shownOnProfile ? "Hide" : "Show on Profile"}</span>
+                    </button>
+                    <button type="button" class="btn-sm-outline remove-tag-btn" data-id="${item.id}">
+                      <span>Remove Tag</span>
+                    </button>
+                  </div>
+                </div>
+              </article>
+            `
+          )
+          .join("");
+
+        listEl.querySelectorAll(".toggle-show-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            const target = state.taggedItems.find((t) => t.id === id);
+            if (!target) return;
+            target.shownOnProfile = !target.shownOnProfile;
+            writeState(state);
+            renderTagging();
+            showToast(target.shownOnProfile ? "Shown on profile" : "Hidden from profile");
+          });
+        });
+
+        listEl.querySelectorAll(".remove-tag-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            state.taggedItems = state.taggedItems.filter((t) => t.id !== id);
+            writeState(state);
+            renderTagging();
+            showToast("Tag removed");
+          });
+        });
+      }
+
+      document.getElementById("whoCanTagSelect")?.addEventListener("change", (e) => {
+        state.whoCanTag = e.target.value;
+        writeState(state);
+        showToast("Tag permission updated");
+      });
+
+      document.getElementById("tagAudienceSelect")?.addEventListener("change", (e) => {
+        state.tagAudience = e.target.value;
+        writeState(state);
+        showToast("Tagged post audience updated");
+      });
+
+      document.getElementById("reviewTagsToggle")?.addEventListener("change", (e) => {
+        state.reviewTags = Boolean(e.target.checked);
+        writeState(state);
+        showToast(state.reviewTags ? "Manual tag review enabled" : "Manual tag review disabled");
+      });
+
+      document.getElementById("allowMentionsToggle")?.addEventListener("change", (e) => {
+        state.allowMentions = Boolean(e.target.checked);
+        writeState(state);
+        showToast(state.allowMentions ? "@Mentions allowed" : "@Mentions turned off");
+      });
+
+      document.getElementById("saveTagSettingsBtn")?.addEventListener("click", () => {
+        writeState(state);
+        showToast("Profile and tagging preferences saved");
+      });
+
+      document.getElementById("resetTaggingBtn")?.addEventListener("click", () => {
+        state = cloneDefaults();
+        writeState(state);
+        renderTagging();
+        showToast("Profile and tagging reset to defaults");
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      renderTagging();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+  </html>
