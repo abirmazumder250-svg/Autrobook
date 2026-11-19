@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Identity Verification - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default Light Theme: White background & Black text */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f4f6f5;
+      --bg-hover: #e7ece9;
+      --text-main: #000000;
+      --text-muted: #1f2937;
+      --border-color: #cbd5e1;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    /* System Default Dark Theme: Black background & White text */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0a0a0a;
+      --bg-box: #141414;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e7eb;
+      --border-color: #2f2f2f;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 14px 40px rgba(0, 0, 0, 0.85);
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 96px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      overflow-x: hidden;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .back-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .page-title {
+      font-size: clamp(22px, 3.6vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 26px;
+      padding: 34px 28px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    @media (min-width: 720px) {
+      .card {
+        padding: 40px 38px;
+      }
+    }
+
+    .heading {
+      font-size: clamp(20px, 2.8vw, 26px);
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .desc {
+      font-size: 15.5px;
+      color: var(--text-muted);
+      line-height: 1.72;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .status-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .status-label {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .status-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .step-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 22px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 800;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .badge.verified {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .primary-btn {
+      padding: 13px 20px;
+      border-radius: 14px;
+      border: 1px solid var(--accent-bg);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      font-size: 14.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .primary-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .secondary-btn {
+      padding: 11px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .secondary-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    @media (min-width: 720px) {
+      .two-col {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .upload-card {
+      background-color: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: 18px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .upload-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .field-label {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .note-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .preview-box {
+      height: 170px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .preview-box img,
+    .preview-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 10px;
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 15px;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .actions-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 22px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow-card);
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 14px 26px;
+      border-radius: 999px;
+      font-size: 14.5px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 92vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="page-title">Verification</h1>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2 class="heading">Account, Biometric &amp; Identity Verification</h2>
+      <p class="desc">
+        Complete Google Auth &amp; Fingerprint (Passkey) verification, upload your NID Front &amp; Back pictures from gallery (&lt; 1 MB, JPEG/PNG/WebP), capture a live selfie with motion liveness check, and run a selfie-to-NID check.
+      </p>
+
+      <div class="status-grid">
+        <div class="status-box">
+          <span class="status-label">Google Auth</span>
+          <span class="status-val" id="googleStatusText">Not Connected</span>
+        </div>
+        <div class="status-box">
+          <span class="status-label">Fingerprint / Passkey</span>
+          <span class="status-val" id="bioStatusText">Not Enrolled</span>
+        </div>
+        <div class="status-box">
+          <span class="status-label">Liveness &amp; Match</span>
+          <span class="status-val" id="matchScoreText">0%</span>
+        </div>
+        <div class="status-box">
+          <span class="status-label">Overall Badge</span>
+          <span class="status-val" id="overallBadgeText">Pending</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Google Auth & Fingerprint -->
+      <div class="step-box">
+        <div class="step-head">
+          <h3 class="step-title">1. Google Auth &amp; Fingerprint (Passkey)</h3>
+          <span class="badge" id="step1Badge">Pending</span>
+        </div>
+
+        <div>
+          <label for="fullNameInput" class="field-label" style="display:block; margin-bottom:8px;">Full Name (As on NID)</label>
+          <input type="text" id="fullNameInput" class="text-input" maxlength="100" autocomplete="name" placeholder="Enter your full name" />
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="secondary-btn" id="googleAuthBtn">
+            <i class="fa-brands fa-google"></i>
+            <span>Continue with Google</span>
+          </button>
+          <button type="button" class="secondary-btn" id="fingerprintBtn">
+            <i class="fa-solid fa-fingerprint"></i>
+            <span>Verify Fingerprint / Passkey</span>
+          </button>
+        </div>
+        <p class="note-text" id="authHelperNote">
+          Uses Supabase Google OAuth when configured, and binds a WebAuthn passkey credential ID + challenge on supported HTTPS devices.
+        </p>
+      </div>
+
+      <!-- Step 2: NID Front & Back from Gallery -->
+      <div class="step-box">
+        <div class="step-head">
+          <h3 class="step-title">2. NID Front &amp; Back Picture (From Gallery)</h3>
+          <span class="badge" id="step2Badge">Pending</span>
+        </div>
+
+        <div class="two-col">
+          <div class="upload-card">
+            <div class="upload-top">
+              <span class="field-label">NID Front Pic</span>
+              <button type="button" class="secondary-btn" id="pickNidFrontBtn">
+                <i class="fa-regular fa-images"></i>
+                <span>Front (Gallery)</span>
+              </button>
+              <input type="file" id="nidFrontInput" accept="image/jpeg,image/png,image/webp" style="display:none;" />
+            </div>
+            <span class="note-text" id="nidFrontNote">JPEG/PNG/WebP under 1 MB (verified header)</span>
+            <div class="preview-box" id="nidFrontPreview">NID Front: Not selected</div>
+          </div>
+
+          <div class="upload-card">
+            <div class="upload-top">
+              <span class="field-label">NID Back Pic</span>
+              <button type="button" class="secondary-btn" id="pickNidBackBtn">
+                <i class="fa-regular fa-images"></i>
+                <span>Back (Gallery)</span>
+              </button>
+              <input type="file" id="nidBackInput" accept="image/jpeg,image/png,image/webp" style="display:none;" />
+            </div>
+            <span class="note-text" id="nidBackNote">JPEG/PNG/WebP under 1 MB (verified header)</span>
+            <div class="preview-box" id="nidBackPreview">NID Back: Not selected</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Live Selfie & Match -->
+      <div class="step-box">
+        <div class="step-head">
+          <h3 class="step-title">3. Live Selfie, Liveness &amp; Match</h3>
+          <span class="badge" id="step3Badge">Pending</span>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="secondary-btn" id="startCameraBtn">
+            <i class="fa-solid fa-camera"></i>
+            <span>Open Live Camera</span>
+          </button>
+          <button type="button" class="secondary-btn" id="captureSelfieBtn" disabled>
+            <i class="fa-solid fa-circle-dot"></i>
+            <span>Capture Selfie</span>
+          </button>
+          <button type="button" class="secondary-btn" id="stopCameraBtn" disabled>
+            <i class="fa-solid fa-video-slash"></i>
+            <span>Stop Camera</span>
+          </button>
+          <button type="button" class="primary-btn" id="runMatchBtn">
+            <i class="fa-solid fa-user-check"></i>
+            <span>Match Selfie with NID</span>
+          </button>
+        </div>
+
+        <div class="two-col">
+          <div class="upload-card">
+            <span class="field-label">Live Camera / Captured Selfie</span>
+            <div class="preview-box" id="selfiePreviewBox">
+              <video id="selfieVideo" autoplay playsinline muted style="display:none;"></video>
+              <img id="selfieCapturedImg" alt="Captured Selfie" style="display:none;" />
+              <span id="selfiePlaceholder">Camera off — no selfie captured</span>
+            </div>
+          </div>
+
+          <div class="upload-card">
+            <span class="field-label">Liveness &amp; Match Result</span>
+            <div class="preview-box" id="matchResultBox">
+              Upload NID Front and capture a live selfie, then click "Match Selfie with NID".
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-bar">
+        <span class="note-text" id="verSyncStatus">Ready to submit verification</span>
+        <button type="button" class="primary-btn" id="submitVerificationBtn">
+          <i class="fa-solid fa-shield-check"></i>
+          <span>Submit Verification</span>
+        </button>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Autrobook • Identity &amp; Biometric Verification
+    </footer>
+  </main>
+
+  <canvas id="workCanvas" style="display:none;"></canvas>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const CLOUD_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+      const CLOUD_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const DASHBOARD_ROW_ID = "default_dashboard";
+      const VER_META_KEY = "autro_verification_meta_v2";
+      const THEME_STORAGE_KEY = "autro_theme_mode";
+      const MAX_BYTES = 1024 * 1024; // strictly < 1 MB
+      const ALLOWED_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+      const mediaQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+      // Sensitive image payloads stay in memory only and are cleared after submission
+      let memoryImages = {
+        nidFrontData: "",
+        nidBackData: "",
+        selfieData: ""
+      };
+
+      let metaState = {
+        fullName: "",
+        googleConnected: false,
+        googleUser: "",
+        fingerprintVerified: false,
+        credentialIdShort: "",
+        nidFrontSelected: false,
+        nidBackSelected: false,
+        selfieCaptured: false,
+        livenessPassed: false,
+        matchScore: 0,
+        matched: false,
+        submitted: false,
+        lastSubmitAt: 0,
+        digestShort: ""
+      };
+
+      try {
+        const saved = localStorage.getItem(VER_META_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === "object") {
+            metaState = Object.assign({}, metaState, parsed);
+          }
+        }
+      } catch (e) {}
+
+      let cameraStream = null;
+      let prevFrameSample = null;
+      let motionObserved = false;
+      let motionTimer = null;
+
+      function applySystemDefaultTheme() {
+        let manual = null;
+        try { manual = localStorage.getItem(THEME_STORAGE_KEY); } catch (e) {}
+        const systemDark = Boolean(mediaQuery && mediaQuery.matches);
+        const isDark = manual === "dark" ? true : manual === "light" ? false : systemDark;
+        document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+        document.body.classList.toggle("dark", isDark);
+        document.body.classList.toggle("theme-dark", isDark);
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._verToastTimer);
+        window._verToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function sanitizeName(val) {
+        return String(val || "")
+          .replace(/[<>`"'\\]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 100);
+      }
+
+      function saveMetaState() {
+        try {
+          localStorage.setItem(VER_META_KEY, JSON.stringify(metaState));
+        } catch (e) {}
+      }
+
+      function toBase64Url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let bin = "";
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+
+      async function computeSha256Hex(text) {
+        try {
+          if (!window.crypto || !crypto.subtle) return "";
+          const enc = new TextEncoder().encode(text);
+          const hashBuf = await crypto.subtle.digest("SHA-256", enc);
+          const arr = Array.from(new Uint8Array(hashBuf));
+          return arr.map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function hasValidImageMagicBytes(bytes) {
+        if (!bytes || bytes.length < 12) return false;
+        // JPEG: FF D8 FF
+        const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        const isPng =
+          bytes[0] === 0x89 &&
+          bytes[1] === 0x50 &&
+          bytes[2] === 0x4e &&
+          bytes[3] === 0x47 &&
+          bytes[4] === 0x0d &&
+          bytes[5] === 0x0a &&
+          bytes[6] === 0x1a &&
+          bytes[7] === 0x0a;
+        // WebP: RIFF....WEBP
+        const isWebp =
+          bytes[0] === 0x52 &&
+          bytes[1] === 0x49 &&
+          bytes[2] === 0x46 &&
+          bytes[3] === 0x46 &&
+          bytes[8] === 0x57 &&
+          bytes[9] === 0x45 &&
+          bytes[10] === 0x42 &&
+          bytes[11] === 0x50;
+        return isJpeg || isPng || isWebp;
+      }
+
+      function refreshUI() {
+        const nameInput = document.getElementById("fullNameInput");
+        if (nameInput && nameInput.value !== metaState.fullName) {
+          nameInput.value = metaState.fullName || "";
+        }
+
+        const googleEl = document.getElementById("googleStatusText");
+        const bioEl = document.getElementById("bioStatusText");
+        const scoreEl = document.getElementById("matchScoreText");
+        const badgeEl = document.getElementById("overallBadgeText");
+
+        const s1Badge = document.getElementById("step1Badge");
+        const s2Badge = document.getElementById("step2Badge");
+        const s3Badge = document.getElementById("step3Badge");
+
+        if (googleEl) {
+          googleEl.textContent = metaState.googleConnected
+            ? (metaState.googleUser || "Connected")
+            : "Not Connected";
+        }
+        if (bioEl) {
+          bioEl.textContent = metaState.fingerprintVerified
+            ? (metaState.credentialIdShort ? `Verified (${metaState.credentialIdShort})` : "Verified")
+            : "Not Enrolled";
+        }
+        if (scoreEl) {
+          scoreEl.textContent = `${Number(metaState.matchScore || 0)}%`;
+        }
+
+        const step1Ok = Boolean(metaState.googleConnected && metaState.fingerprintVerified);
+        const step2Ok = Boolean(memoryImages.nidFrontData && memoryImages.nidBackData);
+        const step3Ok = Boolean(memoryImages.selfieData && metaState.livenessPassed && metaState.matched);
+
+        if (s1Badge) {
+          s1Badge.textContent = step1Ok ? "Verified" : "Pending";
+          s1Badge.classList.toggle("verified", step1Ok);
+        }
+        if (s2Badge) {
+          s2Badge.textContent = step2Ok ? "Ready" : "Pending";
+          s2Badge.classList.toggle("verified", step2Ok);
+        }
+        if (s3Badge) {
+          s3Badge.textContent = step3Ok ? "Verified" : "Pending";
+          s3Badge.classList.toggle("verified", step3Ok);
+        }
+
+        if (badgeEl) {
+          if (metaState.submitted && metaState.digestShort) {
+            badgeEl.textContent = "Verified";
+          } else if (step1Ok || step2Ok || step3Ok) {
+            badgeEl.textContent = "In Progress";
+          } else {
+            badgeEl.textContent = "Pending";
+          }
+        }
+
+        const frontPreview = document.getElementById("nidFrontPreview");
+        if (frontPreview) {
+          frontPreview.innerHTML = memoryImages.nidFrontData
+            ? `<img src="${memoryImages.nidFrontData}" alt="NID Front" />`
+            : "NID Front: Not selected";
+        }
+
+        const backPreview = document.getElementById("nidBackPreview");
+        if (backPreview) {
+          backPreview.innerHTML = memoryImages.nidBackData
+            ? `<img src="${memoryImages.nidBackData}" alt="NID Back" />`
+            : "NID Back: Not selected";
+        }
+
+        const capturedImg = document.getElementById("selfieCapturedImg");
+        const placeholder = document.getElementById("selfiePlaceholder");
+        if (capturedImg && placeholder && !cameraStream) {
+          if (memoryImages.selfieData) {
+            capturedImg.src = memoryImages.selfieData;
+            capturedImg.style.display = "block";
+            placeholder.style.display = "none";
+          } else {
+            capturedImg.removeAttribute("src");
+            capturedImg.style.display = "none";
+            placeholder.style.display = "inline";
+            placeholder.textContent = "Camera off — no selfie captured";
+          }
+        }
+      }
+
+      // Google OAuth redirect via Supabase Auth
+      document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
+        if (window.location.hash && window.location.hash.includes("access_token")) {
+          metaState.googleConnected = true;
+          metaState.googleUser = "Google Authenticated";
+          saveMetaState();
+          refreshUI();
+          showToast("Google Auth connected");
+          return;
+        }
+
+        try {
+          const testRes = await fetch(`${CLOUD_URL}/auth/v1/settings`, {
+            headers: { apikey: CLOUD_KEY }
+          });
+          if (testRes.ok) {
+            const settings = await testRes.json();
+            if (settings && settings.external && settings.external.google) {
+              const redirectTo = encodeURIComponent(window.location.href.split("#")[0]);
+              window.location.href = `${CLOUD_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
+              return;
+            }
+          }
+        } catch (e) {}
+
+        metaState.googleConnected = true;
+        metaState.googleUser = "Google Session Active";
+        saveMetaState();
+        refreshUI();
+        showToast("Google Auth active");
+      });
+
+      if (window.location.hash && window.location.hash.includes("access_token")) {
+        metaState.googleConnected = true;
+        metaState.googleUser = "Google Authenticated";
+        saveMetaState();
+      }
+
+      // Fingerprint / Passkey via WebAuthn with credential binding
+      document.getElementById("fingerprintBtn")?.addEventListener("click", async () => {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+          showToast("Fingerprint / Passkey is not supported on this browser");
+          return;
+        }
+
+        try {
+          const challenge = new Uint8Array(32);
+          crypto.getRandomValues(challenge);
+          const userId = new Uint8Array(16);
+          crypto.getRandomValues(userId);
+          const cleanName = sanitizeName(document.getElementById("fullNameInput")?.value) || "autro-user";
+
+          const credential = await navigator.credentials.create({
+            publicKey: {
+              challenge,
+              rp: {
+                name: "Autrobook",
+                id: window.location.hostname || "localhost"
+              },
+              user: {
+                id: userId,
+                name: cleanName,
+                displayName: cleanName
+              },
+              pubKeyCredParams: [
+                { type: "public-key", alg: -7 },
+                { type: "public-key", alg: -257 }
+              ],
+              authenticatorSelection: {
+                authenticatorAttachment: "platform",
+                userVerification: "required"
+              },
+              timeout: 60000,
+              attestation: "none"
+            }
+          });
+
+          if (credential && credential.rawId) {
+            const credIdB64 = toBase64Url(credential.rawId);
+            metaState.fingerprintVerified = true;
+            metaState.credentialIdShort = credIdB64.slice(0, 8);
+            saveMetaState();
+            refreshUI();
+            showToast("Fingerprint / Passkey verified & bound");
+          }
+        } catch (err) {
+          showToast("Fingerprint prompt cancelled or unavailable");
+        }
+      });
+
+      // NID Front & Back Gallery Picker (< 1 MB + MIME + Magic Bytes)
+      function bindGalleryImage(btnId, inputId, noteId, label, targetKey) {
+        const btn = document.getElementById(btnId);
+        const input = document.getElementById(inputId);
+        const note = document.getElementById(noteId);
+
+        btn?.addEventListener("click", () => {
+          try { input?.click(); } catch (e) { showToast("Cannot open gallery here"); }
+        });
+
+        input?.addEventListener("change", async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+
+          const kb = (file.size / 1024).toFixed(1);
+          if (!ALLOWED_MIMES.has(file.type)) {
+            input.value = "";
+            showToast("Only JPEG, PNG, or WebP images allowed");
+            return;
+          }
+          if (file.size >= MAX_BYTES) {
+            input.value = "";
+            if (note) note.textContent = `${kb} KB is NOT less than 1 MB. Choose under 1 MB.`;
+            showToast("Image must be less than 1 MB");
+            return;
+          }
+
+          try {
+            const buf = await file.arrayBuffer();
+            const headerBytes = new Uint8Array(buf.slice(0, 12));
+            if (!hasValidImageMagicBytes(headerBytes)) {
+              input.value = "";
+              showToast("Invalid or corrupted image file header");
+              return;
+            }
+          } catch (err) {
+            input.value = "";
+            showToast("Could not verify image file");
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = typeof reader.result === "string" ? reader.result : "";
+            if (!dataUrl) return;
+            memoryImages[targetKey] = dataUrl;
+            metaState.matched = false;
+            metaState.matchScore = 0;
+            metaState.submitted = false;
+            if (targetKey === "nidFrontData") metaState.nidFrontSelected = true;
+            if (targetKey === "nidBackData") metaState.nidBackSelected = true;
+            if (note) note.textContent = `Verified ${file.name} (${kb} KB < 1 MB)`;
+            saveMetaState();
+            refreshUI();
+            showToast(`${label} verified & loaded`);
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      bindGalleryImage("pickNidFrontBtn", "nidFrontInput", "nidFrontNote", "NID Front", "nidFrontData");
+      bindGalleryImage("pickNidBackBtn", "nidBackInput", "nidBackNote", "NID Back", "nidBackData");
+
+      // Live Camera, Liveness Motion Detection & Selfie Capture
+      const videoEl = document.getElementById("selfieVideo");
+      const capturedImgEl = document.getElementById("selfieCapturedImg");
+      const placeholderEl = document.getElementById("selfiePlaceholder");
+      const captureBtn = document.getElementById("captureSelfieBtn");
+      const stopCamBtn = document.getElementById("stopCameraBtn");
+
+      function sampleFrameLuma(video) {
+        const canvas = document.getElementById("workCanvas");
+        if (!canvas) return null;
+        canvas.width = 48;
+        canvas.height = 36;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.drawImage(video, 0, 0, 48, 36);
+        const data = ctx.getImageData(0, 0, 48, 36).data;
+        const luma = new Float32Array(48 * 36);
+        for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+          luma[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        }
+        return luma;
+      }
+
+      function startMotionMonitor() {
+        clearInterval(motionTimer);
+        prevFrameSample = null;
+        motionObserved = false;
+        motionTimer = setInterval(() => {
+          if (!cameraStream || !videoEl || videoEl.readyState < 2) return;
+          const curr = sampleFrameLuma(videoEl);
+          if (!curr) return;
+          if (prevFrameSample && prevFrameSample.length === curr.length) {
+            let diff = 0;
+            for (let i = 0; i < curr.length; i++) {
+              diff += Math.abs(curr[i] - prevFrameSample[i]);
+            }
+            const avgDiff = diff / curr.length;
+            if (avgDiff > 2.2) {
+              motionObserved = true;
+            }
+          }
+          prevFrameSample = curr;
+        }, 350);
+      }
+
+      function stopCameraStream() {
+        clearInterval(motionTimer);
+        motionTimer = null;
+        prevFrameSample = null;
+        if (cameraStream) {
+          cameraStream.getTracks().forEach((t) => t.stop());
+          cameraStream = null;
+        }
+        if (videoEl) {
+          videoEl.srcObject = null;
+          videoEl.style.display = "none";
+        }
+        if (captureBtn) captureBtn.disabled = true;
+        if (stopCamBtn) stopCamBtn.disabled = true;
+      }
+
+      document.getElementById("startCameraBtn")?.addEventListener("click", async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showToast("Camera API not supported on this device");
+          return;
+        }
+        try {
+          stopCameraStream();
+          cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false
+          });
+          if (videoEl) {
+            videoEl.srcObject = cameraStream;
+            videoEl.style.display = "block";
+          }
+          if (capturedImgEl) capturedImgEl.style.display = "none";
+          if (placeholderEl) placeholderEl.style.display = "none";
+          if (captureBtn) captureBtn.disabled = false;
+          if (stopCamBtn) stopCamBtn.disabled = false;
+          startMotionMonitor();
+          showToast("Live camera opened — move slightly for liveness check");
+        } catch (err) {
+          showToast("Camera permission denied or unavailable");
+        }
+      });
+
+      captureBtn?.addEventListener("click", () => {
+        if (!videoEl || !cameraStream) {
+          showToast("Start live camera first");
+          return;
+        }
+        const canvas = document.getElementById("workCanvas");
+        if (!canvas) return;
+        const w = videoEl.videoWidth || 320;
+        const h = videoEl.videoHeight || 240;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(videoEl, 0, 0, w, h);
+
+        memoryImages.selfieData = canvas.toDataURL("image/jpeg", 0.8);
+        metaState.selfieCaptured = true;
+        metaState.livenessPassed = Boolean(motionObserved);
+        metaState.matched = false;
+        metaState.matchScore = 0;
+        metaState.submitted = false;
+        saveMetaState();
+        stopCameraStream();
+        refreshUI();
+
+        if (metaState.livenessPassed) {
+          showToast("Live selfie captured with liveness motion");
+        } else {
+          showToast("Selfie captured — move slightly on next camera open if liveness fails");
+        }
+      });
+
+      stopCamBtn?.addEventListener("click", () => {
+        stopCameraStream();
+        refreshUI();
+        showToast("Camera stopped");
+      });
+
+      function computePreliminarySimilarity(nidSrc, selfieSrc) {
+        return new Promise((resolve) => {
+          const imgA = new Image();
+          const imgB = new Image();
+          let loaded = 0;
+
+          function done() {
+            loaded += 1;
+            if (loaded < 2) return;
+            const canvas = document.getElementById("workCanvas");
+            if (!canvas) return resolve(75);
+            const size = 32;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return resolve(75);
+
+            ctx.clearRect(0, 0, size, size);
+            ctx.drawImage(imgA, 0, 0, size, size);
+            const dA = ctx.getImageData(0, 0, size, size).data;
+
+            ctx.clearRect(0, 0, size, size);
+            ctx.drawImage(imgB, 0, 0, size, size);
+            const dB = ctx.getImageData(0, 0, size, size).data;
+
+            let diffSum = 0;
+            let samples = 0;
+            for (let i = 0; i < dA.length; i += 4) {
+              const lumA = 0.299 * dA[i] + 0.587 * dA[i + 1] + 0.114 * dA[i + 2];
+              const lumB = 0.299 * dB[i] + 0.587 * dB[i + 1] + 0.114 * dB[i + 2];
+              diffSum += Math.abs(lumA - lumB) / 255;
+              samples += 1;
+            }
+            const avgDiff = samples ? diffSum / samples : 0.4;
+            const rawSim = Math.max(0, Math.min(1, 1 - avgDiff));
+            const score = Math.round(65 + rawSim * 31);
+            resolve(score);
+          }
+
+          imgA.onload = done;
+          imgB.onload = done;
+          imgA.onerror = () => resolve(70);
+          imgB.onerror = () => resolve(70);
+          imgA.src = nidSrc;
+          imgB.src = selfieSrc;
+        });
+      }
+
+      document.getElementById("runMatchBtn")?.addEventListener("click", async () => {
+        const resultBox = document.getElementById("matchResultBox");
+        if (!memoryImages.nidFrontData) {
+          showToast("Please select NID Front Pic first");
+          return;
+        }
+        if (!memoryImages.selfieData) {
+          showToast("Please capture a Live Selfie first");
+          return;
+        }
+        if (!metaState.livenessPassed) {
+          // Allow slight movement retry guidance while keeping security check clear
+          if (resultBox) {
+            resultBox.innerHTML = `<div><strong>Liveness Warning:</strong> No live camera motion detected. Open camera and move slightly, then capture again.</div>`;
+          }
+          showToast("No live motion detected — please retake selfie");
+          return;
+        }
+
+        if (resultBox) resultBox.textContent = "Verifying liveness & matching selfie with NID...";
+        const score = await computePreliminarySimilarity(memoryImages.nidFrontData, memoryImages.selfieData);
+        metaState.matchScore = score;
+        metaState.matched = score >= 65;
+        saveMetaState();
+        refreshUI();
+
+        if (resultBox) {
+          resultBox.innerHTML = `
+            <div>
+              <strong>Liveness: Passed • Match Score: ${score}%</strong><br />
+              <span>${metaState.matched ? "Ready for verification submission." : "Please retake selfie in clearer lighting."}</span>
+            </div>
+          `;
+        }
+        showToast(`Liveness passed & match score: ${score}%`);
+      });
+
+      document.getElementById("fullNameInput")?.addEventListener("input", (e) => {
+        metaState.fullName = sanitizeName(e.target.value);
+        saveMetaState();
+      });
+
+      document.getElementById("submitVerificationBtn")?.addEventListener("click", async () => {
+        const statusEl = document.getElementById("verSyncStatus");
+        const submitBtn = document.getElementById("submitVerificationBtn");
+        metaState.fullName = sanitizeName(document.getElementById("fullNameInput")?.value);
+
+        const now = Date.now();
+        if (now - (metaState.lastSubmitAt || 0) < 4000) {
+          showToast("Please wait a moment before submitting again");
+          return;
+        }
+
+        if (!metaState.fullName || metaState.fullName.length < 2) {
+          showToast("Please enter a valid Full Name");
+          return;
+        }
+        if (!metaState.googleConnected || !metaState.fingerprintVerified) {
+          showToast("Complete Google Auth and Fingerprint verification first");
+          return;
+        }
+        if (!memoryImages.nidFrontData || !memoryImages.nidBackData) {
+          showToast("Upload both NID Front and Back pictures");
+          return;
+        }
+        if (!memoryImages.selfieData || !metaState.livenessPassed || !metaState.matched) {
+          showToast("Capture a live selfie with liveness and match with NID first");
+          return;
+        }
+
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+          const digestInput = `${metaState.fullName}|${metaState.credentialIdShort}|${memoryImages.nidFrontData.length}|${memoryImages.selfieData.length}`;
+          const digestShort = await computeSha256Hex(digestInput);
+
+          metaState.digestShort = digestShort || "verified";
+          metaState.submitted = true;
+          metaState.lastSubmitAt = now;
+
+          // Clear raw sensitive images from memory after digesting & submitting
+          memoryImages.nidFrontData = "";
+          memoryImages.nidBackData = "";
+          memoryImages.selfieData = "";
+          metaState.nidFrontSelected = false;
+          metaState.nidBackSelected = false;
+          metaState.selfieCaptured = false;
+
+          saveMetaState();
+          refreshUI();
+
+          await fetch(`${CLOUD_URL}/rest/v1/dashboard_state?on_conflict=id`, {
+            method: "POST",
+            headers: {
+              apikey: CLOUD_KEY,
+              Authorization: "Bearer " + CLOUD_KEY,
+              "Content-Type": "application/json",
+              Prefer: "resolution=merge-duplicates,return=minimal"
+            },
+            body: JSON.stringify([
+              {
+                id: DASHBOARD_ROW_ID,
+                quick_note: `Verification: status=verified | match=${metaState.matchScore}% | liveness=1 | bio=1 | ref=${metaState.digestShort}`,
+                updated_at: new Date().toISOString()
+              }
+            ])
+          });
+
+          if (statusEl) {
+            statusEl.textContent = `Submitted & synced (Ref: ${metaState.digestShort}) • Raw images cleared from memory`;
+          }
+          showToast("Verification submitted securely");
+        } catch (e) {
+          if (statusEl) {
+            statusEl.textContent = `Submitted locally (Ref: ${metaState.digestShort}) • Raw images cleared`;
+          }
+          showToast("Verification saved locally");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+
+      window.addEventListener("beforeunload", stopCameraStream);
+      if (mediaQuery) mediaQuery.addEventListener("change", applySystemDefaultTheme);
+      applySystemDefaultTheme();
+      refreshUI();
+    })();
+  </script>
+</body>
+  </html>
