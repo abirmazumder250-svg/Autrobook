@@ -405,36 +405,6 @@
       color: var(--text-main);
     }
 
-    .item-nid-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .item-nid-box {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: center;
-    }
-
-    .item-nid-box span {
-      font-size: 12px;
-      font-weight: 800;
-      color: var(--text-muted);
-    }
-
-    .item-nid-box img {
-      width: 100%;
-      height: 115px;
-      object-fit: cover;
-      border-radius: 10px;
-    }
-
     .empty-state {
       grid-column: 1 / -1;
       text-align: center;
@@ -512,7 +482,7 @@
     <section class="card">
       <h2 class="heading">Blood Donor Registration Form</h2>
       <p class="desc">
-        Fill in Name, Address, Phone number, select Blood Group using the round options, and upload NID Front &amp; Back pictures from your gallery (each less than 1 MB).
+        Fill in Name, Address, and Phone number, select a Blood Group using the round options, and attach NID Front and Back photos from your gallery (each under 1 MB). Public listings use privacy-safe phone masking and hide raw NID photos.
       </p>
 
       <div class="stats-grid">
@@ -521,7 +491,7 @@
           <span class="stat-value" id="statDonorTotal">0</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">Complete NIDs</span>
+          <span class="stat-label">Verified NIDs</span>
           <span class="stat-value" id="statDonorNid">0</span>
         </div>
       </div>
@@ -586,15 +556,15 @@
         </div>
 
         <div class="actions-bar">
-          <span class="status-note" id="donorSyncStatus">Connecting live count from Supabase...</span>
-          <button type="submit" class="primary-btn">
+          <span class="status-note" id="donorSyncStatus">Connecting to Supabase...</span>
+          <button type="submit" class="primary-btn" id="saveDonorBtn">
             <i class="fa-regular fa-floppy-disk"></i>
             <span>Save Donor</span>
           </button>
         </div>
       </form>
 
-      <h3 class="heading" style="font-size:21px;">Saved Blood Donors</h3>
+      <h3 class="heading" style="font-size:21px;">Public Blood Donors</h3>
       <div class="records-list" id="donorsList"></div>
     </section>
 
@@ -609,15 +579,15 @@
     (function () {
       const CLOUD_URL = "https://gemyqaniztqrsilayblx.supabase.co";
       const CLOUD_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
-      const ROW_ID = "default_dashboard";
-      const DONORS_KEY = "autro_blood_donators_v1";
+      const DASHBOARD_ROW_ID = "default_dashboard";
       const RECEIVERS_KEY = "autro_blood_receivers_v1";
       const THEME_STORAGE_KEY = "autro_theme_mode";
-      const MAX_BYTES = 1024 * 1024; // strictly less than 1 MB
+      const MAX_BYTES = 1024 * 1024;
 
       const mediaQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
       let frontPic = "";
       let backPic = "";
+      let publicDonors = [];
 
       function applySystemDefaultTheme() {
         let manual = null;
@@ -638,23 +608,13 @@
         window._bdnToastTimer = setTimeout(() => toast.classList.remove("show"), 2300);
       }
 
-      function readList(key) {
+      function readReceiversCount() {
         try {
-          const raw = localStorage.getItem(key);
+          const raw = localStorage.getItem(RECEIVERS_KEY);
           const arr = raw ? JSON.parse(raw) : [];
-          return Array.isArray(arr) ? arr : [];
+          return Array.isArray(arr) ? arr.length : 0;
         } catch (e) {
-          return [];
-        }
-      }
-
-      function saveList(key, arr) {
-        try {
-          localStorage.setItem(key, JSON.stringify(arr));
-          return true;
-        } catch (e) {
-          showToast("Storage full! Use images less than 1 MB.");
-          return false;
+          return 0;
         }
       }
 
@@ -683,7 +643,7 @@
           if (file.size >= MAX_BYTES) {
             input.value = "";
             setData("");
-            if (note) note.textContent = `${kb} KB is NOT less than 1 MB! Select less than 1 MB.`;
+            if (note) note.textContent = `${kb} KB is NOT less than 1 MB. Select a file under 1 MB.`;
             if (preview) preview.textContent = "Size must be less than 1 MB";
             showToast("Image must be less than 1 MB");
             return;
@@ -692,7 +652,7 @@
           reader.onload = () => {
             const url = typeof reader.result === "string" ? reader.result : "";
             setData(url);
-            if (note) note.textContent = `${file.name} (${kb} KB - less than 1 MB)`;
+            if (note) note.textContent = `${file.name} (${kb} KB - under 1 MB)`;
             if (preview && url) preview.innerHTML = `<img src="${url}" alt="NID preview" />`;
           };
           reader.readAsDataURL(file);
@@ -724,41 +684,10 @@
         (v) => { backPic = v; }
       );
 
-      async function fetchLiveCountFromSupabase() {
-        const statusEl = document.getElementById("donorSyncStatus");
-        const totalEl = document.getElementById("statDonorTotal");
-        const localCount = readList(DONORS_KEY).length;
-
+      async function syncCountToDashboardState(donorsCount) {
+        const receiversCount = readReceiversCount();
         try {
-          const res = await fetch(
-            `${CLOUD_URL}/rest/v1/dashboard_state?id=eq.${encodeURIComponent(ROW_ID)}&select=quick_note,updated_at`,
-            {
-              headers: {
-                apikey: CLOUD_KEY,
-                Authorization: "Bearer " + CLOUD_KEY
-              }
-            }
-          );
-          if (!res.ok) throw new Error("fetch failed");
-          const rows = await res.json();
-          const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-          const note = row && typeof row.quick_note === "string" ? row.quick_note : "";
-          const match = note.match(/donators=(\d+)/);
-          const liveDonors = localCount > 0 ? localCount : match ? Number(match[1]) : 0;
-
-          if (totalEl) totalEl.textContent = String(liveDonors);
-          if (statusEl) statusEl.textContent = `Live from Supabase (${liveDonors} donors)`;
-        } catch (e) {
-          if (totalEl) totalEl.textContent = String(localCount);
-          if (statusEl) statusEl.textContent = `Live local (${localCount} donors)`;
-        }
-      }
-
-      async function syncToSupabase(donorsCount) {
-        const statusEl = document.getElementById("donorSyncStatus");
-        const receiversCount = readList(RECEIVERS_KEY).length;
-        try {
-          const res = await fetch(`${CLOUD_URL}/rest/v1/dashboard_state?on_conflict=id`, {
+          await fetch(`${CLOUD_URL}/rest/v1/dashboard_state?on_conflict=id`, {
             method: "POST",
             headers: {
               apikey: CLOUD_KEY,
@@ -768,67 +697,45 @@
             },
             body: JSON.stringify([
               {
-                id: ROW_ID,
+                id: DASHBOARD_ROW_ID,
                 quick_note: `Blood: donators=${donorsCount} | receivers=${receiversCount}`,
                 updated_at: new Date().toISOString()
               }
             ])
           });
-          if (statusEl) {
-            statusEl.textContent = res.ok
-              ? `Live (${donorsCount} donors) • Synced with Supabase`
-              : `Live (${donorsCount} donors) • Saved locally`;
-          }
-        } catch (e) {
-          if (statusEl) statusEl.textContent = `Live (${donorsCount} donors) • Saved locally`;
-        }
+        } catch (e) {}
       }
 
-      const listEl = document.getElementById("donorsList");
-
-      function renderList() {
-        const list = readList(DONORS_KEY);
+      function renderDonors() {
         const totalEl = document.getElementById("statDonorTotal");
         const nidEl = document.getElementById("statDonorNid");
-        if (totalEl) totalEl.textContent = String(list.length);
-        if (nidEl) nidEl.textContent = String(list.filter((x) => x.nidFrontPic && x.nidBackPic).length);
+        const listEl = document.getElementById("donorsList");
+
+        if (totalEl) totalEl.textContent = String(publicDonors.length);
+        if (nidEl) {
+          nidEl.textContent = String(publicDonors.filter((d) => Boolean(d.nid_verified)).length);
+        }
 
         if (!listEl) return;
-        if (!list.length) {
-          listEl.innerHTML = `<div class="empty-state">No Blood Donor records added yet.</div>`;
+        if (!publicDonors.length) {
+          listEl.innerHTML = `<div class="empty-state">No public blood donors found yet.</div>`;
           return;
         }
 
-        listEl.innerHTML = list
+        listEl.innerHTML = publicDonors
           .map(
             (d) => `
           <article class="record-item">
             <div class="item-top">
-              <h4 class="item-name">${escapeHtml(d.name)}</h4>
-              <span class="group-badge">${escapeHtml(d.bloodGroup)}</span>
+              <h4 class="item-name">${escapeHtml(d.name || "Donor")}</h4>
+              <span class="group-badge">${escapeHtml(d.blood_group)}</span>
             </div>
             <div class="item-details">
-              <div><strong>Name:</strong> ${escapeHtml(d.name)}</div>
+              <div><strong>Name:</strong> ${escapeHtml(d.name || "Donor")}</div>
               <div><strong>Address:</strong> ${escapeHtml(d.address)}</div>
-              <div><strong>Blood Group:</strong> ${escapeHtml(d.bloodGroup)}</div>
-              <div><strong>Phone number:</strong> ${escapeHtml(d.phone)}</div>
-            </div>
-            <div class="item-nid-grid">
-              <div class="item-nid-box">
-                <span>NID Front Pic</span>
-                ${d.nidFrontPic ? `<img src="${d.nidFrontPic}" alt="NID Front" />` : `<span>Not selected</span>`}
-              </div>
-              <div class="item-nid-box">
-                <span>NID Back Pic</span>
-                ${d.nidBackPic ? `<img src="${d.nidBackPic}" alt="NID Back" />` : `<span>Not selected</span>`}
-              </div>
-            </div>
-            <div class="actions-bar">
-              <span class="status-note">Blood Donor</span>
-              <button type="button" class="secondary-btn" data-del-donor="${d.id}">
-                <i class="fa-regular fa-trash-can"></i>
-                <span>Delete</span>
-              </button>
+              <div><strong>Blood Group:</strong> ${escapeHtml(d.blood_group)}</div>
+              <div><strong>Phone:</strong> ${escapeHtml(d.masked_phone || "Hidden")}</div>
+              <div><strong>NID Status:</strong> ${d.nid_verified ? "Verified (Protected)" : "Not attached"}</div>
             </div>
           </article>
         `
@@ -836,8 +743,37 @@
           .join("");
       }
 
+      async function loadPublicDonors() {
+        const statusEl = document.getElementById("donorSyncStatus");
+        try {
+          const res = await fetch(
+            `${CLOUD_URL}/rest/v1/blood_donors_public?select=id,name,address,blood_group,masked_phone,nid_verified,created_at&order=created_at.desc`,
+            {
+              headers: {
+                apikey: CLOUD_KEY,
+                Authorization: "Bearer " + CLOUD_KEY
+              }
+            }
+          );
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const rows = await res.json();
+          publicDonors = Array.isArray(rows) ? rows : [];
+          renderDonors();
+          if (statusEl) {
+            statusEl.textContent = `Live from Supabase (${publicDonors.length} donors)`;
+          }
+        } catch (e) {
+          if (statusEl) {
+            statusEl.textContent = "Could not load public donors from Supabase";
+          }
+        }
+      }
+
       document.getElementById("donorForm")?.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const submitBtn = document.getElementById("saveDonorBtn");
+        const statusEl = document.getElementById("donorSyncStatus");
+
         const name = (document.getElementById("donorName")?.value || "").trim();
         const phone = (document.getElementById("donorPhone")?.value || "").trim();
         const address = (document.getElementById("donorAddress")?.value || "").trim();
@@ -849,43 +785,54 @@
           return;
         }
 
-        const list = readList(DONORS_KEY);
-        list.unshift({
-          id: "dnr-" + Date.now(),
-          name,
-          address,
-          bloodGroup,
-          phone,
-          nidFrontPic: frontPic,
-          nidBackPic: backPic,
-          createdAt: Date.now()
-        });
+        if (submitBtn) submitBtn.disabled = true;
+        if (statusEl) statusEl.textContent = "Saving to Supabase...";
 
-        if (!saveList(DONORS_KEY, list)) return;
-        renderList();
-        e.target.reset();
-        resetFront();
-        resetBack();
-        await syncToSupabase(list.length);
-        showToast(`Saved "${name}"`);
-      });
+        try {
+          const res = await fetch(`${CLOUD_URL}/rest/v1/blood_donors`, {
+            method: "POST",
+            headers: {
+              apikey: CLOUD_KEY,
+              Authorization: "Bearer " + CLOUD_KEY,
+              "Content-Type": "application/json",
+              Prefer: "return=minimal"
+            },
+            body: JSON.stringify([
+              {
+                id: "dnr-" + Date.now(),
+                name,
+                address,
+                blood_group: bloodGroup,
+                phone,
+                nid_front_pic: frontPic || "",
+                nid_back_pic: backPic || ""
+              }
+            ])
+          });
 
-      listEl?.addEventListener("click", async (e) => {
-        const btn = e.target.closest("[data-del-donor]");
-        if (!btn) return;
-        const id = btn.getAttribute("data-del-donor");
-        const updated = readList(DONORS_KEY).filter((x) => x.id !== id);
-        saveList(DONORS_KEY, updated);
-        renderList();
-        await syncToSupabase(updated.length);
-        showToast("Deleted donor record");
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(errText || `HTTP ${res.status}`);
+          }
+
+          e.target.reset();
+          resetFront();
+          resetBack();
+          await loadPublicDonors();
+          await syncCountToDashboardState(publicDonors.length);
+          showToast(`Saved "${name}" to Supabase`);
+        } catch (err) {
+          if (statusEl) statusEl.textContent = "Save failed. Check Supabase table permissions.";
+          showToast("Failed to save donor");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
       });
 
       if (mediaQuery) mediaQuery.addEventListener("change", applySystemDefaultTheme);
       applySystemDefaultTheme();
-      renderList();
-      fetchLiveCountFromSupabase();
+      loadPublicDonors();
     })();
   </script>
 </body>
-  </html>
+              </html>
