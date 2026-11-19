@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Story Card</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f4f5;
+      --surface: #e4e4e7;
+      --card: #ffffff;
+      --text: #18181b;
+      --muted: #52525b;
+      --border: #d4d4d8;
+      --btn-sec: #e4e4e7;
+      --btn-sec-hover: #d4d4d8;
+      --btn-sec-border: #c4c4ca;
+      --dg-pri: #0B3D20;
+      --dg-pri-hover: #0a7d3b;
+      --dg-text: #ffffff;
+      --dg-border: #14532d;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 22px 48px rgba(0, 0, 0, 0.22);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090b;
+        --surface: #18181b;
+        --card: #121215;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --btn-sec: #18181b;
+        --btn-sec-hover: #27272a;
+        --btn-sec-border: #3f3f46;
+        --dg-pri: #0B3D20;
+        --dg-pri-hover: #0a7d3b;
+        --dg-text: #ffffff;
+        --dg-border: #166534;
+        --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.55);
+        --shadow-md: 0 24px 54px rgba(0, 0, 0, 0.88);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* Screenshot Guard Blackout Layer */
+    .guard-blackout {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #71717a;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    .guard-blackout.active {
+      display: flex;
+    }
+
+    .page-wrap {
+      max-width: 1060px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 16px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Header */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    .music-header-pill {
+      flex: 1;
+      max-width: 380px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 6px 12px;
+      border-radius: 15px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      min-width: 0;
+      transition: background 0.16s ease;
+    }
+
+    .music-header-pill:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .music-disc {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: var(--dg-pri);
+      color: var(--dg-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .music-meta {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .music-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .music-sub {
+      font-size: 11.5px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Main Workspace Grid */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    @media (min-width: 860px) {
+      .workspace-grid {
+        grid-template-columns: 380px 1fr;
+      }
+    }
+
+    /* Story Card Stage */
+    .card-stage-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .story-card-frame {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      aspect-ratio: 9 / 15.2;
+      border-radius: 28px;
+      overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .story-media-box {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .story-media-el {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: filter 0.2s ease, transform 0.2s ease;
+    }
+
+    .story-collage-box {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px;
+    }
+
+    .story-collage-box img,
+    .story-collage-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+
+    .card-top-badges {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    .card-pill {
+      padding: 6px 12px;
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--btn-sec-border);
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+      max-width: 175px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-overlay-text {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      padding: 11px 14px;
+      border-radius: 15px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--btn-sec-border);
+      font-size: 16px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.35;
+      word-break: break-word;
+      z-index: 6;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-overlay-text.pos-top { top: 58px; }
+    .card-overlay-text.pos-center { top: 50%; transform: translateY(-50%); }
+    .card-overlay-text.pos-bottom { bottom: 20px; }
+
+    /* Right Tool Rail & Controls */
+    .card-side-tools {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .side-tool-btn {
+      padding: 12px 4px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .side-tool-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .side-tool-btn:active {
+      transform: scale(0.96);
+    }
+
+    .side-tool-btn i,
+    .side-tool-btn .aa-mark {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .side-tool-btn span {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .panel-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .guard-link-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      padding: 4px 2px;
+      border-radius: 12px;
+      transition: opacity 0.15s ease;
+    }
+
+    .guard-link-row:hover {
+      opacity: 0.85;
+    }
+
+    .guard-link-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .guard-link-sub {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
+    .sec-btn {
+      height: 40px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease;
+    }
+
+    .sec-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .field-input,
+    .field-select {
+      width: 100%;
+      height: 42px;
+      padding: 0 12px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .clip-meta-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Bottom Dock */
+    .bottom-dock {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 12px 16px;
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+    }
+
+    .audience-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-choice {
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1px solid var(--btn-sec-border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+    }
+
+    .pill-choice.active {
+      background: var(--card);
+      border-color: var(--text);
+    }
+
+    .create-dg-btn {
+      height: 44px;
+      padding: 0 26px;
+      border-radius: 14px;
+      border: 1px solid var(--dg-border);
+      background: var(--dg-pri);
+      color: var(--dg-text);
+      font-size: 14.5px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .create-dg-btn:hover {
+      background: var(--dg-pri-hover);
+    }
+
+    .create-dg-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Modal Sheet */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    .sheet-backdrop.open {
+      display: flex;
+    }
+
+    .sheet-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(90px);
+      z-index: 300;
+      background: var(--dg-pri);
+      color: var(--dg-text);
+      padding: 11px 22px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screenshot Guard Blackout Screen -->
+  <div id="guardBlackout" class="guard-blackout" aria-hidden="true">
+    <span>Screenshot Guard Active</span>
+  </div>
+
+  <!-- Hidden Phone Files Audio Picker -->
+  <input type="file" id="phoneMusicInput" accept="audio/*" style="display:none;">
+  <audio id="storyAudioPlayer" preload="metadata"></audio>
+
+  <div class="page-wrap">
+    <!-- Top Header -->
+    <header class="topbar">
+      <a href="create-story.html" class="icon-btn" title="Back to Create Story" aria-label="Back to Create Story">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+
+      <div class="music-header-pill" onclick="openPhoneMusicPicker()" title="Pick audio from Phone files (15s clip)">
+        <div class="music-disc"><i class="fas fa-music"></i></div>
+        <div class="music-meta">
+          <div id="topMusicTitle" class="music-title">Add music</div>
+          <div id="topMusicSub" class="music-sub">Phone files · 15 sec clip</div>
+        </div>
+      </div>
+
+      <button type="button" class="icon-btn" onclick="openToolModal('more')" title="More options" aria-label="More options">
+        <i class="fas fa-ellipsis-h"></i>
+      </button>
+    </header>
+
+    <!-- Main Story Card & Controls -->
+    <div class="workspace-grid">
+      <!-- Story Card Preview -->
+      <section class="card-stage-column" aria-label="Story card stage">
+        <div id="storyCardFrame" class="story-card-frame">
+          <div id="storyMediaBox" class="story-media-box"></div>
+
+          <div class="card-top-badges">
+            <div id="badgeSticker" class="card-pill" style="display:none;"></div>
+            <div id="badgeMention" class="card-pill" style="display:none;"></div>
+          </div>
+
+          <div id="cardOverlayText" class="card-overlay-text pos-center" style="display:none;"></div>
+        </div>
+      </section>
+
+      <!-- Tools & Settings -->
+      <section class="card-side-tools" aria-label="Story card tools">
+        <div class="tool-grid">
+          <button type="button" class="side-tool-btn" onclick="openPhoneMusicPicker()">
+            <i class="fas fa-music"></i>
+            <span>Music</span>
+          </button>
+          <button type="button" class="side-tool-btn" onclick="openToolModal('stickers')">
+            <i class="far fa-smile"></i>
+            <span>Stickers</span>
+          </button>
+          <button type="button" class="side-tool-btn" onclick="openToolModal('text')">
+            <span class="aa-mark">Aa</span>
+            <span>Text</span>
+          </button>
+          <button type="button" class="side-tool-btn" onclick="openToolModal('effects')">
+            <i class="fas fa-wand-magic-sparkles"></i>
+            <span>Effects</span>
+          </button>
+          <button type="button" class="side-tool-btn" onclick="openToolModal('mention')">
+            <i class="fas fa-at"></i>
+            <span>Mention</span>
+          </button>
+        </div>
+
+        <!-- Single Screenshot Guard Link -> screenshot-guard.html -->
+        <div class="panel-box">
+          <a href="screenshot-guard.html" class="guard-link-row" onclick="persistCardState()">
+            <div>
+              <div class="guard-link-title">
+                <span>Screenshot Guard</span>
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:12px;"></i>
+              </div>
+              <div id="guardStatusDesc" class="guard-link-sub">
+                Tap to open screenshot-guard.html.
+              </div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:13px;"></i>
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Bottom Audience & Dark Green Create Button -->
+    <footer class="bottom-dock">
+      <div class="audience-group">
+        <button type="button" class="pill-choice active" data-aud="Friends" onclick="setAudience('Friends', this)">
+          <i class="fas fa-user-friends"></i>
+          <span>Friends</span>
+        </button>
+        <button type="button" class="pill-choice" data-aud="Public" onclick="setAudience('Public', this)">
+          <i class="fas fa-globe-americas"></i>
+          <span>Public</span>
+        </button>
+        <select id="audienceExtraSelect" class="field-select" style="width:auto;" onchange="setAudience(this.value)">
+          <option value="Friends">Friends</option>
+          <option value="Public">Public</option>
+          <option value="Close friends">Close friends</option>
+          <option value="Custom">Custom</option>
+        </select>
+      </div>
+
+      <button type="button" id="createStoryBtn" class="create-dg-btn" onclick="createStoryCard()">
+        <i class="fas fa-plus"></i>
+        <span>Create</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- Modal Sheet for 15s Music Clip & Tools -->
+  <div id="sheetBackdrop" class="sheet-backdrop" onclick="if(event.target.id==='sheetBackdrop')closeSheet()">
+    <div class="sheet-card" role="dialog" aria-modal="true">
+      <div class="sheet-head">
+        <span id="sheetTitle" style="font-size:17px;font-weight:800;">Option</span>
+        <button type="button" class="icon-btn" onclick="closeSheet()" title="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="sheetBody" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div class="sheet-actions">
+        <button type="button" class="sec-btn" onclick="closeSheet()">Cancel</button>
+        <button type="button" id="sheetSubmitBtn" class="create-dg-btn" style="height:40px;padding:0 18px;" onclick="submitSheet()">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+    const MAX_MUSIC_CLIP_SEC = 15;
+    const STORY_LIVE_HOURS = 48;
+    const STORY_LIVE_MS = STORY_LIVE_HOURS * 60 * 60 * 1000;
+
+    let sb = null;
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        sb = null;
+      }
+    }
+
+    let cardState = {
+      id: 'story_' + Date.now(),
+      media_url: '',
+      media_type: 'image',
+      items: [],
+      title: '',
+      caption: '',
+      text_position: 'center',
+      filter: 'none',
+      sticker: '',
+      mention: '',
+      music: '',
+      music_url: '',
+      music_start_sec: 0,
+      music_duration_sec: MAX_MUSIC_CLIP_SEC,
+      audience: 'Friends',
+      screenshots_guard: false,
+      created_at: null,
+      expires_at: null
+    };
+
+    let activeSheetType = null;
+    let pendingAudioUrl = '';
+    let pendingAudioName = '';
+    let pendingAudioTotalSec = 0;
+    let clipStopTimer = null;
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove('show'), 2300);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
+
+    /* 48-Hour Story Expiration Helpers */
+    function isStoryExpired(story) {
+      if (!story || typeof story !== 'object') return false;
+      const now = Date.now();
+      if (story.expires_at) {
+        const expMs = new Date(story.expires_at).getTime();
+        if (Number.isFinite(expMs)) return now >= expMs;
+      }
+      if (story.created_at) {
+        const createdMs = new Date(story.created_at).getTime();
+        if (Number.isFinite(createdMs)) return now - createdMs >= STORY_LIVE_MS;
+      }
+      return false;
+    }
+
+    async function cleanupExpiredStories() {
+      const nowIso = new Date().toISOString();
+      let expiredIds = [];
+
+      try {
+        const rawList = JSON.parse(localStorage.getItem('autrobook_stories') || '[]') || [];
+        const validList = [];
+        for (const item of rawList) {
+          if (isStoryExpired(item)) {
+            if (item && item.id) expiredIds.push(item.id);
+          } else {
+            validList.push(item);
+          }
+        }
+        localStorage.setItem('autrobook_stories', JSON.stringify(validList));
+      } catch (e) {}
+
+      try {
+        const activeRaw = localStorage.getItem('autrobook_active_story_card');
+        if (activeRaw) {
+          const parsedActive = JSON.parse(activeRaw);
+          if (parsedActive && parsedActive.created_at && isStoryExpired(parsedActive)) {
+            if (parsedActive.id) expiredIds.push(parsedActive.id);
+            localStorage.removeItem('autrobook_active_story_card');
+          }
+        }
+      } catch (e) {}
+
+      if (sb) {
+        try {
+          await sb.from('stories').delete().lte('expires_at', nowIso);
+          if (expiredIds.length > 0) {
+            await sb.from('stories').delete().in('id', expiredIds);
+          }
+        } catch (e) {}
+      }
+    }
+
+    /* Open Phone Files to Pick Music (15s clip) */
+    function openPhoneMusicPicker() {
+      const input = document.getElementById('phoneMusicInput');
+      if (!input) return;
+      input.value = '';
+      input.click();
+    }
+
+    function bindPhoneMusicInput() {
+      const input = document.getElementById('phoneMusicInput');
+      if (!input) return;
+
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const cleanName = file.name.replace(/\.[^/.]+$/, '');
+        const objectUrl = URL.createObjectURL(file);
+        pendingAudioUrl = objectUrl;
+        pendingAudioName = cleanName || 'Phone audio';
+
+        const probe = new Audio();
+        probe.src = objectUrl;
+        probe.addEventListener('loadedmetadata', () => {
+          pendingAudioTotalSec = Number.isFinite(probe.duration) ? Math.floor(probe.duration) : MAX_MUSIC_CLIP_SEC;
+          openMusic15SecModal();
+        }, { once: true });
+        probe.addEventListener('error', () => {
+          pendingAudioTotalSec = MAX_MUSIC_CLIP_SEC;
+          openMusic15SecModal();
+        }, { once: true });
+      });
+    }
+
+    function openMusic15SecModal() {
+      activeSheetType = 'music_clip';
+      const titleEl = document.getElementById('sheetTitle');
+      const bodyEl = document.getElementById('sheetBody');
+      const submitBtn = document.getElementById('sheetSubmitBtn');
+      if (!titleEl || !bodyEl || !submitBtn) return;
+
+      const maxStart = Math.max(0, pendingAudioTotalSec - MAX_MUSIC_CLIP_SEC);
+      const startVal = Math.min(Number(cardState.music_start_sec || 0), maxStart);
+
+      titleEl.textContent = 'Select 15 sec music clip';
+      submitBtn.textContent = 'Use 15s clip';
+
+      bodyEl.innerHTML = `
+        <div class="clip-meta-box">
+          <div><strong style="color:var(--text);">File:</strong> ${escapeHtml(pendingAudioName)}</div>
+          <div><strong style="color:var(--text);">Clip length:</strong> 15 sec maximum</div>
+        </div>
+        <label class="panel-title" for="clipStartRange">Start time (seconds): <span id="clipStartLabel">${startVal}s</span> → <span id="clipEndLabel">${startVal + MAX_MUSIC_CLIP_SEC}s</span></label>
+        <input id="clipStartRange" type="range" min="0" max="${maxStart}" step="1" value="${startVal}" oninput="updateClipRangePreview()">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="sec-btn" onclick="preview15SecClip()">
+            <i class="fas fa-play"></i>
+            <span>Preview 15s</span>
+          </button>
+          <button type="button" class="sec-btn" onclick="stop15SecPreview()">
+            <i class="fas fa-stop"></i>
+            <span>Stop</span>
+          </button>
+          <button type="button" class="sec-btn" onclick="openPhoneMusicPicker()">
+            <i class="fas fa-folder-open"></i>
+            <span>Change file</span>
+          </button>
+        </div>
+      `;
+
+      document.getElementById('sheetBackdrop').classList.add('open');
+    }
+
+    function updateClipRangePreview() {
+      const range = document.getElementById('clipStartRange');
+      const startLbl = document.getElementById('clipStartLabel');
+      const endLbl = document.getElementById('clipEndLabel');
+      if (!range) return;
+      const s = Number(range.value || 0);
+      if (startLbl) startLbl.textContent = `${s}s`;
+      if (endLbl) endLbl.textContent = `${s + MAX_MUSIC_CLIP_SEC}s`;
+    }
+
+    function preview15SecClip() {
+      const player = document.getElementById('storyAudioPlayer');
+      const range = document.getElementById('clipStartRange');
+      if (!player || !pendingAudioUrl) return;
+
+      const startSec = Number(range ? range.value : (cardState.music_start_sec || 0));
+      clearTimeout(clipStopTimer);
+      player.src = pendingAudioUrl;
+      player.currentTime = startSec;
+      player.play().catch(() => {});
+      showToast(`Playing 15s clip from ${startSec}s`);
+
+      clipStopTimer = setTimeout(() => {
+        player.pause();
+      }, MAX_MUSIC_CLIP_SEC * 1000);
+    }
+
+    function stop15SecPreview() {
+      clearTimeout(clipStopTimer);
+      const player = document.getElementById('storyAudioPlayer');
+      if (player) {
+        player.pause();
+      }
+    }
+
+    /* Screenshot Guard Logic */
+    function setBlackout(active) {
+      const box = document.getElementById('guardBlackout');
+      if (!box) return;
+      if (active && cardState.screenshots_guard) {
+        box.classList.add('active');
+      } else {
+        box.classList.remove('active');
+      }
+    }
+
+    function syncGuardUI() {
+      const desc = document.getElementById('guardStatusDesc');
+      if (desc) {
+        desc.textContent = cardState.screenshots_guard
+          ? 'Active — Tap to open screenshot-guard.html.'
+          : 'Tap to open screenshot-guard.html.';
+      }
+      if (!cardState.screenshots_guard) setBlackout(false);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (!cardState.screenshots_guard) return;
+      if (e.key === 'PrintScreen' || (e.metaKey && e.shiftKey && ['3', '4', '5', 's', 'S'].includes(e.key))) {
+        setBlackout(true);
+        showToast('Screenshot Guard blocked capture');
+        setTimeout(() => setBlackout(false), 2000);
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (cardState.screenshots_guard && document.hidden) {
+        setBlackout(true);
+      } else if (!document.hidden) {
+        setTimeout(() => setBlackout(false), 250);
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      if (cardState.screenshots_guard) setBlackout(true);
+    });
+
+    window.addEventListener('focus', () => {
+      setTimeout(() => setBlackout(false), 200);
+    });
+
+    /* Audience Selection */
+    function setAudience(val, btnEl = null) {
+      cardState.audience = val;
+      const sel = document.getElementById('audienceExtraSelect');
+      if (sel && sel.value !== val) {
+        const hasOpt = Array.from(sel.options).some(o => o.value === val);
+        if (hasOpt) sel.value = val;
+      }
+      document.querySelectorAll('.pill-choice').forEach(b => {
+        b.classList.toggle('active', b.dataset.aud === val);
+      });
+      persistCardState();
+    }
+
+    /* Render Story Card (Empty by default until selected media is provided) */
+    function syncCardUI() {
+      const mediaBox = document.getElementById('storyMediaBox');
+      const textEl = document.getElementById('cardOverlayText');
+      const stickerEl = document.getElementById('badgeSticker');
+      const mentionEl = document.getElementById('badgeMention');
+      const musicTitle = document.getElementById('topMusicTitle');
+      const musicSub = document.getElementById('topMusicSub');
+
+      if (musicTitle && musicSub) {
+        if (cardState.music) {
+          musicTitle.textContent = cardState.music;
+          const s = Number(cardState.music_start_sec || 0);
+          musicSub.textContent = `15 sec clip (${s}s – ${s + MAX_MUSIC_CLIP_SEC}s)`;
+        } else {
+          musicTitle.textContent = 'Add music';
+          musicSub.textContent = 'Phone files · 15 sec clip';
+        }
+      }
+
+      if (mediaBox) {
+        const filterStyle = `filter:${cardState.filter || 'none'};`;
+        const altAttr = escapeHtml(cardState.title || 'Story media');
+        const validItems = Array.isArray(cardState.items)
+          ? cardState.items.filter(it => it && typeof it.url === 'string' && it.url.trim() !== '')
+          : [];
+
+        if (validItems.length > 1) {
+          mediaBox.innerHTML = `
+            <div class="story-collage-box">
+              ${validItems.slice(0, 4).map(it => it.type === 'video'
+                ? `<video src="${escapeHtml(it.url)}" style="${filterStyle}" muted autoplay loop playsinline></video>`
+                : `<img src="${escapeHtml(it.url)}" style="${filterStyle}" alt="${altAttr}">`
+              ).join('')}
+            </div>
+          `;
+        } else if (validItems.length === 1) {
+          const single = validItems[0];
+          mediaBox.innerHTML = single.type === 'video'
+            ? `<video src="${escapeHtml(single.url)}" class="story-media-el" style="${filterStyle}" muted autoplay loop playsinline></video>`
+            : `<img src="${escapeHtml(single.url)}" class="story-media-el" style="${filterStyle}" alt="${altAttr}">`;
+        } else if (typeof cardState.media_url === 'string' && cardState.media_url.trim() !== '') {
+          if (cardState.media_type === 'video') {
+            mediaBox.innerHTML = `<video src="${escapeHtml(cardState.media_url)}" class="story-media-el" style="${filterStyle}" muted autoplay loop playsinline></video>`;
+          } else {
+            mediaBox.innerHTML = `<img src="${escapeHtml(cardState.media_url)}" class="story-media-el" style="${filterStyle}" alt="${altAttr}">`;
+          }
+        } else {
+          mediaBox.innerHTML = '';
+        }
+      }
+
+      if (textEl) {
+        const cap = (cardState.caption || '').trim();
+        if (cap) {
+          textEl.style.display = 'block';
+          textEl.className = `card-overlay-text pos-${cardState.text_position || 'center'}`;
+          textEl.textContent = cap;
+        } else {
+          textEl.style.display = 'none';
+        }
+      }
+
+      if (stickerEl) {
+        if (cardState.sticker) {
+          stickerEl.style.display = 'block';
+          stickerEl.textContent = cardState.sticker;
+        } else {
+          stickerEl.style.display = 'none';
+        }
+      }
+
+      if (mentionEl) {
+        if (cardState.mention) {
+          mentionEl.style.display = 'block';
+          mentionEl.textContent = cardState.mention;
+        } else {
+          mentionEl.style.display = 'none';
+        }
+      }
+    }
+
+    /* Tool Modal */
+    function openToolModal(type) {
+      if (type === 'music') {
+        openPhoneMusicPicker();
+        return;
+      }
+
+      activeSheetType = type;
+      const titleEl = document.getElementById('sheetTitle');
+      const bodyEl = document.getElementById('sheetBody');
+      const submitBtn = document.getElementById('sheetSubmitBtn');
+      if (!titleEl || !bodyEl || !submitBtn) return;
+      submitBtn.textContent = 'Apply';
+
+      if (type === 'stickers') {
+        titleEl.textContent = 'Stickers';
+        bodyEl.innerHTML = `
+          <label class="panel-title">Select or type sticker</label>
+          <input id="modalStickerInput" type="text" class="field-input" value="${escapeHtml(cardState.sticker || '')}" placeholder="e.g. Good Vibes, Highlight...">
+        `;
+      } else if (type === 'text') {
+        titleEl.textContent = 'Add text';
+        bodyEl.innerHTML = `
+          <label class="panel-title">Caption text</label>
+          <input id="modalTextInput" type="text" class="field-input" value="${escapeHtml(cardState.caption || '')}" placeholder="Write story text...">
+          <label class="panel-title">Text position</label>
+          <select id="modalTextPos" class="field-select">
+            <option value="top" ${cardState.text_position === 'top' ? 'selected' : ''}>Top</option>
+            <option value="center" ${cardState.text_position === 'center' ? 'selected' : ''}>Center</option>
+            <option value="bottom" ${cardState.text_position === 'bottom' ? 'selected' : ''}>Bottom</option>
+          </select>
+        `;
+      } else if (type === 'effects') {
+        titleEl.textContent = 'Effects & filters';
+        bodyEl.innerHTML = `
+          <label class="panel-title">Visual effect</label>
+          <select id="modalFilterSelect" class="field-select">
+            <option value="none" ${cardState.filter === 'none' ? 'selected' : ''}>Normal</option>
+            <option value="contrast(1.15) saturate(1.3)" ${cardState.filter === 'contrast(1.15) saturate(1.3)' ? 'selected' : ''}>Vivid</option>
+            <option value="grayscale(1)" ${cardState.filter === 'grayscale(1)' ? 'selected' : ''}>Black &amp; White</option>
+            <option value="sepia(0.35) saturate(1.2)" ${cardState.filter === 'sepia(0.35) saturate(1.2)' ? 'selected' : ''}>Warm</option>
+            <option value="hue-rotate(15deg) saturate(1.1)" ${cardState.filter === 'hue-rotate(15deg) saturate(1.1)' ? 'selected' : ''}>Cool</option>
+          </select>
+        `;
+      } else if (type === 'mention') {
+        titleEl.textContent = 'Mention someone';
+        bodyEl.innerHTML = `
+          <label class="panel-title">Username or handle</label>
+          <input id="modalMentionInput" type="text" class="field-input" value="${escapeHtml(cardState.mention || '')}" placeholder="@username">
+        `;
+      } else {
+        titleEl.textContent = 'Story options';
+        bodyEl.innerHTML = `
+          <p style="font-size:13.5px;color:var(--muted);">
+            Stories stay live for 48 hours automatically. Tap <a href="screenshot-guard.html" style="color:var(--text);font-weight:700;">Screenshot Guard</a> to open screenshot-guard.html.
+          </p>
+        `;
+      }
+
+      document.getElementById('sheetBackdrop').classList.add('open');
+    }
+
+    function closeSheet() {
+      stop15SecPreview();
+      activeSheetType = null;
+      document.getElementById('sheetBackdrop').classList.remove('open');
+    }
+
+    function submitSheet() {
+      if (activeSheetType === 'music_clip') {
+        const range = document.getElementById('clipStartRange');
+        const startSec = Number(range ? range.value : 0);
+        cardState.music = pendingAudioName || 'Phone audio';
+        cardState.music_url = pendingAudioUrl || '';
+        cardState.music_start_sec = startSec;
+        cardState.music_duration_sec = MAX_MUSIC_CLIP_SEC;
+        stop15SecPreview();
+        syncCardUI();
+        persistCardState();
+        closeSheet();
+        showToast(`15s music clip added (${startSec}s – ${startSec + MAX_MUSIC_CLIP_SEC}s)`);
+        return;
+      }
+
+      if (activeSheetType === 'stickers') {
+        cardState.sticker = (document.getElementById('modalStickerInput')?.value || '').trim();
+      } else if (activeSheetType === 'text') {
+        cardState.caption = (document.getElementById('modalTextInput')?.value || '').trim();
+        cardState.text_position = document.getElementById('modalTextPos')?.value || 'center';
+      } else if (activeSheetType === 'effects') {
+        cardState.filter = document.getElementById('modalFilterSelect')?.value || 'none';
+      } else if (activeSheetType === 'mention') {
+        let m = (document.getElementById('modalMentionInput')?.value || '').trim();
+        if (m && !m.startsWith('@')) m = '@' + m;
+        cardState.mention = m;
+      }
+
+      syncCardUI();
+      persistCardState();
+      closeSheet();
+      showToast('Updated');
+    }
+
+    function persistCardState() {
+      try {
+        localStorage.setItem('autrobook_active_story_card', JSON.stringify(cardState));
+        localStorage.setItem('autrobook_screenshots_guard', JSON.stringify(Boolean(cardState.screenshots_guard)));
+      } catch (e) {}
+    }
+
+    async function createStoryCard() {
+      await cleanupExpiredStories();
+
+      const createdAtMs = Date.now();
+      const createdAtIso = new Date(createdAtMs).toISOString();
+      const expiresAtIso = new Date(createdAtMs + STORY_LIVE_MS).toISOString();
+
+      cardState.created_at = createdAtIso;
+      cardState.expires_at = expiresAtIso;
+      persistCardState();
+
+      const payload = Object.assign({}, cardState, {
+        id: cardState.id || ('story_' + createdAtMs),
+        title: cardState.caption || cardState.sticker || 'Story',
+        created_at: createdAtIso,
+        expires_at: expiresAtIso
+      });
+
+      try {
+        const list = JSON.parse(localStorage.getItem('autrobook_stories') || '[]') || [];
+        const activeList = list.filter(s => s && s.id !== payload.id && !isStoryExpired(s));
+        activeList.unshift(payload);
+        localStorage.setItem('autrobook_stories', JSON.stringify(activeList.slice(0, 25)));
+        localStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
+      } catch (e) {}
+
+      if (sb) {
+        try {
+          let userId = null;
+          if (sb.auth?.getUser) {
+            const { data } = await sb.auth.getUser();
+            userId = data?.user?.id || null;
+          }
+          await sb.from('stories').upsert({
+            id: payload.id,
+            user_id: userId,
+            media_url: payload.media_url,
+            media_type: payload.media_type,
+            caption: payload.title,
+            audience: payload.audience,
+            screenshots_guard: Boolean(payload.screenshots_guard),
+            created_at: payload.created_at,
+            expires_at: payload.expires_at
+          }, { onConflict: 'id' });
+        } catch (e) {}
+      }
+
+      showToast(`Story created · Live for 48h (${payload.audience})`);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await cleanupExpiredStories();
+
+      try {
+        const activeRaw = localStorage.getItem('autrobook_active_story_card');
+        if (activeRaw) {
+          const parsed = JSON.parse(activeRaw);
+          if (parsed && typeof parsed === 'object' && !isStoryExpired(parsed)) {
+            cardState = Object.assign({}, cardState, parsed);
+          }
+        }
+        const guardRaw = localStorage.getItem('autrobook_screenshots_guard');
+        if (guardRaw !== null) {
+          cardState.screenshots_guard = Boolean(JSON.parse(guardRaw));
+        }
+        const params = new URLSearchParams(window.location.search);
+        const queryId = params.get('id');
+        if (queryId) {
+          const list = JSON.parse(localStorage.getItem('autrobook_stories') || '[]') || [];
+          const matched = list.find(s => s && s.id === queryId && !isStoryExpired(s));
+          if (matched) cardState = Object.assign({}, cardState, matched);
+        }
+      } catch (e) {}
+
+      bindPhoneMusicInput();
+      setAudience(cardState.audience || 'Friends');
+      syncGuardUI();
+      syncCardUI();
+
+      setInterval(() => {
+        cleanupExpiredStories();
+      }, 60 * 1000);
+    });
+  </script>
+</body>
+        </html>
