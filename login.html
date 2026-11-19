@@ -7,8 +7,10 @@
 <title>Log in - Autrobook</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
   :root {
     --primary: #043D22;
@@ -34,71 +36,451 @@
     }
   }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-  body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; justify-content: center; }
-  .login-wrap { width: 100%; max-width: 400px; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-  .lang-top { width: 100%; display: flex; justify-content: flex-start; margin-bottom: 20px; }
-  
-  .lang-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-  .lang-btn:active { transform: scale(0.95); }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
 
-  .top-logo { margin-bottom: 20px; }
-  .top-logo img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; background: var(--primary); }
+  .login-wrap {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-  .login-form { width: 100%; display: flex; flex-direction: column; gap: 12px; }
-  .input-group input { width: 100%; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); font-size: 15px; outline: none; transition: 0.2s; }
-  .input-group input:focus { border-color: var(--primary); }
+  .lang-top {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 20px;
+  }
 
-  /* Security & Passkey Styles */
-  .security-box { display: flex; flex-direction: column; gap: 10px; margin-top: 5px; }
-  .sec-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1px dashed var(--border); background: var(--card); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
-  .sec-btn:hover { border-color: var(--primary); color: var(--primary); }
-  .sec-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .lang-select-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 34px 0 14px;
+    height: 40px;
+    min-width: 215px;
+    max-width: 280px;
+    cursor: pointer;
+  }
 
-  /* Selfie Upload Styles */
-  #selfiePreview { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: none; }
-  .sec-btn.verified { border-color: var(--success); color: var(--success); background: rgba(16, 185, 129, 0.05); border-style: solid; }
+  .lang-select-wrap select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 13.5px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
 
-  .btn-login { width: 100%; padding: 16px; border-radius: 24px; background: var(--primary); color: white; border: none; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 10px; }
-  .btn-login:active { transform: scale(0.98); }
-  .btn-login:disabled { opacity: 0.6; cursor: not-allowed; background: var(--muted); }
+  .lang-select-wrap select option {
+    background: var(--card);
+    color: var(--text);
+  }
 
-  .link-forgot { text-align: center; color: var(--muted); font-size: 14px; text-decoration: none; margin-top: -2px; }
-  .g-recaptcha { margin: 15px 0; display: flex; justify-content: center; }
-  .error-msg { color: var(--danger); font-size: 14px; text-align: center; min-height: 20px; font-weight: 500; }
-  .success-msg { color: var(--success); font-size: 14px; text-align: center; min-height: 20px; font-weight: 500; }
+  .lang-select-wrap .caret {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 12px;
+    color: var(--muted);
+  }
 
-  .divider { width: 100%; display: flex; align-items: center; text-align: center; color: var(--muted); font-size: 14px; margin: 10px 0; }
-  .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border); }
-  .divider span { padding: 0 10px; }
+  .top-logo {
+    margin-bottom: 20px;
+  }
 
-  .btn-google, .btn-create { width: 100%; padding: 15px; border-radius: 24px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
-  .btn-google { background: var(--card); color: var(--text); border: 1px solid var(--border); }
-  .btn-create { background: transparent; color: var(--primary); border: 1px solid var(--primary); margin-top: 12px; }
+  .top-logo img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--primary);
+  }
 
-  .footer-meta { font-weight: 800; font-size: 18px; margin-top: 20px; margin-bottom: 4px; color: var(--text);}
-  .footer-sub { font-size: 13px; color: var(--muted); }
+  .login-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
-  /* Modals */
-  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 999; }
-  .modal-box { background: var(--card); width: 90%; max-width: 360px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-  .modal-box h3 { margin-bottom: 16px; font-size: 18px; font-weight: 800; text-align: center; }
-  .lang-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; padding-right: 5px; }
-  .lang-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: 0.2s; }
-  .lang-item:hover { background: var(--bg); }
-  .lang-item input[type="radio"] { accent-color: var(--primary); width: 20px; height: 20px; cursor: pointer; }
-  
-  .modal-close { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-weight: 700; font-size: 16px; cursor: pointer; }
-  #cameraStream { width: 100%; border-radius: 12px; margin-bottom: 15px; background: #000; }
+  .input-group input {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+    transition: 0.2s;
+  }
+
+  .input-group input:focus {
+    border-color: var(--primary);
+  }
+
+  .security-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 5px;
+  }
+
+  .sec-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px dashed var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: 0.2s;
+  }
+
+  .sec-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .sec-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #selfiePreview {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: none;
+    border: 2px solid var(--success);
+  }
+
+  .sec-btn.verified {
+    border-color: var(--success);
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.08);
+    border-style: solid;
+  }
+
+  .btn-login {
+    width: 100%;
+    padding: 16px;
+    border-radius: 24px;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-top: 10px;
+  }
+
+  .btn-login:active {
+    transform: scale(0.98);
+  }
+
+  .btn-login:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--muted);
+  }
+
+  .link-forgot {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    text-decoration: none;
+    margin-top: -2px;
+  }
+
+  .g-recaptcha {
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .error-msg {
+    color: var(--danger);
+    font-size: 14px;
+    text-align: center;
+    min-height: 20px;
+    font-weight: 600;
+    word-break: break-word;
+  }
+
+  .success-msg {
+    color: var(--success);
+    font-size: 14px;
+    text-align: center;
+    min-height: 20px;
+    font-weight: 600;
+  }
+
+  .divider {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin: 10px 0;
+  }
+
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .divider span {
+    padding: 0 10px;
+  }
+
+  .btn-google,
+  .btn-create {
+    width: 100%;
+    padding: 15px;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: 0.2s;
+  }
+
+  .btn-google {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-create {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    margin-top: 12px;
+  }
+
+  .footer-meta {
+    font-weight: 800;
+    font-size: 18px;
+    margin-top: 20px;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+
+  .footer-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .modal-back {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+
+  .modal-box {
+    background: var(--card);
+    width: 90%;
+    max-width: 380px;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  }
+
+  .modal-box h3 {
+    margin-bottom: 10px;
+    font-size: 18px;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .scan-hint {
+    font-size: 13px;
+    color: var(--primary);
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 12px;
+    min-height: 18px;
+  }
+
+  .modal-close {
+    width: 100%;
+    padding: 14px;
+    margin-top: 12px;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  #cameraStream {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    background: #000000;
+    transform: scaleX(-1);
+  }
 </style>
 </head>
 <body>
 
 <div class="login-wrap">
-  
+
   <div class="lang-top">
-    <button class="lang-btn" id="langBtn" onclick="openModal('langModal')">English - US ▾</button>
+    <div class="lang-select-wrap" title="Select Language">
+      <select id="languageSelect" aria-label="Select Language">
+        <option value="en" data-dir="ltr" selected>English (US)</option>
+        <option value="en-GB" data-dir="ltr">English (UK)</option>
+        <option value="bn" data-dir="ltr">Bengali (বাংলা)</option>
+        <option value="hi" data-dir="ltr">Hindi (हिन्दी)</option>
+        <option value="es" data-dir="ltr">Spanish (Español)</option>
+        <option value="fr" data-dir="ltr">French (Français)</option>
+        <option value="de" data-dir="ltr">German (Deutsch)</option>
+        <option value="ar" data-dir="rtl">Arabic (العربية)</option>
+        <option value="zh-CN" data-dir="ltr">Chinese Simplified (简体中文)</option>
+        <option value="zh-TW" data-dir="ltr">Chinese Traditional (繁體中文)</option>
+        <option value="ja" data-dir="ltr">Japanese (日本語)</option>
+        <option value="ko" data-dir="ltr">Korean (한국어)</option>
+        <option value="pt" data-dir="ltr">Portuguese (Português)</option>
+        <option value="ru" data-dir="ltr">Russian (Русский)</option>
+        <option value="id" data-dir="ltr">Indonesian (Bahasa Indonesia)</option>
+        <option value="ms" data-dir="ltr">Malay (Bahasa Melayu)</option>
+        <option value="tl" data-dir="ltr">Filipino (Tagalog)</option>
+        <option value="vi" data-dir="ltr">Vietnamese (Tiếng Việt)</option>
+        <option value="th" data-dir="ltr">Thai (ไทย)</option>
+        <option value="tr" data-dir="ltr">Turkish (Türkçe)</option>
+        <option value="it" data-dir="ltr">Italian (Italiano)</option>
+        <option value="nl" data-dir="ltr">Dutch (Nederlands)</option>
+        <option value="pl" data-dir="ltr">Polish (Polski)</option>
+        <option value="sv" data-dir="ltr">Swedish (Svenska)</option>
+        <option value="no" data-dir="ltr">Norwegian (Norsk)</option>
+        <option value="da" data-dir="ltr">Danish (Dansk)</option>
+        <option value="fi" data-dir="ltr">Finnish (Suomi)</option>
+        <option value="el" data-dir="ltr">Greek (Ελληνικά)</option>
+        <option value="he" data-dir="rtl">Hebrew (עברית)</option>
+        <option value="fa" data-dir="rtl">Persian (فارسی)</option>
+        <option value="ur" data-dir="rtl">Urdu (اردو)</option>
+        <option value="ta" data-dir="ltr">Tamil (தமிழ்)</option>
+        <option value="te" data-dir="ltr">Telugu (తెలుగు)</option>
+        <option value="mr" data-dir="ltr">Marathi (मराठी)</option>
+        <option value="gu" data-dir="ltr">Gujarati (ગુજરાતી)</option>
+        <option value="kn" data-dir="ltr">Kannada (ಕನ್ನಡ)</option>
+        <option value="ml" data-dir="ltr">Malayalam (മലയാളം)</option>
+        <option value="pa" data-dir="ltr">Punjabi (ਪੰਜਾਬੀ)</option>
+        <option value="or" data-dir="ltr">Odia (ଓଡ଼ିଆ)</option>
+        <option value="ne" data-dir="ltr">Nepali (नेपाली)</option>
+        <option value="si" data-dir="ltr">Sinhala (සිංහල)</option>
+        <option value="my" data-dir="ltr">Burmese (မြန်မာ)</option>
+        <option value="km" data-dir="ltr">Khmer (ខ្មែរ)</option>
+        <option value="lo" data-dir="ltr">Lao (ລາວ)</option>
+        <option value="ka" data-dir="ltr">Georgian (ქართული)</option>
+        <option value="hy" data-dir="ltr">Armenian (Հայերեն)</option>
+        <option value="az" data-dir="ltr">Azerbaijani (Azərbaycan)</option>
+        <option value="kk" data-dir="ltr">Kazakh (Қазақ тілі)</option>
+        <option value="uz" data-dir="ltr">Uzbek (Oʻzbek)</option>
+        <option value="uk" data-dir="ltr">Ukrainian (Українська)</option>
+        <option value="cs" data-dir="ltr">Czech (Čeština)</option>
+        <option value="sk" data-dir="ltr">Slovak (Slovenčina)</option>
+        <option value="hu" data-dir="ltr">Hungarian (Magyar)</option>
+        <option value="ro" data-dir="ltr">Romanian (Română)</option>
+        <option value="bg" data-dir="ltr">Bulgarian (Български)</option>
+        <option value="hr" data-dir="ltr">Croatian (Hrvatski)</option>
+        <option value="sr" data-dir="ltr">Serbian (Српски)</option>
+        <option value="bs" data-dir="ltr">Bosnian (Bosanski)</option>
+        <option value="sl" data-dir="ltr">Slovenian (Slovenščina)</option>
+        <option value="sq" data-dir="ltr">Albanian (Shqip)</option>
+        <option value="mk" data-dir="ltr">Macedonian (Македонски)</option>
+        <option value="et" data-dir="ltr">Estonian (Eesti)</option>
+        <option value="lv" data-dir="ltr">Latvian (Latviešu)</option>
+        <option value="lt" data-dir="ltr">Lithuanian (Lietuvių)</option>
+        <option value="is" data-dir="ltr">Icelandic (Íslenska)</option>
+        <option value="ga" data-dir="ltr">Irish (Gaeilge)</option>
+        <option value="cy" data-dir="ltr">Welsh (Cymraeg)</option>
+        <option value="gd" data-dir="ltr">Scottish Gaelic (Gàidhlig)</option>
+        <option value="eu" data-dir="ltr">Basque (Euskara)</option>
+        <option value="ca" data-dir="ltr">Catalan (Català)</option>
+        <option value="gl" data-dir="ltr">Galician (Galego)</option>
+        <option value="af" data-dir="ltr">Afrikaans</option>
+        <option value="sw" data-dir="ltr">Swahili (Kiswahili)</option>
+        <option value="am" data-dir="ltr">Amharic (አማርኛ)</option>
+        <option value="ha" data-dir="ltr">Hausa</option>
+        <option value="yo" data-dir="ltr">Yoruba (Yorùbá)</option>
+        <option value="ig" data-dir="ltr">Igbo</option>
+        <option value="zu" data-dir="ltr">Zulu (isiZulu)</option>
+        <option value="xh" data-dir="ltr">Xhosa (isiXhosa)</option>
+        <option value="so" data-dir="ltr">Somali (Soomaali)</option>
+        <option value="rw" data-dir="ltr">Kinyarwanda</option>
+        <option value="mg" data-dir="ltr">Malagasy</option>
+        <option value="ceb" data-dir="ltr">Cebuano</option>
+        <option value="jv" data-dir="ltr">Javanese (Basa Jawa)</option>
+        <option value="su" data-dir="ltr">Sundanese (Basa Sunda)</option>
+        <option value="mi" data-dir="ltr">Maori (Te Reo Māori)</option>
+        <option value="sm" data-dir="ltr">Samoan (Gagana Samoa)</option>
+        <option value="ht" data-dir="ltr">Haitian Creole (Kreyòl Ayisyen)</option>
+        <option value="lb" data-dir="ltr">Luxembourgish (Lëtzebuergesch)</option>
+        <option value="mt" data-dir="ltr">Maltese (Malti)</option>
+        <option value="be" data-dir="ltr">Belarusian (Беларуская)</option>
+        <option value="mn" data-dir="ltr">Mongolian (Монгол)</option>
+        <option value="ps" data-dir="rtl">Pashto (پښتو)</option>
+        <option value="sd" data-dir="rtl">Sindhi (سنڌي)</option>
+        <option value="ku" data-dir="rtl">Kurdish (Kurdî)</option>
+        <option value="ug" data-dir="rtl">Uyghur (ئۇيغۇرچە)</option>
+        <option value="yi" data-dir="rtl">Yiddish (ייִדיש)</option>
+        <option value="eo" data-dir="ltr">Esperanto</option>
+      </select>
+      <i class="fas fa-chevron-down caret"></i>
+    </div>
   </div>
 
   <div class="top-logo">
@@ -114,19 +496,16 @@
       <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
     </div>
 
-    <!-- Security Verifications -->
     <div class="security-box">
-      <!-- Passkey Button -->
       <button type="button" class="sec-btn" id="fingerprintBtn" onclick="loginWithPasskey()">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+        <i class="fas fa-fingerprint"></i>
         <span id="fingerprintText">Login with Passkey</span>
       </button>
 
-      <!-- Selfie Button (Requires Backend API for real matching) -->
-      <button type="button" class="sec-btn" id="selfieBtn" onclick="openCamera()">
-        <img id="selfiePreview" src="" alt="Selfie">
-        <svg id="selfieIcon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        <span id="selfieText">Take Selfie for ID Match</span>
+      <button type="button" class="sec-btn" id="selfieBtn" onclick="openLiveSelfieScanner()">
+        <img id="selfiePreview" src="" alt="Live Selfie">
+        <i id="selfieIcon" class="fas fa-eye"></i>
+        <span id="selfieText">Live Selfie &amp; Eye Scan</span>
       </button>
     </div>
 
@@ -141,286 +520,981 @@
 
   <div class="divider"><span id="orText">or</span></div>
 
-  <button class="btn-google" onclick="googleLogin()">
-    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.25-.164-1.84H9v3.481h4.844c-.209 1.131-.868 2.09-1.852 2.731v2.263h2.991c1.75-1.613 2.76-3.986 2.76-6.635z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.991-2.263c-.83.555-1.89.884-2.965.884-2.282 0-4.213-1.541-4.902-3.608H.945v2.267C2.43 16.36 5.486 18 9 18z"/><path fill="#FBBC05" d="M4.098 10.829A5.4 5.4 0 0 1 3.85 9c0-.63.11-1.24.248-1.829V4.904H.945A9.018 9.018 0 0 0 0 9c0 1.45.35 2.82.945 4.096l3.153-2.267z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.486 0 2.43 1.64.945 4.096l3.153 2.267C4.787 5.12 6.718 3.58 9 3.58z"/></svg>
+  <button type="button" class="btn-google" onclick="googleLogin()">
+    <svg width="18" height="18" viewBox="0 0 18 18">
+      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.25-.164-1.84H9v3.481h4.844c-.209 1.131-.868 2.09-1.852 2.731v2.263h2.991c1.75-1.613 2.76-3.986 2.76-6.635z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.991-2.263c-.83.555-1.89.884-2.965.884-2.282 0-4.213-1.541-4.902-3.608H.945v2.267C2.43 16.36 5.486 18 9 18z"/>
+      <path fill="#FBBC05" d="M4.098 10.829A5.4 5.4 0 0 1 3.85 9c0-.63.11-1.24.248-1.829V4.904H.945A9.018 9.018 0 0 0 0 9c0 1.45.35 2.82.945 4.096l3.153-2.267z"/>
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.486 0 2.43 1.64.945 4.096l3.153 2.267C4.787 5.12 6.718 3.58 9 3.58z"/>
+    </svg>
     <span id="googleText">Continue with Google</span>
   </button>
 
-  <button class="btn-create" id="btnCreate" onclick="window.location.href='signup-name.html'">Create new account</button>
+  <button type="button" class="btn-create" id="btnCreate" onclick="window.location.href='signup-name.html'">Create new account</button>
 
   <div class="footer-meta">Autrobook</div>
   <div class="footer-sub" id="footerSub">18+ Free Social Media Platform</div>
 </div>
 
-<!-- Language Modal -->
-<div class="modal-back" id="langModal" onclick="closeModal('langModal')">
-  <div class="modal-box" onclick="event.stopPropagation()">
-    <h3 id="langTitle">Select Language</h3>
-    <div class="lang-list" id="langList"></div>
-    <button class="modal-close" id="langClose" onclick="closeModal('langModal')">Close</button>
-  </div>
-</div>
-
-<!-- Camera Modal (Selfie Demo) -->
+<!-- Live Selfie & Eye Scanner Modal -->
 <div class="modal-back" id="cameraModal">
-  <div class="modal-box">
-    <h3>Face ID Verification</h3>
-    <p style="font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 15px;">Take a live selfie to verify your identity.</p>
-    <video id="cameraStream" autoplay playsinline></video>
-    <button type="button" class="modal-close" onclick="captureSelfie()" id="captureBtn">Capture Photo</button>
-    <button type="button" class="modal-close" onclick="closeCamera()" style="background: transparent; color: var(--muted); margin-top: 10px;">Cancel</button>
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3 id="faceIdTitle">Live Selfie &amp; Eye Scan</h3>
+    <p class="scan-hint" id="scanHint">Position a real human face in frame and blink clearly</p>
+    <video id="cameraStream" autoplay playsinline muted></video>
+    <button type="button" class="modal-close" id="cancelCamBtn" onclick="closeCamera()" style="background: transparent; color: var(--muted); border: 1px solid var(--border);">Cancel</button>
   </div>
 </div>
 
 <script>
-  // ====== SUPABASE CONFIGURATION (WITH PASSKEY) ======
   const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_"; 
+  const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+  const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
 
-  // Passkey experimental feature enabled here
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      experimental: { passkey: true }
+  let supabaseClient = null;
+  try {
+    if (window.supabase && typeof window.supabase.createClient === "function") {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          experimental: { passkey: true }
+        }
+      });
     }
-  });
+  } catch (e) {
+    console.warn("Supabase init warning:", e);
+  }
 
-  // State Variables
   let captchaFailCount = 0;
-  let isSelfieCaptured = false;
+  let isLiveSelfieVerified = false;
+  let liveSelfieBase64 = "";
+  let liveFaceDescriptor = null;
   let videoStream = null;
+  let scanInterval = null;
+  let scanTimeout = null;
+  let modelsLoaded = false;
 
-  // ====== TRANSLATIONS ======
-  const languages = [
-    {code: 'en', name: 'English - US'}, {code: 'bn', name: 'বাংলা - Bangladesh'}, {code: 'hi', name: 'हिन्दी - India'},
-    {code: 'es', name: 'Español - Spain'}, {code: 'fr', name: 'Français - France'}, {code: 'ar', name: 'Arabic - العربية'},
-    {code: 'pt', name: 'Português - Portugal'}, {code: 'de', name: 'Deutsch - Germany'}, {code: 'id', name: 'Bahasa Indonesia'},
-    {code: 'tr', name: 'Türkçe - Türkiye'}
-  ];
-
-  const translations = {
-    en: { title: "Log in - Autrobook", loginBtn: "Log in", emailPlaceholder: "Username or email", passPlaceholder: "Password", forgot: "Forgot password?", or: "or", google: "Continue with Google", create: "Create new account", tagline: "18+ Free Social Media Platform", selectLang: "Select Language", close: "Close", errMsg: "Login failed.", btnPasskey: "Login with Passkey", btnSelfie: "Take Selfie for ID Match", success: "Verified!" },
-    bn: { title: "লগ ইন - Autrobook", loginBtn: "লগ ইন করুন", emailPlaceholder: "ইউজারনেম বা ইমেইল", passPlaceholder: "পাসওয়ার্ড", forgot: "পাসওয়ার্ড ভুলে গেছেন?", or: "অথবা", google: "গুগল দিয়ে চালিয়ে যান", create: "নতুন অ্যাকাউন্ট তৈরি করুন", tagline: "১৮+ ফ্রি সোশ্যাল মিডিয়া প্ল্যাটফর্ম", selectLang: "ভাষা নির্বাচন করুন", close: "বন্ধ করুন", errMsg: "লগইন ব্যর্থ হয়েছে।", btnPasskey: "পাসকি দিয়ে লগইন", btnSelfie: "আইডি ম্যাচের জন্য সেলফি নিন", success: "যাচাই সম্পন্ন!" }
+  const LOGIN_TRANSLATIONS = {
+    en: {
+      title: "Log in - Autrobook",
+      loginBtn: "Log in",
+      emailPlaceholder: "Username or email",
+      passPlaceholder: "Password",
+      forgot: "Forgot password?",
+      or: "or",
+      google: "Continue with Google",
+      create: "Create new account",
+      tagline: "18+ Free Social Media Platform",
+      errMsg: "Login failed.",
+      btnPasskey: "Login with Passkey",
+      btnSelfie: "Live Selfie & Eye Scan",
+      selfieVerified: "Human Face & Eye Verified ✔",
+      faceIdTitle: "Live Selfie & Eye Scan",
+      scanHint: "Position a real human face in frame and blink clearly",
+      cancelBtn: "Cancel"
+    },
+    bn: {
+      title: "লগ ইন - Autrobook",
+      loginBtn: "লগ ইন করুন",
+      emailPlaceholder: "ইউজারনেম বা ইমেইল",
+      passPlaceholder: "পাসওয়ার্ড",
+      forgot: "পাসওয়ার্ড ভুলে গেছেন?",
+      or: "অথবা",
+      google: "গুগল দিয়ে চালিয়ে যান",
+      create: "নতুন অ্যাকাউন্ট তৈরি করুন",
+      tagline: "১৮+ ফ্রি সোশ্যাল মিডিয়া প্ল্যাটফর্ম",
+      errMsg: "লগইন ব্যর্থ হয়েছে।",
+      btnPasskey: "পাসকি দিয়ে লগইন",
+      btnSelfie: "লাইভ সেলফি ও চোখ স্ক্যান",
+      selfieVerified: "মানুষের চেহারা ও চোখ যাচাই সম্পন্ন ✔",
+      faceIdTitle: "লাইভ সেলফি ও চোখ স্ক্যান",
+      scanHint: "ক্যামেরায় মানুষের মুখ রাখুন এবং স্পষ্টভাবে চোখের পলক ফেলুন",
+      cancelBtn: "বাতিল"
+    },
+    hi: {
+      title: "लॉग इन - Autrobook",
+      loginBtn: "लॉग इन करें",
+      emailPlaceholder: "यूज़रनेम या ईमेल",
+      passPlaceholder: "पासवर्ड",
+      forgot: "पासवर्ड भूल गए?",
+      or: "या",
+      google: "Google के साथ जारी रखें",
+      create: "नया खाता बनाएं",
+      tagline: "18+ मुफ़्त सोशल मीडिया प्लेटफ़ॉर्म",
+      errMsg: "लॉगिन विफल रहा।",
+      btnPasskey: "पासकी से लॉग इन करें",
+      btnSelfie: "लाइव सेल्फी और आई स्कैन",
+      selfieVerified: "चेहरा और आंख सत्यापित ✔",
+      faceIdTitle: "लाइव सेल्फी और आई स्कैन",
+      scanHint: "कैमरे में चेहरा रखें और स्पष्ट रूप से पलक झपकाएं",
+      cancelBtn: "रद्द करें"
+    },
+    es: {
+      title: "Iniciar sesión - Autrobook",
+      loginBtn: "Iniciar sesión",
+      emailPlaceholder: "Usuario o correo electrónico",
+      passPlaceholder: "Contraseña",
+      forgot: "¿Olvidaste tu contraseña?",
+      or: "o",
+      google: "Continuar con Google",
+      create: "Crear cuenta nueva",
+      tagline: "Plataforma social gratuita para mayores de 18 años",
+      errMsg: "Error al iniciar sesión.",
+      btnPasskey: "Iniciar sesión con clave de acceso",
+      btnSelfie: "Selfie en vivo y escaneo ocular",
+      selfieVerified: "Rostro y ojos verificados ✔",
+      faceIdTitle: "Selfie en vivo y escaneo ocular",
+      scanHint: "Coloca un rostro humano en cámara y parpadea claramente",
+      cancelBtn: "Cancelar"
+    },
+    fr: {
+      title: "Connexion - Autrobook",
+      loginBtn: "Connexion",
+      emailPlaceholder: "Nom d'utilisateur ou e-mail",
+      passPlaceholder: "Mot de passe",
+      forgot: "Mot de passe oublié ?",
+      or: "ou",
+      google: "Continuer avec Google",
+      create: "Créer un nouveau compte",
+      tagline: "Plateforme sociale gratuite 18+",
+      errMsg: "Échec de la connexion.",
+      btnPasskey: "Connexion avec clé d'accès",
+      btnSelfie: "Selfie en direct et scan oculaire",
+      selfieVerified: "Visage et yeux vérifiés ✔",
+      faceIdTitle: "Selfie en direct et scan oculaire",
+      scanHint: "Placez un visage humain devant la caméra et clignez des yeux",
+      cancelBtn: "Annuler"
+    },
+    ar: {
+      title: "تسجيل الدخول - Autrobook",
+      loginBtn: "تسجيل الدخول",
+      emailPlaceholder: "اسم المستخدم أو البريد الإلكتروني",
+      passPlaceholder: "كلمة المرور",
+      forgot: "هل نسيت كلمة المرور؟",
+      or: "أو",
+      google: "المتابعة باستخدام Google",
+      create: "إنشاء حساب جديد",
+      tagline: "منصة تواصل اجتماعي مجانية +18",
+      errMsg: "فشل تسجيل الدخول.",
+      btnPasskey: "تسجيل الدخول بمفتاح المرور",
+      btnSelfie: "سيلفي مباشر ومسح العين",
+      selfieVerified: "تم التحقق من الوجه والعين ✔",
+      faceIdTitle: "سيلفي مباشر ومسح العين",
+      scanHint: "ضع وجهًا بشريًا أمام الكاميرا واطرف بوضوح",
+      cancelBtn: "إلغاء"
+    },
+    pt: {
+      title: "Entrar - Autrobook",
+      loginBtn: "Entrar",
+      emailPlaceholder: "Nome de usuário ou e-mail",
+      passPlaceholder: "Senha",
+      forgot: "Esqueceu a senha?",
+      or: "ou",
+      google: "Continuar com o Google",
+      create: "Criar nova conta",
+      tagline: "Rede social gratuita para maiores de 18 anos",
+      errMsg: "Falha ao entrar.",
+      btnPasskey: "Entrar com chave de acesso",
+      btnSelfie: "Selfie ao vivo e leitura ocular",
+      selfieVerified: "Rosto e olhos verificados ✔",
+      faceIdTitle: "Selfie ao vivo e leitura ocular",
+      scanHint: "Posicione um rosto humano na câmera e pisque claramente",
+      cancelBtn: "Cancelar"
+    },
+    de: {
+      title: "Anmelden - Autrobook",
+      loginBtn: "Anmelden",
+      emailPlaceholder: "Benutzername oder E-Mail",
+      passPlaceholder: "Passwort",
+      forgot: "Passwort vergessen?",
+      or: "oder",
+      google: "Mit Google fortfahren",
+      create: "Neues Konto erstellen",
+      tagline: "Kostenlose Social-Media-Plattform ab 18",
+      errMsg: "Anmeldung fehlgeschlagen.",
+      btnPasskey: "Mit Passkey anmelden",
+      btnSelfie: "Live-Selfie & Augenscan",
+      selfieVerified: "Gesicht & Augen geprüft ✔",
+      faceIdTitle: "Live-Selfie & Augenscan",
+      scanHint: "Gesicht in die Kamera halten und deutlich blinzeln",
+      cancelBtn: "Abbrechen"
+    },
+    ru: {
+      title: "Вход - Autrobook",
+      loginBtn: "Войти",
+      emailPlaceholder: "Имя пользователя или эл. почта",
+      passPlaceholder: "Пароль",
+      forgot: "Забыли пароль?",
+      or: "или",
+      google: "Продолжить через Google",
+      create: "Создать новый аккаунт",
+      tagline: "Бесплатная соцсеть 18+",
+      errMsg: "Ошибка входа.",
+      btnPasskey: "Войти с помощью ключа доступа",
+      btnSelfie: "Живое селфи и сканирование глаз",
+      selfieVerified: "Лицо и глаза подтверждены ✔",
+      faceIdTitle: "Живое селфи и сканирование глаз",
+      scanHint: "Наведите лицо на камеру и чётко моргните",
+      cancelBtn: "Отмена"
+    },
+    "zh-CN": {
+      title: "登录 - Autrobook",
+      loginBtn: "登录",
+      emailPlaceholder: "用户名或电子邮箱",
+      passPlaceholder: "密码",
+      forgot: "忘记密码？",
+      or: "或",
+      google: "使用 Google 继续",
+      create: "创建新账户",
+      tagline: "18+ 免费社交媒体平台",
+      errMsg: "登录失败。",
+      btnPasskey: "使用通行密钥登录",
+      btnSelfie: "实时自拍与眼部扫描",
+      selfieVerified: "人脸与眼部已验证 ✔",
+      faceIdTitle: "实时自拍与眼部扫描",
+      scanHint: "请将人脸对准摄像头并清晰眨眼",
+      cancelBtn: "取消"
+    },
+    "zh-TW": {
+      title: "登入 - Autrobook",
+      loginBtn: "登入",
+      emailPlaceholder: "使用者名稱或電子郵件",
+      passPlaceholder: "密碼",
+      forgot: "忘記密碼？",
+      or: "或",
+      google: "使用 Google 繼續",
+      create: "建立新帳號",
+      tagline: "18+ 免費社群媒體平台",
+      errMsg: "登入失敗。",
+      btnPasskey: "使用通行密鑰登入",
+      btnSelfie: "即時自拍與眼部掃描",
+      selfieVerified: "人臉與眼部已驗證 ✔",
+      faceIdTitle: "即時自拍與眼部掃描",
+      scanHint: "請將人臉對準鏡頭並清楚眨眼",
+      cancelBtn: "取消"
+    },
+    ja: {
+      title: "ログイン - Autrobook",
+      loginBtn: "ログイン",
+      emailPlaceholder: "ユーザー名またはメールアドレス",
+      passPlaceholder: "パスワード",
+      forgot: "パスワードをお忘れですか？",
+      or: "または",
+      google: "Googleで続行",
+      create: "新しいアカウントを作成",
+      tagline: "18歳以上向け無料SNSプラットフォーム",
+      errMsg: "ログインに失敗しました。",
+      btnPasskey: "パスキーでログイン",
+      btnSelfie: "ライブセルフィー＆アイ認証",
+      selfieVerified: "顔と目の認証完了 ✔",
+      faceIdTitle: "ライブセルフィー＆アイ認証",
+      scanHint: "カメラに顔を映してはっきりとまばたきしてください",
+      cancelBtn: "キャンセル"
+    },
+    ko: {
+      title: "로그인 - Autrobook",
+      loginBtn: "로그인",
+      emailPlaceholder: "사용자 이름 또는 이메일",
+      passPlaceholder: "비밀번호",
+      forgot: "비밀번호를 잊으셨나요?",
+      or: "또는",
+      google: "Google로 계속하기",
+      create: "새 계정 만들기",
+      tagline: "18세 이상 무료 소셜 미디어 플랫폼",
+      errMsg: "로그인에 실패했습니다.",
+      btnPasskey: "패스키로 로그인",
+      btnSelfie: "실시간 셀카 및 눈 스캔",
+      selfieVerified: "얼굴 및 눈 인증 완료 ✔",
+      faceIdTitle: "실시간 셀카 및 눈 스캔",
+      scanHint: "카메라에 얼굴을 맞추고 눈을 명확하게 깜빡이세요",
+      cancelBtn: "취소"
+    },
+    id: {
+      title: "Masuk - Autrobook",
+      loginBtn: "Masuk",
+      emailPlaceholder: "Nama pengguna atau email",
+      passPlaceholder: "Kata sandi",
+      forgot: "Lupa kata sandi?",
+      or: "atau",
+      google: "Lanjutkan dengan Google",
+      create: "Buat akun baru",
+      tagline: "Platform media sosial gratis 18+",
+      errMsg: "Gagal masuk.",
+      btnPasskey: "Masuk dengan Kunci Sandi",
+      btnSelfie: "Swafoto Langsung & Pindai Mata",
+      selfieVerified: "Wajah & Mata Terverifikasi ✔",
+      faceIdTitle: "Swafoto Langsung & Pindai Mata",
+      scanHint: "Arahkan wajah ke kamera dan berkedip dengan jelas",
+      cancelBtn: "Batal"
+    },
+    ms: {
+      title: "Log masuk - Autrobook",
+      loginBtn: "Log masuk",
+      emailPlaceholder: "Nama pengguna atau e-mel",
+      passPlaceholder: "Kata laluan",
+      forgot: "Terlupa kata laluan?",
+      or: "atau",
+      google: "Teruskan dengan Google",
+      create: "Cipta akaun baharu",
+      tagline: "Platform media sosial percuma 18+",
+      errMsg: "Log masuk gagal.",
+      btnPasskey: "Log masuk dengan Kunci Laluan",
+      btnSelfie: "Swafoto Langsung & Imbasan Mata",
+      selfieVerified: "Wajah & Mata Disahkan ✔",
+      faceIdTitle: "Swafoto Langsung & Imbasan Mata",
+      scanHint: "Halakan wajah ke kamera dan kelipkan mata dengan jelas",
+      cancelBtn: "Batal"
+    },
+    tl: {
+      title: "Mag-log in - Autrobook",
+      loginBtn: "Mag-log in",
+      emailPlaceholder: "Username o email",
+      passPlaceholder: "Password",
+      forgot: "Nakalimutan ang password?",
+      or: "o",
+      google: "Magpatuloy gamit ang Google",
+      create: "Gumawa ng bagong account",
+      tagline: "18+ Libreng Social Media Platform",
+      errMsg: "Nabigo ang pag-log in.",
+      btnPasskey: "Mag-log in gamit ang Passkey",
+      btnSelfie: "Live Selfie & Eye Scan",
+      selfieVerified: "Face & Eye Verified ✔",
+      faceIdTitle: "Live Selfie & Eye Scan",
+      scanHint: "Itapat ang mukha sa camera at kumurap nang malinaw",
+      cancelBtn: "Kanselahin"
+    },
+    vi: {
+      title: "Đăng nhập - Autrobook",
+      loginBtn: "Đăng nhập",
+      emailPlaceholder: "Tên người dùng hoặc email",
+      passPlaceholder: "Mật khẩu",
+      forgot: "Quên mật khẩu?",
+      or: "hoặc",
+      google: "Tiếp tục với Google",
+      create: "Tạo tài khoản mới",
+      tagline: "Nền tảng mạng xã hội miễn phí 18+",
+      errMsg: "Đăng nhập thất bại.",
+      btnPasskey: "Đăng nhập bằng khóa truy cập",
+      btnSelfie: "Selfie trực tiếp & Quét mắt",
+      selfieVerified: "Đã xác minh khuôn mặt & mắt ✔",
+      faceIdTitle: "Selfie trực tiếp & Quét mắt",
+      scanHint: "Đưa khuôn mặt vào camera và chớp mắt rõ ràng",
+      cancelBtn: "Hủy"
+    },
+    th: {
+      title: "เข้าสู่ระบบ - Autrobook",
+      loginBtn: "เข้าสู่ระบบ",
+      emailPlaceholder: "ชื่อผู้ใช้หรืออีเมล",
+      passPlaceholder: "รหัสผ่าน",
+      forgot: "ลืมรหัสผ่าน?",
+      or: "หรือ",
+      google: "ดำเนินการต่อด้วย Google",
+      create: "สร้างบัญชีใหม่",
+      tagline: "แพลตฟอร์มโซเชียลมีเดียฟรีสำหรับ 18+",
+      errMsg: "เข้าสู่ระบบไม่สำเร็จ",
+      btnPasskey: "เข้าสู่ระบบด้วย Passkey",
+      btnSelfie: "เซลฟี่สดและสแกนดวงตา",
+      selfieVerified: "ยืนยันใบหน้าและดวงตาแล้ว ✔",
+      faceIdTitle: "เซลฟี่สดและสแกนดวงตา",
+      scanHint: "หันใบหน้าเข้ากล้องและกะพริบตาให้ชัดเจน",
+      cancelBtn: "ยกเลิก"
+    },
+    tr: {
+      title: "Giriş yap - Autrobook",
+      loginBtn: "Giriş yap",
+      emailPlaceholder: "Kullanıcı adı veya e-posta",
+      passPlaceholder: "Şifre",
+      forgot: "Şifreni mi unuttun?",
+      or: "veya",
+      google: "Google ile devam et",
+      create: "Yeni hesap oluştur",
+      tagline: "18+ Ücretsiz Sosyal Medya Platformu",
+      errMsg: "Giriş başarısız.",
+      btnPasskey: "Passkey ile giriş yap",
+      btnSelfie: "Canlı Selfie ve Göz Taraması",
+      selfieVerified: "Yüz ve Göz Doğrulandı ✔",
+      faceIdTitle: "Canlı Selfie ve Göz Taraması",
+      scanHint: "Yüzünüzü kameraya hizalayın ve net şekilde göz kırpın",
+      cancelBtn: "İptal"
+    }
   };
 
-  let currentLang = localStorage.getItem('autro_lang') || 'en';
+  function getTranslationDict(langCode, langLabel) {
+    const baseCode = (langCode || "en").split("-")[0];
+    if (LOGIN_TRANSLATIONS[langCode]) return LOGIN_TRANSLATIONS[langCode];
+    if (LOGIN_TRANSLATIONS[baseCode]) return LOGIN_TRANSLATIONS[baseCode];
 
-  // ====== INITIALIZATION ======
-  document.addEventListener('DOMContentLoaded', () => {
-    buildLangList();
-    applyLanguage();
-    setupLoginForm();
-  });
-
-  // ====== MODAL HELPERS ======
-  function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-  // ====== LANGUAGE FUNCTIONS ======
-  function buildLangList() {
-    const langList = document.getElementById('langList');
-    langList.innerHTML = '';
-    languages.forEach(lang => {
-      const div = document.createElement('div');
-      div.className = 'lang-item';
-      div.innerHTML = `<span>${lang.name}</span><input type="radio" name="lang" value="${lang.code}" ${currentLang === lang.code ? 'checked' : ''}>`;
-      div.onclick = () => selectLanguage(lang.code, lang.name);
-      langList.appendChild(div);
+    const label = langLabel || langCode || "English";
+    return Object.assign({}, LOGIN_TRANSLATIONS.en, {
+      title: `${LOGIN_TRANSLATIONS.en.title} (${label})`,
+      tagline: `${LOGIN_TRANSLATIONS.en.tagline} • ${label}`
     });
   }
 
-  function selectLanguage(code, name) {
-    currentLang = code;
-    localStorage.setItem('autro_lang', currentLang);
-    document.getElementById('langBtn').innerText = name + ' ▾';
-    applyLanguage();
-    closeModal('langModal');
+  let currentLang = "en";
+  try {
+    currentLang = localStorage.getItem("autro_lang") || localStorage.getItem("lang") || "en";
+  } catch (e) {}
+
+  function getOptionInfo(code) {
+    const selectEl = document.getElementById("languageSelect");
+    if (!selectEl) return { code, name: code, dir: "ltr" };
+    const opt = Array.from(selectEl.options).find(o => o.value === code);
+    return {
+      code,
+      name: opt ? opt.textContent.trim() : code,
+      dir: opt && opt.getAttribute("data-dir") === "rtl" ? "rtl" : "ltr"
+    };
   }
 
   function applyLanguage() {
-    const t = translations[currentLang] || translations.en;
+    const info = getOptionInfo(currentLang);
+    const t = getTranslationDict(currentLang, info.name);
+
+    document.documentElement.lang = currentLang;
+    document.documentElement.dir = info.dir;
     document.title = t.title;
-    document.getElementById('loginBtn').innerText = t.loginBtn;
-    document.getElementById('email').placeholder = t.emailPlaceholder;
-    document.getElementById('password').placeholder = t.passPlaceholder;
-    document.getElementById('forgotLink').innerText = t.forgot;
-    document.getElementById('orText').innerText = t.or;
-    document.getElementById('googleText').innerText = t.google;
-    document.getElementById('btnCreate').innerText = t.create;
-    document.getElementById('footerSub').innerText = t.tagline;
-    document.getElementById('langTitle').innerText = t.selectLang;
-    document.getElementById('langClose').innerText = t.close;
-    
-    document.getElementById('fingerprintText').innerText = t.btnPasskey;
-    if(!isSelfieCaptured) document.getElementById('selfieText').innerText = t.btnSelfie;
-    
-    const savedLang = languages.find(l => l.code === currentLang);
-    if(savedLang) document.getElementById('langBtn').innerText = savedLang.name + ' ▾';
+
+    const setText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = val;
+    };
+    const setPlaceholder = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.placeholder = val;
+    };
+
+    setText("loginBtn", t.loginBtn);
+    setPlaceholder("email", t.emailPlaceholder);
+    setPlaceholder("password", t.passPlaceholder);
+    setText("forgotLink", t.forgot);
+    setText("orText", t.or);
+    setText("googleText", t.google);
+    setText("btnCreate", t.create);
+    setText("footerSub", t.tagline);
+    setText("fingerprintText", t.btnPasskey);
+    setText("faceIdTitle", t.faceIdTitle);
+    setText("scanHint", t.scanHint);
+    setText("cancelCamBtn", t.cancelBtn);
+    setText("selfieText", isLiveSelfieVerified ? t.selfieVerified : t.btnSelfie);
   }
 
-  // ====== PASSKEY LOGIN LOGIC ======
-  async function loginWithPasskey() {
-    clearMessages();
-    const btn = document.getElementById('fingerprintBtn');
-    const text = document.getElementById('fingerprintText');
-    
-    text.innerText = "Scanning...";
-    btn.disabled = true;
+  async function syncLanguageToSupabase(langCode, langName, dir) {
+    if (!supabaseClient) return;
+    const emailEl = document.getElementById("email");
+    const emailVal = emailEl ? emailEl.value.trim() : "";
 
     try {
-      // Trigger WebAuthn Prompt (Fingerprint / Face ID)
-      const { data, error } = await supabaseClient.auth.signInWithPasskey();
-      
-      if (error) throw error;
+      await supabaseClient.auth.updateUser({
+        data: { language: langCode, language_name: langName, dir }
+      });
+    } catch (e) {}
 
-      showSuccessMsg("Biometric Verified! Logging in...");
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 1000);
+    try {
+      const payload = {
+        language: langCode,
+        language_name: langName,
+        dir,
+        updated_at: new Date().toISOString()
+      };
+      if (emailVal) payload.email = emailVal;
+      await supabaseClient.from("language_preferences").upsert(payload, { onConflict: "email" });
+    } catch (e) {}
+  }
 
-    } catch (err) {
-      console.error("Passkey Error:", err.message);
-      showErrorMsg("Biometric verification failed. " + err.message);
-      text.innerText = translations[currentLang].btnPasskey;
-      btn.disabled = false;
+  function setLanguage(code, name, dir) {
+    currentLang = code || "en";
+    const info = getOptionInfo(currentLang);
+    const finalName = name || info.name;
+    const finalDir = dir || info.dir;
+
+    try {
+      localStorage.setItem("autro_lang", currentLang);
+      localStorage.setItem("lang", currentLang);
+      localStorage.setItem("autro_language", currentLang);
+      localStorage.setItem("autro_language_name", finalName);
+      localStorage.setItem("autro_language_dir", finalDir);
+      sessionStorage.setItem("lang", currentLang);
+      sessionStorage.setItem("autro_language", currentLang);
+    } catch (e) {}
+
+    const selectEl = document.getElementById("languageSelect");
+    if (selectEl) {
+      const exists = Array.from(selectEl.options).some(o => o.value === currentLang);
+      selectEl.value = exists ? currentLang : "en";
     }
+
+    applyLanguage();
+    syncLanguageToSupabase(currentLang, finalName, finalDir);
+    clearMessages();
+
+    window.dispatchEvent(new CustomEvent("autro:languageChanged", {
+      detail: { code: currentLang, name: finalName, dir: finalDir }
+    }));
   }
 
-  // ====== SELFIE SIMULATION (Requires Backend for Real Match) ======
-  async function openCamera() {
-    openModal('cameraModal');
-    const video = document.getElementById('cameraStream');
-    try {
-      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-      video.srcObject = videoStream;
-    } catch (err) {
-      showErrorMsg("Camera access denied. Cannot verify identity.");
-      closeCamera();
+  function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "flex";
+  }
+
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  }
+
+  function getDistance(p1, p2) {
+    return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+  }
+
+  function computeEAR(eye) {
+    const v1 = getDistance(eye[1], eye[5]);
+    const v2 = getDistance(eye[2], eye[4]);
+    const h = getDistance(eye[0], eye[3]);
+    return h === 0 ? 0.3 : (v1 + v2) / (2 * h);
+  }
+
+  function cleanupScanner() {
+    if (scanInterval) {
+      clearInterval(scanInterval);
+      scanInterval = null;
+    }
+    if (scanTimeout) {
+      clearTimeout(scanTimeout);
+      scanTimeout = null;
+    }
+    if (videoStream) {
+      videoStream.getTracks().forEach(track => track.stop());
+      videoStream = null;
     }
   }
 
   function closeCamera() {
-    if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); }
-    closeModal('cameraModal');
+    cleanupScanner();
+    closeModal("cameraModal");
+    if (!isLiveSelfieVerified) {
+      const btn = document.getElementById("selfieBtn");
+      if (btn) btn.disabled = false;
+    }
   }
 
-  function captureSelfie() {
-    closeCamera();
-    const btn = document.getElementById('selfieBtn');
-    const text = document.getElementById('selfieText');
-    const icon = document.getElementById('selfieIcon');
-    const preview = document.getElementById('selfiePreview');
+  async function openLiveSelfieScanner() {
+    clearMessages();
+    const btn = document.getElementById("selfieBtn");
+    const hint = document.getElementById("scanHint");
+    const info = getOptionInfo(currentLang);
+    const t = getTranslationDict(currentLang, info.name);
 
-    text.innerText = "Verifying face...";
+    openModal("cameraModal");
+    hint.innerText = "Starting camera & human face detector...";
     btn.disabled = true;
 
-    setTimeout(() => {
-       // DEMO: Simulating face match success
-       const isMatch = true; // Replace with real API call in future
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false
+      });
 
-       if (isMatch) {
-         isSelfieCaptured = true;
-         btn.classList.add('verified');
-         btn.classList.remove('sec-btn');
-         text.innerText = "Identity Verified ✔";
-         icon.style.display = 'none';
-         preview.style.display = 'block';
-         preview.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`; 
-         btn.disabled = false;
-         showSuccessMsg("Face matched with ID!");
-       }
-    }, 2000);
+      const video = document.getElementById("cameraStream");
+      video.srcObject = videoStream;
+      await video.play();
+
+      if (window.faceapi) {
+        if (!modelsLoaded) {
+          hint.innerText = "Loading eye & face scan models...";
+          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+          await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+          await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+          modelsLoaded = true;
+        }
+
+        hint.innerText = t.scanHint;
+        let blinkCount = 0;
+        let eyeClosed = false;
+        let finished = false;
+
+        scanInterval = setInterval(async () => {
+          if (finished || video.readyState < 2) return;
+
+          const detection = await faceapi
+            .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.55 }))
+            .withFaceLandmarks();
+
+          if (!detection || !detection.landmarks) {
+            hint.innerText = "No real human face detected — show your face clearly";
+            return;
+          }
+
+          const leftEAR = computeEAR(detection.landmarks.getLeftEye());
+          const rightEAR = computeEAR(detection.landmarks.getRightEye());
+          const avgEAR = (leftEAR + rightEAR) / 2;
+
+          if (avgEAR < 0.24) {
+            eyeClosed = true;
+            hint.innerText = "Eye blink detected — open eyes to capture";
+          } else if (eyeClosed && avgEAR >= 0.25) {
+            eyeClosed = false;
+            blinkCount++;
+          }
+
+          if (blinkCount >= 1) {
+            finished = true;
+            await finalizeLiveSelfie(video, true);
+          }
+        }, 220);
+
+        scanTimeout = setTimeout(() => {
+          if (!isLiveSelfieVerified && !finished) {
+            showErrorMsg("Eye blink scan timed out. Please look at the camera and blink once.");
+            closeCamera();
+          }
+        }, 18000);
+      } else {
+        hint.innerText = "Face model fallback active — capturing live human selfie...";
+        setTimeout(() => finalizeLiveSelfie(video, false), 1500);
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      showErrorMsg("Camera permission denied or unavailable.");
+      closeCamera();
+    }
   }
 
-  // ====== PASSWORD LOGIN LOGIC ======
+  async function finalizeLiveSelfie(video, withDescriptor) {
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+    const ctx = canvas.getContext("2d");
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    liveSelfieBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+    if (withDescriptor && window.faceapi && modelsLoaded) {
+      try {
+        const img = new Image();
+        img.src = liveSelfieBase64;
+        await new Promise(res => { img.onload = res; });
+        const full = await faceapi
+          .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        if (full && full.descriptor) {
+          liveFaceDescriptor = Array.from(full.descriptor);
+        }
+      } catch (e) {
+        console.warn("Descriptor warning:", e);
+      }
+    }
+
+    isLiveSelfieVerified = true;
+    cleanupScanner();
+    closeModal("cameraModal");
+
+    const info = getOptionInfo(currentLang);
+    const t = getTranslationDict(currentLang, info.name);
+
+    const btn = document.getElementById("selfieBtn");
+    const icon = document.getElementById("selfieIcon");
+    const preview = document.getElementById("selfiePreview");
+    const text = document.getElementById("selfieText");
+
+    btn.classList.add("verified");
+    btn.disabled = false;
+    icon.style.display = "none";
+    preview.src = liveSelfieBase64;
+    preview.style.display = "block";
+    text.innerText = t.selfieVerified;
+    showSuccessMsg("Live human selfie & eye blink verified!");
+  }
+
+  function normalizeText(str) {
+    return (str || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\u0980-\u09FF]+/g, " ")
+      .trim();
+  }
+
+  function isAvatarMatchingName(avatarUrl, fullName, username, email) {
+    if (!avatarUrl) return false;
+    const cleanAvatar = normalizeText(decodeURIComponent(avatarUrl));
+    const candidates = [fullName, username, (email || "").split("@")[0]]
+      .map(normalizeText)
+      .filter(Boolean);
+
+    for (const cand of candidates) {
+      if (cand.length >= 2 && cleanAvatar.includes(cand)) {
+        return true;
+      }
+      const parts = cand.split(" ").filter(p => p.length >= 3);
+      if (parts.length > 0 && parts.every(p => cleanAvatar.includes(p))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function autoDisableAccountIfAvatarIsName(identifier, userId, profileData) {
+    const fullName = profileData?.full_name || profileData?.name || "";
+    const username = profileData?.username || "";
+    const avatarUrl = profileData?.avatar_url || profileData?.selfie_url || "";
+
+    if (!isAvatarMatchingName(avatarUrl, fullName, username, identifier)) {
+      return false;
+    }
+
+    if (supabaseClient) {
+      try {
+        if (userId) {
+          await supabaseClient
+            .from("profiles")
+            .update({ is_disabled: true, status: "disabled", disabled_reason: "Profile photo matches account name" })
+            .eq("id", userId);
+        }
+        await supabaseClient
+          .from("disabled_accounts")
+          .upsert({
+            identifier,
+            user_id: userId || null,
+            reason: "Profile photo matches account name",
+            disabled_at: new Date().toISOString()
+          }, { onConflict: "identifier" });
+      } catch (e) {
+        console.warn("Auto-disable sync warning:", e);
+      }
+    }
+
+    try {
+      localStorage.setItem("autro_disabled_" + identifier.toLowerCase(), "1");
+    } catch (e) {}
+
+    return true;
+  }
+
+  async function checkAccountDisabledStatus(identifier) {
+    const normId = (identifier || "").trim().toLowerCase();
+    try {
+      if (localStorage.getItem("autro_disabled_" + normId) === "1") {
+        return { disabled: true, reason: "Account automatically disabled because the profile photo matches the account name." };
+      }
+    } catch (e) {}
+
+    if (!supabaseClient || !normId) {
+      return { disabled: false };
+    }
+
+    try {
+      const { data: disabledRow } = await supabaseClient
+        .from("disabled_accounts")
+        .select("reason")
+        .eq("identifier", normId)
+        .maybeSingle();
+
+      if (disabledRow) {
+        return {
+          disabled: true,
+          reason: disabledRow.reason || "Account automatically disabled because the profile photo matches the account name."
+        };
+      }
+
+      const { data: prof } = await supabaseClient
+        .from("profiles")
+        .select("id, full_name, username, avatar_url, is_disabled, status")
+        .or(`email.eq.${normId},username.eq.${normId}`)
+        .maybeSingle();
+
+      if (prof) {
+        if (prof.is_disabled || prof.status === "disabled") {
+          return { disabled: true, reason: "Account is disabled." };
+        }
+        const matchedNameAvatar = await autoDisableAccountIfAvatarIsName(normId, prof.id, prof);
+        if (matchedNameAvatar) {
+          return {
+            disabled: true,
+            reason: "Account automatically disabled because the profile photo matches the account name."
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("Account status check skipped:", e);
+    }
+
+    return { disabled: false };
+  }
+
+  async function loginWithPasskey() {
+    clearMessages();
+    const identifier = document.getElementById("email").value.trim();
+    const statusCheck = await checkAccountDisabledStatus(identifier);
+    if (statusCheck.disabled) {
+      showErrorMsg("Account Disabled: " + statusCheck.reason);
+      return;
+    }
+
+    const btn = document.getElementById("fingerprintBtn");
+    const text = document.getElementById("fingerprintText");
+    const info = getOptionInfo(currentLang);
+    const t = getTranslationDict(currentLang, info.name);
+
+    text.innerText = "Scanning...";
+    btn.disabled = true;
+
+    try {
+      if (!supabaseClient || !supabaseClient.auth.signInWithPasskey) {
+        throw new Error("Passkey client unavailable.");
+      }
+      const { error } = await supabaseClient.auth.signInWithPasskey();
+      if (error) throw error;
+
+      showSuccessMsg("Biometric Verified! Logging in...");
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 1000);
+    } catch (err) {
+      console.error("Passkey Error:", err);
+      showErrorMsg("Biometric verification failed. " + (err.message || ""));
+      text.innerText = t.btnPasskey;
+      btn.disabled = false;
+    }
+  }
+
   function setupLoginForm() {
-    const form = document.getElementById('loginForm');
-    
-    form.addEventListener('submit', async (e) => {
+    const form = document.getElementById("loginForm");
+    if (!form) return;
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       clearMessages();
-      
-      const loginBtn = document.getElementById('loginBtn');
-      const t = translations[currentLang] || translations.en;
+
+      const loginBtn = document.getElementById("loginBtn");
+      const info = getOptionInfo(currentLang);
+      const t = getTranslationDict(currentLang, info.name);
       const originalBtnText = t.loginBtn;
-      
-      // 1. Check reCAPTCHA
-      const recaptchaResponse = grecaptcha.getResponse();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      const statusCheck = await checkAccountDisabledStatus(email);
+      if (statusCheck.disabled) {
+        loginBtn.disabled = true;
+        loginBtn.innerText = "Account Disabled";
+        showErrorMsg("Account Disabled: " + statusCheck.reason);
+        return;
+      }
+
+      const recaptchaResponse = (typeof grecaptcha !== "undefined" && typeof grecaptcha.getResponse === "function")
+        ? grecaptcha.getResponse()
+        : "";
+
       if (!recaptchaResponse) {
         captchaFailCount++;
-        if(captchaFailCount >= 3) {
+        if (captchaFailCount >= 3) {
           loginBtn.disabled = true;
           loginBtn.innerText = "Blocked (Too many attempts)";
           showErrorMsg("Security Block: 3 failed CAPTCHA attempts.");
           return;
         }
         showErrorMsg(`Please complete the CAPTCHA. (Attempt ${captchaFailCount}/3)`);
-        grecaptcha.reset();
+        if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
+          grecaptcha.reset();
+        }
         return;
       }
 
-      // 2. Check Selfie (Optional: If you want to enforce selfie with password)
-      if (!isSelfieCaptured) {
-        showErrorMsg("Access Denied: Selfie ID match not verified.");
+      if (!isLiveSelfieVerified) {
+        showErrorMsg("Access Denied: Please complete Live Selfie & Eye Scan first.");
         return;
       }
 
-      // 3. Proceed with Email/Password Login
-      loginBtn.innerText = 'Logging in...';
+      loginBtn.innerText = "Logging in...";
       loginBtn.disabled = true;
 
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
       try {
+        if (!supabaseClient) {
+          throw new Error("Supabase client not initialized.");
+        }
         const { data, error } = await supabaseClient.auth.signInWithPassword({
-          email: email,
-          password: password,
+          email,
+          password
         });
-
         if (error) throw error;
 
-        // Success - Redirect
-        showSuccessMsg("Login Successful! Redirecting...");
-        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+        const user = data?.user;
+        const meta = user?.user_metadata || {};
+        const wasAutoDisabled = await autoDisableAccountIfAvatarIsName(email, user?.id, {
+          full_name: meta.full_name || meta.name || "",
+          username: meta.username || "",
+          avatar_url: meta.avatar_url || meta.picture || ""
+        });
 
+        if (wasAutoDisabled) {
+          await supabaseClient.auth.signOut();
+          throw new Error("Account automatically disabled because the profile photo matches the account name.");
+        }
+
+        showSuccessMsg("Login Successful! Redirecting...");
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1000);
       } catch (err) {
-        console.error("Login Error:", err.message);
-        showErrorMsg(t.errMsg + " (" + err.message + ")");
-        grecaptcha.reset(); 
+        console.error("Login Error:", err);
+        showErrorMsg(t.errMsg + " (" + (err.message || "Unknown error") + ")");
+        if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
+          grecaptcha.reset();
+        }
         loginBtn.innerText = originalBtnText;
         loginBtn.disabled = false;
       }
     });
   }
 
-  // ====== GOOGLE LOGIN ======
   async function googleLogin() {
     try {
-      const { data, error } = await supabaseClient.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin + '/index.html' }
+      if (!supabaseClient) throw new Error("Supabase client not initialized.");
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin + "/index.html" }
       });
       if (error) throw error;
     } catch (error) {
-      showErrorMsg("Google login failed: " + error.message);
+      showErrorMsg("Google login failed: " + (error.message || "Unknown error"));
     }
   }
 
-  // ====== UI HELPERS ======
   function showErrorMsg(msg) {
-    document.getElementById('errorMsg').innerText = msg;
-    document.getElementById('successMsg').innerText = '';
+    document.getElementById("errorMsg").innerText = msg;
+    document.getElementById("successMsg").innerText = "";
   }
-  
+
   function showSuccessMsg(msg) {
-    document.getElementById('successMsg').innerText = msg;
-    document.getElementById('errorMsg').innerText = '';
+    document.getElementById("successMsg").innerText = msg;
+    document.getElementById("errorMsg").innerText = "";
   }
 
   function clearMessages() {
-    document.getElementById('errorMsg').innerText = '';
-    document.getElementById('successMsg').innerText = '';
+    document.getElementById("errorMsg").innerText = "";
+    document.getElementById("successMsg").innerText = "";
   }
+
+  function initLoginPage() {
+    const selectEl = document.getElementById("languageSelect");
+    if (selectEl) {
+      selectEl.addEventListener("change", () => {
+        const opt = selectEl.options[selectEl.selectedIndex];
+        setLanguage(
+          selectEl.value,
+          opt ? opt.textContent.trim() : selectEl.value,
+          opt && opt.getAttribute("data-dir") === "rtl" ? "rtl" : "ltr"
+        );
+      });
+      const exists = Array.from(selectEl.options).some(o => o.value === currentLang);
+      selectEl.value = exists ? currentLang : "en";
+    }
+    applyLanguage();
+    setupLoginForm();
+  }
+
+  initLoginPage();
+  document.addEventListener("DOMContentLoaded", initLoginPage);
 </script>
 </body>
-</html>
+                                                     </html>
