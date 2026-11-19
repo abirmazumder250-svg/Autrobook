@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log Check-In - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="css/settings.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* System Default: Black text on White theme */
+    :root {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-box: #f5f6f7;
+      --bg-hover: #eaecef;
+      --text-main: #000000;
+      --text-muted: #262626;
+      --text-invert: #ffffff;
+      --border-color: #d4d4d4;
+      --accent-bg: #000000;
+      --accent-fg: #ffffff;
+      --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.05);
+    }
+
+    /* System Dark: White text on Black theme */
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #000000;
+      --bg-card: #0c0c0c;
+      --bg-box: #161616;
+      --bg-hover: #222222;
+      --text-main: #ffffff;
+      --text-muted: #e5e5e5;
+      --text-invert: #000000;
+      --border-color: #2e2e2e;
+      --accent-bg: #ffffff;
+      --accent-fg: #000000;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .ci-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(17px, 4.2vw, 20px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .ci-pill {
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .ci-pill.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Main Container */
+    .ci-container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Cards */
+    .ci-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-margin-top: 72px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .ci-heading {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .ci-text {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: var(--text-muted);
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-chip {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Status Selector Grid */
+    .mood-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    @media (min-width: 560px) {
+      .mood-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .mood-btn {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 13px 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-main);
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .mood-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .mood-btn.selected {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .mood-icon {
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .mood-label {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Form Fields */
+    .form-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .field-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .ci-input,
+    .ci-textarea,
+    .ci-select {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .ci-textarea {
+      min-height: 92px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .ci-input:focus,
+    .ci-textarea:focus,
+    .ci-select:focus {
+      border-color: var(--text-main);
+    }
+
+    /* Check-In History */
+    .checkin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .checkin-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .checkin-item strong {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .checkin-item span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.45;
+    }
+
+    .checkin-meta-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .checkin-time {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .delete-mini-btn {
+      padding: 5px 9px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .delete-mini-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    /* Actions */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-outline,
+    .btn-solid {
+      padding: 10px 16px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid var(--accent-bg);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .btn-outline {
+      background-color: var(--bg-box);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .btn-solid:hover {
+      transform: translateY(-1px);
+    }
+
+    /* Footer */
+    .ci-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-wrap {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      min-height: 20px;
+      max-height: 20px;
+      border-radius: 5px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-img {
+      width: 20px;
+      height: 20px;
+      max-width: 20px;
+      max-height: 20px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .footer-logo-fallback {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .footer-caption {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="ci-topbar">
+    <div class="topbar-left">
+      <a href="dashboard.html" class="back-btn" aria-label="Back to Dashboard">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Log Check-In</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="ci-pill active" id="topbarStatusPill">Focused</span>
+      <button type="button" class="top-action-btn" id="reloadCheckInBtn" aria-label="Refresh check-ins">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="ci-container">
+    <!-- Check-In Composer -->
+    <section class="ci-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-clipboard-check"></i>
+          </span>
+          <h2 class="ci-heading">New Check-In Entry</h2>
+        </div>
+        <span class="badge-tag" id="syncBadge">Synced</span>
+      </div>
+
+      <div class="meta-strip">
+        <span class="meta-chip">Platform: Autrobook</span>
+        <span class="meta-chip">18+ Free</span>
+        <span class="meta-chip" id="systemThemeChip">System Default</span>
+        <span class="meta-chip" id="lastSyncChip">Ready</span>
+      </div>
+
+      <p class="ci-text">
+        Record a status check-in, select your current focus state, and sync your update with Dashboard and Supabase.
+      </p>
+
+      <div class="mood-grid" role="group" aria-label="Check-In State">
+        <button type="button" class="mood-btn selected" data-state="Focused">
+          <i class="fa-solid fa-bolt mood-icon"></i>
+          <span class="mood-label">Focused</span>
+        </button>
+        <button type="button" class="mood-btn" data-state="Creating">
+          <i class="fa-solid fa-pen-nib mood-icon"></i>
+          <span class="mood-label">Creating</span>
+        </button>
+        <button type="button" class="mood-btn" data-state="Reviewing">
+          <i class="fa-solid fa-magnifying-glass mood-icon"></i>
+          <span class="mood-label">Reviewing</span>
+        </button>
+        <button type="button" class="mood-btn" data-state="Resting">
+          <i class="fa-solid fa-mug-hot mood-icon"></i>
+          <span class="mood-label">Resting</span>
+        </button>
+      </div>
+
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="checkInTitleInput" class="field-label">Check-In Title</label>
+          <input type="text" id="checkInTitleInput" class="ci-input" maxlength="90" placeholder="e.g., Morning Workspace Check-In" />
+        </div>
+
+        <div class="field-group">
+          <label for="checkInVisibilitySelect" class="field-label">Visibility</label>
+          <select id="checkInVisibilitySelect" class="ci-select" aria-label="Check-In Visibility">
+            <option value="Only Me" selected>Only Me (Dashboard Log)</option>
+            <option value="Friends">Friends</option>
+            <option value="Public">Public</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="checkInNoteTextarea" class="field-label">Check-In Note</label>
+          <textarea id="checkInNoteTextarea" class="ci-textarea" maxlength="280" placeholder="Write what you are working on or noting right now..."></textarea>
+          <span class="field-hint">Saved entries appear in Recent Activity on Dashboard.</span>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <a href="dashboard.html" class="btn-outline">
+          <i class="fa-solid fa-gauge"></i>
+          <span>Dashboard</span>
+        </a>
+        <button type="button" class="btn-solid" id="submitCheckInBtn">
+          <i class="fa-solid fa-check"></i>
+          <span>Log Check-In</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Logged Check-Ins -->
+    <section class="ci-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-list-check"></i>
+          </span>
+          <h2 class="ci-heading">Logged Check-Ins</h2>
+        </div>
+        <span class="badge-tag" id="checkInCountBadge">0 Entries</span>
+      </div>
+
+      <div class="checkin-list" id="checkInListContainer"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="ci-footer">
+      <span class="footer-logo-wrap" aria-hidden="true">
+        <img alt="Autrobook" class="footer-logo-img" id="footerLogoImg" />
+        <span class="footer-logo-fallback" id="footerLogoFallback">A</span>
+      </span>
+      <span class="footer-caption">18+ Free Social Media Platform</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/settings.js" defer></script>
+  <script>
+    (function () {
+      const CLOUD_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+      const CLOUD_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const DASHBOARD_ROW_ID = "default_dashboard";
+      const DASHBOARD_LOCAL_KEY = "autro_dashboard_counts_v1";
+
+      const LOGO_CANDIDATES = [
+        "logo.png",
+        "./logo.png",
+        "/logo.png",
+        "assets/logo.png",
+        "images/logo.png"
+      ];
+
+      let selectedState = "Focused";
+
+      function defaultDashboardState() {
+        return {
+          posts_count: 0,
+          friends_count: 0,
+          unread_alerts: 0,
+          profile_views: 0,
+          zen_mode: false,
+          auto_sync: true,
+          quick_note: "",
+          recent_activity: []
+        };
+      }
+
+      function readDashboardLocal() {
+        try {
+          const raw = localStorage.getItem(DASHBOARD_LOCAL_KEY);
+          if (!raw) return defaultDashboardState();
+          const parsed = JSON.parse(raw);
+          return Object.assign(defaultDashboardState(), parsed, {
+            recent_activity: Array.isArray(parsed.recent_activity)
+              ? parsed.recent_activity
+              : []
+          });
+        } catch (e) {
+          return defaultDashboardState();
+        }
+      }
+
+      function writeDashboardLocal(next) {
+        try {
+          localStorage.setItem(DASHBOARD_LOCAL_KEY, JSON.stringify(next));
+        } catch (e) {}
+      }
+
+      let dbState = readDashboardLocal();
+
+      function apiHeaders(extra) {
+        return Object.assign(
+          {
+            apikey: CLOUD_KEY,
+            Authorization: "Bearer " + CLOUD_KEY,
+            "Content-Type": "application/json"
+          },
+          extra || {}
+        );
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function prefillFromQuery() {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const noteParam = (params.get("note") || "").trim();
+          const noteArea = document.getElementById("checkInNoteTextarea");
+          if (noteParam && noteArea && !noteArea.value) {
+            noteArea.value = noteParam;
+          }
+        } catch (e) {}
+      }
+
+      function renderStateButtons() {
+        document.querySelectorAll(".mood-btn").forEach((btn) => {
+          const st = btn.getAttribute("data-state");
+          btn.classList.toggle("selected", st === selectedState);
+        });
+        const pill = document.getElementById("topbarStatusPill");
+        if (pill) pill.textContent = selectedState;
+      }
+
+      function renderCheckIns() {
+        const list = document.getElementById("checkInListContainer");
+        const badge = document.getElementById("checkInCountBadge");
+        const items = Array.isArray(dbState.recent_activity) ? dbState.recent_activity : [];
+
+        if (badge) {
+          badge.textContent = `${items.length} ${items.length === 1 ? "Entry" : "Entries"}`;
+        }
+        if (!list) return;
+
+        if (!items.length) {
+          list.innerHTML =
+            '<div class="checkin-item"><div><strong>No check-ins recorded yet</strong><span>Fill out the form above and click "Log Check-In".</span></div><span class="checkin-time">—</span></div>';
+          return;
+        }
+
+        list.innerHTML = items
+          .slice(0, 12)
+          .map(
+            (item, idx) => `
+          <div class="checkin-item">
+            <div>
+              <strong>${escapeHtml(item.title || "Check-In")}</strong>
+              <span>${escapeHtml(item.detail || "")}</span>
+            </div>
+            <div class="checkin-meta-right">
+              <span class="checkin-time">${escapeHtml(item.time || "Now")}</span>
+              <button type="button" class="delete-mini-btn" data-index="${idx}">Remove</button>
+            </div>
+          </div>
+        `
+          )
+          .join("");
+
+        list.querySelectorAll(".delete-mini-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const idx = Number(btn.getAttribute("data-index"));
+            if (!Number.isInteger(idx) || idx < 0) return;
+            dbState.recent_activity.splice(idx, 1);
+            writeDashboardLocal(dbState);
+            renderCheckIns();
+            await syncDashboardToSupabase();
+            showToast("Check-in removed");
+          });
+        });
+      }
+
+      async function syncDashboardToSupabase() {
+        const badge = document.getElementById("syncBadge");
+        const chip = document.getElementById("lastSyncChip");
+        try {
+          const payload = [
+            {
+              id: DASHBOARD_ROW_ID,
+              posts_count: Number(dbState.posts_count) || 0,
+              friends_count: Number(dbState.friends_count) || 0,
+              unread_alerts: Number(dbState.unread_alerts) || 0,
+              profile_views: Number(dbState.profile_views) || 0,
+              zen_mode: Boolean(dbState.zen_mode),
+              quick_note: dbState.quick_note || "",
+              recent_activity: Array.isArray(dbState.recent_activity)
+                ? dbState.recent_activity
+                : [],
+              updated_at: new Date().toISOString()
+            }
+          ];
+          const res = await fetch(
+            `${CLOUD_URL}/rest/v1/dashboard_state?on_conflict=id`,
+            {
+              method: "POST",
+              headers: apiHeaders({
+                Prefer: "resolution=merge-duplicates,return=minimal"
+              }),
+              body: JSON.stringify(payload)
+            }
+          );
+          if (res.ok) {
+            if (badge) badge.textContent = "Synced";
+            if (chip) chip.textContent = "Synced: " + new Date().toLocaleTimeString();
+            return true;
+          }
+          if (badge) badge.textContent = "Local";
+          return false;
+        } catch (err) {
+          if (badge) badge.textContent = "Local";
+          return false;
+        }
+      }
+
+      async function loadFromSupabase() {
+        try {
+          const url = `${CLOUD_URL}/rest/v1/dashboard_state?id=eq.${encodeURIComponent(
+            DASHBOARD_ROW_ID
+          )}&select=*`;
+          const res = await fetch(url, {
+            method: "GET",
+            headers: apiHeaders()
+          });
+          if (!res.ok) return;
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            const r = rows[0];
+            dbState = Object.assign(defaultDashboardState(), {
+              posts_count: Number(r.posts_count) || 0,
+              friends_count: Number(r.friends_count) || 0,
+              unread_alerts: Number(r.unread_alerts) || 0,
+              profile_views: Number(r.profile_views) || 0,
+              zen_mode: Boolean(r.zen_mode),
+              quick_note: r.quick_note || "",
+              recent_activity: Array.isArray(r.recent_activity)
+                ? r.recent_activity
+                : []
+            });
+            writeDashboardLocal(dbState);
+            renderCheckIns();
+          }
+        } catch (err) {}
+      }
+
+      function syncSystemTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+
+        const chip = document.getElementById("systemThemeChip");
+        if (chip) {
+          chip.textContent = prefersDark ? "System Dark" : "System Light";
+        }
+      }
+
+      function loadFooterLogo() {
+        const img = document.getElementById("footerLogoImg");
+        const fb = document.getElementById("footerLogoFallback");
+        if (!img || !fb) return;
+
+        let idx = 0;
+        const probe = new Image();
+
+        function tryNext() {
+          if (idx >= LOGO_CANDIDATES.length) {
+            img.style.display = "none";
+            fb.style.display = "inline-flex";
+            return;
+          }
+          const src = LOGO_CANDIDATES[idx++];
+          probe.onload = () => {
+            img.src = src;
+            img.style.display = "block";
+            fb.style.display = "none";
+          };
+          probe.onerror = tryNext;
+          probe.src = src;
+        }
+        tryNext();
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._ciToastTimer);
+        window._ciToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      document.querySelectorAll(".mood-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          selectedState = btn.getAttribute("data-state") || "Focused";
+          renderStateButtons();
+          showToast(`State: ${selectedState}`);
+        });
+      });
+
+      document.getElementById("submitCheckInBtn")?.addEventListener("click", async () => {
+        const titleInput = document.getElementById("checkInTitleInput");
+        const noteArea = document.getElementById("checkInNoteTextarea");
+        const visSelect = document.getElementById("checkInVisibilitySelect");
+
+        const rawTitle = (titleInput?.value || "").trim();
+        const rawNote = (noteArea?.value || "").trim();
+        const visibility = visSelect?.value || "Only Me";
+
+        const entryTitle = rawTitle || `${selectedState} Check-In`;
+        const entryDetail = rawNote
+          ? `${rawNote} (${visibility})`
+          : `Status: ${selectedState} (${visibility})`;
+
+        dbState.recent_activity.unshift({
+          title: entryTitle,
+          detail: entryDetail,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        });
+        if (rawNote) {
+          dbState.quick_note = rawNote;
+        }
+
+        writeDashboardLocal(dbState);
+        renderCheckIns();
+
+        if (titleInput) titleInput.value = "";
+        if (noteArea) noteArea.value = "";
+
+        const ok = await syncDashboardToSupabase();
+        showToast(ok ? "Check-in saved" : "Check-in saved locally");
+      });
+
+      document.getElementById("reloadCheckInBtn")?.addEventListener("click", async () => {
+        await loadFromSupabase();
+        showToast("Check-ins refreshed");
+      });
+
+      syncSystemTheme();
+      loadFooterLogo();
+      prefillFromQuery();
+      renderStateButtons();
+      renderCheckIns();
+      loadFromSupabase();
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSystemTheme);
+      }
+    })();
+  </script>
+</body>
+</html>
