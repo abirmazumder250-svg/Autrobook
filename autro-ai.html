@@ -1,149 +1,648 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autro AI - Autrobook</title>
-<!-- Correct Google reCAPTCHA script integration -->
-<script src="https://www.google.com/recaptcha/api.js?render=6LdCzRsuAAAAAO_hrnS7t-D5-k2tP57eoIRzkIM-" async defer></script> 
-<style>
-:root{ --bg:#18191a; --card:#242526; --text:#e4e6eb; --border:#3a3b3c; --blue:#1877f2; --brand:#4caf50; }
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;}
-body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;}
-.header{display:flex;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);}
-.header span{cursor:pointer;font-size:20px;padding-right:10px;}
-.header b{flex:1;text-align:center;font-size:18px;margin-right:20px;}
-.chat-container{flex:1;overflow-y:auto;padding:16px;}
-.ai-msg, .user-msg{margin:8px 0;display:flex;gap:8px;}
-.ai-msg{align-items:flex-start;}
-.user-msg{justify-content:flex-end;}
-.bubble{max-width:75%;padding:10px 14px;border-radius:18px;font-size:15px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;}
-.ai-bubble{background:var(--card);border-bottom-left-radius:4px;}
-.user-bubble{background:var(--blue);border-bottom-right-radius:4px;}
-.avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;background:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:bold;color:#fff;font-size:14px;flex-shrink:0;}
-.avatar img{width:100%;height:100%;object-fit:cover;}
-.input-area{display:flex;gap:8px;padding:12px;background:var(--card);border-top:1px solid var(--border);}
-.input-area input{flex:1;background:#3a3b3c;border:none;border-radius:20px;padding:10px 14px;color:var(--text);font-size:15px;outline:none;}
-.input-area button{background:var(--blue);border:none;border-radius:50%;width:40px;height:40px;color:white;font-size:18px;cursor:pointer;}
-.loading{opacity:0.6;font-style:italic;}
-.grecaptcha-badge{visibility:hidden;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autro AI Assistant — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-page: #f5f5f5;
+      --bg-card: #ffffff;
+      --bg-soft: #efefef;
+      --bg-user: #000000;
+      --bg-ai: #f0f0f0;
+      --text-main: #000000;
+      --text-muted: #404040;
+      --text-user: #ffffff;
+      --text-ai: #000000;
+      --border-color: #d4d4d4;
+      --btn-bg: #000000;
+      --btn-text: #ffffff;
+      --shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-page: #000000;
+        --bg-card: #111111;
+        --bg-soft: #1c1c1c;
+        --bg-user: #ffffff;
+        --bg-ai: #1a1a1a;
+        --text-main: #ffffff;
+        --text-muted: #d4d4d4;
+        --text-user: #000000;
+        --text-ai: #ffffff;
+        --border-color: #2e2e2e;
+        --btn-bg: #ffffff;
+        --btn-text: #000000;
+        --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.65);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 820px;
+      margin: 0 auto;
+      background-color: var(--bg-card);
+      border-left: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 16px;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .back-btn,
+    .clear-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-soft);
+      color: var(--text-main);
+      font-size: 13.5px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+    }
+
+    .back-btn:active,
+    .clear-btn:active,
+    .send-btn:active {
+      transform: scale(0.96);
+    }
+
+    .assistant-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .assistant-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .assistant-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.2;
+    }
+
+    .assistant-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+
+    .empty-state {
+      margin: auto;
+      text-align: center;
+      max-width: 440px;
+      padding: 24px 16px;
+    }
+
+    .empty-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      background-color: var(--bg-soft);
+      border: 1px solid var(--border-color);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    .empty-state h2 {
+      font-size: 19px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .message-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 84%;
+      gap: 4px;
+    }
+
+    .message-row.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .message-row.assistant {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .message-bubble {
+      padding: 11px 15px;
+      border-radius: 18px;
+      font-size: 14.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .message-row.user .message-bubble {
+      background-color: var(--bg-user);
+      color: var(--text-user);
+      border-bottom-right-radius: 5px;
+    }
+
+    .message-row.assistant .message-bubble {
+      background-color: var(--bg-ai);
+      color: var(--text-ai);
+      border: 1px solid var(--border-color);
+      border-bottom-left-radius: 5px;
+    }
+
+    .message-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 0 4px;
+    }
+
+    .typing-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 2px;
+    }
+
+    .typing-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--text-ai);
+      opacity: 0.4;
+      animation: bounceDot 1s infinite ease-in-out;
+    }
+
+    .typing-dots span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .typing-dots span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes bounceDot {
+      0%, 80%, 100% {
+        transform: translateY(0);
+        opacity: 0.35;
+      }
+      40% {
+        transform: translateY(-4px);
+        opacity: 1;
+      }
+    }
+
+    .composer-wrap {
+      padding: 12px 14px;
+      background-color: var(--bg-card);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .composer-form {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .prompt-input {
+      flex: 1;
+      min-height: 44px;
+      max-height: 130px;
+      padding: 11px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-soft);
+      color: var(--text-main);
+      font-size: 14.5px;
+      line-height: 1.4;
+      resize: none;
+      outline: none;
+    }
+
+    .prompt-input:focus {
+      border-color: var(--text-main);
+    }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 600px) {
+      .app-shell {
+        border-left: none;
+        border-right: none;
+      }
+
+      .message-row {
+        max-width: 90%;
+      }
+    }
+  </style>
 </head>
 <body>
-<div class="header">
-<span onclick="history.back()">←</span>
-<b>Autro AI Assistant</b>
-</div>
-<div class="chat-container" id="chatBox">
-<div class="ai-msg">
-<div class="avatar"><img src="/logo.png" onerror="this.style.display='none';this.parentElement.innerText='AI';"></div>
-<div class="bubble ai-bubble">Hello! I'm Autro AI 👋<br>I am your personal AI assistant. Ask me anything!</div>
-</div>
-</div>
-<div class="input-area">
-<input type="text" id="userInput" placeholder="Ask Autro AI anything..." onkeypress="if(event.key==='Enter') sendMsg()">
-<button onclick="sendMsg()">➤</button>
-</div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-left">
+        <a href="javascript:history.back()" class="back-btn" aria-label="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="assistant-title-wrap">
+          <div class="assistant-avatar">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div>
+            <div class="assistant-title">Autro AI Assistant</div>
+            <div class="assistant-sub">Instant replies in all languages</div>
+          </div>
+        </div>
+      </div>
 
-<script> 
-let chatBox = document.getElementById('chatBox');
-let chatHistory = [
-  {role: "system", content: "You are Autro AI, a helpful assistant for Autrobook social media. Always detect the user's language and reply strictly in the exact same language the user writes in. Be friendly, helpful, and brief. Your name is Autro AI."}
-];
+      <button type="button" id="clearChatBtn" class="clear-btn" title="Clear chat">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span>Clear</span>
+      </button>
+    </header>
 
-// Set the username here or fetch it dynamically from your app source
-const currentUserName = "Friend"; 
+    <main id="chatContainer" class="chat-container">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">
+          <i class="fa-solid fa-sparkles"></i>
+        </div>
+        <h2>Autro AI Assistant</h2>
+        <p>Ask anything in any language — Bengali, English, Hindi, Arabic, Spanish, or more.</p>
+      </div>
+    </main>
 
-// Automatically bypasses if reCAPTCHA token is not received within 3 seconds, preventing loading stalls
-async function getRecaptchaToken() {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve("timeout-bypass"), 3000);
-    try {
-      if (window.grecaptcha && window.grecaptcha.execute) {
-        window.grecaptcha.execute('6LdCzRsuAAAAAO_hrnS7t-D5-k2tP57eoIRzkIM-', {action: 'sendMessage'})
-          .then((token) => {
-            clearTimeout(timer);
-            resolve(token);
-          })
-          .catch(() => {
-            clearTimeout(timer);
-            resolve("error-bypass");
-          });
-      } else {
-        clearTimeout(timer);
-        resolve("not-loaded-bypass");
+    <div class="composer-wrap">
+      <form id="chatForm" class="composer-form">
+        <textarea
+          id="promptInput"
+          class="prompt-input"
+          rows="1"
+          placeholder="Message Autro AI in any language..."
+          required
+        ></textarea>
+        <button type="submit" id="sendBtn" class="send-btn" aria-label="Send message">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const API_ENDPOINT = '/api/autro-ai';
+      const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+      let supabaseClient = null;
+      try {
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+      } catch (_) {}
+
+      const chatContainer = document.getElementById('chatContainer');
+      const emptyState = document.getElementById('emptyState');
+      const chatForm = document.getElementById('chatForm');
+      const promptInput = document.getElementById('promptInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const clearChatBtn = document.getElementById('clearChatBtn');
+
+      const conversationHistory = [];
+      let savedProfileName = '';
+
+      function readCachedName() {
+        try {
+          const pRaw = localStorage.getItem('autro_account_profile') || localStorage.getItem('autrobook_user');
+          if (pRaw) {
+            const parsed = JSON.parse(pRaw);
+            const n = (parsed.full_name || parsed.name || '').trim();
+            if (n) return n;
+          }
+          const direct = (localStorage.getItem('autro_profile_name') || '').trim();
+          if (direct) return direct;
+        } catch (_) {}
+        return '';
       }
-    } catch (e) {
-      clearTimeout(timer);
-      resolve("exception-bypass");
-    }
-  });
-}
 
-async function sendMsg(){
-  let input = document.getElementById('userInput');
-  let text = input.value.trim();
-  if(text === '') return;
+      async function resolveSupabaseProfileName() {
+        const cached = readCachedName();
+        if (cached) savedProfileName = cached;
 
-  addMessage(text, 'user');
-  chatHistory.push({role: "user", content: text});
-  input.value = '';
-  
-  let loadingId = addMessage("Typing...", 'ai', true);
+        if (!supabaseClient) return savedProfileName;
 
-  const token = await getRecaptchaToken();
-  let reply = await getAIResponse(token);
-  
-  const loadingEl = document.getElementById(loadingId);
-  if (loadingEl) loadingEl.remove();
-  
-  addMessage(reply, 'ai');
-  chatHistory.push({role: "assistant", content: reply});
-}
+        try {
+          let userId = null;
+          let nameFound = savedProfileName;
 
-function addMessage(text, sender, isLoading=false){
-  let id = 'msg-' + Date.now() + Math.floor(Math.random() * 1000);
-  let msgDiv = document.createElement('div');
-  msgDiv.id = id;
-  msgDiv.className = sender === 'user' ? 'user-msg' : 'ai-msg ' + (isLoading ? 'loading' : '');
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          if (session && session.user) {
+            userId = session.user.id;
+            nameFound = session.user.user_metadata?.full_name || session.user.user_metadata?.name || nameFound;
+          }
 
-  const bubbleDiv = document.createElement('div');
-  bubbleDiv.className = sender === 'ai' ? 'bubble ai-bubble' : 'bubble user-bubble';
-  bubbleDiv.textContent = text;
+          if (userId) {
+            const { data: profileRow } = await supabaseClient
+              .from('profiles')
+              .select('full_name, username')
+              .eq('id', userId)
+              .maybeSingle();
 
-  if(sender === 'ai'){
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'avatar';
-    avatarDiv.innerHTML = `<img src="/logo.png" onerror="this.style.display='none';this.parentElement.innerText='AI';">`;
-    msgDiv.appendChild(avatarDiv);
-  }
-  
-  msgDiv.appendChild(bubbleDiv);
-  chatBox.appendChild(msgDiv);
-  chatBox.scrollTop = chatBox.scrollHeight;
-  return id;
-}
+            if (profileRow && profileRow.full_name) {
+              nameFound = profileRow.full_name;
+            }
+          }
 
-async function getAIResponse(token){
-  try {
-    const response = await fetch("/api/ai", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ 
-        history: chatHistory, 
-        recaptchaToken: token,
-        userName: currentUserName // Pass userName to the backend
-      })
-    });
-    if(!response.ok) throw new Error("Server Error " + response.status);
-    const data = await response.json();
-    return data.reply;
-  } catch(e) {
-    let lang = /[\u0980-\u09FF]/.test(chatHistory[chatHistory.length-1].content) ? 'bn' : 'en';
-    if(lang === 'bn') return `Error: Server connection failed. (${e.message})`;
-    else return `Error: Server not connected. (${e.message})`;
-  }
-}
-</script> 
-</body> 
+          const clientKey = localStorage.getItem('autro_account_client_id');
+          let settingsRow = null;
+
+          if (userId) {
+            const { data } = await supabaseClient
+              .from('account_settings')
+              .select('full_name')
+              .eq('user_id', userId)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            settingsRow = data;
+          }
+
+          if (!settingsRow && clientKey) {
+            const { data } = await supabaseClient
+              .from('account_settings')
+              .select('full_name')
+              .eq('account_key', clientKey)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            settingsRow = data;
+          }
+
+          if (!settingsRow && !userId) {
+            const { data: latestRows } = await supabaseClient
+              .from('account_settings')
+              .select('full_name')
+              .order('updated_at', { ascending: false })
+              .limit(1);
+            if (Array.isArray(latestRows) && latestRows.length > 0) {
+              settingsRow = latestRows[0];
+            }
+          }
+
+          if (settingsRow && settingsRow.full_name) {
+            nameFound = settingsRow.full_name;
+          }
+
+          if (nameFound && nameFound.trim()) {
+            savedProfileName = nameFound.trim();
+          }
+        } catch (_) {}
+
+        return savedProfileName;
+      }
+
+      function formatTime() {
+        const now = new Date();
+        return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function autoResizeTextarea() {
+        promptInput.style.height = 'auto';
+        promptInput.style.height = Math.min(promptInput.scrollHeight, 130) + 'px';
+      }
+
+      function appendMessage(role, text, metaLabel) {
+        if (emptyState) {
+          emptyState.style.display = 'none';
+        }
+
+        const row = document.createElement('div');
+        row.className = `message-row ${role}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.textContent = text;
+
+        const meta = document.createElement('div');
+        meta.className = 'message-meta';
+        meta.textContent = metaLabel || formatTime();
+
+        row.appendChild(bubble);
+        row.appendChild(meta);
+        chatContainer.appendChild(row);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        return { row, bubble, meta };
+      }
+
+      function appendTypingIndicator() {
+        if (emptyState) {
+          emptyState.style.display = 'none';
+        }
+
+        const row = document.createElement('div');
+        row.className = 'message-row assistant';
+        row.id = 'typingIndicatorRow';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.innerHTML = `
+          <div class="typing-dots">
+            <span></span><span></span><span></span>
+          </div>
+        `;
+
+        row.appendChild(bubble);
+        chatContainer.appendChild(row);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return row;
+      }
+
+      function removeTypingIndicator() {
+        const el = document.getElementById('typingIndicatorRow');
+        if (el) el.remove();
+      }
+
+      async function sendMessage(userText) {
+        const trimmed = userText.trim();
+        if (!trimmed) return;
+
+        appendMessage('user', trimmed, formatTime());
+        conversationHistory.push({ role: 'user', text: trimmed });
+
+        promptInput.value = '';
+        autoResizeTextarea();
+        sendBtn.disabled = true;
+
+        const startTime = performance.now();
+        appendTypingIndicator();
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+        try {
+          const activeProfileName = await resolveSupabaseProfileName();
+
+          const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              message: trimmed,
+              profileName: activeProfileName,
+              history: conversationHistory.slice(-4)
+            })
+          });
+
+          clearTimeout(timeoutId);
+          const data = await response.json();
+          removeTypingIndicator();
+
+          const elapsedSec = ((performance.now() - startTime) / 1000).toFixed(2);
+
+          if (!response.ok || !data.reply) {
+            appendMessage(
+              'assistant',
+              data.error || 'Could not get a response right now.',
+              `${elapsedSec}s`
+            );
+          } else {
+            conversationHistory.push({ role: 'assistant', text: data.reply });
+            appendMessage('assistant', data.reply, `Autro AI • ${elapsedSec}s`);
+          }
+        } catch (err) {
+          clearTimeout(timeoutId);
+          removeTypingIndicator();
+          const msg = err.name === 'AbortError'
+            ? 'Response took too long. Please try again.'
+            : 'Network error while connecting to Autro AI.';
+          appendMessage('assistant', msg, formatTime());
+        } finally {
+          sendBtn.disabled = false;
+          promptInput.focus();
+        }
+      }
+
+      chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        sendMessage(promptInput.value);
+      });
+
+      promptInput.addEventListener('input', autoResizeTextarea);
+
+      promptInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage(promptInput.value);
+        }
+      });
+
+      clearChatBtn.addEventListener('click', () => {
+        conversationHistory.length = 0;
+        chatContainer.innerHTML = '';
+        if (emptyState) {
+          emptyState.style.display = 'block';
+          chatContainer.appendChild(emptyState);
+        }
+      });
+
+      resolveSupabaseProfileName();
+    })();
+  </script>
+</body>
 </html>
