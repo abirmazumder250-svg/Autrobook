@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal details - Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-color: #f0f2f5;
+    --header-bg: #ffffff;
+    --card-color: #ffffff;
+    --box-card-bg: #f8fafc;
+    --search-bg: #e4e6eb;
+    --text-color: #050505;
+    --muted-color: #65676b;
+    --border-color: #dadde1;
+    --hover-color: rgba(0, 0, 0, 0.05);
+    --accent-color: #10b981;
+    --link-color: #0B3D20;
+    --icon-color: #1e293b;
+    --danger-color: #ef4444;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #121314;
+      --header-bg: #1c1d1f;
+      --card-color: #18191a;
+      --box-card-bg: #242526;
+      --search-bg: #303234;
+      --text-color: #f1f5f9;
+      --muted-color: #9ca3af;
+      --border-color: #2f3133;
+      --hover-color: rgba(255, 255, 255, 0.07);
+      --accent-color: #10b981;
+      --link-color: #10b981;
+      --icon-color: #e2e8f0;
+      --danger-color: #f87171;
+    }
+  }
+
+  html[data-theme="light"] {
+    --bg-color: #f0f2f5;
+    --header-bg: #ffffff;
+    --card-color: #ffffff;
+    --box-card-bg: #f8fafc;
+    --search-bg: #e4e6eb;
+    --text-color: #050505;
+    --muted-color: #65676b;
+    --border-color: #dadde1;
+    --hover-color: rgba(0, 0, 0, 0.05);
+    --accent-color: #10b981;
+    --link-color: #0B3D20;
+    --icon-color: #1e293b;
+    --danger-color: #ef4444;
+  }
+
+  html[data-theme="dark"] {
+    --bg-color: #121314;
+    --header-bg: #1c1d1f;
+    --card-color: #18191a;
+    --box-card-bg: #242526;
+    --search-bg: #303234;
+    --text-color: #f1f5f9;
+    --muted-color: #9ca3af;
+    --border-color: #2f3133;
+    --hover-color: rgba(255, 255, 255, 0.07);
+    --accent-color: #10b981;
+    --link-color: #10b981;
+    --icon-color: #e2e8f0;
+    --danger-color: #f87171;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-shell {
+    max-width: 680px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background-color: var(--card-color);
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .top-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background-color: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 18px;
+    transition: background-color 0.15s ease;
+  }
+
+  .back-btn:hover {
+    background-color: var(--hover-color);
+  }
+
+  .header-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+
+  .header-spacer {
+    width: 38px;
+    height: 38px;
+  }
+
+  .content-wrap {
+    padding: 16px;
+  }
+
+  .info-banner {
+    background-color: var(--box-card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .info-banner-title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+
+  .info-banner-desc {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--muted-color);
+  }
+
+  .detail-card {
+    background-color: var(--box-card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 15px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s ease;
+  }
+
+  .detail-row:last-child {
+    border-bottom: none;
+  }
+
+  .detail-row:hover {
+    background-color: var(--hover-color);
+  }
+
+  .detail-row.locked {
+    cursor: not-allowed;
+    opacity: 0.85;
+  }
+
+  .detail-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .detail-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--search-bg);
+    color: var(--icon-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .detail-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .detail-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted-color);
+  }
+
+  .detail-value {
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .detail-limit-note {
+    font-size: 12px;
+    color: var(--muted-color);
+  }
+
+  .detail-limit-note.locked-text {
+    color: var(--danger-color);
+    font-weight: 600;
+  }
+
+  .detail-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--link-color);
+    font-size: 13.5px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* Edit Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 100;
+  }
+
+  .modal-backdrop.open {
+    display: flex;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-width: 440px;
+    background-color: var(--header-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .modal-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--search-bg);
+    color: var(--text-color);
+    font-size: 15px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-sub {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--muted-color);
+  }
+
+  .modal-input {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--search-bg);
+    color: var(--text-color);
+    font-size: 15px;
+    outline: none;
+    margin-bottom: 10px;
+  }
+
+  .modal-input:focus {
+    border-color: var(--accent-color);
+  }
+
+  .modal-error {
+    display: none;
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: var(--danger-color);
+    font-weight: 600;
+  }
+
+  .modal-error.visible {
+    display: block;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .btn-cancel {
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--search-bg);
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-save {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    background-color: var(--link-color);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--link-color);
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 600;
+    display: none;
+    z-index: 200;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  }
+
+  .toast.show {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <header class="top-header">
+    <a href="settings.html" id="backToSettingsBtn" class="back-btn" aria-label="Back to Settings">
+      <i class="fa-solid fa-chevron-left"></i>
+    </a>
+    <h1 class="header-title">Personal details</h1>
+    <div class="header-spacer"></div>
+  </header>
+
+  <div class="content-wrap">
+    <div class="info-banner">
+      <h2 class="info-banner-title">Account personal information</h2>
+      <p class="info-banner-desc">
+        Click on Name, Username, or Email to edit. Each field can only be changed once per month (every 30 days).
+      </p>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-row" id="row-name" data-field="name">
+        <div class="detail-left">
+          <span class="detail-icon"><i class="fa-regular fa-user"></i></span>
+          <div class="detail-text">
+            <span class="detail-label">Name</span>
+            <span class="detail-value" id="val-name">Loading...</span>
+            <span class="detail-limit-note" id="note-name">Editable once every 30 days</span>
+          </div>
+        </div>
+        <div class="detail-right">
+          <span id="action-name">Edit</span>
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+      </div>
+
+      <div class="detail-row" id="row-username" data-field="username">
+        <div class="detail-left">
+          <span class="detail-icon"><i class="fa-solid fa-at"></i></span>
+          <div class="detail-text">
+            <span class="detail-label">Username</span>
+            <span class="detail-value" id="val-username">Loading...</span>
+            <span class="detail-limit-note" id="note-username">Editable once every 30 days</span>
+          </div>
+        </div>
+        <div class="detail-right">
+          <span id="action-username">Edit</span>
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+      </div>
+
+      <div class="detail-row" id="row-email" data-field="email">
+        <div class="detail-left">
+          <span class="detail-icon"><i class="fa-regular fa-envelope"></i></span>
+          <div class="detail-text">
+            <span class="detail-label">Email</span>
+            <span class="detail-value" id="val-email">Loading...</span>
+            <span class="detail-limit-note" id="note-email">Editable once every 30 days</span>
+          </div>
+        </div>
+        <div class="detail-right">
+          <span id="action-email">Edit</span>
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-backdrop" id="editModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalTitle">Edit Personal Detail</h3>
+      <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <p class="modal-sub" id="modalSub">You can update this detail once every 30 days.</p>
+    <input type="text" class="modal-input" id="modalInput" autocomplete="off">
+    <p class="modal-error" id="modalError"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" id="cancelModalBtn">Cancel</button>
+      <button type="button" class="btn-save" id="saveModalBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastBox"></div>
+
+<script>
+  (function () {
+    const THEME_KEYS = ['autro_theme', 'autrobook_theme', 'theme', 'autrobook_dark_mode'];
+    const LANG_KEYS = ['autro_lang_code', 'autrobook_lang', 'lang', 'language'];
+
+    function readTheme() {
+      for (const k of THEME_KEYS) {
+        try {
+          const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').toLowerCase().trim();
+          if (v === 'dark' || v === '1' || v === 'true') return 'dark';
+          if (v === 'light' || v === '0' || v === 'false') return 'light';
+        } catch (_) {}
+      }
+      const match = document.cookie.match(/(?:^|;\s*)(?:autro_theme|autrobook_theme)=(dark|light)/i);
+      return match ? match[1].toLowerCase() : 'light';
+    }
+
+    function applyGlobalTheme(theme) {
+      const t = theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.classList.toggle('dark', t === 'dark');
+      if (document.body) {
+        document.body.setAttribute('data-theme', t);
+        document.body.classList.toggle('dark-theme', t === 'dark');
+      }
+    }
+
+    function readLang() {
+      for (const k of LANG_KEYS) {
+        try {
+          const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').trim();
+          if (v) return v;
+        } catch (_) {}
+      }
+      const match = document.cookie.match(/(?:^|;\s*)(?:autro_lang_code|autrobook_lang|lang)=([^;]+)/i);
+      return match ? decodeURIComponent(match[1]) : 'en';
+    }
+
+    async function applyGlobalLang(code) {
+      const lang = code || 'en';
+      document.documentElement.setAttribute('lang', lang);
+      document.documentElement.setAttribute('dir', ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr');
+
+      const dictMap = {
+        en: {
+          'Settings & privacy': 'Settings & privacy',
+          'Search settings': 'Search settings',
+          'Autrobook Account': 'Autrobook Account',
+          'Personal details': 'Personal details',
+          'Password and security': 'Password and security',
+          'Ad preferences': 'Ad preferences',
+          'Verification': 'Verification',
+          'See more in Autrobook Account': 'See more in Autrobook Account',
+          'Subscriptions': 'Subscriptions',
+          'Autro Premium': 'Autro Premium',
+          'Tools and resources': 'Tools and resources',
+          'Privacy checkup': 'Privacy checkup'
+        },
+        bn: {
+          'Settings & privacy': 'সেটিংস ও প্রাইভেসি',
+          'Search settings': 'সেটিংস খুঁজুন',
+          'Autrobook Account': 'অট্রোবুক অ্যাকাউন্ট',
+          'Personal details': 'ব্যক্তিগত তথ্য',
+          'Password and security': 'পাসওয়ার্ড ও নিরাপত্তা',
+          'Ad preferences': 'বিজ্ঞাপন পছন্দ',
+          'Verification': 'ভেরিফিকেশন',
+          'See more in Autrobook Account': 'অট্রোবুক অ্যাকাউন্টে আরও দেখুন',
+          'Subscriptions': 'সাবস্ক্রিপশন',
+          'Autro Premium': 'অট্রো প্রিমিয়াম',
+          'Tools and resources': 'টুলস ও রিসোর্স',
+          'Privacy checkup': 'প্রাইভেসি চেকআপ'
+        }
+      };
+
+      const nodes = document.querySelectorAll('h1, h2, h3, h4, p, span, a, button, label, div');
+      for (const el of nodes) {
+        if (el.children.length > 0) continue;
+        if (!el.dataset.origText) {
+          el.dataset.origText = (el.textContent || '').trim();
+        }
+        const baseText = el.dataset.origText;
+        if (!baseText) continue;
+
+        if (lang === 'en') {
+          el.textContent = baseText;
+        } else if (dictMap[lang] && dictMap[lang][baseText]) {
+          el.textContent = dictMap[lang][baseText];
+        } else {
+          try {
+            const res = await fetch(
+              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(baseText)}`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              const translated = Array.isArray(data?.[0]) ? data[0].map((p) => p[0]).join('') : '';
+              if (translated && readLang() === lang) {
+                el.textContent = translated;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
+      if (searchInput) {
+        if (!searchInput.dataset.origPlaceholder) {
+          searchInput.dataset.origPlaceholder = searchInput.placeholder || '';
+        }
+        const ph = searchInput.dataset.origPlaceholder;
+        if (lang === 'en') {
+          searchInput.placeholder = ph;
+        } else if (dictMap[lang] && dictMap[lang][ph]) {
+          searchInput.placeholder = dictMap[lang][ph];
+        }
+      }
+    }
+
+    function syncAll() {
+      applyGlobalTheme(readTheme());
+      applyGlobalLang(readLang());
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', syncAll);
+    } else {
+      syncAll();
+    }
+
+    window.addEventListener('pageshow', syncAll);
+    window.addEventListener('storage', syncAll);
+    window.addEventListener('autro:theme-updated', (e) => applyGlobalTheme(e?.detail?.theme || readTheme()));
+    window.addEventListener('autro:lang-updated', (e) => applyGlobalLang(e?.detail?.code || readLang()));
+
+    try {
+      if ('BroadcastChannel' in window) {
+        new BroadcastChannel('autrobook_theme_sync').onmessage = (e) => {
+          if (e?.data?.theme) applyGlobalTheme(e.data.theme);
+        };
+        new BroadcastChannel('autrobook_lang_sync').onmessage = (e) => {
+          if (e?.data?.code) applyGlobalLang(e.data.code);
+        };
+      }
+    } catch (_) {}
+  })();
+</script>
+
+<script>
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+  const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+  const LOCAL_STORAGE_KEY = 'autrobook_personal_details_v1';
+
+  let supabaseClient = null;
+  try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+  } catch (e) {
+    console.warn('Supabase init failed:', e);
+  }
+
+  let state = {
+    userId: null,
+    accountKey: null,
+    name: '',
+    username: '',
+    email: '',
+    lastChanged: {
+      name: null,
+      username: null,
+      email: null
+    }
+  };
+
+  let activeField = null;
+
+  function showToast(msg) {
+    const box = document.getElementById('toastBox');
+    if (!box) return;
+    box.textContent = msg;
+    box.classList.add('show');
+    clearTimeout(window._pdToastTimer);
+    window._pdToastTimer = setTimeout(() => {
+      box.classList.remove('show');
+    }, 2400);
+  }
+
+  function getOrCreateAccountKey() {
+    try {
+      let key = localStorage.getItem('autro_account_client_id');
+      if (!key) {
+        key = 'autro_' + Math.random().toString(36).substring(2, 12);
+        localStorage.setItem('autro_account_client_id', key);
+      }
+      return key;
+    } catch (_) {
+      return 'autro_default_user';
+    }
+  }
+
+  function getCooldownInfo(field) {
+    const iso = state.lastChanged && state.lastChanged[field];
+    if (!iso) return { locked: false, daysLeft: 0 };
+    const lastTime = new Date(iso).getTime();
+    if (Number.isNaN(lastTime)) return { locked: false, daysLeft: 0 };
+    const elapsed = Date.now() - lastTime;
+    if (elapsed < ONE_MONTH_MS) {
+      const daysLeft = Math.max(1, Math.ceil((ONE_MONTH_MS - elapsed) / (24 * 60 * 60 * 1000)));
+      return { locked: true, daysLeft };
+    }
+    return { locked: false, daysLeft: 0 };
+  }
+
+  function renderDetails() {
+    const fields = ['name', 'username', 'email'];
+    const placeholders = {
+      name: 'Not set',
+      username: 'Not set',
+      email: 'Not set'
+    };
+
+    fields.forEach((f) => {
+      const valEl = document.getElementById(`val-${f}`);
+      const noteEl = document.getElementById(`note-${f}`);
+      const actionEl = document.getElementById(`action-${f}`);
+      const rowEl = document.getElementById(`row-${f}`);
+
+      if (valEl) {
+        valEl.textContent = state[f] && state[f].trim() ? state[f].trim() : placeholders[f];
+      }
+
+      const cd = getCooldownInfo(f);
+      if (cd.locked) {
+        if (noteEl) {
+          noteEl.textContent = `Monthly limit reached. Can change again in ${cd.daysLeft} day(s).`;
+          noteEl.classList.add('locked-text');
+        }
+        if (actionEl) actionEl.textContent = 'Locked';
+        if (rowEl) rowEl.classList.add('locked');
+      } else {
+        if (noteEl) {
+          noteEl.textContent = 'Editable once every 30 days';
+          noteEl.classList.remove('locked-text');
+        }
+        if (actionEl) actionEl.textContent = 'Edit';
+        if (rowEl) rowEl.classList.remove('locked');
+      }
+    });
+  }
+
+  function saveLocalCache() {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+        name: state.name,
+        username: state.username,
+        email: state.email,
+        lastChanged: state.lastChanged
+      }));
+
+      const existingProfile = JSON.parse(localStorage.getItem('autro_account_profile') || '{}');
+      localStorage.setItem('autro_account_profile', JSON.stringify({
+        ...existingProfile,
+        full_name: state.name,
+        username: state.username,
+        email: state.email
+      }));
+    } catch (_) {}
+  }
+
+  function loadLocalCache() {
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        state.name = parsed.name || state.name;
+        state.username = parsed.username || state.username;
+        state.email = parsed.email || state.email;
+        if (parsed.lastChanged) {
+          state.lastChanged = {
+            name: parsed.lastChanged.name || null,
+            username: parsed.lastChanged.username || null,
+            email: parsed.lastChanged.email || null
+          };
+        }
+      }
+      if (!state.name) {
+        const p = JSON.parse(localStorage.getItem('autro_account_profile') || '{}');
+        state.name = p.full_name || p.name || '';
+        state.username = p.username || '';
+        state.email = p.email || '';
+      }
+    } catch (_) {}
+  }
+
+  async function loadFromSupabase() {
+    state.accountKey = getOrCreateAccountKey();
+    loadLocalCache();
+    renderDetails();
+
+    if (!supabaseClient) return;
+
+    try {
+      if (supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
+        const { data } = await supabaseClient.auth.getSession();
+        if (data && data.session && data.session.user) {
+          state.userId = data.session.user.id;
+          state.email = data.session.user.email || state.email;
+        }
+      }
+
+      if (state.userId) {
+        const { data: prof } = await supabaseClient
+          .from('profiles')
+          .select('full_name, username, email, name_changed_at, username_changed_at, email_changed_at')
+          .eq('id', state.userId)
+          .maybeSingle();
+
+        if (prof) {
+          if (prof.full_name) state.name = prof.full_name;
+          if (prof.username) state.username = prof.username;
+          if (prof.email) state.email = prof.email;
+          if (prof.name_changed_at) state.lastChanged.name = prof.name_changed_at;
+          if (prof.username_changed_at) state.lastChanged.username = prof.username_changed_at;
+          if (prof.email_changed_at) state.lastChanged.email = prof.email_changed_at;
+        }
+      }
+
+      const { data: acc } = await supabaseClient
+        .from('account_settings')
+        .select('full_name, username, email, name_changed_at, username_changed_at, email_changed_at')
+        .eq('account_key', state.accountKey)
+        .maybeSingle();
+
+      if (acc) {
+        if (acc.full_name) state.name = acc.full_name;
+        if (acc.username) state.username = acc.username;
+        if (acc.email) state.email = acc.email;
+        if (acc.name_changed_at) state.lastChanged.name = acc.name_changed_at;
+        if (acc.username_changed_at) state.lastChanged.username = acc.username_changed_at;
+        if (acc.email_changed_at) state.lastChanged.email = acc.email_changed_at;
+      }
+
+      saveLocalCache();
+      renderDetails();
+    } catch (err) {
+      console.warn('Supabase fetch warning:', err);
+    }
+  }
+
+  function openModalForField(field) {
+    const cd = getCooldownInfo(field);
+    if (cd.locked) {
+      showToast(`You can only change ${field} once a month (${cd.daysLeft} day(s) left).`);
+      return;
+    }
+
+    activeField = field;
+    const modal = document.getElementById('editModal');
+    const title = document.getElementById('modalTitle');
+    const sub = document.getElementById('modalSub');
+    const input = document.getElementById('modalInput');
+    const errEl = document.getElementById('modalError');
+
+    const labels = {
+      name: 'Name',
+      username: 'Username',
+      email: 'Email'
+    };
+
+    if (title) title.textContent = `Edit ${labels[field]}`;
+    if (sub) sub.textContent = `You can change your ${labels[field].toLowerCase()} once every 30 days.`;
+    if (input) {
+      input.type = field === 'email' ? 'email' : 'text';
+      input.value = state[field] || '';
+      input.placeholder = `Enter ${labels[field].toLowerCase()}`;
+    }
+    if (errEl) {
+      errEl.textContent = '';
+      errEl.classList.remove('visible');
+    }
+
+    if (modal) {
+      modal.classList.add('open');
+      setTimeout(() => input && input.focus(), 50);
+    }
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) modal.classList.remove('open');
+    activeField = null;
+  }
+
+  function validateFieldValue(field, rawVal) {
+    const val = (rawVal || '').trim();
+    if (!val) return 'This field cannot be empty.';
+    if (field === 'username') {
+      if (!/^[a-zA-Z0-9._]{3,30}$/.test(val)) {
+        return 'Username must be 3-30 characters (letters, numbers, dot, underscore).';
+      }
+    }
+    if (field === 'email') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+        return 'Please enter a valid email address.';
+      }
+    }
+    if (field === 'name' && val.length < 2) {
+      return 'Name must be at least 2 characters.';
+    }
+    return null;
+  }
+
+  async function saveFieldChange() {
+    if (!activeField) return;
+    const field = activeField;
+
+    const cd = getCooldownInfo(field);
+    if (cd.locked) {
+      showToast(`Monthly limit reached (${cd.daysLeft} day(s) left).`);
+      closeModal();
+      return;
+    }
+
+    const input = document.getElementById('modalInput');
+    const errEl = document.getElementById('modalError');
+    const saveBtn = document.getElementById('saveModalBtn');
+
+    const newVal = (input ? input.value : '').trim();
+    const validationErr = validateFieldValue(field, newVal);
+    if (validationErr) {
+      if (errEl) {
+        errEl.textContent = validationErr;
+        errEl.classList.add('visible');
+      }
+      return;
+    }
+
+    if (newVal === (state[field] || '').trim()) {
+      closeModal();
+      return;
+    }
+
+    if (saveBtn) saveBtn.disabled = true;
+
+    const nowIso = new Date().toISOString();
+    state[field] = newVal;
+    state.lastChanged[field] = nowIso;
+
+    saveLocalCache();
+    renderDetails();
+
+    if (supabaseClient) {
+      try {
+        const colMap = {
+          name: 'full_name',
+          username: 'username',
+          email: 'email'
+        };
+        const changedColMap = {
+          name: 'name_changed_at',
+          username: 'username_changed_at',
+          email: 'email_changed_at'
+        };
+
+        const payload = {
+          account_key: state.accountKey,
+          full_name: state.name,
+          username: state.username,
+          email: state.email,
+          [colMap[field]]: newVal,
+          [changedColMap[field]]: nowIso,
+          updated_at: nowIso
+        };
+
+        await supabaseClient
+          .from('account_settings')
+          .upsert(payload, { onConflict: 'account_key' });
+
+        if (state.userId) {
+          await supabaseClient
+            .from('profiles')
+            .update({
+              [colMap[field]]: newVal,
+              [changedColMap[field]]: nowIso
+            })
+            .eq('id', state.userId);
+        }
+      } catch (err) {
+        console.warn('Supabase save warning:', err);
+      }
+    }
+
+    if (saveBtn) saveBtn.disabled = false;
+    closeModal();
+    showToast('Saved! Can be changed again after 30 days.');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const backBtn = document.getElementById('backToSettingsBtn');
+    if (backBtn) {
+      backBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = 'settings.html';
+      });
+    }
+
+    ['name', 'username', 'email'].forEach((field) => {
+      const row = document.getElementById(`row-${field}`);
+      if (row) {
+        row.addEventListener('click', () => openModalForField(field));
+      }
+    });
+
+    const closeBtn = document.getElementById('closeModalBtn');
+    const cancelBtn = document.getElementById('cancelModalBtn');
+    const saveBtn = document.getElementById('saveModalBtn');
+    const modal = document.getElementById('editModal');
+    const input = document.getElementById('modalInput');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (saveBtn) saveBtn.addEventListener('click', saveFieldChange);
+
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+    }
+
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveFieldChange();
+        }
+      });
+    }
+
+    loadFromSupabase();
+  });
+</script>
+</body>
+  </html>
