@@ -312,7 +312,7 @@
       position: absolute;
       inset: 0;
       z-index: 2;
-      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.15) 55%, rgba(0, 0, 0, 0.6));
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.15) 55%, rgba(0, 0, 0, 0.65));
       pointer-events: none;
     }
 
@@ -361,7 +361,7 @@
       width: 114px;
       height: 174px;
       border-radius: 14px;
-      background: var(--bg-card);
+      background: linear-gradient(145deg, var(--accent-green-dark), #18191a);
       border: 1.5px solid var(--accent-mint);
       overflow: hidden;
       text-decoration: none;
@@ -382,6 +382,21 @@
       z-index: 1;
     }
 
+    .story-feed-center-text {
+      position: relative;
+      z-index: 3;
+      padding: 6px 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.3;
+      max-height: 76px;
+      overflow: hidden;
+      word-break: break-word;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    }
+
     .story-feed-author-badge {
       position: relative;
       z-index: 3;
@@ -392,6 +407,7 @@
       border: 2px solid var(--accent-mint);
       overflow: hidden;
       background: var(--bg-pill);
+      color: #ffffff;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -412,7 +428,7 @@
       font-size: 12px;
       font-weight: 700;
       color: #ffffff;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -989,7 +1005,7 @@
     </div>
   </header>
 
-  <!-- PLUS MENU POPOVER: Post, Reels, Story, Note, Live -->
+  <!-- PLUS MENU POPOVER: Post, Reels (create-reels.html), Story, Note, Live -->
   <div id="plusMenuPopover" class="plus-menu-popover" role="menu">
     <a href="create-post.html" class="plus-menu-item" id="menuPostLink" role="menuitem">
       <span class="plus-menu-item-left"><i class="far fa-pen-to-square"></i><span>Post</span></span>
@@ -1109,8 +1125,10 @@
     const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
     const LIVEKIT_URL = 'wss://autrobook-aij9raun.livekit.cloud';
     const CREATE_POST_PAGE = 'create-post.html';
+    const CREATE_REELS_PAGE = 'create-reels.html';
     const PROFILE_PAGE = 'profile.html';
     const TWO_MONTHS_MS = 60 * 24 * 60 * 60 * 1000;
+    const STORY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
     const REACTIONS = ['❤️', '👍', '🥰', '😆', '😮', '😢', '😠'];
     const REPORT_REASONS = [
       'Spam or misleading promotion',
@@ -1227,6 +1245,20 @@
       if (diffHr < 24) return `${diffHr}h`;
       const diffDay = Math.floor(diffHr / 24);
       return `${diffDay}d`;
+    }
+
+    function isStoryExpired(st) {
+      if (!st) return true;
+      const now = Date.now();
+      if (st.expires_at) {
+        const expMs = new Date(st.expires_at).getTime();
+        if (Number.isFinite(expMs) && now >= expMs) return true;
+      }
+      if (st.created_at) {
+        const createdMs = new Date(st.created_at).getTime();
+        if (Number.isFinite(createdMs) && now - createdMs >= STORY_MAX_AGE_MS) return true;
+      }
+      return false;
     }
 
     function readLocalReactionState() {
@@ -1449,6 +1481,7 @@
     function openStoryViewer(storyObj) {
       try {
         sessionStorage.setItem('autrobook_active_story_card', JSON.stringify(storyObj));
+        localStorage.setItem('autrobook_active_story_card', JSON.stringify(storyObj));
       } catch (_) {}
       const idParam = storyObj?.id ? `?id=${encodeURIComponent(storyObj.id)}` : '';
       window.location.href = `story-card.html${idParam}`;
@@ -1460,8 +1493,13 @@
       container.innerHTML = '';
 
       feedStories.slice(0, 15).forEach(st => {
-        const mediaUrl = resolveStoryMediaUrl(st.media_url || st.image_url || '');
-        if (!mediaUrl && !st.caption && !st.title) return;
+        const firstItemUrl = Array.isArray(st.items) && st.items.length
+          ? (st.items[0]?.url || st.items[0]?.media_url || '')
+          : '';
+        const mediaUrl = resolveStoryMediaUrl(st.media_url || st.image_url || firstItemUrl || '');
+        const textLabel = String(st.caption || st.title || st.sticker || st.mention || st.author_name || 'Story').trim();
+
+        if (!mediaUrl && !textLabel) return;
 
         const card = document.createElement('a');
         card.href = `story-card.html?id=${encodeURIComponent(st.id || '')}`;
@@ -1472,7 +1510,7 @@
         };
 
         if (mediaUrl) {
-          const isVid = String(st.media_type || '').startsWith('video') || /\.(mp4|webm|mov)(\?|$)/i.test(mediaUrl);
+          const isVid = String(st.media_type || '').startsWith('video') || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl);
           if (isVid) {
             const vid = document.createElement('video');
             vid.className = 'story-feed-media';
@@ -1485,7 +1523,7 @@
             const img = document.createElement('img');
             img.className = 'story-feed-media';
             img.src = mediaUrl;
-            img.alt = st.title || st.caption || 'Story';
+            img.alt = textLabel;
             img.onerror = () => img.remove();
             card.appendChild(img);
           }
@@ -1510,9 +1548,16 @@
         }
         card.appendChild(badge);
 
+        if (!mediaUrl && textLabel) {
+          const centerText = document.createElement('div');
+          centerText.className = 'story-feed-center-text';
+          centerText.textContent = textLabel;
+          card.appendChild(centerText);
+        }
+
         const label = document.createElement('div');
         label.className = 'story-feed-title';
-        label.textContent = st.caption || st.title || st.author_name || 'Story';
+        label.textContent = textLabel || 'Story';
         card.appendChild(label);
 
         container.appendChild(card);
@@ -1522,27 +1567,54 @@
     async function loadFeedStories() {
       const storyMap = new Map();
 
+      const ingestStory = (item) => {
+        if (!item || typeof item !== 'object') return;
+        if (item.is_demo || item.demo || isStoryExpired(item)) return;
+
+        const firstItemUrl = Array.isArray(item.items) && item.items.length
+          ? (item.items[0]?.url || item.items[0]?.media_url || '')
+          : '';
+        const rawMedia = item.media_url || item.image_url || firstItemUrl || '';
+        const textVal = String(item.caption || item.title || item.sticker || item.mention || '').trim();
+        const sid = String(item.id || rawMedia || textVal || '').trim();
+        if (!sid) return;
+        if (!rawMedia && !textVal && !item.created_at) return;
+
+        storyMap.set(sid, {
+          id: sid,
+          user_id: item.user_id || activeUser?.id || '',
+          author_name: item.author_name || activeProfileName || 'Autrobook User',
+          author_avatar: item.author_avatar || activeAvatarUrl || '',
+          media_url: rawMedia,
+          media_type: item.media_type || (Array.isArray(item.items) && item.items[0]?.type) || 'image',
+          items: Array.isArray(item.items) ? item.items : [],
+          title: item.title || '',
+          caption: item.caption || '',
+          sticker: item.sticker || '',
+          mention: item.mention || '',
+          text_position: item.text_position || 'center',
+          filter: item.filter || 'none',
+          music: item.music || '',
+          music_url: item.music_url || '',
+          music_start_sec: Number(item.music_start_sec || 0),
+          audience: item.audience || 'Public',
+          created_at: item.created_at || new Date().toISOString(),
+          expires_at: item.expires_at || null
+        });
+      };
+
       ['autrobook_stories', 'autro_stories'].forEach(k => {
         try {
           const arr = JSON.parse(localStorage.getItem(k) || '[]');
-          if (Array.isArray(arr)) {
-            arr.forEach(item => {
-              if (item && !item.is_demo && !item.demo && (item.id || item.media_url || item.caption)) {
-                const sid = String(item.id || item.media_url);
-                storyMap.set(sid, {
-                  id: sid,
-                  user_id: item.user_id || activeUser?.id || '',
-                  author_name: item.author_name || activeProfileName || 'Autrobook User',
-                  author_avatar: item.author_avatar || activeAvatarUrl || '',
-                  media_url: item.media_url || item.image_url || '',
-                  media_type: item.media_type || 'image',
-                  title: item.title || '',
-                  caption: item.caption || item.title || '',
-                  audience: item.audience || 'Public',
-                  created_at: item.created_at || new Date().toISOString()
-                });
-              }
-            });
+          if (Array.isArray(arr)) arr.forEach(ingestStory);
+        } catch (_) {}
+      });
+
+      ['autrobook_active_story_card'].forEach(k => {
+        try {
+          const single = JSON.parse(localStorage.getItem(k) || 'null');
+          if (single && typeof single === 'object' && single.created_at) {
+            ingestStory(single);
           }
         } catch (_) {}
       });
@@ -1556,21 +1628,7 @@
             .limit(20);
 
           if (!error && Array.isArray(rows)) {
-            rows.forEach(r => {
-              const sid = String(r.id || r.media_url);
-              storyMap.set(sid, {
-                id: sid,
-                user_id: r.user_id || '',
-                author_name: r.author_name || activeProfileName || 'Autrobook User',
-                author_avatar: r.author_avatar || activeAvatarUrl || '',
-                media_url: r.media_url || r.image_url || '',
-                media_type: r.media_type || 'image',
-                title: r.title || r.caption || '',
-                caption: r.caption || r.title || '',
-                audience: r.audience || 'Public',
-                created_at: r.created_at || new Date().toISOString()
-              });
-            });
+            rows.forEach(ingestStory);
           }
         } catch (_) {}
       }
@@ -2901,7 +2959,11 @@
     plusPop.addEventListener('click', (e) => e.stopPropagation());
 
     document.getElementById('menuPostLink').addEventListener('click', () => setPlusMenuOpen(false));
-    document.getElementById('menuReelsLink').addEventListener('click', () => setPlusMenuOpen(false));
+    document.getElementById('menuReelsLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      setPlusMenuOpen(false);
+      window.location.href = CREATE_REELS_PAGE;
+    });
     document.getElementById('menuStoryLink').addEventListener('click', () => setPlusMenuOpen(false));
     document.getElementById('menuNoteLink').addEventListener('click', () => setPlusMenuOpen(false));
 
@@ -2929,7 +2991,11 @@
     });
 
     window.addEventListener('storage', (e) => {
-      if (e.key === 'autrobook_stories' || e.key === 'autro_stories') {
+      if (
+        e.key === 'autrobook_stories' ||
+        e.key === 'autro_stories' ||
+        e.key === 'autrobook_active_story_card'
+      ) {
         loadFeedStories();
       }
       if (e.key === 'autro_profile_avatar' || e.key === 'autro_profile_name') {
@@ -2991,6 +3057,7 @@
     setInterval(() => {
       if (!document.hidden) {
         loadHomeFeedPosts(false);
+        loadFeedStories();
       }
     }, 4000);
 
@@ -3027,4 +3094,4 @@
     });
   </script>
 </body>
-    </html>
+  </html>
