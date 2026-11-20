@@ -26,7 +26,7 @@ If anyone asks about the founder, owner, creator, or user's identity/background/
 
   const contents = [];
   if (Array.isArray(history)) {
-    for (const item of history) {
+    for (const item of history.slice(-4)) {
       if (!item || typeof item.text !== 'string') continue;
       contents.push({
         role: item.role === 'user' ? 'user' : 'model',
@@ -42,42 +42,64 @@ If anyone asks about the founder, owner, creator, or user's identity/background/
     });
   }
 
-  try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: systemInstruction }]
-          },
-          contents,
-          generationConfig: {
-            temperature: 0.5,
-            maxOutputTokens: 600
-          }
-        })
+  const models = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'];
+
+  for (const modelName of models) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            },
+            contents,
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 500
+            }
+          })
+        }
+      );
+
+      clearTimeout(timer);
+      const data = await geminiRes.json();
+
+      if (geminiRes.ok) {
+        const reply =
+          data?.candidates?.[0]?.content?.parts
+            ?.map((p) => p.text)
+            .filter(Boolean)
+            .join('')
+            .trim() || '';
+
+        if (reply) {
+          return res.status(200).json({ reply, model: modelName });
+        }
       }
-    );
 
-    const data = await geminiRes.json();
+      const errMsg = data?.error?.message || '';
+      const isOverloaded =
+        geminiRes.status === 429 ||
+        geminiRes.status === 503 ||
+        errMsg.toLowerCase().includes('high demand') ||
+        errMsg.toLowerCase().includes('overloaded');
 
-    if (!geminiRes.ok) {
-      return res.status(geminiRes.status).json({
-        error: data?.error?.message || 'Gemini API request failed.'
-      });
+      if (!isOverloaded && geminiRes.status !== 404) {
+        return res.status(geminiRes.status).json({ error: errMsg || 'Gemini API request failed.' });
+      }
+    } catch (_) {
+      // Try next model immediately
     }
-
-    const reply =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p) => p.text)
-        .filter(Boolean)
-        .join('')
-        .trim() || '';
-
-    return res.status(200).json({ reply });
-  } catch (err) {
-    return res.status(500).json({ error: err.message || 'Server error' });
   }
+
+  return res.status(503).json({
+    error: 'AI servers are busy right now. Please try again in a moment.'
+  });
 }
