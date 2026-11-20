@@ -425,6 +425,13 @@
       margin: 0 auto;
     }
 
+    .empty-feed {
+      text-align: center;
+      padding: 44px 18px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
     .fb-post {
       background: var(--bg-surface);
       border-bottom: 8px solid var(--bg-pill);
@@ -691,6 +698,7 @@
       line-height: 1.4;
       color: var(--text-primary);
       word-break: break-word;
+      white-space: pre-wrap;
     }
 
     .comment-actions {
@@ -1102,7 +1110,6 @@
     const LIVEKIT_URL = 'wss://autrobook-aij9raun.livekit.cloud';
     const CREATE_POST_PAGE = 'create-post.html';
     const PROFILE_PAGE = 'profile.html';
-    const NOTE_PAGE = 'note.html';
     const TWO_MONTHS_MS = 60 * 24 * 60 * 60 * 1000;
     const REACTIONS = ['❤️', '👍', '🥰', '😆', '😮', '😢', '😠'];
     const REPORT_REASONS = [
@@ -1138,6 +1145,7 @@
     let selectedReason = REPORT_REASONS[0];
     let audioCtx = null;
     let lastPostsSnapshot = '';
+    let ignoreNextDocumentClick = false;
 
     let mediaRecorder = null;
     let voiceChunks = [];
@@ -1159,7 +1167,7 @@
       try {
         localStorage.setItem(key, valueStr);
         return true;
-      } catch (err) {
+      } catch (_) {
         if (key === 'autro_instant_feed_posts') {
           try {
             const parsed = JSON.parse(valueStr);
@@ -1181,7 +1189,7 @@
               localStorage.setItem(key, JSON.stringify(slim));
               return true;
             }
-          } catch (_) {}
+          } catch (__) {}
         }
         return false;
       }
@@ -1222,7 +1230,11 @@
     }
 
     function readLocalReactionState() {
-      return JSON.parse(localStorage.getItem('autro_post_reactions_local') || '{}');
+      try {
+        return JSON.parse(localStorage.getItem('autro_post_reactions_local') || '{}');
+      } catch (_) {
+        return {};
+      }
     }
 
     function writeLocalReactionState(postId, data) {
@@ -1232,7 +1244,11 @@
     }
 
     function readSharedPostsSet() {
-      return JSON.parse(localStorage.getItem('autro_shared_posts_set') || '{}');
+      try {
+        return JSON.parse(localStorage.getItem('autro_shared_posts_set') || '{}');
+      } catch (_) {
+        return {};
+      }
     }
 
     function markPostSharedLocal(postId, countVal) {
@@ -1242,14 +1258,20 @@
     }
 
     function readLocalComments(postId) {
-      const all = JSON.parse(localStorage.getItem('autro_comments_store') || '{}');
-      return Array.isArray(all[postId]) ? all[postId] : [];
+      try {
+        const all = JSON.parse(localStorage.getItem('autro_comments_store') || '{}');
+        return Array.isArray(all[postId]) ? all[postId] : [];
+      } catch (_) {
+        return [];
+      }
     }
 
     function writeLocalComments(postId, arr) {
-      const all = JSON.parse(localStorage.getItem('autro_comments_store') || '{}');
-      all[postId] = arr;
-      safeStorageSet('autro_comments_store', JSON.stringify(all));
+      try {
+        const all = JSON.parse(localStorage.getItem('autro_comments_store') || '{}');
+        all[postId] = arr;
+        safeStorageSet('autro_comments_store', JSON.stringify(all));
+      } catch (_) {}
     }
 
     function resolveSavedAvatarUrl(raw) {
@@ -1680,6 +1702,7 @@
 
     function openReactionPopup(anchorEl, target) {
       activeReactionTarget = target;
+      ignoreNextDocumentClick = true;
       const popup = document.getElementById('reactionPopup');
       popup.innerHTML = '';
 
@@ -1765,6 +1788,7 @@
 
     function openShareMenu(anchorBtn, postObj) {
       activeSharePost = postObj;
+      ignoreNextDocumentClick = true;
       const menu = document.getElementById('shareMenu');
       const rect = anchorBtn.getBoundingClientRect();
       menu.classList.add('open');
@@ -1894,6 +1918,7 @@
 
     function openDotsMenu(anchorBtn, postId, commentObj) {
       activeCommentMenuData = { postId, comment: commentObj };
+      ignoreNextDocumentClick = true;
 
       const reportBtn = document.getElementById('reportCommentOption');
       const isOwnComment = Boolean(
@@ -1978,13 +2003,26 @@
       return Boolean(caption || media);
     }
 
+    function isUserTypingInFeed() {
+      const activeEl = document.activeElement;
+      if (!activeEl) return false;
+      return activeEl.classList.contains('text-pill-input');
+    }
+
     function renderFeedCards() {
       const container = document.getElementById('homeFeedList');
       container.innerHTML = '';
 
-      feedPosts.slice(0, 20).forEach(post => {
-        if (!hasMeaningfulPostContent(post)) return;
+      const visiblePosts = feedPosts.filter(hasMeaningfulPostContent).slice(0, 20);
+      if (!visiblePosts.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-feed';
+        empty.textContent = 'No posts yet. Tap "What\'s on your mind?" to create one.';
+        container.appendChild(empty);
+        return;
+      }
 
+      visiblePosts.forEach(post => {
         const comments = commentsByPost.get(post.id) || readLocalComments(post.id);
         commentsByPost.set(post.id, comments);
 
@@ -2369,7 +2407,27 @@
             cmt.replies.forEach(rep => {
               const rCard = document.createElement('div');
               rCard.className = 'reply-card';
-              rCard.innerHTML = `<div class="reply-head"><a href="${buildProfileHref()}" class="reply-author">${rep.author || 'Autrobook User'}</a><span class="reply-time fb-live-time" data-created-at="${rep.created_at || ''}">${formatLiveElapsed(rep.created_at)}</span></div><div>${rep.text}</div>`;
+
+              const rHead = document.createElement('div');
+              rHead.className = 'reply-head';
+
+              const rAuth = document.createElement('a');
+              rAuth.href = buildProfileHref();
+              rAuth.className = 'reply-author';
+              rAuth.textContent = rep.author || 'Autrobook User';
+
+              const rTime = document.createElement('span');
+              rTime.className = 'reply-time fb-live-time';
+              rTime.dataset.createdAt = rep.created_at || '';
+              rTime.textContent = formatLiveElapsed(rep.created_at);
+
+              const rBody = document.createElement('div');
+              rBody.textContent = rep.text || '';
+
+              rHead.appendChild(rAuth);
+              rHead.appendChild(rTime);
+              rCard.appendChild(rHead);
+              rCard.appendChild(rBody);
               repList.appendChild(rCard);
             });
             cRow.appendChild(repList);
@@ -2390,6 +2448,9 @@
     }
 
     async function loadHomeFeedPosts(forceRender = false) {
+      if (!forceRender && isUserTypingInFeed()) return;
+
+      const openCommentPostIds = new Set(feedPosts.filter(p => p._commentsOpen).map(p => p.id));
       const localReactions = readLocalReactionState();
       const sharedSet = readSharedPostsSet();
       const map = new Map();
@@ -2441,7 +2502,7 @@
                 created_at: r.created_at || new Date().toISOString(),
                 userReaction: locR?.emoji || null,
                 _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, r.id),
-                _commentsOpen: false
+                _commentsOpen: openCommentPostIds.has(r.id)
               };
               if (hasMeaningfulPostContent(normalized)) {
                 map.set(r.id, normalized);
@@ -2451,10 +2512,16 @@
         } catch (_) {}
       }
 
-      const q1 = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
-      const q2 = JSON.parse(localStorage.getItem('autro_post_cards') || '[]');
-      const singleNew = JSON.parse(localStorage.getItem('autro_new_post_created') || 'null');
-      const localList = [...(singleNew ? [singleNew] : []), ...q1, ...q2];
+      let q1 = [], q2 = [], singleNew = null;
+      try { q1 = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]'); } catch (_) {}
+      try { q2 = JSON.parse(localStorage.getItem('autro_post_cards') || '[]'); } catch (_) {}
+      try { singleNew = JSON.parse(localStorage.getItem('autro_new_post_created') || 'null'); } catch (_) {}
+
+      const localList = [
+        ...(singleNew ? [singleNew] : []),
+        ...(Array.isArray(q1) ? q1 : []),
+        ...(Array.isArray(q2) ? q2 : [])
+      ];
 
       localList.forEach(item => {
         if (item && (item.id || item.caption || item.content || item.media_url || item.image_url)) {
@@ -2481,7 +2548,7 @@
             created_at: item.posted_at || item.created_at || existing?.created_at || new Date().toISOString(),
             userReaction: locR?.emoji || existing?.userReaction || null,
             _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, pid),
-            _commentsOpen: existing?._commentsOpen || false
+            _commentsOpen: openCommentPostIds.has(pid) || existing?._commentsOpen || false
           };
 
           if (hasMeaningfulPostContent(normalized)) {
@@ -2541,36 +2608,21 @@
       const isVideo = String(file.type || '').startsWith('video') || /\.(mp4|webm|mov)$/i.test(file.name || '');
       const tempUrl = URL.createObjectURL(file);
 
-      const newPost = {
-        id: `local-${Date.now()}`,
-        user_id: activeUser?.id || '',
-        author_name: activeProfileName || 'Autrobook User',
-        author_avatar: activeAvatarUrl || '',
-        caption: '',
-        media_url: tempUrl,
-        is_video: isVideo,
-        reaction_count: 0,
-        comment_count: 0,
-        share_count: 0,
-        view_count: 1,
-        created_at: new Date().toISOString()
-      };
-
       try {
-        const existing = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
-        existing.unshift(newPost);
-        safeStorageSet('autro_instant_feed_posts', JSON.stringify(existing));
         sessionStorage.setItem('autro_picked_gallery_media', JSON.stringify({
           name: file.name,
           type: file.type,
           size: file.size,
           url: tempUrl,
+          isVideo,
           pickedAt: Date.now()
         }));
       } catch (_) {}
 
-      loadHomeFeedPosts(true);
-      showToast(`Selected "${file.name}"`);
+      showToast(`Opening Create Post with "${file.name}"...`);
+      setTimeout(() => {
+        window.location.href = `${CREATE_POST_PAGE}?from=gallery`;
+      }, 220);
     }
 
     function openGalleryPicker() {
@@ -2593,19 +2645,21 @@
         input.focus();
         input.click();
       } catch (_) {
-        showToast('Could not open phone gallery in this preview');
+        window.location.href = CREATE_POST_PAGE;
       }
     }
 
     document.getElementById('shareToChatOption').addEventListener('click', () => {
       if (!activeSharePost) return;
       const postUrl = buildPostShareUrl(activeSharePost.id);
-      sessionStorage.setItem('autro_shared_post_payload', JSON.stringify({
-        postId: activeSharePost.id,
-        url: postUrl,
-        caption: activeSharePost.caption || '',
-        assets: ['autro-chat.html', 'autro-chat.css', 'autro-chat.js']
-      }));
+      try {
+        sessionStorage.setItem('autro_shared_post_payload', JSON.stringify({
+          postId: activeSharePost.id,
+          url: postUrl,
+          caption: activeSharePost.caption || '',
+          assets: ['autro-chat.html', 'autro-chat.css', 'autro-chat.js']
+        }));
+      } catch (_) {}
       closeShareMenu();
       window.location.href = `autro-chat.html?share=${encodeURIComponent(postUrl)}&assets=autro-chat.html,autro-chat.css,autro-chat.js`;
     });
@@ -2633,7 +2687,9 @@
 
     document.getElementById('saveCommentOption').addEventListener('click', async () => {
       if (!activeCommentMenuData) return;
-      const savedList = JSON.parse(localStorage.getItem('autro_saved_items') || '[]');
+      let savedList = [];
+      try { savedList = JSON.parse(localStorage.getItem('autro_saved_items') || '[]'); } catch (_) {}
+      if (!Array.isArray(savedList)) savedList = [];
       savedList.unshift({
         type: 'comment',
         postId: activeCommentMenuData.postId,
@@ -2669,6 +2725,7 @@
     function togglePlusSafe(e) {
       e.preventDefault();
       e.stopPropagation();
+      ignoreNextDocumentClick = true;
       const now = Date.now();
       if (now - plusToggleLock < 180) return;
       plusToggleLock = now;
@@ -2743,6 +2800,10 @@
     });
 
     document.addEventListener('click', (e) => {
+      if (ignoreNextDocumentClick) {
+        ignoreNextDocumentClick = false;
+        return;
+      }
       if (!e.target.closest('#plusMenuPopover') && !e.target.closest('#plusMenuBtn')) {
         setPlusMenuOpen(false);
       }
@@ -2769,7 +2830,7 @@
       if (!document.hidden) {
         loadHomeFeedPosts(false);
       }
-    }, 2500);
+    }, 4000);
 
     window.addEventListener('DOMContentLoaded', async () => {
       await loadSupabaseSessionProfile();
@@ -2795,4 +2856,4 @@
     });
   </script>
 </body>
-  </html>
+      </html>
