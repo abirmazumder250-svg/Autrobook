@@ -81,14 +81,114 @@ async function fetchSupabaseProfileFallback(userProfile = {}, profileName = '') 
   return merged;
 }
 
+async function askGroq(groqKey, systemInstruction, contents, message) {
+  if (!groqKey) return null;
+
+  const messages = [{ role: 'system', content: systemInstruction }];
+  if (Array.isArray(contents) && contents.length > 0) {
+    for (const item of contents.slice(-4)) {
+      const txt = item?.parts?.[0]?.text;
+      if (typeof txt === 'string' && txt.trim()) {
+        messages.push({
+          role: item.role === 'user' ? 'user' : 'assistant',
+          content: txt
+        });
+      }
+    }
+  } else {
+    messages.push({ role: 'user', content: message });
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6500);
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${groqKey}`
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        temperature: 0.35,
+        max_tokens: 550
+      })
+    });
+    clearTimeout(timer);
+
+    const data = await response.json();
+    if (response.ok) {
+      const reply = data?.choices?.[0]?.message?.content?.trim() || '';
+      if (reply) return { reply, model: 'groq-llama-3.3-70b' };
+    }
+  } catch (_) {
+    clearTimeout(timer);
+  }
+  return null;
+}
+
+async function askGemini(geminiKey, systemInstruction, contents) {
+  if (!geminiKey) return null;
+
+  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+
+  for (const modelName of models) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
+
+    try {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            },
+            contents,
+            generationConfig: {
+              temperature: 0.35,
+              maxOutputTokens: 550
+            }
+          })
+        }
+      );
+      clearTimeout(timer);
+
+      const data = await geminiRes.json();
+      if (geminiRes.ok) {
+        const reply =
+          data?.candidates?.[0]?.content?.parts
+            ?.map((p) => p.text)
+            .filter(Boolean)
+            .join('')
+            .trim() || '';
+        if (reply) return { reply, model: modelName };
+      }
+    } catch (_) {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Google API key is missing in Vercel Environment Variables.' });
+  const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
+  if (!groqKey && !geminiKey) {
+    return res.status(500).json({
+      error: 'GROQ_API_KEY or GEMINI_API_KEY is missing in Vercel Environment Variables.'
+    });
   }
 
   const { message, profileName = '', userProfile = {}, history = [] } = req.body || {};
@@ -150,71 +250,17 @@ Identity Rules — Follow Strictly:
     });
   }
 
-  const models = [
-    'gemini-3.8-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite'
-  ];
-
-  let lastErrorMessage = 'AI servers are busy right now. Please try again in a moment.';
-
-  for (const modelName of models) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 9000);
-
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstruction }]
-            },
-            contents,
-            generationConfig: {
-              temperature: 0.35,
-              maxOutputTokens: 500
-            }
-          })
-        }
-      );
-
-      clearTimeout(timer);
-      const data = await geminiRes.json();
-
-      if (geminiRes.ok) {
-        const reply =
-          data?.candidates?.[0]?.content?.parts
-            ?.map((p) => p.text)
-            .filter(Boolean)
-            .join('')
-            .trim() || '';
-
-        if (reply) {
-          return res.status(200).json({ reply, model: modelName });
-        }
-      }
-
-      const errMsg = data?.error?.message || '';
-      if (errMsg) lastErrorMessage = errMsg;
-
-      const isOverloaded =
-        geminiRes.status === 429 ||
-        geminiRes.status === 503 ||
-        errMsg.toLowerCase().includes('high demand') ||
-        errMsg.toLowerCase().includes('overloaded');
-
-      if (!isOverloaded && geminiRes.status !== 404) {
-        return res.status(geminiRes.status).json({ error: errMsg || 'Gemini API request failed.' });
-      }
-    } catch (_) {
-      // Try next model immediately
-    }
+  const groqResult = await askGroq(groqKey, systemInstruction, contents, message);
+  if (groqResult?.reply) {
+    return res.status(200).json(groqResult);
   }
 
-  return res.status(503).json({ error: lastErrorMessage });
-                                     }
+  const geminiResult = await askGemini(geminiKey, systemInstruction, contents);
+  if (geminiResult?.reply) {
+    return res.status(200).json(geminiResult);
+  }
+
+  return res.status(503).json({
+    error: 'AI servers are busy right now. Please try again in a moment.'
+  });
+                             }
