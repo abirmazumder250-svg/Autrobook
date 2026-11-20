@@ -726,14 +726,27 @@
         postObj._sharedOnce = true;
         postObj.share_count = Number(postObj.share_count || 0) + 1;
         markPostSharedLocal(postObj.id, postObj.share_count);
-
-        if (sb && postObj.id && !String(postObj.id).startsWith('local-')) {
-          try {
-            await sb.from('posts').update({ share_count: postObj.share_count }).eq('id', postObj.id);
-          } catch (_) {}
-        }
         renderPostsStream();
         showToast('Shared');
+
+        if (sb && activeUser && postObj.id && !String(postObj.id).startsWith('local-')) {
+          try {
+            await sb.from('post_shares').upsert(
+              { post_id: postObj.id, user_id: activeUser.id },
+              { onConflict: 'post_id,user_id' }
+            );
+            const { data: freshPost } = await sb
+              .from('posts')
+              .select('share_count')
+              .eq('id', postObj.id)
+              .maybeSingle();
+            if (freshPost && typeof freshPost.share_count === 'number') {
+              postObj.share_count = Math.max(Number(postObj.share_count || 0), freshPost.share_count);
+              markPostSharedLocal(postObj.id, postObj.share_count);
+              renderPostsStream();
+            }
+          } catch (_) {}
+        }
       });
     }
 
@@ -1485,23 +1498,36 @@
             });
           }
 
-          if (activeUser && map.size > 0) {
-            const { data: myReactions } = await sb
-              .from('post_reactions')
-              .select('post_id, reaction_emoji')
-              .eq('user_id', activeUser.id)
-              .in('post_id', Array.from(map.keys()));
+          if (map.size > 0) {
+            const ids = Array.from(map.keys());
+            const { data: shareRows } = await sb.from('post_shares').select('post_id').in('post_id', ids);
+            if (Array.isArray(shareRows)) {
+              const sMap = new Map();
+              shareRows.forEach(sr => sMap.set(sr.post_id, (sMap.get(sr.post_id) || 0) + 1));
+              sMap.forEach((cnt, pid) => {
+                const p = map.get(pid);
+                if (p) p.share_count = Math.max(Number(p.share_count || 0), cnt);
+              });
+            }
 
-            (myReactions || []).forEach(mr => {
-              const p = map.get(mr.post_id);
-              if (p) {
-                p.userReaction = mr.reaction_emoji;
-                writeLocalReactionState(p.id, {
-                  emoji: p.userReaction,
-                  count: p.reaction_count
-                });
-              }
-            });
+            if (activeUser) {
+              const { data: myReactions } = await sb
+                .from('post_reactions')
+                .select('post_id, reaction_emoji')
+                .eq('user_id', activeUser.id)
+                .in('post_id', ids);
+
+              (myReactions || []).forEach(mr => {
+                const p = map.get(mr.post_id);
+                if (p) {
+                  p.userReaction = mr.reaction_emoji;
+                  writeLocalReactionState(p.id, {
+                    emoji: p.userReaction,
+                    count: p.reaction_count
+                  });
+                }
+              });
+            }
           }
         } catch (_) {}
       }
