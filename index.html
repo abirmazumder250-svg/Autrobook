@@ -391,12 +391,52 @@
       word-break: break-word;
     }
 
+    .feed-post-caption.bold-text {
+      font-weight: 700;
+    }
+
     .feed-post-media {
       width: 100%;
       max-height: 360px;
       object-fit: cover;
       border-radius: 10px;
       display: block;
+    }
+
+    .feed-post-counts {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .feed-post-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .feed-action-btn {
+      background: var(--bg-pill);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .feed-action-btn.active {
+      background: var(--invert-bg);
+      color: var(--invert-fg);
     }
 
     .feed-post-footer {
@@ -604,6 +644,8 @@
     let activeProfileName = '';
     let activeAvatarUrl = '';
     let liveCount = Number(localStorage.getItem('autro_live_count') || '0');
+    let feedPosts = [];
+    let userReactionMap = new Map();
 
     function showToast(msg) {
       const el = document.getElementById('toastBanner');
@@ -625,7 +667,6 @@
       return '';
     }
 
-    // Only Supabase saved account avatar; if none exists, keep completely blank
     function renderSavedAvatarsOnly(avatarUrl) {
       const cleanUrl = resolveSavedAvatarUrl(avatarUrl || '');
       const sideLink = document.getElementById('storySideAvatarLink');
@@ -691,21 +732,18 @@
 
           const { data: prof } = await sb
             .from('profiles')
-            .select('full_name, name, avatar_url, avatar, photo_url')
+            .select('full_name, avatar_url')
             .eq('id', activeUser.id)
             .maybeSingle();
 
           activeProfileName =
             prof?.full_name ||
-            prof?.name ||
             activeUser.user_metadata?.full_name ||
             activeUser.user_metadata?.name ||
             '';
 
           activeAvatarUrl =
             prof?.avatar_url ||
-            prof?.avatar ||
-            prof?.photo_url ||
             activeUser.user_metadata?.avatar_url ||
             activeUser.user_metadata?.avatar ||
             activeUser.user_metadata?.picture ||
@@ -720,43 +758,157 @@
       refreshLiveLockBadge();
     }
 
-    function handleLiveMenuClick() {
+    async function loadLiveSessionCount() {
+      if (!sb) {
+        refreshLiveLockBadge();
+        return;
+      }
+      try {
+        const { count } = await sb
+          .from('live_sessions')
+          .select('*', { count: 'exact', head: true });
+        if (typeof count === 'number') {
+          liveCount = count;
+          localStorage.setItem('autro_live_count', String(liveCount));
+        }
+      } catch (_) {}
+      refreshLiveLockBadge();
+    }
+
+    async function handleLiveMenuClick() {
       document.getElementById('plusMenuPopover').classList.remove('open');
       if (!isAccountLiveUnlocked(activeUser)) {
         showToast('New accounts are locked from Live for 2 months. Auto-unlocks after 2 months.');
         return;
       }
-      liveCount += 1;
-      localStorage.setItem('autro_live_count', String(liveCount));
-      refreshLiveLockBadge();
+      if (!activeUser || !sb) {
+        showToast('Sign in required to start Live.');
+        return;
+      }
+
+      const roomName = `autro-live-${activeUser.id}-${Date.now()}`;
+      const { error } = await sb
+        .from('live_sessions')
+        .insert({
+          host_user_id: activeUser.id,
+          livekit_room: roomName,
+          status: 'live'
+        });
+
+      if (error) {
+        showToast(error.message || 'Could not start Live session.');
+        return;
+      }
+
+      await loadLiveSessionCount();
       showToast(`Live started (${LIVEKIT_URL}) · Live count: ${liveCount}`);
     }
 
-    function renderHomeFeedPosts() {
+    async function toggleSinglePostReaction(postObj) {
+      if (!activeUser || !sb) {
+        showToast('Sign in to react once per post.');
+        return;
+      }
+
+      const currentEmoji = userReactionMap.get(postObj.id) || null;
+      if (currentEmoji === '👍') {
+        const { error } = await sb
+          .from('post_reactions')
+          .delete()
+          .eq('post_id', postObj.id)
+          .eq('user_id', activeUser.id);
+        if (error) return showToast(error.message);
+        userReactionMap.delete(postObj.id);
+      } else {
+        const { error } = await sb
+          .from('post_reactions')
+          .upsert(
+            { post_id: postObj.id, user_id: activeUser.id, reaction_emoji: '👍' },
+            { onConflict: 'post_id,user_id' }
+          );
+        if (error) return showToast(error.message);
+        userReactionMap.set(postObj.id, '👍');
+      }
+
+      await loadHomeFeedPosts();
+    }
+
+    async function loadHomeFeedPosts() {
       const container = document.getElementById('homeFeedList');
-      const q1 = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
-      const q2 = JSON.parse(localStorage.getItem('autro_post_cards') || '[]');
-      const merged = new Map();
+      const map = new Map();
 
-      [...q1, ...q2].forEach(item => {
-        if (item && item.id) merged.set(item.id, item);
-      });
+      if (sb) {
+        try {
+          const { data: rows } = await sb
+            .from('posts')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
 
-      const list = Array.from(merged.values());
+          if (Array.isArray(rows)) {
+            rows.forEach(r => {
+              map.set(r.id, {
+                id: r.id,
+                author_name: r.author_name || '',
+                caption: r.caption || '',
+                is_bold: Boolean(r.is_bold),
+                media_url: r.media_url || '',
+                is_video: String(r.media_type || '').startsWith('video'),
+                reaction_count: Number(r.reaction_count || 0),
+                comment_count: Number(r.comment_count || 0),
+                created_at: r.created_at
+              });
+            });
+          }
+
+          if (activeUser && map.size > 0) {
+            const { data: myReacts } = await sb
+              .from('post_reactions')
+              .select('post_id, reaction_emoji')
+              .eq('user_id', activeUser.id)
+              .in('post_id', Array.from(map.keys()));
+
+            userReactionMap = new Map();
+            (myReacts || []).forEach(mr => userReactionMap.set(mr.post_id, mr.reaction_emoji));
+          }
+        } catch (_) {}
+      }
+
+      if (map.size === 0) {
+        const q1 = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
+        const q2 = JSON.parse(localStorage.getItem('autro_post_cards') || '[]');
+        [...q1, ...q2].forEach(item => {
+          if (item && item.id) {
+            map.set(item.id, {
+              id: item.id,
+              author_name: item.author_name || '',
+              caption: item.caption || '',
+              is_bold: Boolean(item.is_bold),
+              media_url: item.media_url || '',
+              is_video: Boolean(item.is_video),
+              reaction_count: Number(item.reaction_count ?? item.reactions ?? 0),
+              comment_count: Number(item.comment_count ?? item.comments ?? 0),
+              created_at: item.posted_at || item.created_at || ''
+            });
+          }
+        });
+      }
+
+      feedPosts = Array.from(map.values());
       container.innerHTML = '';
 
-      list.slice(0, 10).forEach(post => {
+      feedPosts.slice(0, 15).forEach(post => {
         const card = document.createElement('div');
         card.className = 'feed-post-card';
 
         const authorDiv = document.createElement('div');
         authorDiv.className = 'feed-post-author';
-        authorDiv.textContent = post.author_name || activeProfileName || '';
+        authorDiv.textContent = post.author_name || '';
         card.appendChild(authorDiv);
 
         if (post.caption) {
           const capDiv = document.createElement('div');
-          capDiv.className = 'feed-post-caption';
+          capDiv.className = `feed-post-caption ${post.is_bold ? 'bold-text' : ''}`;
           capDiv.textContent = post.caption;
           card.appendChild(capDiv);
         }
@@ -778,10 +930,39 @@
           }
         }
 
+        const countsDiv = document.createElement('div');
+        countsDiv.className = 'feed-post-counts';
+        const timeStr = post.created_at ? new Date(post.created_at).toLocaleString() : '';
+        countsDiv.innerHTML = `
+          <span>👍 ${post.reaction_count} · ${post.comment_count} comments</span>
+          <span>${timeStr}</span>
+        `;
+        card.appendChild(countsDiv);
+
+        const myEmoji = userReactionMap.get(post.id) || null;
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'feed-post-actions';
+
+        const likeBtn = document.createElement('button');
+        likeBtn.type = 'button';
+        likeBtn.className = `feed-action-btn ${myEmoji ? 'active' : ''}`;
+        likeBtn.innerHTML = `<i class="far fa-thumbs-up"></i><span>${myEmoji ? 'Liked' : 'Like'}</span>`;
+        likeBtn.onclick = () => toggleSinglePostReaction(post);
+
+        const cmtLink = document.createElement('a');
+        cmtLink.href = `post-card.html?post=${encodeURIComponent(post.id)}`;
+        cmtLink.className = 'feed-action-btn';
+        cmtLink.style.textDecoration = 'none';
+        cmtLink.innerHTML = `<i class="far fa-comment"></i><span>Comment</span>`;
+
+        actionsDiv.appendChild(likeBtn);
+        actionsDiv.appendChild(cmtLink);
+        card.appendChild(actionsDiv);
+
         const foot = document.createElement('div');
         foot.className = 'feed-post-footer';
         foot.innerHTML = `
-          <a href="post-card.html" class="open-card-link">Open in post-card.html</a>
+          <a href="post-card.html?post=${encodeURIComponent(post.id)}" class="open-card-link">Open in post-card.html</a>
           <a href="create-post.html" class="open-card-link">Create Post</a>
         `;
         card.appendChild(foot);
@@ -822,7 +1003,8 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       await loadSupabaseSessionProfile();
-      renderHomeFeedPosts();
+      await loadLiveSessionCount();
+      await loadHomeFeedPosts();
     });
   </script>
 </body>
