@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Profile — Autrobook</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="autrochat.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="autrochat.js" defer></script>
   <style>
     :root {
       color-scheme: light dark;
@@ -22,12 +24,33 @@
       --border: #d6ddd8;
       --btn-sec: #e8ece9;
       --btn-sec-hover: #d8dfd9;
+      --danger: #b91c1c;
+      --danger-soft: rgba(185, 28, 28, 0.14);
       --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
       --shadow-md: 0 8px 22px rgba(0, 0, 0, 0.14);
     }
 
+    :root[data-theme="dark"],
+    html.dark,
+    body.dark-theme {
+      color-scheme: dark;
+      --dark-green-soft: rgba(16, 185, 129, 0.18);
+      --bg: #000000;
+      --surface: #0e120f;
+      --card: #121713;
+      --text: #ffffff;
+      --muted: #b8c2bb;
+      --border: #232c26;
+      --btn-sec: #171e19;
+      --btn-sec-hover: #212b24;
+      --danger: #f87171;
+      --danger-soft: rgba(248, 113, 113, 0.18);
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.55);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.75);
+    }
+
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --dark-green-soft: rgba(16, 185, 129, 0.18);
         --bg: #000000;
         --surface: #0e120f;
@@ -37,6 +60,8 @@
         --border: #232c26;
         --btn-sec: #171e19;
         --btn-sec-hover: #212b24;
+        --danger: #f87171;
+        --danger-soft: rgba(248, 113, 113, 0.18);
         --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.55);
         --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.75);
       }
@@ -217,12 +242,37 @@
       padding: 12px 16px 6px;
     }
 
+    .profile-name-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 30px;
+    }
+
     .profile-name {
       font-size: 24px;
       font-weight: 800;
       color: var(--text);
-      min-height: 30px;
       letter-spacing: -0.3px;
+    }
+
+    .black-verify-tick {
+      display: none;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: #0b0d0c;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .black-verify-tick.active {
+      display: inline-flex;
     }
 
     .profile-username {
@@ -238,6 +288,24 @@
       font-weight: 600;
       color: var(--muted);
       margin-top: 6px;
+    }
+
+    .restriction-banner {
+      display: none;
+      margin: 10px 16px 4px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: var(--danger-soft);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 600;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .restriction-banner.active {
+      display: flex;
     }
 
     .action-row {
@@ -318,8 +386,8 @@
       color: var(--text);
     }
 
-    @media (prefers-color-scheme: light) {
-      .sub-tab.active { color: var(--dark-green); }
+    :root:not([data-theme="dark"]) .sub-tab.active {
+      color: var(--dark-green);
     }
 
     .section-block {
@@ -502,10 +570,11 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      font-size: 12px;
+      font-size: 11px;
       color: var(--muted);
       margin-top: 2px;
       font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
     }
 
     .post-more-btn {
@@ -537,7 +606,8 @@
       word-break: break-word;
     }
 
-    .post-card-img {
+    .post-card-img,
+    .post-card-video {
       width: 100%;
       max-height: 460px;
       object-fit: cover;
@@ -562,6 +632,7 @@
       gap: 6px;
       font-weight: 600;
       color: var(--text);
+      font-variant-numeric: tabular-nums;
     }
 
     .post-stats-right {
@@ -611,6 +682,7 @@
       display: none;
       flex-direction: column;
       gap: 10px;
+      position: relative;
     }
 
     .comments-panel.open { display: flex; }
@@ -619,10 +691,13 @@
       display: flex;
       gap: 8px;
       align-items: center;
+      flex-wrap: wrap;
+      position: relative;
     }
 
     .text-pill-input {
       flex: 1;
+      min-width: 140px;
       background: var(--surface);
       color: var(--text);
       border: 1px solid var(--border);
@@ -633,6 +708,86 @@
     }
 
     .text-pill-input::placeholder { color: var(--muted); }
+
+    .mention-picker-box {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+      max-height: 210px;
+      overflow-y: auto;
+      box-shadow: var(--shadow-md);
+    }
+
+    .mention-picker-box.open {
+      display: flex;
+    }
+
+    .mention-picker-header {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 2px 8px 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mention-friend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      padding: 7px 10px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .mention-friend-item:hover {
+      background: var(--dark-green-soft);
+    }
+
+    .mention-friend-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .mention-friend-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--dark-green);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .mention-handle-tag {
+      font-size: 11.5px;
+      color: var(--accent-mint);
+      font-weight: 700;
+    }
+
+    .mention-highlight {
+      color: var(--accent-mint);
+      font-weight: 700;
+    }
 
     .pill-btn {
       background: var(--btn-sec);
@@ -652,6 +807,15 @@
     .pill-btn.solid {
       background: var(--dark-green);
       color: #ffffff;
+    }
+
+    .comment-attach-preview {
+      max-width: 180px;
+      max-height: 120px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      display: block;
     }
 
     .comment-row {
@@ -688,7 +852,7 @@
     .comment-author:hover { text-decoration: underline; }
 
     .comment-time {
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--muted);
       font-variant-numeric: tabular-nums;
     }
@@ -806,42 +970,69 @@
     }
 
     .share-menu,
-    .dots-menu {
+    .dots-menu,
+    .post-dots-menu {
       position: fixed;
       z-index: 260;
       background: var(--card);
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 5px;
+      border-radius: 12px;
+      padding: 6px;
       display: none;
       flex-direction: column;
       gap: 3px;
-      min-width: 150px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      min-width: 220px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
     }
 
     .share-menu.open,
-    .dots-menu.open { display: flex; }
+    .dots-menu.open,
+    .post-dots-menu.open { display: flex; }
 
     .share-menu-btn,
-    .dots-menu-btn {
+    .dots-menu-btn,
+    .post-dots-btn {
       background: transparent;
       color: var(--text);
       border: none;
-      border-radius: 7px;
-      padding: 8px 10px;
+      border-radius: 8px;
+      padding: 9px 11px;
       text-align: left;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      display: inline-flex;
+      display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
+      text-decoration: none;
+      width: 100%;
     }
 
     .share-menu-btn:hover,
-    .dots-menu-btn:hover { background: var(--surface); }
+    .dots-menu-btn:hover,
+    .post-dots-btn:hover { background: var(--surface); }
+
+    .menu-left-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .notif-badge-state {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--btn-sec);
+      color: var(--muted);
+    }
+
+    .notif-badge-state.on {
+      background: var(--dark-green);
+      color: #ffffff;
+    }
 
     .modal-backdrop {
       position: fixed;
@@ -887,6 +1078,270 @@
       color: #ffffff;
       font-weight: 700;
     }
+
+    .share-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 340;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .share-sheet-backdrop.open { display: flex; }
+
+    .share-sheet-card {
+      width: 100%;
+      max-width: 540px;
+      background: var(--card);
+      color: var(--text);
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
+      border: 1px solid var(--border);
+      padding: 10px 14px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+
+    .share-handle {
+      width: 38px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border);
+      margin: 0 auto 2px;
+    }
+
+    .share-composer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .share-composer-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .share-mini-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--btn-sec);
+      flex-shrink: 0;
+    }
+
+    .share-pill-select {
+      background: var(--btn-sec);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .share-say-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 15px;
+      padding: 4px 2px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .share-say-link:hover { color: var(--text); }
+
+    .share-composer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .share-icon-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .share-now-btn {
+      background: #1877f2;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .share-friends-strip {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding: 2px 2px;
+      scrollbar-width: none;
+    }
+
+    .share-friends-strip::-webkit-scrollbar { display: none; }
+
+    .share-friend-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 68px;
+      flex-shrink: 0;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 11.5px;
+      text-align: center;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+
+    .share-friend-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--muted);
+    }
+
+    .share-targets-strip {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding: 4px 2px;
+      scrollbar-width: none;
+    }
+
+    .share-targets-strip::-webkit-scrollbar { display: none; }
+
+    .share-target-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 72px;
+      flex-shrink: 0;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 11.5px;
+      text-align: center;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    .share-target-circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--btn-sec);
+      color: var(--text);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .share-target-circle.sys-a {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .dest-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      z-index: 360;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .dest-sheet-backdrop.open { display: flex; }
+
+    .dest-sheet-card {
+      width: 100%;
+      max-width: 540px;
+      background: var(--card);
+      color: var(--text);
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
+      border: 1px solid var(--border);
+      padding-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .dest-sheet-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dest-back-btn {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 6px;
+    }
+
+    .dest-sheet-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .dest-option-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dest-option-row:last-child { border-bottom: none; }
+    .dest-option-row:hover { background: var(--surface); }
+    .dest-option-row i { width: 22px; text-align: center; font-size: 17px; color: var(--muted); }
 
     .toast-pill {
       position: fixed;
@@ -1214,8 +1669,10 @@
 
     .nav-item.active { color: var(--dark-green); }
 
-    @media (prefers-color-scheme: dark) {
-      .nav-item.active { color: var(--accent-mint); }
+    :root[data-theme="dark"] .nav-item.active,
+    html.dark .nav-item.active,
+    body.dark-theme .nav-item.active {
+      color: var(--accent-mint);
     }
   </style>
 </head>
@@ -1258,9 +1715,19 @@
   </div>
 
   <div class="profile-meta">
-    <div class="profile-name" id="displayName"></div>
+    <div class="profile-name-row">
+      <div class="profile-name" id="displayName"></div>
+      <span id="blackVerifyTick" class="black-verify-tick" title="Verified Account">
+        <i class="fas fa-check"></i>
+      </span>
+    </div>
     <div class="profile-username" id="displayUsername"></div>
     <div class="friends-count"><span id="friendsCount">0</span> friends</div>
+  </div>
+
+  <div id="restrictionBanner" class="restriction-banner" role="alert">
+    <i class="fas fa-lock"></i>
+    <span id="restrictionBannerText">Your account is temporarily restricted from posting or commenting.</span>
   </div>
 
   <div class="action-row">
@@ -1342,34 +1809,152 @@
 
   <div id="reactionPopup" class="reaction-popup"></div>
 
-  <div id="shareMenu" class="share-menu">
-    <button type="button" class="share-menu-btn" id="shareToChatOption">
-      <i class="fas fa-share"></i>
-      <span>Share</span>
+  <!-- Post Three-Dot Menu -->
+  <div id="postDotsMenu" class="post-dots-menu">
+    <button type="button" class="post-dots-btn" id="postDotsSaveBtn">
+      <span class="menu-left-group"><i class="far fa-bookmark"></i><span>Save</span></span>
     </button>
-    <button type="button" class="share-menu-btn" id="copyPostLinkOption">
-      <i class="far fa-copy"></i>
-      <span>Copy link</span>
+    <button type="button" class="post-dots-btn" id="postDotsShareBtn">
+      <span class="menu-left-group"><i class="fas fa-share"></i><span>Share</span></span>
+    </button>
+    <button type="button" class="post-dots-btn" id="postDotsNotifBtn">
+      <span class="menu-left-group"><i class="far fa-bell"></i><span>Turn on notification for this post</span></span>
+      <span id="postDotsNotifBadge" class="notif-badge-state">OFF</span>
+    </button>
+    <button type="button" class="post-dots-btn" id="postDotsReportBtn">
+      <span class="menu-left-group"><i class="far fa-flag"></i><span>Report</span></span>
     </button>
   </div>
 
+  <!-- Share Action Menu -->
+  <div id="shareMenu" class="share-menu">
+    <button type="button" class="share-menu-btn" id="shareSaveOption">
+      <span class="menu-left-group"><i class="far fa-bookmark"></i><span>Save</span></span>
+    </button>
+    <button type="button" class="share-menu-btn" id="shareSendOption">
+      <span class="menu-left-group"><i class="fas fa-paper-plane"></i><span>Send</span></span>
+    </button>
+    <a href="autrochat.html" class="share-menu-btn" id="shareAutroChatOption">
+      <span class="menu-left-group"><i class="far fa-comment-dots"></i><span>AutroChat</span></span>
+    </a>
+  </div>
+
+  <!-- Share Sheet -->
+  <div id="shareSheetModal" class="share-sheet-backdrop">
+    <div class="share-sheet-card" onclick="event.stopPropagation()">
+      <div class="share-handle"></div>
+
+      <div class="share-composer-card">
+        <div class="share-composer-top">
+          <img id="shareSheetAvatar" class="share-mini-avatar" alt="Profile">
+          <div>
+            <div id="shareSheetAuthorName" style="font-size:14px;font-weight:700;"></div>
+            <div style="display:flex;gap:6px;margin-top:4px;">
+              <button type="button" id="shareFeedDestBtn" class="share-pill-select">
+                <span>Feed</span>
+                <i class="fas fa-caret-down"></i>
+              </button>
+              <button type="button" id="shareAudienceBtn" class="share-pill-select">
+                <i class="fas fa-globe-americas"></i>
+                <span id="shareAudienceLabel">Public</span>
+                <i class="fas fa-caret-down"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <a href="create-post.html" class="share-say-link">Say something...</a>
+
+        <div class="share-composer-bottom">
+          <div class="share-icon-row">
+            <i class="far fa-smile"></i>
+            <i class="fas fa-user-plus"></i>
+          </div>
+          <button type="button" id="shareNowBtn" class="share-now-btn">Share now</button>
+        </div>
+      </div>
+
+      <div id="shareFriendsStrip" class="share-friends-strip"></div>
+
+      <div class="share-targets-strip">
+        <a href="autrochat.html" id="shareAutroChatStripLink" class="share-target-btn">
+          <span class="share-target-circle"><i class="far fa-comment-dots"></i></span>
+          <span>AutroChat</span>
+        </a>
+
+        <a href="create-story.html" class="share-target-btn">
+          <span class="share-target-circle"><i class="fas fa-plus"></i></span>
+          <span>Your story</span>
+        </a>
+
+        <button type="button" id="shareSysABtn" class="share-target-btn">
+          <span class="share-target-circle sys-a">A</span>
+          <span>Text</span>
+        </button>
+
+        <a href="create-group-post.html" class="share-target-btn">
+          <span class="share-target-circle"><i class="fas fa-users"></i></span>
+          <span>Group</span>
+        </a>
+
+        <button type="button" id="shareCopyLinkBtn" class="share-target-btn">
+          <span class="share-target-circle"><i class="fas fa-link"></i></span>
+          <span>Copy link</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Select Destination Sheet -->
+  <div id="destSheetModal" class="dest-sheet-backdrop">
+    <div class="dest-sheet-card" onclick="event.stopPropagation()">
+      <div class="dest-sheet-header">
+        <button type="button" id="closeDestSheetBtn" class="dest-back-btn" aria-label="Back">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <span class="dest-sheet-title">Select destination</span>
+      </div>
+
+      <a href="create-post.html" class="dest-option-row">
+        <i class="far fa-window-maximize"></i>
+        <span>Share to Feed</span>
+      </a>
+
+      <a href="create-story.html" class="dest-option-row">
+        <i class="fas fa-plus-circle"></i>
+        <span>Your story</span>
+      </a>
+
+      <a href="tag-friends.html" class="dest-option-row">
+        <i class="fas fa-user-friends"></i>
+        <span>On a friend's profile</span>
+      </a>
+
+      <a href="create-group-post.html" class="dest-option-row">
+        <i class="fas fa-users"></i>
+        <span>In a group</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Comment Three-Dot Menu -->
   <div id="dotsMenu" class="dots-menu">
     <button type="button" class="dots-menu-btn" id="saveCommentOption">
-      <i class="far fa-bookmark"></i>
-      <span>Save</span>
+      <span class="menu-left-group"><i class="far fa-bookmark"></i><span>Save</span></span>
     </button>
     <button type="button" class="dots-menu-btn" id="reportCommentOption">
-      <i class="far fa-flag"></i>
-      <span>Report</span>
+      <span class="menu-left-group"><i class="far fa-flag"></i><span>Report</span></span>
     </button>
   </div>
 
+  <!-- Report Modal (10 Valid Reasons + Submit + Send to Email) -->
   <div id="reportModal" class="modal-backdrop">
     <div class="modal-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <b>Report Comment</b>
+        <b id="reportModalTitle">Report Content</b>
         <button type="button" class="pill-btn" id="closeReportBtn">Close</button>
       </div>
+      <div id="reportTargetPreview" style="font-size:12.5px;color:var(--muted);padding:6px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border);"></div>
       <div id="reportReasonsList" style="display:flex;flex-direction:column;gap:6px;"></div>
       <div class="composer-line" style="margin-top:6px;">
         <button type="button" class="pill-btn solid" id="submitReportBtn" style="flex:1;">Submit</button>
@@ -1469,7 +2054,11 @@
   <script>
     const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
-    const REACTIONS = ['❤️', '👍', '🥰', '😆', '😮', '😢', '😠'];
+    const REPORT_ENDPOINT = '/api/send-report';
+    const VER_META_KEY = 'autro_verification_meta_v3';
+    const VER_FLAG_KEY = 'autro_account_verified_v1';
+    const VERIFY_DELAY_MS = 24 * 60 * 60 * 1000;
+    const REACTIONS = ['❤️', '👍', '😆', '🥰', '😮', '😢', '🤭'];
     const REPORT_REASONS = [
       'Spam or misleading promotion',
       'Hate speech or discriminatory content',
@@ -1501,12 +2090,16 @@
 
     let renderedPostsModel = [];
     let commentsByPost = new Map();
+    let userFriendsList = [];
     let activeReactionTarget = null;
     let activeSharePost = null;
+    let activePostDotsTarget = null;
     let activeCommentMenuData = null;
+    let reportContext = null;
     let selectedReason = REPORT_REASONS[0];
     let audioCtx = null;
     let ignoreNextDocumentClick = false;
+    let currentRestriction = null;
 
     let mediaRecorder = null;
     let voiceChunks = [];
@@ -1515,6 +2108,9 @@
     let recordingPostId = null;
     let isRecording = false;
     let voiceTimer = null;
+
+    let pendingCommentMediaUrl = '';
+    let pendingCommentMediaType = '';
 
     const restyleFilters = [
       'none',
@@ -1530,7 +2126,201 @@
       el.textContent = msg;
       el.style.display = 'block';
       clearTimeout(window._profToast);
-      window._profToast = setTimeout(() => { el.style.display = 'none'; }, 2200);
+      window._profToast = setTimeout(() => { el.style.display = 'none'; }, 2300);
+    }
+
+    function formatCompactCount(val) {
+      const n = Math.max(0, Number(val || 0));
+      if (n >= 1000000) {
+        const m = (n / 1000000).toFixed(1).replace(/\.0$/, '');
+        return `${m}m`;
+      }
+      if (n >= 1000) {
+        const k = (n / 1000).toFixed(1).replace(/\.0$/, '');
+        return `${k}k`;
+      }
+      return String(n);
+    }
+
+    function getActorKey() {
+      if (activeUserId) return `uid:${activeUserId}`;
+      let anonKey = localStorage.getItem('autro_actor_id');
+      if (!anonKey) {
+        anonKey = `anon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem('autro_actor_id', anonKey);
+      }
+      return `anon:${anonKey}`;
+    }
+
+    function isOwnItem(itemUserId, itemAuthorName) {
+      if (activeUserId && itemUserId && String(activeUserId) === String(itemUserId)) {
+        return true;
+      }
+      if (activeAuthorName && itemAuthorName && activeAuthorName.trim().toLowerCase() === itemAuthorName.trim().toLowerCase()) {
+        return true;
+      }
+      if (viewedUserId && activeUserId && viewedUserId === activeUserId && !itemUserId) {
+        return true;
+      }
+      return false;
+    }
+
+    function readRestrictionState() {
+      try {
+        const raw = localStorage.getItem('autro_account_restriction');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.restrictedUntil) {
+            const untilMs = new Date(parsed.restrictedUntil).getTime();
+            if (untilMs > Date.now()) {
+              return parsed;
+            }
+          }
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    async function refreshRestrictionState(targetUid) {
+      let info = readRestrictionState();
+      const uidToCheck = targetUid || activeUserId;
+      if (sb && uidToCheck) {
+        try {
+          const { data } = await sb
+            .from('account_restrictions')
+            .select('restricted_until, reason, locked')
+            .eq('user_id', uidToCheck)
+            .order('restricted_until', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (data && data.restricted_until) {
+            const untilMs = new Date(data.restricted_until).getTime();
+            if (untilMs > Date.now()) {
+              info = {
+                restrictedUntil: data.restricted_until,
+                reason: data.reason || 'Account restricted from posting and commenting.',
+                locked: true
+              };
+              localStorage.setItem('autro_account_restriction', JSON.stringify(info));
+            }
+          }
+        } catch (_) {}
+      }
+
+      currentRestriction = info;
+      const banner = document.getElementById('restrictionBanner');
+      const bannerText = document.getElementById('restrictionBannerText');
+      if (banner && bannerText) {
+        if (currentRestriction && new Date(currentRestriction.restrictedUntil).getTime() > Date.now()) {
+          const formattedUntil = new Date(currentRestriction.restrictedUntil).toLocaleString([], {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          bannerText.textContent = `Account Locked: Posting & commenting restricted until ${formattedUntil}.`;
+          banner.classList.add('active');
+        } else {
+          currentRestriction = null;
+          banner.classList.remove('active');
+        }
+      }
+      return Boolean(currentRestriction);
+    }
+
+    function ensureNotRestricted(actionLabel) {
+      if (currentRestriction && new Date(currentRestriction.restrictedUntil).getTime() > Date.now()) {
+        const untilStr = new Date(currentRestriction.restrictedUntil).toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        showToast(`Locked: Cannot ${actionLabel} until ${untilStr}`);
+        return false;
+      }
+      return true;
+    }
+
+    function getPostNotifMap() {
+      try {
+        return JSON.parse(localStorage.getItem('autro_post_notifications') || '{}') || {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function setPostNotifState(postId, enabled) {
+      const map = getPostNotifMap();
+      map[postId] = Boolean(enabled);
+      localStorage.setItem('autro_post_notifications', JSON.stringify(map));
+    }
+
+    function isPostNotifEnabled(postId) {
+      const map = getPostNotifMap();
+      return Boolean(map[postId]);
+    }
+
+    async function evaluateBlackVerificationTick(profileRow) {
+      const tickEl = document.getElementById('blackVerifyTick');
+      if (!tickEl) return;
+
+      let showTick = false;
+      const now = Date.now();
+
+      try {
+        const rawMeta = localStorage.getItem(VER_META_KEY);
+        const flagVal = localStorage.getItem(VER_FLAG_KEY);
+        if (rawMeta) {
+          const meta = JSON.parse(rawMeta);
+          const allInfoOk = Boolean(
+            meta &&
+            meta.submitted &&
+            meta.digestShort &&
+            meta.fullName &&
+            meta.googleConnected &&
+            meta.fingerprintVerified &&
+            meta.livenessPassed &&
+            meta.matched &&
+            Number(meta.matchScore || 0) >= 65
+          );
+          const submittedAt = Number(meta?.lastSubmitAt || 0);
+          if (allInfoOk && flagVal === 'true' && submittedAt > 0 && (now - submittedAt) >= VERIFY_DELAY_MS) {
+            showTick = true;
+          }
+        }
+      } catch (_) {}
+
+      if (!showTick && sb && (viewedUserId || activeUserId)) {
+        const targetUid = viewedUserId || activeUserId;
+        try {
+          const { data } = await sb
+            .from('identity_verifications')
+            .select('status, google_connected, fingerprint_verified, liveness_passed, match_score, digest_short, created_at')
+            .eq('status', 'verified')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (data && data.status === 'verified' && data.google_connected && data.fingerprint_verified && data.liveness_passed && Number(data.match_score || 0) >= 65 && data.digest_short) {
+            const createdMs = new Date(data.created_at || 0).getTime();
+            if (createdMs > 0 && (now - createdMs) >= VERIFY_DELAY_MS && (!targetUid || targetUid === activeUserId)) {
+              showTick = true;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (!showTick && profileRow && profileRow.is_verified === true && profileRow.verified_at) {
+        const vMs = new Date(profileRow.verified_at).getTime();
+        if (vMs > 0 && (now - vMs) >= VERIFY_DELAY_MS) {
+          showTick = true;
+        }
+      }
+
+      tickEl.classList.toggle('active', showTick);
     }
 
     function playReactionSound() {
@@ -1541,30 +2331,52 @@
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(560, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.09);
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(620, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(980, audioCtx.currentTime + 0.11);
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
+        osc.stop(audioCtx.currentTime + 0.12);
       } catch (_) {}
     }
 
-    function formatLiveElapsed(createdAtStr) {
+    function formatPostDateTimeAndElapsed(createdAtStr) {
       if (!createdAtStr) return '0s';
-      const createdMs = new Date(createdAtStr).getTime();
-      if (Number.isNaN(createdMs)) return '0s';
-      const diffSec = Math.max(0, Math.floor((Date.now() - createdMs) / 1000));
+      const d = new Date(createdAtStr);
+      const ms = d.getTime();
+      if (Number.isNaN(ms)) return '0s';
+
+      const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+      let elapsed = `${diffSec}s`;
+      if (diffSec >= 86400) elapsed = `${Math.floor(diffSec / 86400)}d`;
+      else if (diffSec >= 3600) elapsed = `${Math.floor(diffSec / 3600)}h`;
+      else if (diffSec >= 60) elapsed = `${Math.floor(diffSec / 60)}m`;
+
+      const datePart = d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const timePart = d.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      return `${datePart} · ${timePart} (${elapsed})`;
+    }
+
+    function formatShortElapsed(createdAtStr) {
+      if (!createdAtStr) return '0s';
+      const ms = new Date(createdAtStr).getTime();
+      if (Number.isNaN(ms)) return '0s';
+      const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
       if (diffSec < 60) return `${diffSec}s`;
-      const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) return `${diffMin}m`;
-      const diffHr = Math.floor(diffMin / 60);
-      if (diffHr < 24) return `${diffHr}h`;
-      const diffDay = Math.floor(diffHr / 24);
-      return `${diffDay}d`;
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`;
+      if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
+      return `${Math.floor(diffSec / 86400)}d`;
     }
 
     function normalizeUsername(raw, name) {
@@ -1586,9 +2398,76 @@
       }[c]));
     }
 
+    function formatCommentHtml(text) {
+      const escaped = escapeHtml(text || '');
+      return escaped.replace(/(^|\s)(@[A-Za-z0-9_]+)/g, '$1<span class="mention-highlight">$2</span>');
+    }
+
     function buildProfileHref(userId) {
       if (userId) return `profile.html?user=${encodeURIComponent(userId)}`;
       return 'profile.html';
+    }
+
+    async function loadUserFriendsList(userId) {
+      const collected = [];
+      const seenIds = new Set();
+
+      const addFriend = (f) => {
+        if (!f) return;
+        const name = String(f.full_name || f.name || f.username || '').trim();
+        const id = String(f.id || f.friend_id || f.user_id || name).trim();
+        if (!name || seenIds.has(id.toLowerCase())) return;
+        seenIds.add(id.toLowerCase());
+        const handle = normalizeUsername(f.username, name) || ('@' + name.toLowerCase().replace(/[^a-z0-9_]+/g, '_'));
+        collected.push({
+          id: f.id || f.friend_id || id,
+          name,
+          handle,
+          avatar: String(f.avatar_url || f.avatar || '').trim()
+        });
+      };
+
+      try {
+        const cached = JSON.parse(localStorage.getItem('autro_friends_cache') || '[]');
+        if (Array.isArray(cached)) cached.forEach(addFriend);
+      } catch (_) {}
+
+      const uid = userId || activeUserId || viewedUserId;
+      if (sb && uid) {
+        try {
+          const { data: rows } = await sb
+            .from('friends')
+            .select('user_id, friend_id, status')
+            .eq('status', 'accepted')
+            .or(`user_id.eq.${uid},friend_id.eq.${uid}`);
+
+          if (Array.isArray(rows) && rows.length > 0) {
+            const otherIds = Array.from(new Set(rows.map(r => r.user_id === uid ? r.friend_id : r.user_id).filter(Boolean)));
+            if (otherIds.length > 0) {
+              const { data: profiles } = await sb
+                .from('profiles')
+                .select('id, full_name, username, avatar_url')
+                .in('id', otherIds);
+              if (Array.isArray(profiles)) profiles.forEach(addFriend);
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (collected.length > 0) {
+        userFriendsList = collected;
+        try {
+          localStorage.setItem('autro_friends_cache', JSON.stringify(collected));
+        } catch (_) {}
+      } else if (userFriendsList.length === 0) {
+        userFriendsList = [
+          { id: 'f-1', name: 'Rupayan Bhuiyan', handle: '@rupayan_bhuiyan', avatar: '' },
+          { id: 'f-2', name: 'Na Fiz Iqbal', handle: '@nafiz_iqbal', avatar: '' },
+          { id: 'f-3', name: 'Md Raihan Uddin', handle: '@raihan_uddin', avatar: '' },
+          { id: 'f-4', name: 'Riya', handle: '@riya', avatar: '' }
+        ];
+      }
+      return userFriendsList;
     }
 
     function readLocalReactionState() {
@@ -1766,6 +2645,10 @@
     }
 
     function handleFileSelected(event, target) {
+      if (!ensureNotRestricted('publish photo updates')) {
+        event.target.value = '';
+        return;
+      }
       const file = event?.target?.files?.[0];
       if (!file) return;
       const reader = new FileReader();
@@ -1839,7 +2722,25 @@
       });
     }
 
+    function prependInstantPostToProfile(newPostObj) {
+      const stored = readStoredProfile();
+      const existing = Array.isArray(stored.posts) ? stored.posts : [];
+      const updated = [newPostObj, ...existing.filter(p => p.id !== newPostObj.id)];
+      stored.posts = updated;
+      try {
+        localStorage.setItem('autrobook_user', JSON.stringify(stored));
+      } catch (_) {}
+      renderLivePosts(filterValidPosts(updated));
+      renderPhotos(
+        stored.avatar_url || stored.selfie_url || '',
+        stored.cover_url || '',
+        filterValidPosts(updated)
+      );
+    }
+
     async function savePreviewPhoto() {
+      if (!ensureNotRestricted('publish photo updates')) return;
+
       const saveBtn = document.getElementById('editorSaveBtn');
       if (saveBtn) saveBtn.disabled = true;
 
@@ -1861,6 +2762,8 @@
           document.getElementById('displayName')?.textContent ||
           ''
         ).trim();
+
+        let createdPostRow = null;
 
         if (sb && activeUserId) {
           const bucket = editorTarget === 'cover' ? 'covers' : 'avatars';
@@ -1897,15 +2800,21 @@
               : 'Updated profile picture';
             const postContent = caption || defaultPostText;
             try {
-              await sb.from('posts').insert({
-                user_id: activeUserId,
-                author_id: activeUserId,
-                author_name: currentName || null,
-                caption: postContent,
-                content: postContent,
-                media_url: finalUrl,
-                image_url: finalUrl
-              });
+              const { data: insPost } = await sb
+                .from('posts')
+                .insert({
+                  user_id: activeUserId,
+                  author_id: activeUserId,
+                  author_name: currentName || null,
+                  caption: postContent,
+                  content: postContent,
+                  media_url: finalUrl,
+                  image_url: finalUrl,
+                  privacy
+                })
+                .select('*')
+                .maybeSingle();
+              if (insPost) createdPostRow = insPost;
             } catch (postErr) {
               console.warn('Feed post insert error:', postErr);
             }
@@ -1917,24 +2826,43 @@
           current.cover_privacy = privacy;
           current.cover_temp_until = tempDuration;
           try { localStorage.setItem('autro_cover_url', finalUrl); } catch (e) {}
+          setImageIfPresent(document.getElementById('coverImg'), finalUrl);
         } else {
           current.avatar_url = finalUrl;
           current.avatar_privacy = privacy;
           current.avatar_temp_until = tempDuration;
           try { localStorage.setItem('autro_avatar_url', finalUrl); } catch (e) {}
+          setImageIfPresent(document.getElementById('avatarImg'), finalUrl);
+        }
+
+        if (shareToFeed) {
+          const defaultPostText = editorTarget === 'cover'
+            ? 'Updated cover photo'
+            : 'Updated profile picture';
+          const instantPost = createdPostRow || {
+            id: `local-${Date.now()}`,
+            user_id: activeUserId || viewedUserId || '',
+            author_id: activeUserId || viewedUserId || '',
+            author_name: currentName,
+            caption: caption || defaultPostText,
+            content: caption || defaultPostText,
+            media_url: finalUrl,
+            image_url: finalUrl,
+            created_at: new Date().toISOString(),
+            reaction_count: 0,
+            comment_count: 0,
+            share_count: 0,
+            view_count: 0
+          };
+          prependInstantPostToProfile(instantPost);
         }
 
         try {
           localStorage.setItem('autrobook_user', JSON.stringify(current));
         } catch (e) {}
 
-        if (sb && (viewedUserId || activeUserId)) {
-          await refreshLiveCounts(viewedUserId || activeUserId);
-        } else {
-          applyProfileData(current);
-        }
         closePreviewEditor();
-        showToast('Saved to Supabase');
+        showToast('Saved & posted');
       } finally {
         if (saveBtn) saveBtn.disabled = false;
       }
@@ -1966,7 +2894,11 @@
 
     function getPostImageUrl(post) {
       if (!post) return '';
-      return String(post.media_url || post.image_url || '').trim();
+      return String(post.media_url || post.image_url || post.video_url || '').trim();
+    }
+
+    function isVideoUrl(url) {
+      return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(String(url || ''));
     }
 
     function getPostText(post) {
@@ -1985,7 +2917,7 @@
       if (Array.isArray(posts)) {
         posts.forEach(p => {
           const mediaSrc = getPostImageUrl(p);
-          if (mediaSrc) {
+          if (mediaSrc && !isVideoUrl(mediaSrc)) {
             photos.push({ type: 'avatar', src: mediaSrc });
           }
         });
@@ -2016,6 +2948,8 @@
 
     async function applyReaction(target, emoji) {
       if (!target) return;
+      const actor = getActorKey();
+      playReactionSound();
 
       if (target.type === 'post') {
         const post = renderedPostsModel.find(p => p.id === target.postId);
@@ -2024,7 +2958,11 @@
         if (post.userReaction === emoji) {
           post.userReaction = null;
           post.reaction_count = Math.max(0, Number(post.reaction_count || 0) - 1);
-          writeLocalReactionState(post.id, { emoji: null, count: post.reaction_count });
+          writeLocalReactionState(post.id, {
+            emoji: null,
+            count: post.reaction_count,
+            reactedByActor: false
+          });
           if (activeUserId && sb && !String(post.id).startsWith('local-')) {
             await sb.from('post_reactions').delete().eq('post_id', post.id).eq('user_id', activeUserId);
           }
@@ -2034,11 +2972,17 @@
           return;
         }
 
-        if (!post.userReaction) {
+        if (!post.userReaction && !post._reactedByActor) {
           post.reaction_count = Number(post.reaction_count || 0) + 1;
         }
         post.userReaction = emoji;
-        writeLocalReactionState(post.id, { emoji: post.userReaction, count: post.reaction_count });
+        post._reactedByActor = true;
+        writeLocalReactionState(post.id, {
+          emoji: post.userReaction,
+          count: post.reaction_count,
+          reactedByActor: true,
+          actor
+        });
 
         if (activeUserId && sb && !String(post.id).startsWith('local-')) {
           await sb.from('post_reactions').upsert(
@@ -2063,10 +3007,22 @@
           return;
         }
 
-        if (!cmt.userReaction) {
+        if (cmt.disliked) {
+          cmt.disliked = false;
+          cmt.dislike_count = Math.max(0, Number(cmt.dislike_count || 0) - 1);
+          cmt.userReaction = null;
+          commentsByPost.set(target.postId, list);
+          writeLocalComments(target.postId, list);
+          renderLivePosts(renderedPostsModel);
+          showToast('Reaction undone');
+          return;
+        }
+
+        if (!cmt.userReaction && !cmt._reactedByActor) {
           cmt.like_count = Number(cmt.like_count || 0) + 1;
         }
         cmt.userReaction = emoji;
+        cmt._reactedByActor = true;
         commentsByPost.set(target.postId, list);
         writeLocalComments(target.postId, list);
         renderLivePosts(renderedPostsModel);
@@ -2154,8 +3110,135 @@
       });
     }
 
+    function openPostDotsMenu(anchorBtn, postObj) {
+      activePostDotsTarget = postObj;
+      ignoreNextDocumentClick = true;
+
+      const ownPost = isOwnItem(postObj.user_id, postObj.author_name);
+      const reportBtn = document.getElementById('postDotsReportBtn');
+      if (reportBtn) {
+        reportBtn.style.display = ownPost ? 'none' : 'flex';
+      }
+
+      const notifEnabled = isPostNotifEnabled(postObj.id);
+      const notifBtn = document.getElementById('postDotsNotifBtn');
+      const notifBadge = document.getElementById('postDotsNotifBadge');
+      if (notifBtn) {
+        notifBtn.querySelector('.menu-left-group span').textContent = notifEnabled
+          ? 'Turn off notification for this post'
+          : 'Turn on notification for this post';
+      }
+      if (notifBadge) {
+        notifBadge.textContent = notifEnabled ? 'ON' : 'OFF';
+        notifBadge.classList.toggle('on', notifEnabled);
+      }
+
+      const menu = document.getElementById('postDotsMenu');
+      const rect = anchorBtn.getBoundingClientRect();
+      menu.classList.add('open');
+      const mRect = menu.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - mRect.width - 10, Math.max(10, rect.right - mRect.width));
+      const top = Math.min(window.innerHeight - mRect.height - 10, Math.max(10, rect.bottom + 4));
+      menu.style.left = `${left}px`;
+      menu.style.top = `${top}px`;
+    }
+
+    function closePostDotsMenu() {
+      document.getElementById('postDotsMenu').classList.remove('open');
+    }
+
+    function populateShareSheet(postObj) {
+      const stored = readStoredProfile();
+      const authorName = (
+        postObj?.author_name ||
+        document.getElementById('displayName')?.textContent ||
+        stored.full_name ||
+        stored.name ||
+        'Autrobook User'
+      ).trim();
+      const avatarSrc = (
+        document.getElementById('avatarImg')?.getAttribute('src') ||
+        stored.avatar_url ||
+        ''
+      ).trim();
+
+      const avEl = document.getElementById('shareSheetAvatar');
+      if (avEl) {
+        if (avatarSrc) avEl.src = avatarSrc;
+        else avEl.removeAttribute('src');
+      }
+      const nameEl = document.getElementById('shareSheetAuthorName');
+      if (nameEl) nameEl.textContent = authorName;
+
+      const chatHref = postObj
+        ? `autrochat.html?sharePost=${encodeURIComponent(postObj.id)}`
+        : 'autrochat.html';
+      const optChat = document.getElementById('shareAutroChatOption');
+      if (optChat) optChat.href = chatHref;
+      const stripChat = document.getElementById('shareAutroChatStripLink');
+      if (stripChat) stripChat.href = chatHref;
+
+      const friendsStrip = document.getElementById('shareFriendsStrip');
+      if (friendsStrip) {
+        const friendsList = userFriendsList.length ? userFriendsList : [
+          { name: 'Rupayan Bhuiyan', avatar: '' },
+          { name: 'Na Fiz Iqbal', avatar: '' },
+          { name: 'Md Raihan Uddin', avatar: '' },
+          { name: 'Riya', avatar: '' }
+        ];
+        friendsStrip.innerHTML = friendsList.slice(0, 8).map(f => {
+          const fName = escapeHtml(f.name || 'Friend');
+          const fAv = f.avatar ? `<img src="${escapeHtml(f.avatar)}" class="share-friend-avatar" alt="${fName}">` : `<span class="share-friend-avatar"><i class="fas fa-user"></i></span>`;
+          return `<a href="${chatHref}&to=${encodeURIComponent(f.name || 'Friend')}" class="share-friend-item">${fAv}<span>${fName}</span></a>`;
+        }).join('');
+      }
+    }
+
+    function openShareSheet(postObj) {
+      activeSharePost = postObj;
+      populateShareSheet(postObj);
+      document.getElementById('shareSheetModal').classList.add('open');
+    }
+
+    function closeShareSheet() {
+      document.getElementById('shareSheetModal').classList.remove('open');
+    }
+
+    function openDestSheet() {
+      document.getElementById('destSheetModal').classList.add('open');
+    }
+
+    function closeDestSheet() {
+      document.getElementById('destSheetModal').classList.remove('open');
+    }
+
+    async function registerSingleShare(postObj) {
+      if (!postObj) return;
+      const sharedSet = readSharedPostsSet();
+      if (postObj._sharedOnce || Object.prototype.hasOwnProperty.call(sharedSet, postObj.id)) {
+        showToast('Already shared');
+        return;
+      }
+      postObj._sharedOnce = true;
+      postObj.share_count = Number(postObj.share_count || 0) + 1;
+      markPostSharedLocal(postObj.id, postObj.share_count);
+      renderLivePosts(renderedPostsModel);
+      showToast('Shared');
+
+      if (sb && activeUserId && postObj.id && !String(postObj.id).startsWith('local-')) {
+        try {
+          await sb.from('post_shares').upsert(
+            { post_id: postObj.id, user_id: activeUserId },
+            { onConflict: 'post_id,user_id' }
+          );
+          await sb.from('posts').update({ share_count: postObj.share_count }).eq('id', postObj.id);
+        } catch (_) {}
+      }
+    }
+
     function openShareMenu(anchorBtn, postObj) {
       activeSharePost = postObj;
+      populateShareSheet(postObj);
       ignoreNextDocumentClick = true;
       const menu = document.getElementById('shareMenu');
       const rect = anchorBtn.getBoundingClientRect();
@@ -2171,70 +3254,54 @@
       document.getElementById('shareMenu').classList.remove('open');
     }
 
-    function bindShareLongPress(btnEl, postObj) {
-      let pressTimer = null;
-      let wasLongPress = false;
-
-      const startPress = () => {
-        wasLongPress = false;
-        clearTimeout(pressTimer);
-        pressTimer = setTimeout(() => {
-          wasLongPress = true;
-          openShareMenu(btnEl, postObj);
-        }, 380);
-      };
-
-      const cancelPress = () => clearTimeout(pressTimer);
-
-      btnEl.addEventListener('pointerdown', startPress);
-      btnEl.addEventListener('pointerup', cancelPress);
-      btnEl.addEventListener('pointerleave', cancelPress);
-      btnEl.addEventListener('pointercancel', cancelPress);
-      btnEl.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        wasLongPress = true;
+    function bindShareAction(btnEl, postObj) {
+      btnEl.addEventListener('click', (e) => {
+        e.stopPropagation();
         openShareMenu(btnEl, postObj);
-      });
-
-      btnEl.addEventListener('click', async (e) => {
-        if (wasLongPress) {
-          e.preventDefault();
-          wasLongPress = false;
-          return;
-        }
-        const sharedSet = readSharedPostsSet();
-        if (postObj._sharedOnce || Object.prototype.hasOwnProperty.call(sharedSet, postObj.id)) {
-          showToast('Already shared');
-          return;
-        }
-        postObj._sharedOnce = true;
-        postObj.share_count = Number(postObj.share_count || 0) + 1;
-        markPostSharedLocal(postObj.id, postObj.share_count);
-        renderLivePosts(renderedPostsModel);
-        showToast('Shared');
-
-        if (sb && activeUserId && postObj.id && !String(postObj.id).startsWith('local-')) {
-          try {
-            await sb.from('post_shares').upsert(
-              { post_id: postObj.id, user_id: activeUserId },
-              { onConflict: 'post_id,user_id' }
-            );
-            const { data: freshPost } = await sb
-              .from('posts')
-              .select('share_count')
-              .eq('id', postObj.id)
-              .maybeSingle();
-            if (freshPost && typeof freshPost.share_count === 'number') {
-              postObj.share_count = Math.max(Number(postObj.share_count || 0), freshPost.share_count);
-              markPostSharedLocal(postObj.id, postObj.share_count);
-              renderLivePosts(renderedPostsModel);
-            }
-          } catch (_) {}
-        }
       });
     }
 
+    async function savePostToSavePage(postObj) {
+      if (!postObj) return;
+      const savedList = JSON.parse(localStorage.getItem('autro_saved_items') || '[]');
+      savedList.unshift({
+        type: 'post',
+        postId: postObj.id,
+        post: postObj,
+        savedAt: new Date().toISOString()
+      });
+      localStorage.setItem('autro_saved_items', JSON.stringify(savedList));
+
+      if (sb && activeUserId && !String(postObj.id).startsWith('local-')) {
+        try {
+          await sb.from('saved_items').insert({
+            user_id: activeUserId,
+            post_id: postObj.id
+          });
+        } catch (_) {}
+      }
+      window.location.href = 'save.html';
+    }
+
+    async function togglePostNotification(postObj) {
+      if (!postObj) return;
+      const nextState = !isPostNotifEnabled(postObj.id);
+      setPostNotifState(postObj.id, nextState);
+      playReactionSound();
+      showToast(nextState ? 'Notifications turned ON for this post' : 'Notifications turned OFF for this post');
+
+      if (sb && activeUserId && !String(postObj.id).startsWith('local-')) {
+        try {
+          await sb.from('post_notifications').upsert(
+            { post_id: postObj.id, user_id: activeUserId, enabled: nextState },
+            { onConflict: 'post_id,user_id' }
+          );
+        } catch (_) {}
+      }
+    }
+
     async function toggleVoiceRecord(postId, recordBtn, statusLabel, clearBtn) {
+      if (!ensureNotRestricted('record voice comment')) return;
       if (!isRecording) {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
           showToast('Voice recording is not supported on this browser.');
@@ -2259,7 +3326,7 @@
             recordBtn.textContent = '30s Voice';
             const blob = new Blob(voiceChunks, { type: 'audio/webm' });
             recordedVoiceUrl = URL.createObjectURL(blob);
-            statusLabel.textContent = `Voice ready (${recordedVoiceSec}s)`;
+            statusLabel.textContent = `Voice ready (${Math.min(30, recordedVoiceSec)}s)`;
             clearBtn.style.display = 'inline-block';
           };
 
@@ -2271,7 +3338,7 @@
 
           voiceTimer = setInterval(() => {
             recordedVoiceSec += 1;
-            statusLabel.textContent = `${recordedVoiceSec}s / 30s`;
+            statusLabel.textContent = `${Math.min(30, recordedVoiceSec)}s / 30s`;
             if (recordedVoiceSec >= 30 && mediaRecorder && mediaRecorder.state === 'recording') {
               mediaRecorder.stop();
             }
@@ -2289,12 +3356,9 @@
       ignoreNextDocumentClick = true;
 
       const reportBtn = document.getElementById('reportCommentOption');
-      const isOwnComment = Boolean(
-        (activeUserId && commentObj.user_id && commentObj.user_id === activeUserId) ||
-        (!commentObj.user_id && activeAuthorName && commentObj.author === activeAuthorName)
-      );
+      const ownComment = isOwnItem(commentObj.user_id, commentObj.author);
       if (reportBtn) {
-        reportBtn.style.display = isOwnComment ? 'none' : 'inline-flex';
+        reportBtn.style.display = ownComment ? 'none' : 'flex';
       }
 
       const menu = document.getElementById('dotsMenu');
@@ -2309,9 +3373,22 @@
       document.getElementById('dotsMenu').classList.remove('open');
     }
 
-    function openReportModal() {
+    function openReportModal(ctx) {
       closeDotsMenu();
+      closePostDotsMenu();
+      reportContext = ctx;
       selectedReason = REPORT_REASONS[0];
+
+      document.getElementById('reportModalTitle').textContent = ctx.kind === 'post'
+        ? 'Report Post'
+        : 'Report Comment';
+
+      const previewEl = document.getElementById('reportTargetPreview');
+      if (previewEl) {
+        const snippet = String(ctx.snippet || '').slice(0, 120);
+        previewEl.textContent = `Target: ${ctx.author || 'User'} — "${snippet || 'Media / Attachment'}"`;
+      }
+
       const box = document.getElementById('reportReasonsList');
       box.innerHTML = '';
 
@@ -2336,32 +3413,49 @@
     }
 
     async function submitReportAction(actionType) {
-      if (!activeCommentMenuData) return;
+      if (!reportContext) return;
       const payload = {
-        comment_id: activeCommentMenuData.comment.id,
-        post_id: activeCommentMenuData.postId,
+        kind: reportContext.kind,
+        post_id: reportContext.postId || null,
+        comment_id: reportContext.commentId || null,
+        target_user_id: reportContext.targetUserId || null,
+        target_author: reportContext.author || '',
+        content_snippet: reportContext.snippet || '',
+        reporter_id: activeUserId || getActorKey(),
         reason: selectedReason,
         action_taken: actionType,
         created_at: new Date().toISOString()
       };
 
-      const savedReports = JSON.parse(localStorage.getItem('autro_comment_reports') || '[]');
+      const savedReports = JSON.parse(localStorage.getItem('autro_reports_log') || '[]');
       savedReports.unshift(payload);
-      localStorage.setItem('autro_comment_reports', JSON.stringify(savedReports));
+      localStorage.setItem('autro_reports_log', JSON.stringify(savedReports));
 
-      if (sb && activeUserId && !String(payload.comment_id).startsWith('cmt-')) {
+      if (sb && !String(payload.comment_id || '').startsWith('cmt-')) {
         try {
-          await sb.from('comment_reports').insert({
+          await sb.from('content_reports').insert({
+            kind: payload.kind,
+            post_id: String(payload.post_id || '').startsWith('local-') ? null : payload.post_id,
             comment_id: payload.comment_id,
-            reporter_id: activeUserId,
+            target_user_id: payload.target_user_id,
+            reporter_id: activeUserId || null,
             reason: selectedReason,
-            action_taken: actionType
+            action_taken: actionType,
+            snippet: payload.content_snippet
           });
         } catch (_) {}
       }
 
+      try {
+        await fetch(REPORT_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (_) {}
+
       closeReportModal();
-      showToast(`Report ${actionType} sent`);
+      showToast(`${reportContext.kind === 'post' ? 'Post' : 'Comment'} report ${actionType.toLowerCase()}ed & sent to email`);
     }
 
     function normalizePostModel(rawPost, idx) {
@@ -2388,6 +3482,7 @@
         share_count: Math.max(baseShare, Number(sharedSet[id] || 0)),
         view_count: Number(rawPost.view_count ?? rawPost.views_count ?? 0),
         userReaction: locR?.emoji ?? prev?.userReaction ?? null,
+        _reactedByActor: Boolean(locR?.reactedByActor || prev?._reactedByActor),
         _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, id) || Boolean(prev?._sharedOnce),
         _commentsOpen: Boolean(prev?._commentsOpen)
       };
@@ -2443,20 +3538,20 @@
         const mediaSrc = post.media_url;
         const lowerText = rawText.toLowerCase();
 
-        let activityLabel = 'shared a post.';
+        let activityLabel = '';
         let captionText = rawText;
 
         if (lowerText === 'updated profile picture') {
-          activityLabel = 'updated profile picture.';
+          activityLabel = ' updated profile picture.';
           captionText = '';
         } else if (lowerText === 'updated cover photo') {
-          activityLabel = 'updated cover photo.';
+          activityLabel = ' updated cover photo.';
           captionText = '';
         } else if (lowerText.startsWith('updated profile picture')) {
-          activityLabel = 'updated profile picture.';
+          activityLabel = ' updated profile picture.';
           captionText = rawText.replace(/^updated profile picture[:\-\s]*/i, '').trim();
         } else if (lowerText.startsWith('updated cover photo')) {
-          activityLabel = 'updated cover photo.';
+          activityLabel = ' updated cover photo.';
           captionText = rawText.replace(/^updated cover photo[:\-\s]*/i, '').trim();
         }
 
@@ -2484,13 +3579,12 @@
         metaCol.className = 'post-author-meta';
         metaCol.innerHTML = `
           <div class="post-author-line">
-            <a href="${profileLink}" class="post-author-name">${escapeHtml(authorName)}</a>
-            <span class="post-activity-text">${escapeHtml(activityLabel)}</span>
+            <a href="${profileLink}" class="post-author-name">${escapeHtml(authorName)}</a>${activityLabel ? `<span class="post-activity-text">${escapeHtml(activityLabel)}</span>` : ''}
           </div>
           <div class="post-submeta">
-            <span class="fb-live-time" data-created-at="${escapeHtml(post.created_at)}">${formatLiveElapsed(post.created_at)}</span>
+            <span class="fb-post-datetime" data-created-at="${escapeHtml(post.created_at)}">${escapeHtml(formatPostDateTimeAndElapsed(post.created_at))}</span>
             <span>&middot;</span>
-            <i class="fas fa-globe-americas" style="font-size:11px;"></i>
+            <i class="fas fa-globe-americas" style="font-size:10px;"></i>
           </div>
         `;
 
@@ -2502,6 +3596,10 @@
         moreBtn.className = 'post-more-btn';
         moreBtn.title = 'More options';
         moreBtn.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
+        moreBtn.onclick = (e) => {
+          e.stopPropagation();
+          openPostDotsMenu(moreBtn, post);
+        };
 
         header.appendChild(authorWrap);
         header.appendChild(moreBtn);
@@ -2515,12 +3613,21 @@
         }
 
         if (mediaSrc) {
-          const imgEl = document.createElement('img');
-          imgEl.src = mediaSrc;
-          imgEl.alt = 'Post image';
-          imgEl.className = 'post-card-img';
-          imgEl.onclick = () => openPreviewEditor('avatar', mediaSrc);
-          article.appendChild(imgEl);
+          if (isVideoUrl(mediaSrc)) {
+            const vidEl = document.createElement('video');
+            vidEl.src = mediaSrc;
+            vidEl.controls = true;
+            vidEl.playsInline = true;
+            vidEl.className = 'post-card-video';
+            article.appendChild(vidEl);
+          } else {
+            const imgEl = document.createElement('img');
+            imgEl.src = mediaSrc;
+            imgEl.alt = 'Post image';
+            imgEl.className = 'post-card-img';
+            imgEl.onclick = () => openPreviewEditor('avatar', mediaSrc);
+            article.appendChild(imgEl);
+          }
         }
 
         const statsRow = document.createElement('div');
@@ -2528,14 +3635,14 @@
         statsRow.innerHTML = `
           <div class="post-reactions-left">
             <span>${post.userReaction || '👍'}</span>
-            <span>${Number(post.reaction_count || 0)}</span>
+            <span>${escapeHtml(formatCompactCount(post.reaction_count))}</span>
           </div>
           <div class="post-stats-right">
-            <span>${totalComments} comments</span>
+            <span>${escapeHtml(formatCompactCount(totalComments))} comments</span>
             <span>&middot;</span>
-            <span>${Number(post.share_count || 0)} shares</span>
+            <span>${escapeHtml(formatCompactCount(post.share_count))} shares</span>
             <span>&middot;</span>
-            <span>${Number(post.view_count || 0)} views</span>
+            <span>${escapeHtml(formatCompactCount(post.view_count))} views</span>
           </div>
         `;
         article.appendChild(statsRow);
@@ -2564,7 +3671,7 @@
         shareBtn.type = 'button';
         shareBtn.className = 'post-action-btn';
         shareBtn.innerHTML = `<i class="fas fa-share"></i><span>Share</span>`;
-        bindShareLongPress(shareBtn, post);
+        bindShareAction(shareBtn, post);
 
         actionsBar.appendChild(likeBtn);
         actionsBar.appendChild(cmtBtn);
@@ -2585,53 +3692,41 @@
         const commentInput = document.createElement('input');
         commentInput.type = 'text';
         commentInput.className = 'text-pill-input';
-        commentInput.placeholder = 'Write a comment...';
+        commentInput.placeholder = currentRestriction ? 'Account locked — commenting disabled' : 'Write a comment... (@friends to mention)';
+        commentInput.disabled = Boolean(currentRestriction);
+
+        const mentionBtn = document.createElement('button');
+        mentionBtn.type = 'button';
+        mentionBtn.className = 'pill-btn';
+        mentionBtn.textContent = '@friends';
+        mentionBtn.disabled = Boolean(currentRestriction);
 
         const sendBtn = document.createElement('button');
         sendBtn.type = 'button';
         sendBtn.className = 'pill-btn solid';
-        sendBtn.textContent = 'Send';
+        sendBtn.textContent = currentRestriction ? 'Locked' : 'Send';
+        sendBtn.disabled = Boolean(currentRestriction);
 
-        const line2 = document.createElement('div');
-        line2.className = 'composer-line';
+        const mentionPicker = document.createElement('div');
+        mentionPicker.className = 'mention-picker-box';
 
-        const voiceBtn = document.createElement('button');
-        voiceBtn.type = 'button';
-        voiceBtn.className = 'pill-btn';
-        voiceBtn.textContent = '30s Voice';
-
-        const voiceStatus = document.createElement('span');
-        voiceStatus.style.fontSize = '12px';
-        voiceStatus.style.color = 'var(--muted)';
-
-        const clearVoiceBtn = document.createElement('button');
-        clearVoiceBtn.type = 'button';
-        clearVoiceBtn.className = 'pill-btn';
-        clearVoiceBtn.textContent = 'Clear';
-        clearVoiceBtn.style.display = 'none';
-
-        voiceBtn.onclick = () => toggleVoiceRecord(post.id, voiceBtn, voiceStatus, clearVoiceBtn);
-        clearVoiceBtn.onclick = () => {
-          if (recordedVoiceUrl) URL.revokeObjectURL(recordedVoiceUrl);
-          recordedVoiceUrl = '';
-          recordedVoiceSec = 0;
-          voiceStatus.textContent = '';
-          clearVoiceBtn.style.display = 'none';
-        };
-
-        sendBtn.onclick = async () => {
-          const textVal = commentInput.value.trim();
+        const publishComment = async (overrideText) => {
+          if (!ensureNotRestricted('comment')) return;
+          const textVal = (typeof overrideText === 'string' ? overrideText : commentInput.value).trim();
           const hasVoice = recordingPostId === post.id && Boolean(recordedVoiceUrl);
-          if (!textVal && !hasVoice) return;
+          const hasMedia = Boolean(pendingCommentMediaUrl);
+          if (!textVal && !hasVoice && !hasMedia) return;
 
-          const cmtAuthor = activeAuthorName || profileName || '';
+          const cmtAuthor = activeAuthorName || profileName || 'User';
           const newComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             user_id: activeUserId || null,
             author: cmtAuthor,
             text: textVal,
+            mediaUrl: hasMedia ? pendingCommentMediaUrl : '',
+            mediaType: hasMedia ? pendingCommentMediaType : '',
             voiceUrl: hasVoice ? recordedVoiceUrl : '',
-            voiceSec: hasVoice ? recordedVoiceSec : 0,
+            voiceSec: hasVoice ? Math.min(30, recordedVoiceSec) : 0,
             created_at: new Date().toISOString(),
             like_count: 0,
             dislike_count: 0,
@@ -2643,7 +3738,7 @@
           const updated = [...comments, newComment];
           commentsByPost.set(post.id, updated);
           writeLocalComments(post.id, updated);
-          post.comment_count = Math.max(Number(post.comment_count || 0) + 1, updated.length);
+          post.comment_count = updated.length;
 
           if (sb && activeUserId && !String(post.id).startsWith('local-')) {
             try {
@@ -2653,9 +3748,10 @@
                   post_id: post.id,
                   user_id: activeUserId,
                   author_name: newComment.author || null,
-                  comment_text: newComment.text || (hasVoice ? 'Voice comment' : ''),
-                  voice_url: newComment.voiceUrl,
-                  voice_duration_sec: Math.min(30, newComment.voiceSec)
+                  comment_text: newComment.text || (hasVoice ? 'Voice comment' : 'Media comment'),
+                  media_url: newComment.mediaUrl || null,
+                  voice_url: newComment.voiceUrl || null,
+                  voice_duration_sec: newComment.voiceSec || 0
                 })
                 .select('id')
                 .maybeSingle();
@@ -2672,17 +3768,188 @@
             recordedVoiceSec = 0;
             recordingPostId = null;
           }
+          if (hasMedia) {
+            pendingCommentMediaUrl = '';
+            pendingCommentMediaType = '';
+          }
           commentInput.value = '';
+          mentionPicker.classList.remove('open');
           post._commentsOpen = true;
           renderLivePosts(renderedPostsModel);
         };
 
+        const renderMentionSuggestions = async (filterQuery) => {
+          if (currentRestriction) return;
+          const friends = await loadUserFriendsList(viewedUserId || activeUserId);
+          const q = String(filterQuery || '').replace(/^@+/, '').trim().toLowerCase();
+          const showAllFriends = !q || q === 'friend' || q === 'friends';
+          const matches = showAllFriends
+            ? friends
+            : friends.filter(f =>
+                f.name.toLowerCase().includes(q) ||
+                f.handle.toLowerCase().includes(q)
+              );
+
+          mentionPicker.innerHTML = `
+            <div class="mention-picker-header">
+              <span>Mention Friends (${matches.length})</span>
+              <button type="button" class="c-chip-btn" id="closeMentionPickerBtn">Close</button>
+            </div>
+          `;
+
+          if (!matches.length) {
+            const emptyRow = document.createElement('div');
+            emptyRow.style.padding = '8px 10px';
+            emptyRow.style.fontSize = '12.5px';
+            emptyRow.style.color = 'var(--muted)';
+            emptyRow.textContent = 'No matching friends found';
+            mentionPicker.appendChild(emptyRow);
+          } else {
+            matches.forEach(friend => {
+              const itemBtn = document.createElement('button');
+              itemBtn.type = 'button';
+              itemBtn.className = 'mention-friend-item';
+              const avHtml = friend.avatar
+                ? `<img src="${escapeHtml(friend.avatar)}" class="mention-friend-avatar" alt="${escapeHtml(friend.name)}">`
+                : `<span class="mention-friend-avatar"><i class="fas fa-user"></i></span>`;
+              itemBtn.innerHTML = `
+                <span class="mention-friend-left">
+                  ${avHtml}
+                  <span>${escapeHtml(friend.name)}</span>
+                </span>
+                <span class="mention-handle-tag">${escapeHtml(friend.handle)}</span>
+              `;
+              itemBtn.onclick = async () => {
+                const currentVal = commentInput.value || '';
+                const replaced = currentVal.replace(/@friends?\b|@[A-Za-z0-9_]*$/i, '').trimEnd();
+                const finalText = replaced ? `${replaced} ${friend.handle}` : friend.handle;
+                commentInput.value = finalText;
+                await publishComment(finalText);
+              };
+              mentionPicker.appendChild(itemBtn);
+            });
+          }
+
+          mentionPicker.querySelector('#closeMentionPickerBtn')?.addEventListener('click', () => {
+            mentionPicker.classList.remove('open');
+          });
+          mentionPicker.classList.add('open');
+        };
+
+        mentionBtn.onclick = async () => {
+          if (!ensureNotRestricted('mention friends')) return;
+          if (!commentInput.value.trim()) {
+            commentInput.value = '@friends ';
+          } else if (!/@friends?\b/i.test(commentInput.value)) {
+            commentInput.value = `${commentInput.value.trimEnd()} @friends `;
+          }
+          commentInput.focus();
+          await renderMentionSuggestions('friends');
+        };
+
+        commentInput.addEventListener('input', async () => {
+          const val = commentInput.value || '';
+          const match = val.match(/(?:^|\s)(@[A-Za-z0-9_]*)$/);
+          if (match) {
+            await renderMentionSuggestions(match[1]);
+          } else {
+            mentionPicker.classList.remove('open');
+          }
+        });
+
+        commentInput.addEventListener('keydown', async (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            await publishComment();
+          }
+        });
+
+        const line2 = document.createElement('div');
+        line2.className = 'composer-line';
+
+        const mediaFileInput = document.createElement('input');
+        mediaFileInput.type = 'file';
+        mediaFileInput.accept = 'image/*,video/*';
+        mediaFileInput.hidden = true;
+
+        const mediaAttachBtn = document.createElement('button');
+        mediaAttachBtn.type = 'button';
+        mediaAttachBtn.className = 'pill-btn';
+        mediaAttachBtn.innerHTML = '<i class="far fa-image"></i> Photo/Video';
+        mediaAttachBtn.disabled = Boolean(currentRestriction);
+
+        const mediaStatus = document.createElement('span');
+        mediaStatus.style.fontSize = '12px';
+        mediaStatus.style.color = 'var(--muted)';
+
+        const clearMediaBtn = document.createElement('button');
+        clearMediaBtn.type = 'button';
+        clearMediaBtn.className = 'pill-btn';
+        clearMediaBtn.textContent = 'Remove Media';
+        clearMediaBtn.style.display = 'none';
+
+        const voiceBtn = document.createElement('button');
+        voiceBtn.type = 'button';
+        voiceBtn.className = 'pill-btn';
+        voiceBtn.textContent = '30s Voice';
+        voiceBtn.disabled = Boolean(currentRestriction);
+
+        const voiceStatus = document.createElement('span');
+        voiceStatus.style.fontSize = '12px';
+        voiceStatus.style.color = 'var(--muted)';
+
+        const clearVoiceBtn = document.createElement('button');
+        clearVoiceBtn.type = 'button';
+        clearVoiceBtn.className = 'pill-btn';
+        clearVoiceBtn.textContent = 'Clear';
+        clearVoiceBtn.style.display = 'none';
+
+        mediaAttachBtn.onclick = () => {
+          if (!ensureNotRestricted('attach media')) return;
+          mediaFileInput.click();
+        };
+        mediaFileInput.onchange = (ev) => {
+          const f = ev.target.files?.[0];
+          if (!f) return;
+          const isVid = f.type.startsWith('video/') || isVideoUrl(f.name);
+          const urlObj = URL.createObjectURL(f);
+          pendingCommentMediaUrl = urlObj;
+          pendingCommentMediaType = isVid ? 'video' : 'image';
+          mediaStatus.textContent = `${isVid ? 'Video' : 'Photo'} ready`;
+          clearMediaBtn.style.display = 'inline-block';
+          ev.target.value = '';
+        };
+
+        clearMediaBtn.onclick = () => {
+          if (pendingCommentMediaUrl) URL.revokeObjectURL(pendingCommentMediaUrl);
+          pendingCommentMediaUrl = '';
+          pendingCommentMediaType = '';
+          mediaStatus.textContent = '';
+          clearMediaBtn.style.display = 'none';
+        };
+
+        voiceBtn.onclick = () => toggleVoiceRecord(post.id, voiceBtn, voiceStatus, clearVoiceBtn);
+        clearVoiceBtn.onclick = () => {
+          if (recordedVoiceUrl) URL.revokeObjectURL(recordedVoiceUrl);
+          recordedVoiceUrl = '';
+          recordedVoiceSec = 0;
+          voiceStatus.textContent = '';
+          clearVoiceBtn.style.display = 'none';
+        };
+
+        sendBtn.onclick = () => publishComment();
+
         line1.appendChild(commentInput);
+        line1.appendChild(mentionBtn);
         line1.appendChild(sendBtn);
+        line2.appendChild(mediaAttachBtn);
+        line2.appendChild(mediaStatus);
+        line2.appendChild(clearMediaBtn);
         line2.appendChild(voiceBtn);
         line2.appendChild(voiceStatus);
         line2.appendChild(clearVoiceBtn);
         composerBox.appendChild(line1);
+        composerBox.appendChild(mentionPicker);
         composerBox.appendChild(line2);
         commentsPanel.appendChild(composerBox);
 
@@ -2699,12 +3966,12 @@
           const cAuth = document.createElement('a');
           cAuth.href = buildProfileHref(cmt.user_id || '');
           cAuth.className = 'comment-author';
-          cAuth.textContent = cmt.author || '';
+          cAuth.textContent = cmt.author || 'User';
 
           const cTime = document.createElement('span');
           cTime.className = 'comment-time fb-live-time';
           cTime.dataset.createdAt = cmt.created_at || '';
-          cTime.textContent = formatLiveElapsed(cmt.created_at);
+          cTime.textContent = formatShortElapsed(cmt.created_at);
 
           cAuthorWrap.appendChild(cAuth);
           cAuthorWrap.appendChild(cTime);
@@ -2725,8 +3992,25 @@
           if (cmt.text) {
             const cBody = document.createElement('div');
             cBody.className = 'comment-body';
-            cBody.textContent = cmt.text;
+            cBody.innerHTML = formatCommentHtml(cmt.text);
             cRow.appendChild(cBody);
+          }
+
+          if (cmt.mediaUrl) {
+            if (cmt.mediaType === 'video' || isVideoUrl(cmt.mediaUrl)) {
+              const cVid = document.createElement('video');
+              cVid.controls = true;
+              cVid.playsInline = true;
+              cVid.src = cmt.mediaUrl;
+              cVid.className = 'comment-attach-preview';
+              cRow.appendChild(cVid);
+            } else {
+              const cImg = document.createElement('img');
+              cImg.src = cmt.mediaUrl;
+              cImg.alt = 'Comment attachment';
+              cImg.className = 'comment-attach-preview';
+              cRow.appendChild(cImg);
+            }
           }
 
           if (cmt.voiceUrl) {
@@ -2740,34 +4024,39 @@
           const cActions = document.createElement('div');
           cActions.className = 'comment-actions';
 
-          const cLikeBtn = document.createElement('button');
-          cLikeBtn.type = 'button';
-          cLikeBtn.className = `c-chip-btn ${cmt.userReaction ? 'active' : ''}`;
-          cLikeBtn.textContent = cmt.userReaction
-            ? `${cmt.userReaction} ${Number(cmt.like_count || 0)}`
-            : `👍 Like ${Number(cmt.like_count || 0)}`;
-          bindReactionButton(cLikeBtn, { type: 'comment', postId: post.id, commentId: cmt.id }, '👍');
-
-          const cDislikeBtn = document.createElement('button');
-          cDislikeBtn.type = 'button';
-          cDislikeBtn.className = `c-chip-btn ${cmt.disliked ? 'active' : ''}`;
-          cDislikeBtn.textContent = `👎 Dislike ${Number(cmt.dislike_count || 0)}`;
-          cDislikeBtn.onclick = () => {
-            cmt.disliked = !cmt.disliked;
-            cmt.dislike_count = Math.max(0, Number(cmt.dislike_count || 0) + (cmt.disliked ? 1 : -1));
-            commentsByPost.set(post.id, comments);
-            writeLocalComments(post.id, comments);
-            renderLivePosts(renderedPostsModel);
-          };
-
           const replyBtn = document.createElement('button');
           replyBtn.type = 'button';
           replyBtn.className = 'c-chip-btn';
           replyBtn.textContent = `Reply ${Array.isArray(cmt.replies) && cmt.replies.length ? `(${cmt.replies.length})` : ''}`.trim();
 
+          const cLikeBtn = document.createElement('button');
+          cLikeBtn.type = 'button';
+          cLikeBtn.className = `c-chip-btn ${cmt.userReaction ? 'active' : ''}`;
+          cLikeBtn.textContent = cmt.userReaction
+            ? `${cmt.userReaction} ${formatCompactCount(cmt.like_count)}`
+            : `👍 Like ${formatCompactCount(cmt.like_count)}`;
+          bindReactionButton(cLikeBtn, { type: 'comment', postId: post.id, commentId: cmt.id }, '👍');
+
+          const cDislikeBtn = document.createElement('button');
+          cDislikeBtn.type = 'button';
+          cDislikeBtn.className = `c-chip-btn ${cmt.disliked ? 'active' : ''}`;
+          cDislikeBtn.textContent = `👎 Dislike ${formatCompactCount(cmt.dislike_count)}`;
+          cDislikeBtn.onclick = () => {
+            if (cmt.userReaction) {
+              cmt.userReaction = null;
+              cmt.like_count = Math.max(0, Number(cmt.like_count || 0) - 1);
+            }
+            cmt.disliked = !cmt.disliked;
+            cmt.dislike_count = Math.max(0, Number(cmt.dislike_count || 0) + (cmt.disliked ? 1 : -1));
+            commentsByPost.set(post.id, comments);
+            writeLocalComments(post.id, comments);
+            renderLivePosts(renderedPostsModel);
+            if (!cmt.disliked) showToast('Reaction undone');
+          };
+
+          cActions.appendChild(replyBtn);
           cActions.appendChild(cLikeBtn);
           cActions.appendChild(cDislikeBtn);
-          cActions.appendChild(replyBtn);
           cRow.appendChild(cActions);
 
           const replyComposer = document.createElement('div');
@@ -2777,17 +4066,20 @@
           const replyInput = document.createElement('input');
           replyInput.type = 'text';
           replyInput.className = 'text-pill-input';
-          replyInput.placeholder = 'Write a reply...';
+          replyInput.placeholder = currentRestriction ? 'Account locked' : 'Write a reply...';
+          replyInput.disabled = Boolean(currentRestriction);
 
           const replySendBtn = document.createElement('button');
           replySendBtn.type = 'button';
           replySendBtn.className = 'pill-btn solid';
-          replySendBtn.textContent = 'Send';
+          replySendBtn.textContent = currentRestriction ? 'Locked' : 'Send';
+          replySendBtn.disabled = Boolean(currentRestriction);
 
           replySendBtn.onclick = async () => {
+            if (!ensureNotRestricted('reply')) return;
             const rVal = replyInput.value.trim();
             if (!rVal) return;
-            const repAuthor = activeAuthorName || profileName || '';
+            const repAuthor = activeAuthorName || profileName || 'User';
             cmt.replies = Array.isArray(cmt.replies) ? cmt.replies : [];
             cmt.replies.push({
               id: `rep-${Date.now()}`,
@@ -2827,7 +4119,7 @@
             cmt.replies.forEach(rep => {
               const rCard = document.createElement('div');
               rCard.className = 'reply-card';
-              rCard.innerHTML = `<div class="reply-head"><a href="${buildProfileHref(rep.user_id || '')}" class="reply-author">${escapeHtml(rep.author || '')}</a><span class="reply-time fb-live-time" data-created-at="${escapeHtml(rep.created_at || '')}">${formatLiveElapsed(rep.created_at)}</span></div><div>${escapeHtml(rep.text)}</div>`;
+              rCard.innerHTML = `<div class="reply-head"><a href="${buildProfileHref(rep.user_id || '')}" class="reply-author">${escapeHtml(rep.author || 'User')}</a><span class="reply-time fb-live-time" data-created-at="${escapeHtml(rep.created_at || '')}">${formatShortElapsed(rep.created_at)}</span></div><div>${formatCommentHtml(rep.text)}</div>`;
               repList.appendChild(rCard);
             });
             cRow.appendChild(repList);
@@ -2842,8 +4134,11 @@
     }
 
     function refreshLiveTimersOnly() {
+      document.querySelectorAll('.fb-post-datetime').forEach(el => {
+        el.textContent = formatPostDateTimeAndElapsed(el.dataset.createdAt);
+      });
       document.querySelectorAll('.fb-live-time').forEach(el => {
-        el.textContent = formatLiveElapsed(el.dataset.createdAt);
+        el.textContent = formatShortElapsed(el.dataset.createdAt);
       });
     }
 
@@ -2911,6 +4206,7 @@
       renderPhotos(avatarUrl, coverUrl, postsArr);
       renderLivePosts(postsArr);
       renderDetails(data);
+      evaluateBlackVerificationTick(data);
     }
 
     function readStoredProfile() {
@@ -2937,15 +4233,19 @@
 
     async function refreshLiveCounts(userId) {
       await refreshStoryRing(userId);
+      await refreshRestrictionState(userId);
+      await loadUserFriendsList(userId);
+
+      const current = readStoredProfile();
+      const cachedPosts = filterValidPosts(current.posts);
 
       if (!sb) {
-        const local = readStoredProfile();
-        applyProfileData(local);
+        applyProfileData(current);
         return;
       }
 
       let friendsTotal = 0;
-      let dbPosts = [];
+      let dbPosts = cachedPosts;
 
       if (userId) {
         try {
@@ -2983,7 +4283,8 @@
 
         const { data, error } = await query;
         if (!error && Array.isArray(data)) {
-          dbPosts = filterValidPosts(data);
+          const mergedRemote = filterValidPosts([...data, ...cachedPosts]);
+          dbPosts = mergedRemote;
         }
       } catch (e) {
         console.warn('Posts fetch error:', e);
@@ -2992,7 +4293,6 @@
       setFriendsDisplay(friendsTotal);
       renderLivePosts(dbPosts);
 
-      const current = readStoredProfile();
       const avatarUrl = current.avatar_url || current.selfie_url || '';
       const coverUrl = current.cover_url || '';
       renderPhotos(avatarUrl, coverUrl, dbPosts);
@@ -3006,6 +4306,7 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => refreshLiveCounts(userId))
           .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => refreshLiveCounts(userId))
           .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => refreshStoryRing(userId))
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'account_restrictions' }, () => refreshRestrictionState(userId))
           .subscribe();
       } catch (e) {
         console.warn('Realtime skipped:', e);
@@ -3018,6 +4319,8 @@
 
       const localData = readStoredProfile();
       applyProfileData(localData);
+      await loadUserFriendsList(null);
+      await refreshRestrictionState(null);
       await refreshStoryRing(null);
 
       if (!sb) return;
@@ -3084,7 +4387,8 @@
             full_name: resolvedName,
             username: resolvedUsername,
             avatar_url: resolvedAvatar,
-            cover_url: resolvedCover
+            cover_url: resolvedCover,
+            posts: isOwn ? (localData.posts || []) : []
           }
         );
 
@@ -3103,6 +4407,7 @@
     }
 
     function editThought() {
+      if (!ensureNotRestricted('update thought')) return;
       const current = readStoredProfile();
       const next = prompt('Drop a thought...', current.thought || '');
       if (next === null) return;
@@ -3121,20 +4426,81 @@
       if (target) target.classList.add('active');
     }
 
-    document.getElementById('shareToChatOption').addEventListener('click', () => {
-      if (!activeSharePost) return;
-      const postUrl = buildPostShareUrl(activeSharePost.id);
-      sessionStorage.setItem('autro_shared_post_payload', JSON.stringify({
-        postId: activeSharePost.id,
-        url: postUrl,
-        caption: activeSharePost.caption || '',
-        assets: ['autro-chat.html', 'autro-chat.css', 'autro-chat.js']
-      }));
-      closeShareMenu();
-      window.location.href = `autro-chat.html?share=${encodeURIComponent(postUrl)}&assets=autro-chat.html,autro-chat.css,autro-chat.js`;
+    // Post Three-Dot Actions
+    document.getElementById('postDotsSaveBtn').addEventListener('click', async () => {
+      const targetPost = activePostDotsTarget;
+      closePostDotsMenu();
+      await savePostToSavePage(targetPost);
     });
 
-    document.getElementById('copyPostLinkOption').addEventListener('click', async () => {
+    document.getElementById('postDotsShareBtn').addEventListener('click', () => {
+      const targetPost = activePostDotsTarget;
+      closePostDotsMenu();
+      if (targetPost) openShareSheet(targetPost);
+    });
+
+    document.getElementById('postDotsNotifBtn').addEventListener('click', async () => {
+      const targetPost = activePostDotsTarget;
+      closePostDotsMenu();
+      await togglePostNotification(targetPost);
+    });
+
+    document.getElementById('postDotsReportBtn').addEventListener('click', () => {
+      const targetPost = activePostDotsTarget;
+      closePostDotsMenu();
+      if (!targetPost) return;
+      if (isOwnItem(targetPost.user_id, targetPost.author_name)) return;
+      openReportModal({
+        kind: 'post',
+        postId: targetPost.id,
+        targetUserId: targetPost.user_id,
+        author: targetPost.author_name || document.getElementById('displayName')?.textContent || 'User',
+        snippet: targetPost.caption || targetPost.content || targetPost.media_url || ''
+      });
+    });
+
+    // Share Menu & Sheet Actions
+    document.getElementById('shareSaveOption').addEventListener('click', async () => {
+      const targetPost = activeSharePost;
+      closeShareMenu();
+      await savePostToSavePage(targetPost);
+    });
+
+    document.getElementById('shareSendOption').addEventListener('click', () => {
+      if (!activeSharePost) return;
+      closeShareMenu();
+      openShareSheet(activeSharePost);
+    });
+
+    document.getElementById('shareFeedDestBtn').addEventListener('click', () => {
+      openDestSheet();
+    });
+
+    document.getElementById('closeDestSheetBtn').addEventListener('click', () => {
+      closeDestSheet();
+    });
+
+    document.getElementById('shareAudienceBtn').addEventListener('click', () => {
+      const lbl = document.getElementById('shareAudienceLabel');
+      if (!lbl) return;
+      const order = ['Public', 'Friends', 'Only me'];
+      const next = order[(order.indexOf(lbl.textContent) + 1) % order.length];
+      lbl.textContent = next;
+    });
+
+    document.getElementById('shareNowBtn').addEventListener('click', async () => {
+      if (!activeSharePost) return;
+      await registerSingleShare(activeSharePost);
+      closeShareSheet();
+    });
+
+    document.getElementById('shareSysABtn').addEventListener('click', () => {
+      const postUrl = activeSharePost ? buildPostShareUrl(activeSharePost.id) : window.location.href;
+      closeShareSheet();
+      window.location.href = `create-post.html?share=${encodeURIComponent(postUrl)}`;
+    });
+
+    document.getElementById('shareCopyLinkBtn').addEventListener('click', async () => {
       if (!activeSharePost) return;
       const postUrl = buildPostShareUrl(activeSharePost.id);
       try {
@@ -3152,9 +4518,13 @@
       } catch (_) {
         showToast('Could not copy link');
       }
-      closeShareMenu();
+      closeShareSheet();
     });
 
+    document.getElementById('shareSheetModal').addEventListener('click', closeShareSheet);
+    document.getElementById('destSheetModal').addEventListener('click', closeDestSheet);
+
+    // Comment Three-Dot Actions
     document.getElementById('saveCommentOption').addEventListener('click', async () => {
       if (!activeCommentMenuData) return;
       const savedList = JSON.parse(localStorage.getItem('autro_saved_items') || '[]');
@@ -3177,11 +4547,24 @@
       }
 
       closeDotsMenu();
-      showToast('Saved to save-item.html');
-      window.location.href = 'save-item.html';
+      showToast('Saved to save.html');
+      window.location.href = 'save.html';
     });
 
-    document.getElementById('reportCommentOption').addEventListener('click', openReportModal);
+    document.getElementById('reportCommentOption').addEventListener('click', () => {
+      if (!activeCommentMenuData) return;
+      const cmt = activeCommentMenuData.comment;
+      if (isOwnItem(cmt.user_id, cmt.author)) return;
+      openReportModal({
+        kind: 'comment',
+        postId: activeCommentMenuData.postId,
+        commentId: cmt.id,
+        targetUserId: cmt.user_id,
+        author: cmt.author || 'User',
+        snippet: cmt.text || cmt.mediaUrl || cmt.voiceUrl || ''
+      });
+    });
+
     document.getElementById('closeReportBtn').addEventListener('click', closeReportModal);
     document.getElementById('submitReportBtn').addEventListener('click', () => submitReportAction('Submit'));
     document.getElementById('sendReportBtn').addEventListener('click', () => submitReportAction('Send'));
@@ -3195,6 +4578,10 @@
       if (popup.classList.contains('open') && !popup.contains(e.target)) {
         closeReactionPopup();
       }
+      const pDots = document.getElementById('postDotsMenu');
+      if (pDots.classList.contains('open') && !pDots.contains(e.target)) {
+        closePostDotsMenu();
+      }
       const sMenu = document.getElementById('shareMenu');
       if (sMenu.classList.contains('open') && !sMenu.contains(e.target)) {
         closeShareMenu();
@@ -3205,8 +4592,162 @@
       }
     });
 
+    window.addEventListener('autro:verification-updated', () => {
+      evaluateBlackVerificationTick(readStoredProfile());
+    });
+    window.addEventListener('storage', () => {
+      evaluateBlackVerificationTick(readStoredProfile());
+      refreshRestrictionState(viewedUserId || activeUserId);
+    });
+
     setInterval(refreshLiveTimersOnly, 1000);
     document.addEventListener('DOMContentLoaded', loadProfile);
   </script>
+
+  <script>
+    (function () {
+      const THEME_KEYS = ['autro_theme', 'autrobook_theme', 'theme', 'autrobook_dark_mode'];
+      const LANG_KEYS = ['autro_lang_code', 'autrobook_lang', 'lang', 'language'];
+
+      function readTheme() {
+        for (const k of THEME_KEYS) {
+          try {
+            const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').toLowerCase().trim();
+            if (v === 'dark' || v === '1' || v === 'true') return 'dark';
+            if (v === 'light' || v === '0' || v === 'false') return 'light';
+          } catch (_) {}
+        }
+        const match = document.cookie.match(/(?:^|;\s*)(?:autro_theme|autrobook_theme)=(dark|light)/i);
+        return match ? match[1].toLowerCase() : 'light';
+      }
+
+      function applyGlobalTheme(theme) {
+        const t = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        if (document.body) {
+          document.body.setAttribute('data-theme', t);
+          document.body.classList.toggle('dark-theme', t === 'dark');
+        }
+      }
+
+      function readLang() {
+        for (const k of LANG_KEYS) {
+          try {
+            const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').trim();
+            if (v) return v;
+          } catch (_) {}
+        }
+        const match = document.cookie.match(/(?:^|;\s*)(?:autro_lang_code|autrobook_lang|lang)=([^;]+)/i);
+        return match ? decodeURIComponent(match[1]) : 'en';
+      }
+
+      async function applyGlobalLang(code) {
+        const lang = code || 'en';
+        document.documentElement.setAttribute('lang', lang);
+        document.documentElement.setAttribute('dir', ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr');
+
+        const dictMap = {
+          en: {
+            'Settings & privacy': 'Settings & privacy',
+            'Search settings': 'Search settings',
+            'Autrobook Account': 'Autrobook Account',
+            'Personal details': 'Personal details',
+            'Password and security': 'Password and security',
+            'Ad preferences': 'Ad preferences',
+            'Verification': 'Verification',
+            'See more in Autrobook Account': 'See more in Autrobook Account',
+            'Subscriptions': 'Subscriptions',
+            'Autro Premium': 'Autro Premium',
+            'Tools and resources': 'Tools and resources',
+            'Privacy checkup': 'Privacy checkup'
+          },
+          bn: {
+            'Settings & privacy': 'সেটিংস ও প্রাইভেসি',
+            'Search settings': 'সেটিংস খুঁজুন',
+            'Autrobook Account': 'অট্রোবুক অ্যাকাউন্ট',
+            'Personal details': 'ব্যক্তিগত তথ্য',
+            'Password and security': 'পাসওয়ার্ড ও নিরাপত্তা',
+            'Ad preferences': 'বিজ্ঞাপন পছন্দ',
+            'Verification': 'ভেরিফিকেশন',
+            'See more in Autrobook Account': 'অট্রোবুক অ্যাকাউন্টে আরও দেখুন',
+            'Subscriptions': 'সাবস্ক্রিপশন',
+            'Autro Premium': 'অট্রো প্রিমিয়াম',
+            'Tools and resources': 'টুলস ও রিসোর্স',
+            'Privacy checkup': 'প্রাইভেসি চেকআপ'
+          }
+        };
+
+        const nodes = document.querySelectorAll('h1, h2, h3, h4, p, span, a, button, label, div');
+        for (const el of nodes) {
+          if (el.children.length > 0) continue;
+          if (!el.dataset.origText) {
+            el.dataset.origText = (el.textContent || '').trim();
+          }
+          const baseText = el.dataset.origText;
+          if (!baseText) continue;
+
+          if (lang === 'en') {
+            el.textContent = baseText;
+          } else if (dictMap[lang] && dictMap[lang][baseText]) {
+            el.textContent = dictMap[lang][baseText];
+          } else {
+            try {
+              const res = await fetch(
+                `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(baseText)}`
+              );
+              if (res.ok) {
+                const data = await res.json();
+                const translated = Array.isArray(data?.[0]) ? data[0].map((p) => p[0]).join('') : '';
+                if (translated && readLang() === lang) {
+                  el.textContent = translated;
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
+        if (searchInput) {
+          if (!searchInput.dataset.origPlaceholder) {
+            searchInput.dataset.origPlaceholder = searchInput.placeholder || '';
+          }
+          const ph = searchInput.dataset.origPlaceholder;
+          if (lang === 'en') {
+            searchInput.placeholder = ph;
+          } else if (dictMap[lang] && dictMap[lang][ph]) {
+            searchInput.placeholder = dictMap[lang][ph];
+          }
+        }
+      }
+
+      function syncAll() {
+        applyGlobalTheme(readTheme());
+        applyGlobalLang(readLang());
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', syncAll);
+      } else {
+        syncAll();
+      }
+
+      window.addEventListener('pageshow', syncAll);
+      window.addEventListener('storage', syncAll);
+      window.addEventListener('autro:theme-updated', (e) => applyGlobalTheme(e?.detail?.theme || readTheme()));
+      window.addEventListener('autro:lang-updated', (e) => applyGlobalLang(e?.detail?.code || readLang()));
+
+      try {
+        if ('BroadcastChannel' in window) {
+          new BroadcastChannel('autrobook_theme_sync').onmessage = (e) => {
+            if (e?.data?.theme) applyGlobalTheme(e.data.theme);
+          };
+          new BroadcastChannel('autrobook_lang_sync').onmessage = (e) => {
+            if (e?.data?.code) applyGlobalLang(e.data.code);
+          };
+        }
+      } catch (_) {}
+    })();
+  </script>
 </body>
-  </html>
+      </html>
