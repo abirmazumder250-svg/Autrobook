@@ -1,273 +1,324 @@
-const DEFAULT_SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+import { createClient } from '@supabase/supabase-js';
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 4500) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-async function fetchSupabaseProfileFallback(userProfile = {}, profileName = '') {
-  const merged = {
-    userId: typeof userProfile?.userId === 'string' ? userProfile.userId.trim() : '',
-    fullName:
-      (typeof userProfile?.fullName === 'string' && userProfile.fullName.trim()) ||
-      (typeof profileName === 'string' && profileName.trim()) ||
-      '',
-    username: typeof userProfile?.username === 'string' ? userProfile.username.trim() : '',
-    email: typeof userProfile?.email === 'string' ? userProfile.email.trim() : '',
-    bio: typeof userProfile?.bio === 'string' ? userProfile.bio.trim() : '',
-    location: typeof userProfile?.location === 'string' ? userProfile.location.trim() : '',
-    education: typeof userProfile?.education === 'string' ? userProfile.education.trim() : ''
-  };
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
 
-  if (merged.fullName && (merged.location || merged.education || merged.bio)) {
-    return merged;
-  }
-
-  const supabaseUrl =
-    process.env.SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    DEFAULT_SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    DEFAULT_SUPABASE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) return merged;
-
-  const headers = {
-    apikey: supabaseKey,
-    Authorization: `Bearer ${supabaseKey}`,
-    Accept: 'application/json'
-  };
-
-  try {
-    const targetUrl = merged.userId
-      ? `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(merged.userId)}&select=*&limit=1`
-      : `${supabaseUrl}/rest/v1/account_settings?order=updated_at.desc&limit=1`;
-
-    const res = await fetchWithTimeout(targetUrl, { headers }, 1500);
-    if (res.ok) {
-      const rows = await res.json();
-      if (Array.isArray(rows) && rows[0]) {
-        const r = rows[0];
-        if (!merged.fullName && r.full_name) merged.fullName = String(r.full_name).trim();
-        if (!merged.username && r.username) merged.username = String(r.username).trim();
-        if (!merged.email && r.email) merged.email = String(r.email).trim();
-        if (!merged.bio && r.bio) merged.bio = String(r.bio).trim();
-        if (!merged.location && (r.location || r.city || r.lives_in)) {
-          merged.location = String(r.location || r.city || r.lives_in).trim();
-        }
-        if (!merged.education && (r.education || r.university || r.school)) {
-          merged.education = String(r.education || r.university || r.school).trim();
-        }
-      }
-    }
-  } catch (_) {}
-
-  return merged;
-}
-
-async function askGroq(groqKey, systemInstruction, contents, message) {
-  if (!groqKey) {
-    throw new Error('GROQ_API_KEY missing');
-  }
-
-  const messages = [{ role: 'system', content: systemInstruction }];
-  if (Array.isArray(contents) && contents.length > 0) {
-    for (const item of contents.slice(-4)) {
-      const txt = item?.parts?.[0]?.text;
-      if (typeof txt === 'string' && txt.trim()) {
-        messages.push({
-          role: item.role === 'user' ? 'user' : 'assistant',
-          content: txt
-        });
-      }
-    }
-  } else {
-    messages.push({ role: 'user', content: message });
-  }
-
-  const response = await fetchWithTimeout(
-    'https://api.groq.com/openai/v1/chat/completions',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${groqKey}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages,
-        temperature: 0.3,
-        max_tokens: 450
-      })
-    },
-    5500
-  );
-
-  const data = await response.json();
-  const reply = data?.choices?.[0]?.message?.content?.trim() || '';
-  if (!response.ok || !reply) {
-    throw new Error(data?.error?.message || 'Groq failed');
-  }
-
-  return { reply, model: 'groq-llama-3.3-70b' };
-}
-
-async function askGeminiSingleModel(geminiKey, modelName, systemInstruction, contents) {
-  const geminiRes = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemInstruction }]
-        },
-        contents,
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 450
-        }
-      })
-    },
-    6000
-  );
-
-  const data = await geminiRes.json();
-  const reply =
-    data?.candidates?.[0]?.content?.parts
-      ?.map((p) => p.text)
-      .filter(Boolean)
-      .join('')
-      .trim() || '';
-
-  if (!geminiRes.ok || !reply) {
-    throw new Error(data?.error?.message || `${modelName} failed`);
-  }
-
-  return { reply, model: modelName };
-}
-
-async function askGemini(geminiKey, systemInstruction, contents) {
-  if (!geminiKey) {
-    throw new Error('GEMINI_API_KEY missing');
-  }
-
-  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-  let lastError = null;
-
-  for (const modelName of models) {
-    try {
-      return await askGeminiSingleModel(geminiKey, modelName, systemInstruction, contents);
-    } catch (err) {
-      lastError = err;
-    }
-  }
-
-  throw lastError || new Error('Gemini failed');
-}
+export const config = {
+  maxDuration: 30
+};
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const groqKey = process.env.GROQ_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  try {
+    const {
+      message = '',
+      language = '',
+      profileName = '',
+      userProfile = {},
+      history = [],
+      userId = '',
+      accountKey = ''
+    } = req.body || {};
 
-  if (!groqKey && !geminiKey) {
-    return res.status(500).json({
-      error: 'GROQ_API_KEY or GEMINI_API_KEY is missing in Vercel Environment Variables.'
-    });
-  }
-
-  const { message, profileName = '', userProfile = {}, history = [] } = req.body || {};
-  if (!message || typeof message !== 'string') {
-    return res.status(400).json({ error: 'Message is required.' });
-  }
-
-  const profile = await fetchSupabaseProfileFallback(userProfile, profileName);
-  const cleanName = profile.fullName;
-  const isCurrentUserFounder = cleanName.toLowerCase() === 'abir mazumder';
-
-  const currentUserInfoLines = [
-    cleanName ? `Name: ${cleanName}` : 'Name: Not saved in profile',
-    profile.username ? `Username: @${profile.username}` : '',
-    profile.email ? `Email: ${profile.email}` : '',
-    profile.bio ? `Bio: ${profile.bio}` : '',
-    profile.location ? `Location: ${profile.location}` : '',
-    profile.education ? `Education: ${profile.education}` : ''
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  const systemInstruction = `You are Autro AI Assistant inside Autrobook.
-Always reply accurately, clearly, helpfully, and naturally in the exact same language that the user writes in (support all languages seamlessly).
-Keep responses well-formatted, concise, and fast. Do not use raw markdown asterisks like ** in replies.
-
-Current Logged-in / Profile User Details (from Supabase):
-${currentUserInfoLines}
-
-Identity Rules — Follow Strictly:
-1. When the user asks about THEMSELVES (e.g., "আমি কে", "আমার নাম কি", "আমার পরিচয়", "who am i", "what is my name", "my profile"):
-   - Tell ONLY this current user's own saved profile details above (${cleanName || 'their saved profile name'}).
-   - ${
-     isCurrentUserFounder
-       ? 'Since this profile belongs to Abir Mazumder, you may mention his founder details if asked about his identity.'
-       : "Do NOT claim this user is the Founder/CEO or give Abir Mazumder's family/university details unless their own profile says so."
-   }
-2. When greeting the user (e.g., "hi", "hello", "হাই", "হ্যালো"):
-   - Greet with "হ্যালো ${cleanName}" (in Bengali) or "Hello ${cleanName}" (in other languages) if ${cleanName ? `"${cleanName}"` : 'a name'} is available, cleanly and briefly.
-3. When someone asks about the ADMIN / FOUNDER / CEO / CREATOR of Autrobook (e.g., "ফাউন্ডার কে", "অ্যাডমিন কে", "CEO কে", "who is the founder/CEO/admin"):
-   - State clearly:
-     Founder and CEO: Abir Mazumder
-     Father: Babul Mazumder
-     Mother: Monika Mitra
-     Lives in: Dhaka
-     Studies at: Dhaka Central University`;
-
-  const contents = [];
-  if (Array.isArray(history)) {
-    for (const item of history.slice(-4)) {
-      if (!item || typeof item.text !== 'string') continue;
-      contents.push({
-        role: item.role === 'user' ? 'user' : 'model',
-        parts: [{ text: item.text }]
-      });
+    const cleanMessage = String(message || '').trim();
+    if (!cleanMessage) {
+      return res.status(400).json({ error: 'Message is required' });
     }
-  }
 
-  if (contents.length === 0 || contents[contents.length - 1].parts[0].text !== message) {
-    contents.push({
-      role: 'user',
-      parts: [{ text: message }]
+    const groqKey = process.env.GROQ_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+
+    if (!groqKey && !geminiKey) {
+      return res.status(500).json({ error: 'AI API keys are not configured on server' });
+    }
+
+    // Fetch latest language & profile context from Supabase if available (non-blocking fast lookup)
+    const syncedContext = await fetchSupabaseContext({
+      userId: String(userId || userProfile?.userId || '').trim(),
+      accountKey: String(accountKey || '').trim(),
+      fallbackProfile: userProfile,
+      fallbackName: profileName,
+      fallbackLang: language
+    });
+
+    const systemPrompt = buildMetaStyleSystemPrompt(syncedContext);
+    const recentHistory = sanitizeHistory(history);
+
+    const tasks = [];
+
+    // 1. Ultra-fast Groq model for instant Meta-like speed
+    if (groqKey) {
+      tasks.push(
+        callGroq({
+          apiKey: groqKey,
+          model: 'llama-3.1-8b-instant',
+          systemPrompt,
+          history: recentHistory,
+          message: cleanMessage,
+          timeoutMs: 6500
+        })
+      );
+
+      // 2. High-accuracy Groq model as fast backup
+      tasks.push(
+        callGroq({
+          apiKey: groqKey,
+          model: 'llama-3.3-70b-versatile',
+          systemPrompt,
+          history: recentHistory,
+          message: cleanMessage,
+          timeoutMs: 8500
+        })
+      );
+    }
+
+    // 3. Gemini 2.5 Flash for accuracy & multilingual strength
+    if (geminiKey) {
+      tasks.push(
+        callGemini({
+          apiKey: geminiKey,
+          model: 'gemini-2.5-flash',
+          systemPrompt,
+          history: recentHistory,
+          message: cleanMessage,
+          timeoutMs: 8500
+        })
+      );
+    }
+
+    const winner = await Promise.any(tasks);
+
+    return res.status(200).json({
+      reply: winner.reply,
+      model: winner.model,
+      language: syncedContext.language || 'auto'
+    });
+  } catch (error) {
+    console.error('Autro AI error:', error);
+    return res.status(500).json({
+      error: 'Unable to generate a response right now. Please try again.'
     });
   }
+}
 
-  const racers = [];
-  if (groqKey) {
-    racers.push(askGroq(groqKey, systemInstruction, contents, message));
-  }
-  if (geminiKey) {
-    racers.push(askGemini(geminiKey, systemInstruction, contents));
-  }
+async function fetchSupabaseContext({
+  userId,
+  accountKey,
+  fallbackProfile = {},
+  fallbackName = '',
+  fallbackLang = ''
+}) {
+  const ctx = {
+    name: String(
+      fallbackName ||
+      fallbackProfile?.fullName ||
+      fallbackProfile?.full_name ||
+      fallbackProfile?.username ||
+      ''
+    ).trim(),
+    location: String(fallbackProfile?.location || fallbackProfile?.city || '').trim(),
+    education: String(fallbackProfile?.education || fallbackProfile?.school || '').trim(),
+    bio: String(fallbackProfile?.bio || '').trim(),
+    language: String(fallbackLang || fallbackProfile?.language || '').trim()
+  };
 
   try {
-    const winner = await Promise.any(racers);
-    if (winner?.reply) {
-      return res.status(200).json(winner);
+    const queries = [];
+
+    if (userId) {
+      queries.push(
+        supabase
+          .from('profiles')
+          .select('full_name, username, location, education, bio, language')
+          .eq('id', userId)
+          .maybeSingle()
+      );
+      queries.push(
+        supabase
+          .from('account_settings')
+          .select('full_name, location, education, bio, language, preferred_language')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      );
+    } else if (accountKey) {
+      queries.push(
+        supabase
+          .from('account_settings')
+          .select('full_name, location, education, bio, language, preferred_language')
+          .eq('account_key', accountKey)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      );
+    }
+
+    if (queries.length === 0) return ctx;
+
+    const results = await Promise.race([
+      Promise.allSettled(queries),
+      new Promise((resolve) => setTimeout(() => resolve([]), 1200))
+    ]);
+
+    for (const res of results) {
+      if (res.status !== 'fulfilled' || !res.value?.data) continue;
+      const row = res.value.data;
+
+      if (!ctx.name && row.full_name) ctx.name = String(row.full_name).trim();
+      if (!ctx.name && row.username) ctx.name = String(row.username).trim();
+      if (!ctx.location && row.location) ctx.location = String(row.location).trim();
+      if (!ctx.education && row.education) ctx.education = String(row.education).trim();
+      if (!ctx.bio && row.bio) ctx.bio = String(row.bio).trim();
+
+      const dbLang = String(row.language || row.preferred_language || '').trim();
+      if (dbLang) ctx.language = dbLang;
     }
   } catch (_) {}
 
-  return res.status(503).json({
-    error: 'AI servers are busy right now. Please try again in a moment.'
-  });
+  return ctx;
 }
+
+function buildMetaStyleSystemPrompt(ctx) {
+  const details = [
+    ctx.name ? `User name: ${ctx.name}` : '',
+    ctx.location ? `Location: ${ctx.location}` : '',
+    ctx.education ? `Education: ${ctx.education}` : '',
+    ctx.bio ? `Bio: ${ctx.bio}` : ''
+  ]
+    .filter(Boolean)
+    .join(' | ');
+
+  const langRule = ctx.language
+    ? `Always reply in language code "${ctx.language}" (unless the user explicitly asks for another language in their prompt).`
+    : 'Default language is English. Match the language the user writes in naturally and accurately.';
+
+  return [
+    'You are Autro AI Assistant inside Autrobook.',
+    'Respond like Meta AI: crisp, natural, well-structured, accurate, and directly useful without fluff.',
+    'Use short paragraphs or clean bullet points when helpful, and keep explanations easy to scan.',
+    langRule,
+    details ? `User context: ${details}` : ''
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function sanitizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .slice(-4)
+    .filter((item) => item && typeof item.text === 'string' && item.text.trim())
+    .map((item) => ({
+      role: item.role === 'user' ? 'user' : 'assistant',
+      content: item.text.trim().slice(0, 700)
+    }));
+}
+
+async function callGroq({ apiKey, model, systemPrompt, history, message, timeoutMs }) {
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history,
+    { role: 'user', content: message }
+  ];
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.45,
+      max_tokens: 650
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Groq (${model}) failed: ${response.status} ${errText}`);
+  }
+
+  const data = await response.json();
+  const reply = data?.choices?.[0]?.message?.content?.trim();
+
+  if (!reply) {
+    throw new Error(`Groq (${model}) returned empty reply`);
+  }
+
+  return {
+    reply,
+    model: `Groq • ${model}`
+  };
+}
+
+async function callGemini({ apiKey, model, systemPrompt, history, message, timeoutMs }) {
+  const contents = [
+    ...history.map((item) => ({
+      role: item.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: item.content }]
+    })),
+    {
+      role: 'user',
+      parts: [{ text: message }]
+    }
+  ];
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      contents,
+      generationConfig: {
+        temperature: 0.45,
+        maxOutputTokens: 650
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Gemini (${model}) failed: ${response.status} ${errText}`);
+  }
+
+  const data = await response.json();
+  const reply = data?.candidates?.[0]?.content?.parts
+    ?.map((p) => p?.text || '')
+    .join('')
+    .trim();
+
+  if (!reply) {
+    throw new Error(`Gemini (${model}) returned empty reply`);
+  }
+
+  return {
+    reply,
+    model: `Gemini • ${model}`
+  };
+          }
