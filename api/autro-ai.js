@@ -110,8 +110,8 @@ export default async function handler(req, res) {
   ].filter(Boolean).join('\n');
 
   const systemInstruction = `You are Autro AI Assistant inside Autrobook.
-Always reply clearly, helpfully, and naturally in the exact same language that the user writes in (support all languages seamlessly).
-Keep responses concise, direct, and fast. Do not use markdown asterisks like ** unless needed.
+Always reply accurately, clearly, helpfully, and naturally in the exact same language that the user writes in (support all languages seamlessly).
+Keep responses well-formatted, concise, and fast. Do not use raw markdown asterisks like ** in replies.
 
 Current Logged-in / Profile User Details (from Supabase):
 ${currentUserInfoLines}
@@ -123,7 +123,7 @@ Identity Rules — Follow Strictly:
        ? 'Since this profile belongs to Abir Mazumder, you may mention his founder details if asked about his identity.'
        : 'Do NOT claim this user is the Founder/CEO or give Abir Mazumder\'s family/university details unless their own profile says so.'}
 2. When greeting the user (e.g., "hi", "hello", "হাই", "হ্যালো"):
-   - Greet with "হ্যালো ${cleanName}" (in Bengali) or "Hello ${cleanName}" (in other languages) if ${cleanName ? `"${cleanName}"` : 'a name'} is available, without dumping a long bio.
+   - Greet with "হ্যালো ${cleanName}" (in Bengali) or "Hello ${cleanName}" (in other languages) if ${cleanName ? `"${cleanName}"` : 'a name'} is available, cleanly and briefly.
 3. When someone asks about the ADMIN / FOUNDER / CEO / CREATOR of Autrobook (e.g., "ফাউন্ডার কে", "অ্যাডমিন কে", "CEO কে", "who is the founder/CEO/admin"):
    - State clearly:
      Founder and CEO: Abir Mazumder
@@ -155,7 +155,7 @@ Identity Rules — Follow Strictly:
   for (const modelName of models) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
+      const timer = setTimeout(() => controller.abort(), 4500);
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -169,8 +169,8 @@ Identity Rules — Follow Strictly:
             },
             contents,
             generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 400
+              temperature: 0.35,
+              maxOutputTokens: 500
             }
           })
         }
@@ -210,4 +210,4 @@ Identity Rules — Follow Strictly:
   return res.status(503).json({
     error: 'AI servers are busy right now. Please try again in a moment.'
   });
-    }
+}
