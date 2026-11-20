@@ -1168,11 +1168,11 @@
         localStorage.setItem(key, valueStr);
         return true;
       } catch (_) {
-        if (key === 'autro_instant_feed_posts') {
+        if (key === 'autro_instant_feed_posts' || key === 'autro_post_cards') {
           try {
             const parsed = JSON.parse(valueStr);
             if (Array.isArray(parsed)) {
-              const slim = parsed.slice(0, 5).map(item => ({
+              const slim = parsed.slice(0, 8).map(item => ({
                 id: item.id,
                 user_id: item.user_id || '',
                 author_name: item.author_name || '',
@@ -1527,7 +1527,7 @@
           const arr = JSON.parse(localStorage.getItem(k) || '[]');
           if (Array.isArray(arr)) {
             arr.forEach(item => {
-              if (item && (item.id || item.media_url || item.caption)) {
+              if (item && !item.is_demo && !item.demo && (item.id || item.media_url || item.caption)) {
                 const sid = String(item.id || item.media_url);
                 storyMap.set(sid, {
                   id: sid,
@@ -1626,6 +1626,120 @@
       showToast(`Live started (${LIVEKIT_URL}) · Live count: ${liveCount}`);
     }
 
+    async function refreshRealPostCountsFromSupabase(postIds) {
+      if (!sb || !Array.isArray(postIds) || !postIds.length) return new Map();
+      const dbIds = postIds.filter(id => id && !String(id).startsWith('local-') && !String(id).startsWith('demo-'));
+      const resultMap = new Map();
+      if (!dbIds.length) return resultMap;
+
+      try {
+        const { data: postRows } = await sb
+          .from('posts')
+          .select('id, reaction_count, comment_count, share_count, view_count')
+          .in('id', dbIds);
+
+        if (Array.isArray(postRows)) {
+          postRows.forEach(pr => {
+            resultMap.set(pr.id, {
+              reaction_count: Number(pr.reaction_count ?? 0),
+              comment_count: Number(pr.comment_count ?? 0),
+              share_count: Number(pr.share_count ?? 0),
+              view_count: Number(pr.view_count ?? 0),
+              userReaction: null
+            });
+          });
+        }
+      } catch (_) {}
+
+      try {
+        const { data: reactionRows } = await sb
+          .from('post_reactions')
+          .select('post_id, user_id, reaction_emoji')
+          .in('post_id', dbIds);
+
+        if (Array.isArray(reactionRows)) {
+          const countsByPost = new Map();
+          reactionRows.forEach(rr => {
+            countsByPost.set(rr.post_id, (countsByPost.get(rr.post_id) || 0) + 1);
+            if (activeUser?.id && rr.user_id === activeUser.id) {
+              const cur = resultMap.get(rr.post_id) || {
+                reaction_count: 0,
+                comment_count: 0,
+                share_count: 0,
+                view_count: 0,
+                userReaction: null
+              };
+              cur.userReaction = rr.reaction_emoji || '👍';
+              resultMap.set(rr.post_id, cur);
+            }
+          });
+          countsByPost.forEach((cnt, pid) => {
+            const cur = resultMap.get(pid) || {
+              reaction_count: 0,
+              comment_count: 0,
+              share_count: 0,
+              view_count: 0,
+              userReaction: null
+            };
+            cur.reaction_count = Math.max(Number(cur.reaction_count || 0), cnt);
+            resultMap.set(pid, cur);
+          });
+        }
+      } catch (_) {}
+
+      try {
+        const { data: commentRows } = await sb
+          .from('post_comments')
+          .select('post_id')
+          .in('post_id', dbIds);
+
+        if (Array.isArray(commentRows)) {
+          const cCounts = new Map();
+          commentRows.forEach(cr => {
+            cCounts.set(cr.post_id, (cCounts.get(cr.post_id) || 0) + 1);
+          });
+          cCounts.forEach((cnt, pid) => {
+            const cur = resultMap.get(pid) || {
+              reaction_count: 0,
+              comment_count: 0,
+              share_count: 0,
+              view_count: 0,
+              userReaction: null
+            };
+            cur.comment_count = Math.max(Number(cur.comment_count || 0), cnt);
+            resultMap.set(pid, cur);
+          });
+        }
+      } catch (_) {}
+
+      try {
+        const { data: shareRows } = await sb
+          .from('post_shares')
+          .select('post_id')
+          .in('post_id', dbIds);
+
+        if (Array.isArray(shareRows)) {
+          const sCounts = new Map();
+          shareRows.forEach(sr => {
+            sCounts.set(sr.post_id, (sCounts.get(sr.post_id) || 0) + 1);
+          });
+          sCounts.forEach((cnt, pid) => {
+            const cur = resultMap.get(pid) || {
+              reaction_count: 0,
+              comment_count: 0,
+              share_count: 0,
+              view_count: 0,
+              userReaction: null
+            };
+            cur.share_count = Math.max(Number(cur.share_count || 0), cnt);
+            resultMap.set(pid, cur);
+          });
+        }
+      } catch (_) {}
+
+      return resultMap;
+    }
+
     async function syncPostReactionCount(postId, nextCount) {
       if (!sb || !postId || String(postId).startsWith('local-')) return;
       try {
@@ -1642,6 +1756,7 @@
       if (target.type === 'post') {
         const postObj = feedPosts.find(p => p.id === target.postId);
         if (!postObj) return;
+        const isDbPost = Boolean(sb && postObj.id && !String(postObj.id).startsWith('local-'));
 
         if (postObj.userReaction === emoji) {
           postObj.userReaction = null;
@@ -1650,10 +1765,19 @@
           renderFeedCards();
           showToast('Reaction removed');
 
-          if (activeUser && sb && !String(postObj.id).startsWith('local-')) {
+          if (isDbPost) {
             try {
-              await sb.from('post_reactions').delete().eq('post_id', postObj.id).eq('user_id', activeUser.id);
+              if (activeUser?.id) {
+                await sb.from('post_reactions').delete().eq('post_id', postObj.id).eq('user_id', activeUser.id);
+              }
               await syncPostReactionCount(postObj.id, postObj.reaction_count);
+              const refreshed = await refreshRealPostCountsFromSupabase([postObj.id]);
+              const rStats = refreshed.get(postObj.id);
+              if (rStats) {
+                postObj.reaction_count = rStats.reaction_count;
+                postObj.userReaction = rStats.userReaction;
+                renderFeedCards();
+              }
             } catch (_) {}
           }
           return;
@@ -1666,13 +1790,22 @@
         writeLocalReactionState(postObj.id, { emoji: postObj.userReaction, count: postObj.reaction_count });
         renderFeedCards();
 
-        if (activeUser && sb && !String(postObj.id).startsWith('local-')) {
+        if (isDbPost) {
           try {
-            await sb.from('post_reactions').upsert(
-              { post_id: postObj.id, user_id: activeUser.id, reaction_emoji: emoji },
-              { onConflict: 'post_id,user_id' }
-            );
+            if (activeUser?.id) {
+              await sb.from('post_reactions').upsert(
+                { post_id: postObj.id, user_id: activeUser.id, reaction_emoji: emoji },
+                { onConflict: 'post_id,user_id' }
+              );
+            }
             await syncPostReactionCount(postObj.id, postObj.reaction_count);
+            const refreshed = await refreshRealPostCountsFromSupabase([postObj.id]);
+            const rStats = refreshed.get(postObj.id);
+            if (rStats) {
+              postObj.reaction_count = rStats.reaction_count;
+              postObj.userReaction = rStats.userReaction || emoji;
+              renderFeedCards();
+            }
           } catch (_) {}
         }
       } else if (target.type === 'comment') {
@@ -1845,19 +1978,19 @@
         renderFeedCards();
         showToast('Shared');
 
-        if (sb && activeUser && postObj.id && !String(postObj.id).startsWith('local-')) {
+        if (sb && postObj.id && !String(postObj.id).startsWith('local-')) {
           try {
-            await sb.from('post_shares').upsert(
-              { post_id: postObj.id, user_id: activeUser.id },
-              { onConflict: 'post_id,user_id' }
-            );
-            const { data: freshPost } = await sb
-              .from('posts')
-              .select('share_count')
-              .eq('id', postObj.id)
-              .maybeSingle();
-            if (freshPost && typeof freshPost.share_count === 'number') {
-              postObj.share_count = Math.max(Number(postObj.share_count || 0), freshPost.share_count);
+            if (activeUser?.id) {
+              await sb.from('post_shares').upsert(
+                { post_id: postObj.id, user_id: activeUser.id },
+                { onConflict: 'post_id,user_id' }
+              );
+            }
+            await sb.from('posts').update({ share_count: postObj.share_count }).eq('id', postObj.id);
+            const refreshed = await refreshRealPostCountsFromSupabase([postObj.id]);
+            const rStats = refreshed.get(postObj.id);
+            if (rStats) {
+              postObj.share_count = Math.max(Number(postObj.share_count || 0), Number(rStats.share_count || 0));
               markPostSharedLocal(postObj.id, postObj.share_count);
               renderFeedCards();
             }
@@ -1996,8 +2129,18 @@
       showToast(`Report ${actionType} sent`);
     }
 
+    function isDemoOrSampleItem(item) {
+      if (!item) return true;
+      if (item.is_demo || item.demo || item.is_sample || item.sample) return true;
+      const idStr = String(item.id || '').toLowerCase();
+      if (idStr.startsWith('demo-') || idStr.startsWith('sample-')) return true;
+      const cap = String(item.caption || item.content || '').trim().toLowerCase();
+      if (cap === 'sample post for testing comment') return true;
+      return false;
+    }
+
     function hasMeaningfulPostContent(item) {
-      if (!item) return false;
+      if (!item || isDemoOrSampleItem(item)) return false;
       const caption = String(item.caption || '').trim();
       const media = String(item.media_url || '').trim();
       return Boolean(caption || media);
@@ -2226,13 +2369,13 @@
           writeLocalComments(post.id, updated);
           post.comment_count = Math.max(Number(post.comment_count || 0) + 1, updated.length);
 
-          if (sb && activeUser && !String(post.id).startsWith('local-')) {
+          if (sb && !String(post.id).startsWith('local-')) {
             try {
               const { data: inserted } = await sb
                 .from('post_comments')
                 .insert({
                   post_id: post.id,
-                  user_id: activeUser.id,
+                  user_id: activeUser?.id || null,
                   author_name: newComment.author,
                   comment_text: newComment.text || (hasVoice ? 'Voice comment' : ''),
                   voice_url: newComment.voiceUrl,
@@ -2245,6 +2388,11 @@
                 writeLocalComments(post.id, updated);
               }
               await sb.from('posts').update({ comment_count: updated.length }).eq('id', post.id);
+              const refreshed = await refreshRealPostCountsFromSupabase([post.id]);
+              const rStats = refreshed.get(post.id);
+              if (rStats) {
+                post.comment_count = Math.max(Number(rStats.comment_count || 0), updated.length);
+              }
             } catch (_) {}
           }
 
@@ -2379,11 +2527,11 @@
             commentsByPost.set(post.id, comments);
             writeLocalComments(post.id, comments);
 
-            if (sb && activeUser && !String(post.id).startsWith('local-') && !String(cmt.id).startsWith('cmt-')) {
+            if (sb && !String(post.id).startsWith('local-') && !String(cmt.id).startsWith('cmt-')) {
               try {
                 await sb.from('post_comments').insert({
                   post_id: post.id,
-                  user_id: activeUser.id,
+                  user_id: activeUser?.id || null,
                   parent_id: cmt.id,
                   author_name: activeProfileName || 'Autrobook User',
                   comment_text: rVal
@@ -2472,10 +2620,24 @@
             .limit(25);
 
           if (!error && Array.isArray(rows)) {
+            const dbIds = rows.map(r => r.id).filter(Boolean);
+            const liveStatsMap = await refreshRealPostCountsFromSupabase(dbIds);
+
             rows.forEach(r => {
               const locR = localReactions[r.id];
-              const resolvedCount = Math.max(Number(r.reaction_count || 0), Number(locR?.count || 0));
-              const resolvedShare = Math.max(Number(r.share_count || 0), Number(sharedSet[r.id] || 0));
+              const liveStats = liveStatsMap.get(r.id);
+              const resolvedCount = liveStats
+                ? Number(liveStats.reaction_count || 0)
+                : Math.max(Number(r.reaction_count || 0), Number(locR?.count || 0));
+              const resolvedCommentCount = liveStats
+                ? Math.max(Number(r.comment_count || 0), Number(liveStats.comment_count || 0))
+                : Number(r.comment_count || 0);
+              const resolvedShare = liveStats
+                ? Math.max(Number(r.share_count || 0), Number(liveStats.share_count || 0), Number(sharedSet[r.id] || 0))
+                : Math.max(Number(r.share_count || 0), Number(sharedSet[r.id] || 0));
+              const resolvedViewCount = liveStats
+                ? Math.max(Number(r.view_count || 0), Number(liveStats.view_count || 0))
+                : Number(r.view_count || 0);
               const ownerId = r.user_id || r.author_id || '';
               const ownerProf = ownerId ? profilesMap.get(ownerId) : null;
               const resolvedName = String(
@@ -2496,11 +2658,11 @@
                 media_url: resolvePostMediaUrl(rawMedia),
                 is_video: String(r.media_type || '').startsWith('video') || /\.(mp4|webm|mov)(\?|$)/i.test(rawMedia),
                 reaction_count: resolvedCount,
-                comment_count: Number(r.comment_count || 0),
+                comment_count: resolvedCommentCount,
                 share_count: resolvedShare,
-                view_count: Number(r.view_count || 0),
+                view_count: resolvedViewCount,
                 created_at: r.created_at || new Date().toISOString(),
-                userReaction: locR?.emoji || null,
+                userReaction: liveStats?.userReaction || locR?.emoji || null,
                 _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, r.id),
                 _commentsOpen: openCommentPostIds.has(r.id)
               };
@@ -2524,7 +2686,7 @@
       ];
 
       localList.forEach(item => {
-        if (item && (item.id || item.caption || item.content || item.media_url || item.image_url)) {
+        if (item && !isDemoOrSampleItem(item) && (item.id || item.caption || item.content || item.media_url || item.image_url)) {
           const pid = String(item.id || `local-${item.created_at || item.posted_at || Date.now()}`);
           const existing = map.get(pid);
           const locR = localReactions[pid];
@@ -2541,12 +2703,12 @@
             is_bold: Boolean(item.is_bold),
             media_url: resolvePostMediaUrl(rawMedia),
             is_video: Boolean(item.is_video) || String(item.media_type || '').startsWith('video') || /\.(mp4|webm|mov)(\?|$)/i.test(rawMedia),
-            reaction_count: Math.max(existing?.reaction_count || 0, baseCount, Number(locR?.count || 0)),
-            comment_count: Math.max(existing?.comment_count || 0, Number(item.comment_count ?? item.comments ?? 0)),
-            share_count: Math.max(existing?.share_count || 0, baseShare, Number(sharedSet[pid] || 0)),
-            view_count: Math.max(existing?.view_count || 0, Number(item.view_count ?? item.views ?? 0)),
+            reaction_count: existing ? Number(existing.reaction_count || 0) : Math.max(baseCount, Number(locR?.count || 0)),
+            comment_count: existing ? Number(existing.comment_count || 0) : Number(item.comment_count ?? item.comments ?? 0),
+            share_count: existing ? Number(existing.share_count || 0) : Math.max(baseShare, Number(sharedSet[pid] || 0)),
+            view_count: existing ? Number(existing.view_count || 0) : Number(item.view_count ?? item.views ?? 0),
             created_at: item.posted_at || item.created_at || existing?.created_at || new Date().toISOString(),
-            userReaction: locR?.emoji || existing?.userReaction || null,
+            userReaction: existing?.userReaction || locR?.emoji || null,
             _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, pid),
             _commentsOpen: openCommentPostIds.has(pid) || existing?._commentsOpen || false
           };
@@ -2561,7 +2723,7 @@
         new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
       );
 
-      const snapshot = JSON.stringify(nextPosts.map(p => [p.id, p.caption, p.media_url, p.reaction_count, p.comment_count, p.share_count]));
+      const snapshot = JSON.stringify(nextPosts.map(p => [p.id, p.caption, p.media_url, p.reaction_count, p.comment_count, p.share_count, p.view_count]));
       if (forceRender || snapshot !== lastPostsSnapshot) {
         lastPostsSnapshot = snapshot;
         feedPosts = nextPosts;
@@ -2844,6 +3006,15 @@
             .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
               loadHomeFeedPosts(true);
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'post_reactions' }, () => {
+              loadHomeFeedPosts(true);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments' }, () => {
+              loadHomeFeedPosts(true);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'post_shares' }, () => {
+              loadHomeFeedPosts(true);
+            })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => {
               loadFeedStories();
             })
@@ -2856,4 +3027,4 @@
     });
   </script>
 </body>
-      </html>
+    </html>
