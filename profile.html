@@ -238,6 +238,20 @@
       justify-content: center;
       overflow: visible;
       box-shadow: var(--shadow-md);
+      transition: background 0.22s ease, padding 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    /* Dark Green Story Ring when user has an active story */
+    .avatar-box.has-story {
+      padding: 4px;
+      background: linear-gradient(135deg, var(--accent-mint), var(--accent-green), var(--dark-green));
+      border-color: var(--bg);
+      box-shadow: 0 0 0 2px var(--dark-green), 0 8px 24px rgba(10, 125, 59, 0.35);
+      cursor: pointer;
+    }
+
+    .avatar-box.has-story .avatar-img {
+      border: 3px solid var(--bg);
     }
 
     .avatar-img {
@@ -888,9 +902,9 @@
   <!-- Profile Avatar -->
   <div class="avatar-section">
     <div class="thought-bubble" id="thoughtBubble" onclick="editThought()">Drop a thought...</div>
-    <div class="avatar-box">
+    <div class="avatar-box" id="avatarBox" onclick="handleAvatarBoxClick()">
       <img id="avatarImg" class="avatar-img" alt="Profile">
-      <label for="avatarInput" class="cam-btn avatar-cam" title="Change Profile Photo">
+      <label for="avatarInput" class="cam-btn avatar-cam" title="Change Profile Photo" onclick="event.stopPropagation()">
         <i class="fas fa-camera"></i>
       </label>
       <input type="file" id="avatarInput" accept="image/*" hidden onchange="handleFileSelected(event, 'avatar')">
@@ -1088,6 +1102,7 @@
     }
 
     let activeUserId = null;
+    let hasActiveStory = false;
     let editorTarget = 'avatar';
     let editorSourceUrl = '';
     let restyleIndex = 0;
@@ -1120,6 +1135,53 @@
         '"': '&quot;',
         "'": '&#39;'
       }[c]));
+    }
+
+    function setStoryRingActive(active) {
+      hasActiveStory = Boolean(active);
+      const box = document.getElementById('avatarBox');
+      if (box) {
+        box.classList.toggle('has-story', hasActiveStory);
+      }
+    }
+
+    function handleAvatarBoxClick() {
+      if (hasActiveStory) {
+        window.location.href = 'story-card.html';
+      }
+    }
+
+    function checkLocalStoryExists() {
+      try {
+        const keys = ['autro_stories', 'autrobook_stories', 'autro_active_story', 'autro_story_items'];
+        for (const k of keys) {
+          const raw = localStorage.getItem(k);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return true;
+          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) return true;
+        }
+        if (localStorage.getItem('autro_has_story') === 'true') return true;
+      } catch (e) {}
+      return false;
+    }
+
+    async function refreshStoryRing(userId) {
+      let active = checkLocalStoryExists();
+
+      if (sb && userId) {
+        try {
+          const { count, error } = await sb
+            .from('stories')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+          if (!error && typeof count === 'number' && count > 0) {
+            active = true;
+          }
+        } catch (e) {}
+      }
+
+      setStoryRingActive(active);
     }
 
     function setImageIfPresent(imgEl, url, previewBtnEl) {
@@ -1340,7 +1402,9 @@
             try {
               await sb.from('posts').insert({
                 user_id: activeUserId,
+                caption: postContent,
                 content: postContent,
+                media_url: finalUrl,
                 image_url: finalUrl
               });
             } catch (postErr) {
@@ -1365,7 +1429,9 @@
         if (shareToFeed) {
           const localPosts = Array.isArray(current.posts) ? current.posts : [];
           localPosts.unshift({
+            caption: caption || (editorTarget === 'cover' ? 'Updated cover photo' : 'Updated profile picture'),
             content: caption || (editorTarget === 'cover' ? 'Updated cover photo' : 'Updated profile picture'),
+            media_url: finalUrl,
             image_url: finalUrl,
             created_at: new Date().toISOString()
           });
@@ -1411,6 +1477,16 @@
       `).join('');
     }
 
+    function getPostImageUrl(post) {
+      if (!post) return '';
+      return String(post.media_url || post.image_url || '').trim();
+    }
+
+    function getPostText(post) {
+      if (!post) return '';
+      return String(post.caption || post.content || post.text || '').trim();
+    }
+
     function renderPhotos(avatarUrl, coverUrl, posts) {
       const grid = document.getElementById('photosGrid');
       const empty = document.getElementById('photosEmptyState');
@@ -1421,8 +1497,9 @@
       if (coverUrl && coverUrl.trim()) photos.push({ type: 'cover', src: coverUrl.trim() });
       if (Array.isArray(posts)) {
         posts.forEach(p => {
-          if (p && p.image_url && String(p.image_url).trim()) {
-            photos.push({ type: 'avatar', src: String(p.image_url).trim() });
+          const mediaSrc = getPostImageUrl(p);
+          if (mediaSrc) {
+            photos.push({ type: 'avatar', src: mediaSrc });
           }
         });
       }
@@ -1460,10 +1537,11 @@
 
       emptyEl.style.display = 'none';
       listEl.innerHTML = items.map(p => {
-        const bodyText = p.content || p.caption || p.text || '';
+        const bodyText = getPostText(p);
+        const mediaSrc = getPostImageUrl(p);
         const timeText = p.created_at ? new Date(p.created_at).toLocaleString() : '';
-        const imgHtml = p.image_url
-          ? `<img src="${escapeHtml(p.image_url)}" alt="Post image" class="post-card-img" onclick="openPreviewEditor('avatar', '${String(p.image_url).replace(/'/g, "\\'")}')">`
+        const imgHtml = mediaSrc
+          ? `<img src="${escapeHtml(mediaSrc)}" alt="Post image" class="post-card-img" onclick="openPreviewEditor('avatar', '${mediaSrc.replace(/'/g, "\\'")}')">`
           : '';
         return `
           <article class="post-card">
@@ -1485,6 +1563,24 @@
       }
     }
 
+    function readLocalFallbackPosts() {
+      const map = new Map();
+      const stored = readStoredProfile();
+      const sources = [
+        ...(Array.isArray(stored.posts) ? stored.posts : []),
+        ...JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]'),
+        ...JSON.parse(localStorage.getItem('autro_post_cards') || '[]')
+      ];
+      sources.forEach((item, idx) => {
+        if (!item) return;
+        const id = item.id || `local-p-${idx}-${getPostText(item).slice(0, 12)}`;
+        if (!map.has(id) && (getPostText(item) || getPostImageUrl(item))) {
+          map.set(id, item);
+        }
+      });
+      return Array.from(map.values());
+    }
+
     function applyProfileData(data) {
       const fullName = (data.full_name || data.name || '').toString().trim();
       const usernameFormatted = normalizeUsername(data.username, fullName);
@@ -1494,7 +1590,9 @@
 
       setFriendsDisplay(data.friends_count ?? 0);
 
-      const postsArr = Array.isArray(data.posts) ? data.posts : [];
+      const postsArr = Array.isArray(data.posts) && data.posts.length > 0
+        ? data.posts
+        : readLocalFallbackPosts();
       const postsNum = postsArr.length > 0 ? postsArr.length : Number(data.posts_count || 0);
       document.getElementById('postsCountLabel').textContent = `${postsNum} ${postsNum === 1 ? 'post' : 'posts'}`;
 
@@ -1544,6 +1642,7 @@
     }
 
     async function refreshLiveCounts(userId) {
+      await refreshStoryRing(userId);
       if (!sb || !userId) return;
 
       let friendsTotal = 0;
@@ -1574,13 +1673,26 @@
         const { data, error } = await sb
           .from('posts')
           .select('*')
-          .eq('user_id', userId)
+          .or(`user_id.eq.${userId},author_id.eq.${userId}`)
           .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data)) {
+        if (!error && Array.isArray(data) && data.length > 0) {
           postsList = data;
+        } else {
+          const { data: allRecent } = await sb
+            .from('posts')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (Array.isArray(allRecent)) {
+            postsList = allRecent.filter(p => p.user_id === userId || p.author_id === userId);
+          }
         }
       } catch (e) {
         console.warn('Posts fetch error:', e);
+      }
+
+      if (!postsList.length) {
+        postsList = readLocalFallbackPosts();
       }
 
       setFriendsDisplay(friendsTotal);
@@ -1598,6 +1710,7 @@
         sb.channel('autro-live-profile-' + userId)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => refreshLiveCounts(userId))
           .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => refreshLiveCounts(userId))
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => refreshStoryRing(userId))
           .subscribe();
       } catch (e) {
         console.warn('Realtime skipped:', e);
@@ -1607,6 +1720,7 @@
     async function loadProfile() {
       const localData = readStoredProfile();
       applyProfileData(localData);
+      await refreshStoryRing(null);
 
       if (!sb) return;
       try {
@@ -1663,4 +1777,4 @@
     document.addEventListener('DOMContentLoaded', loadProfile);
   </script>
 </body>
-      </html>
+  </html>
