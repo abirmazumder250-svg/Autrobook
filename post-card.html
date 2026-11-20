@@ -99,6 +99,13 @@
       margin: 0 auto;
     }
 
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+      font-size: 14.5px;
+    }
+
     .fb-post {
       background: var(--bg-surface);
       border-bottom: 8px solid var(--bg-soft);
@@ -444,6 +451,7 @@
       font-size: 13.5px;
       line-height: 1.4;
       word-break: break-word;
+      white-space: pre-wrap;
     }
 
     .comment-actions {
@@ -678,6 +686,15 @@
       'Violation of community standards'
     ];
 
+    const HEAVY_STORAGE_KEYS = [
+      'autro_instant_feed_posts',
+      'autro_post_cards',
+      'autro_profile_posts',
+      'autro_comments_store',
+      'autro_saved_items',
+      'autro_comment_reports'
+    ];
+
     let sb = null;
     try {
       if (window.supabase && typeof window.supabase.createClient === 'function') {
@@ -705,6 +722,54 @@
     let recordingPostId = null;
     let isRecording = false;
     let voiceTimer = null;
+
+    function pruneHeavyLocalKeys() {
+      for (const key of HEAVY_STORAGE_KEYS) {
+        try {
+          const val = localStorage.getItem(key);
+          if (val && val.length > 200000) {
+            localStorage.removeItem(key);
+          }
+        } catch (_) {}
+      }
+    }
+
+    function safeLocalStorageSet(key, valueStr) {
+      const cleanStr = String(valueStr || '');
+      if (!cleanStr || cleanStr.includes('data:image/') || cleanStr.includes('data:video/') || cleanStr.includes('data:audio/')) {
+        return false;
+      }
+      if (cleanStr.length > 240000) {
+        return false;
+      }
+      try {
+        localStorage.setItem(key, cleanStr);
+        return true;
+      } catch (_) {
+        pruneHeavyLocalKeys();
+        for (const k of HEAVY_STORAGE_KEYS) {
+          if (k !== key) {
+            try { localStorage.removeItem(k); } catch (_) {}
+          }
+        }
+        try {
+          localStorage.setItem(key, cleanStr);
+          return true;
+        } catch (_) {
+          try { localStorage.removeItem(key); } catch (__) {}
+          return false;
+        }
+      }
+    }
+
+    function safeJsonParse(raw, fallback) {
+      try {
+        const parsed = raw ? JSON.parse(raw) : fallback;
+        return parsed ?? fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
 
     function showToast(msg) {
       const el = document.getElementById('toastPill');
@@ -760,29 +825,43 @@
       return '';
     }
 
+    function resolvePostMediaUrl(raw) {
+      const val = String(raw || '').trim();
+      if (!val) return '';
+      if (val.startsWith('http://') || val.startsWith('https://') || val.startsWith('data:') || val.startsWith('blob:')) {
+        return val;
+      }
+      if (sb) {
+        return sb.storage.from('media').getPublicUrl(val.replace(/^\/+/, '')).data.publicUrl || '';
+      }
+      return '';
+    }
+
     function buildProfileHref(userId) {
       if (userId) return `profile.html?user=${encodeURIComponent(userId)}`;
       return 'profile.html';
     }
 
     function readLocalReactionState() {
-      return JSON.parse(localStorage.getItem('autro_post_reactions_local') || '{}');
+      const obj = safeJsonParse(localStorage.getItem('autro_post_reactions_local'), {});
+      return obj && typeof obj === 'object' ? obj : {};
     }
 
     function writeLocalReactionState(postId, data) {
       const all = readLocalReactionState();
       all[postId] = data;
-      localStorage.setItem('autro_post_reactions_local', JSON.stringify(all));
+      safeLocalStorageSet('autro_post_reactions_local', JSON.stringify(all));
     }
 
     function readSharedPostsSet() {
-      return JSON.parse(localStorage.getItem('autro_shared_posts_set') || '{}');
+      const obj = safeJsonParse(localStorage.getItem('autro_shared_posts_set'), {});
+      return obj && typeof obj === 'object' ? obj : {};
     }
 
     function markPostSharedLocal(postId, countVal) {
       const setObj = readSharedPostsSet();
       setObj[postId] = Number(countVal || 0);
-      localStorage.setItem('autro_shared_posts_set', JSON.stringify(setObj));
+      safeLocalStorageSet('autro_shared_posts_set', JSON.stringify(setObj));
     }
 
     function buildPostShareUrl(postId) {
@@ -871,7 +950,11 @@
     }
 
     async function loadSessionAndProfile() {
-      activeAuthorName = String(localStorage.getItem('autro_profile_name') || '').trim();
+      try {
+        activeAuthorName = String(localStorage.getItem('autro_profile_name') || '').trim();
+      } catch (_) {
+        activeAuthorName = '';
+      }
       if (!sb) return;
       try {
         const { data: allProfs } = await sb.from('profiles').select('id, full_name, avatar_url');
@@ -891,21 +974,25 @@
         ).trim();
         if (resolved) {
           activeAuthorName = resolved;
-          localStorage.setItem('autro_profile_name', resolved);
+          safeLocalStorageSet('autro_profile_name', resolved);
         }
         activeAvatarUrl = prof?.avatar_url || activeUser.user_metadata?.avatar_url || '';
       } catch (_) {}
     }
 
     function readLocalComments(postId) {
-      const all = JSON.parse(localStorage.getItem('autro_comments_store') || '{}');
+      const all = safeJsonParse(localStorage.getItem('autro_comments_store'), {});
       return Array.isArray(all[postId]) ? all[postId] : [];
     }
 
     function writeLocalComments(postId, arr) {
-      const all = JSON.parse(localStorage.getItem('autro_comments_store') || '{}');
-      all[postId] = arr;
-      localStorage.setItem('autro_comments_store', JSON.stringify(all));
+      const all = safeJsonParse(localStorage.getItem('autro_comments_store'), {});
+      const sanitizedList = (Array.isArray(arr) ? arr : []).slice(-25).map(c => ({
+        ...c,
+        voiceUrl: typeof c.voiceUrl === 'string' && c.voiceUrl.startsWith('blob:') ? '' : (c.voiceUrl || '')
+      }));
+      all[postId] = sanitizedList;
+      safeLocalStorageSet('autro_comments_store', JSON.stringify(all));
     }
 
     async function syncPostReactionCount(postId, nextCount) {
@@ -937,7 +1024,7 @@
           }
           await syncPostReactionCount(post.id, post.reaction_count);
           renderPostsStream();
-          showToast('Reaction undone');
+          showToast('Reaction removed');
           return;
         }
 
@@ -969,7 +1056,7 @@
           commentsByPost.set(target.postId, list);
           writeLocalComments(target.postId, list);
           renderPostsStream();
-          showToast('Reaction undone');
+          showToast('Reaction removed');
           return;
         }
 
@@ -1194,9 +1281,9 @@
         created_at: new Date().toISOString()
       };
 
-      const savedReports = JSON.parse(localStorage.getItem('autro_comment_reports') || '[]');
-      savedReports.unshift(payload);
-      localStorage.setItem('autro_comment_reports', JSON.stringify(savedReports));
+      const savedReports = safeJsonParse(localStorage.getItem('autro_comment_reports'), []);
+      const nextReports = [payload, ...(Array.isArray(savedReports) ? savedReports : [])].slice(0, 20);
+      safeLocalStorageSet('autro_comment_reports', JSON.stringify(nextReports));
 
       if (sb && activeUser && !String(payload.comment_id).startsWith('cmt-')) {
         try {
@@ -1210,12 +1297,20 @@
       }
 
       closeReportModal();
-      showToast(`Report ${actionType} sent`);
+      showToast(`Report ${actionType.toLowerCase()}ed`);
     }
 
     function renderPostsStream() {
       const stream = document.getElementById('feedStream');
       stream.innerHTML = '';
+
+      if (!postsList.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = 'No posts available yet.';
+        stream.appendChild(empty);
+        return;
+      }
 
       postsList.forEach(post => {
         const comments = commentsByPost.get(post.id) || readLocalComments(post.id);
@@ -1292,19 +1387,20 @@
           article.appendChild(capEl);
         }
 
-        if (post.media_url) {
+        const safeMediaUrl = resolvePostMediaUrl(post.media_url);
+        if (safeMediaUrl) {
           if (post.is_video) {
             const vid = document.createElement('video');
             vid.className = 'fb-media';
-            vid.src = post.media_url;
+            vid.src = safeMediaUrl;
             vid.controls = true;
             vid.playsInline = true;
             article.appendChild(vid);
           } else {
             const img = document.createElement('img');
             img.className = 'fb-media';
-            img.src = post.media_url;
-            img.alt = '';
+            img.src = safeMediaUrl;
+            img.alt = 'Post media';
             article.appendChild(img);
           }
         }
@@ -1607,7 +1703,27 @@
             cmt.replies.forEach(rep => {
               const rCard = document.createElement('div');
               rCard.className = 'reply-card';
-              rCard.innerHTML = `<div class="reply-head"><a href="${buildProfileHref(rep.user_id || '')}" class="reply-author">${rep.author || 'Autrobook User'}</a><span class="reply-time fb-live-time" data-created-at="${rep.created_at || ''}">${formatLiveElapsed(rep.created_at)}</span></div><div>${rep.text}</div>`;
+
+              const rHead = document.createElement('div');
+              rHead.className = 'reply-head';
+
+              const rAuth = document.createElement('a');
+              rAuth.href = buildProfileHref(rep.user_id || '');
+              rAuth.className = 'reply-author';
+              rAuth.textContent = rep.author || 'Autrobook User';
+
+              const rTime = document.createElement('span');
+              rTime.className = 'reply-time fb-live-time';
+              rTime.dataset.createdAt = rep.created_at || '';
+              rTime.textContent = formatLiveElapsed(rep.created_at);
+
+              const rText = document.createElement('div');
+              rText.textContent = rep.text || '';
+
+              rHead.appendChild(rAuth);
+              rHead.appendChild(rTime);
+              rCard.appendChild(rHead);
+              rCard.appendChild(rText);
               repList.appendChild(rCard);
             });
             cRow.appendChild(repList);
@@ -1712,9 +1828,10 @@
       }
 
       if (map.size === 0) {
-        const q1 = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
-        const q2 = JSON.parse(localStorage.getItem('autro_post_cards') || '[]');
-        [...q1, ...q2].forEach(item => {
+        const q1 = safeJsonParse(localStorage.getItem('autro_instant_feed_posts'), []);
+        const q2 = safeJsonParse(localStorage.getItem('autro_post_cards'), []);
+        const combined = [...(Array.isArray(q1) ? q1 : []), ...(Array.isArray(q2) ? q2 : [])];
+        combined.forEach(item => {
           if (!item) return;
           const id = item.id || `local-${Math.random().toString(36).slice(2, 8)}`;
           const locR = localReactions[id];
@@ -1800,12 +1917,14 @@
     document.getElementById('shareToChatOption').addEventListener('click', () => {
       if (!activeSharePost) return;
       const postUrl = buildPostShareUrl(activeSharePost.id);
-      sessionStorage.setItem('autro_shared_post_payload', JSON.stringify({
-        postId: activeSharePost.id,
-        url: postUrl,
-        caption: activeSharePost.caption || '',
-        assets: ['autro-chat.html', 'autro-chat.css', 'autro-chat.js']
-      }));
+      try {
+        sessionStorage.setItem('autro_shared_post_payload', JSON.stringify({
+          postId: activeSharePost.id,
+          url: postUrl,
+          caption: activeSharePost.caption || '',
+          assets: ['autro-chat.html', 'autro-chat.css', 'autro-chat.js']
+        }));
+      } catch (_) {}
       closeShareMenu();
       window.location.href = `autro-chat.html?share=${encodeURIComponent(postUrl)}&assets=autro-chat.html,autro-chat.css,autro-chat.js`;
     });
@@ -1833,14 +1952,20 @@
 
     document.getElementById('saveCommentOption').addEventListener('click', async () => {
       if (!activeCommentMenuData) return;
-      const savedList = JSON.parse(localStorage.getItem('autro_saved_items') || '[]');
-      savedList.unshift({
+      const savedList = safeJsonParse(localStorage.getItem('autro_saved_items'), []);
+      const cleanComment = {
+        ...activeCommentMenuData.comment,
+        voiceUrl: typeof activeCommentMenuData.comment?.voiceUrl === 'string' && activeCommentMenuData.comment.voiceUrl.startsWith('blob:')
+          ? ''
+          : (activeCommentMenuData.comment?.voiceUrl || '')
+      };
+      const nextSaved = [{
         type: 'comment',
         postId: activeCommentMenuData.postId,
-        comment: activeCommentMenuData.comment,
+        comment: cleanComment,
         savedAt: new Date().toISOString()
-      });
-      localStorage.setItem('autro_saved_items', JSON.stringify(savedList));
+      }, ...(Array.isArray(savedList) ? savedList : [])].slice(0, 25);
+      safeLocalStorageSet('autro_saved_items', JSON.stringify(nextSaved));
 
       if (sb && activeUser && !String(activeCommentMenuData.comment.id).startsWith('cmt-')) {
         try {
@@ -1853,7 +1978,7 @@
       }
 
       closeDotsMenu();
-      showToast('Saved to save-item.html');
+      showToast('Saved');
       window.location.href = 'save-item.html';
     });
 
@@ -1884,10 +2009,11 @@
     setInterval(refreshLiveTimersOnly, 1000);
 
     window.addEventListener('DOMContentLoaded', async () => {
+      pruneHeavyLocalKeys();
       await loadSessionAndProfile();
       await loadPostsStream();
       subscribeRealtimePosts();
     });
   </script>
 </body>
-  </html>
+    </html>
