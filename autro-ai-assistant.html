@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Autro AI Assistant — Autrobook</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg-page: #f5f5f5;
@@ -65,7 +66,6 @@
       border-right: 1px solid var(--border-color);
     }
 
-    /* Top Bar */
     .topbar {
       display: flex;
       align-items: center;
@@ -146,7 +146,6 @@
       text-overflow: ellipsis;
     }
 
-    /* Chat Area */
     .chat-container {
       flex: 1;
       overflow-y: auto;
@@ -270,7 +269,6 @@
       }
     }
 
-    /* Composer */
     .composer-wrap {
       padding: 12px 14px;
       background-color: var(--bg-card);
@@ -348,7 +346,7 @@
           </div>
           <div>
             <div class="assistant-title">Autro AI Assistant</div>
-            <div class="assistant-sub">Instant replies in all languages</div>
+            <div class="assistant-sub" id="assistantSubtitle">Instant replies in all languages</div>
           </div>
         </div>
       </div>
@@ -388,6 +386,15 @@
   <script>
     (function () {
       const API_ENDPOINT = '/api/autro-ai';
+      const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+      let supabaseClient = null;
+      try {
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+      } catch (_) {}
 
       const chatContainer = document.getElementById('chatContainer');
       const emptyState = document.getElementById('emptyState');
@@ -395,8 +402,143 @@
       const promptInput = document.getElementById('promptInput');
       const sendBtn = document.getElementById('sendBtn');
       const clearChatBtn = document.getElementById('clearChatBtn');
+      const assistantSubtitle = document.getElementById('assistantSubtitle');
 
       const conversationHistory = [];
+      let currentUserProfile = {
+        userId: '',
+        fullName: '',
+        username: '',
+        email: '',
+        bio: '',
+        location: '',
+        education: ''
+      };
+
+      function readCachedUserProfile() {
+        const profile = {
+          userId: '',
+          fullName: '',
+          username: '',
+          email: '',
+          bio: '',
+          location: '',
+          education: ''
+        };
+        try {
+          const pRaw = localStorage.getItem('autro_account_profile') || localStorage.getItem('autrobook_user');
+          if (pRaw) {
+            const parsed = JSON.parse(pRaw);
+            profile.userId = (parsed.id || parsed.user_id || '').trim();
+            profile.fullName = (parsed.full_name || parsed.name || '').trim();
+            profile.username = (parsed.username || '').trim();
+            profile.email = (parsed.email || '').trim();
+            profile.bio = (parsed.bio || parsed.about || '').trim();
+            profile.location = (parsed.location || parsed.city || parsed.lives_in || '').trim();
+            profile.education = (parsed.education || parsed.school || parsed.university || '').trim();
+          }
+          if (!profile.fullName) {
+            profile.fullName = (localStorage.getItem('autro_profile_name') || '').trim();
+          }
+        } catch (_) {}
+        return profile;
+      }
+
+      async function resolveCurrentUserProfile() {
+        const cached = readCachedUserProfile();
+        currentUserProfile = { ...currentUserProfile, ...cached };
+
+        if (!supabaseClient) return currentUserProfile;
+
+        try {
+          let userId = currentUserProfile.userId || null;
+
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          if (session && session.user) {
+            userId = session.user.id;
+            currentUserProfile.userId = userId;
+            currentUserProfile.fullName =
+              session.user.user_metadata?.full_name ||
+              session.user.user_metadata?.name ||
+              currentUserProfile.fullName;
+            currentUserProfile.email = session.user.email || currentUserProfile.email;
+          }
+
+          if (userId) {
+            const { data: profileRow } = await supabaseClient
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle();
+
+            if (profileRow) {
+              if (profileRow.full_name) currentUserProfile.fullName = String(profileRow.full_name).trim();
+              if (profileRow.username) currentUserProfile.username = String(profileRow.username).trim();
+              if (profileRow.email) currentUserProfile.email = String(profileRow.email).trim();
+              if (profileRow.bio) currentUserProfile.bio = String(profileRow.bio).trim();
+              if (profileRow.location || profileRow.city || profileRow.lives_in) {
+                currentUserProfile.location = String(profileRow.location || profileRow.city || profileRow.lives_in).trim();
+              }
+              if (profileRow.education || profileRow.university || profileRow.school) {
+                currentUserProfile.education = String(profileRow.education || profileRow.university || profileRow.school).trim();
+              }
+            }
+          }
+
+          const clientKey = localStorage.getItem('autro_account_client_id');
+          let settingsRow = null;
+
+          if (userId) {
+            const { data } = await supabaseClient
+              .from('account_settings')
+              .select('*')
+              .eq('user_id', userId)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            settingsRow = data;
+          }
+
+          if (!settingsRow && clientKey) {
+            const { data } = await supabaseClient
+              .from('account_settings')
+              .select('*')
+              .eq('account_key', clientKey)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            settingsRow = data;
+          }
+
+          if (!settingsRow && !userId) {
+            const { data: latestRows } = await supabaseClient
+              .from('account_settings')
+              .select('*')
+              .order('updated_at', { ascending: false })
+              .limit(1);
+            if (Array.isArray(latestRows) && latestRows.length > 0) {
+              settingsRow = latestRows[0];
+            }
+          }
+
+          if (settingsRow) {
+            if (settingsRow.full_name) currentUserProfile.fullName = String(settingsRow.full_name).trim();
+            if (settingsRow.bio) currentUserProfile.bio = String(settingsRow.bio).trim();
+            if (settingsRow.location || settingsRow.city || settingsRow.lives_in) {
+              currentUserProfile.location = String(settingsRow.location || settingsRow.city || settingsRow.lives_in).trim();
+            }
+            if (settingsRow.education || settingsRow.university || settingsRow.school) {
+              currentUserProfile.education = String(settingsRow.education || settingsRow.university || settingsRow.school).trim();
+            }
+          }
+
+          if (assistantSubtitle && currentUserProfile.fullName) {
+            assistantSubtitle.textContent = `Profile: ${currentUserProfile.fullName}`;
+          }
+        } catch (_) {}
+
+        return currentUserProfile;
+      }
 
       function formatTime() {
         const now = new Date();
@@ -474,16 +616,25 @@
         const startTime = performance.now();
         appendTypingIndicator();
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9000);
+
         try {
+          const userProfile = await resolveCurrentUserProfile();
+
           const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
             body: JSON.stringify({
               message: trimmed,
-              history: conversationHistory.slice(-8)
+              profileName: userProfile.fullName,
+              userProfile,
+              history: conversationHistory.slice(-4)
             })
           });
 
+          clearTimeout(timeoutId);
           const data = await response.json();
           removeTypingIndicator();
 
@@ -492,7 +643,7 @@
           if (!response.ok || !data.reply) {
             appendMessage(
               'assistant',
-              data.error || 'Could not get a response right now. Please check your API configuration.',
+              data.error || 'Could not get a response right now.',
               `${elapsedSec}s`
             );
           } else {
@@ -500,8 +651,12 @@
             appendMessage('assistant', data.reply, `Autro AI • ${elapsedSec}s`);
           }
         } catch (err) {
+          clearTimeout(timeoutId);
           removeTypingIndicator();
-          appendMessage('assistant', 'Network error while connecting to Autro AI.', formatTime());
+          const msg = err.name === 'AbortError'
+            ? 'Response took too long. Please try again.'
+            : 'Network error while connecting to Autro AI.';
+          appendMessage('assistant', msg, formatTime());
         } finally {
           sendBtn.disabled = false;
           promptInput.focus();
@@ -530,7 +685,9 @@
           chatContainer.appendChild(emptyState);
         }
       });
+
+      resolveCurrentUserProfile();
     })();
   </script>
 </body>
-</html>
+  </html>
