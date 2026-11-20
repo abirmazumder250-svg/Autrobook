@@ -138,24 +138,6 @@
     font-weight: 700;
   }
 
-  .home-link-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 13px;
-    border-radius: 999px;
-    background-color: var(--soft-btn-bg);
-    color: var(--text-color);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 700;
-    transition: background-color 0.15s ease;
-  }
-
-  .home-link-btn:hover {
-    background-color: var(--soft-btn-hover);
-  }
-
   /* Hero Section */
   .hero-wrap {
     padding: 18px 16px 10px;
@@ -607,15 +589,11 @@
   <!-- Top Header -->
   <header class="top-header">
     <div class="header-left">
-      <a href="index.html" class="back-btn" aria-label="Back to Home">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
         <i class="fa-solid fa-arrow-left"></i>
       </a>
       <h1 class="header-title">Autro Premium</h1>
     </div>
-    <a href="index.html" class="home-link-btn">
-      <i class="fa-solid fa-house"></i>
-      <span>Home</span>
-    </a>
   </header>
 
   <!-- Hero Banner -->
@@ -715,7 +693,7 @@
     </article>
   </section>
 
-  <!-- New Feature: Promo Code & Plan Summary -->
+  <!-- Promo Code & Plan Summary -->
   <section class="promo-box" aria-label="Promo code and summary">
     <div class="promo-row">
       <input type="text" id="promoInput" class="promo-input" maxlength="24" placeholder="Promo code (try AUTRO15 or CREATOR20)" aria-label="Promo code">
@@ -795,6 +773,10 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+    const SUB_ROW_ID = 'default_premium_subscription';
+
     const PLAN_STORAGE_KEY = 'autro_premium_plan';
     const CYCLE_STORAGE_KEY = 'autro_premium_cycle';
     const PROMO_STORAGE_KEY = 'autro_premium_promo';
@@ -846,6 +828,78 @@
 
     if (promoInput && promoCode) {
       promoInput.value = promoCode;
+    }
+
+    function sbHeaders(extra) {
+      return Object.assign(
+        {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        },
+        extra || {}
+      );
+    }
+
+    function saveLocalState() {
+      try {
+        localStorage.setItem(PLAN_STORAGE_KEY, currentPlan);
+        localStorage.setItem(CYCLE_STORAGE_KEY, cycle);
+        if (promoCode) {
+          localStorage.setItem(PROMO_STORAGE_KEY, promoCode);
+        } else {
+          localStorage.removeItem(PROMO_STORAGE_KEY);
+        }
+      } catch (_) {}
+    }
+
+    async function syncSubscriptionToSupabase() {
+      try {
+        const rate = promoCode && PROMO_CODES[promoCode] ? PROMO_CODES[promoCode] : 0;
+        const planBase = (BASE_PRICES[currentPlan] && BASE_PRICES[currentPlan][cycle]) || 0;
+        const finalPrice = Number(Math.max(0, planBase * (1 - rate)).toFixed(2));
+
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/premium_subscriptions?on_conflict=id`,
+          {
+            method: 'POST',
+            headers: sbHeaders({
+              Prefer: 'resolution=merge-duplicates,return=minimal'
+            }),
+            body: JSON.stringify([
+              {
+                id: SUB_ROW_ID,
+                plan_name: currentPlan,
+                billing_cycle: cycle,
+                promo_code: promoCode || null,
+                estimated_price: finalPrice,
+                updated_at: new Date().toISOString()
+              }
+            ])
+          }
+        );
+      } catch (_) {}
+    }
+
+    async function loadSubscriptionFromSupabase() {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/premium_subscriptions?id=eq.${encodeURIComponent(SUB_ROW_ID)}&select=*`,
+          { method: 'GET', headers: sbHeaders() }
+        );
+        if (!res.ok) return;
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          const r = rows[0];
+          if (r.plan_name && BASE_PRICES[r.plan_name]) currentPlan = r.plan_name;
+          if (r.billing_cycle === 'monthly' || r.billing_cycle === 'yearly') cycle = r.billing_cycle;
+          const p = (r.promo_code || '').trim().toUpperCase();
+          promoCode = p && PROMO_CODES[p] ? p : '';
+          if (promoInput) promoInput.value = promoCode;
+          saveLocalState();
+          renderPlans();
+        }
+      } catch (_) {}
     }
 
     function notify(message) {
@@ -922,16 +976,18 @@
     if (btnMonthly) {
       btnMonthly.addEventListener('click', () => {
         cycle = 'monthly';
-        try { localStorage.setItem(CYCLE_STORAGE_KEY, cycle); } catch (_) {}
+        saveLocalState();
         renderBilling();
+        syncSubscriptionToSupabase();
       });
     }
 
     if (btnYearly) {
       btnYearly.addEventListener('click', () => {
         cycle = 'yearly';
-        try { localStorage.setItem(CYCLE_STORAGE_KEY, cycle); } catch (_) {}
+        saveLocalState();
         renderBilling();
+        syncSubscriptionToSupabase();
       });
     }
 
@@ -945,8 +1001,9 @@
           return notify('Invalid promo code. Try AUTRO15 or CREATOR20');
         }
         promoCode = entered;
-        try { localStorage.setItem(PROMO_STORAGE_KEY, promoCode); } catch (_) {}
+        saveLocalState();
         renderBilling();
+        syncSubscriptionToSupabase();
         notify(`Applied ${promoCode} (${Math.round(PROMO_CODES[promoCode] * 100)}% off)`);
       });
     }
@@ -955,8 +1012,9 @@
       resetPromoBtn.addEventListener('click', () => {
         promoCode = '';
         if (promoInput) promoInput.value = '';
-        try { localStorage.removeItem(PROMO_STORAGE_KEY); } catch (_) {}
+        saveLocalState();
         renderBilling();
+        syncSubscriptionToSupabase();
         notify('Promo code reset');
       });
     }
@@ -966,8 +1024,9 @@
         const chosen = btn.getAttribute('data-choose-plan');
         if (!chosen) return;
         currentPlan = chosen;
-        try { localStorage.setItem(PLAN_STORAGE_KEY, currentPlan); } catch (_) {}
+        saveLocalState();
         renderPlans();
+        syncSubscriptionToSupabase();
         notify(`${chosen} active (${cycle})`);
       });
     });
@@ -982,6 +1041,7 @@
     });
 
     renderPlans();
+    loadSubscriptionFromSupabase();
   });
 </script>
 
@@ -1133,4 +1193,4 @@
   })();
 </script>
 </body>
-</html>
+    </html>
