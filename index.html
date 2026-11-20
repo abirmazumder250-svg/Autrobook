@@ -1155,6 +1155,38 @@
       window._idxToast = setTimeout(() => { el.style.display = 'none'; }, 2400);
     }
 
+    function safeStorageSet(key, valueStr) {
+      try {
+        localStorage.setItem(key, valueStr);
+        return true;
+      } catch (err) {
+        if (key === 'autro_instant_feed_posts') {
+          try {
+            const parsed = JSON.parse(valueStr);
+            if (Array.isArray(parsed)) {
+              const slim = parsed.slice(0, 5).map(item => ({
+                id: item.id,
+                user_id: item.user_id || '',
+                author_name: item.author_name || '',
+                caption: item.caption || '',
+                is_bold: Boolean(item.is_bold),
+                media_url: item.media_url && String(item.media_url).startsWith('data:') ? '' : (item.media_url || ''),
+                is_video: Boolean(item.is_video),
+                reaction_count: Number(item.reaction_count || 0),
+                comment_count: Number(item.comment_count || 0),
+                share_count: Number(item.share_count || 0),
+                view_count: Number(item.view_count || 0),
+                created_at: item.created_at || new Date().toISOString()
+              }));
+              localStorage.setItem(key, JSON.stringify(slim));
+              return true;
+            }
+          } catch (_) {}
+        }
+        return false;
+      }
+    }
+
     function playReactionSound() {
       try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1196,7 +1228,7 @@
     function writeLocalReactionState(postId, data) {
       const all = readLocalReactionState();
       all[postId] = data;
-      localStorage.setItem('autro_post_reactions_local', JSON.stringify(all));
+      safeStorageSet('autro_post_reactions_local', JSON.stringify(all));
     }
 
     function readSharedPostsSet() {
@@ -1206,7 +1238,7 @@
     function markPostSharedLocal(postId, countVal) {
       const setObj = readSharedPostsSet();
       setObj[postId] = Number(countVal || 0);
-      localStorage.setItem('autro_shared_posts_set', JSON.stringify(setObj));
+      safeStorageSet('autro_shared_posts_set', JSON.stringify(setObj));
     }
 
     function readLocalComments(postId) {
@@ -1217,7 +1249,7 @@
     function writeLocalComments(postId, arr) {
       const all = JSON.parse(localStorage.getItem('autro_comments_store') || '{}');
       all[postId] = arr;
-      localStorage.setItem('autro_comments_store', JSON.stringify(all));
+      safeStorageSet('autro_comments_store', JSON.stringify(all));
     }
 
     function resolveSavedAvatarUrl(raw) {
@@ -1331,7 +1363,7 @@
 
         if (activeUser) {
           if (activeUser.created_at) {
-            localStorage.setItem('autro_account_created_at', activeUser.created_at);
+            safeStorageSet('autro_account_created_at', activeUser.created_at);
           }
 
           const { data: prof } = await sb
@@ -1350,7 +1382,7 @@
 
           if (resolvedName) {
             activeProfileName = resolvedName;
-            localStorage.setItem('autro_profile_name', resolvedName);
+            safeStorageSet('autro_profile_name', resolvedName);
           }
 
           const resolvedAv =
@@ -1363,7 +1395,7 @@
 
           if (resolvedAv) {
             activeAvatarUrl = resolvedAv;
-            localStorage.setItem('autro_profile_avatar', String(resolvedAv));
+            safeStorageSet('autro_profile_avatar', String(resolvedAv));
           }
 
           renderSavedAvatarsOnly(activeAvatarUrl);
@@ -1377,12 +1409,12 @@
 
           if (anyProf?.avatar_url) {
             activeAvatarUrl = anyProf.avatar_url;
-            localStorage.setItem('autro_profile_avatar', String(anyProf.avatar_url));
+            safeStorageSet('autro_profile_avatar', String(anyProf.avatar_url));
             renderSavedAvatarsOnly(activeAvatarUrl);
           }
           if (anyProf?.full_name && !activeProfileName) {
             activeProfileName = String(anyProf.full_name).trim();
-            localStorage.setItem('autro_profile_name', activeProfileName);
+            safeStorageSet('autro_profile_name', activeProfileName);
           }
         }
       } catch (_) {
@@ -1394,7 +1426,7 @@
 
     function openStoryViewer(storyObj) {
       try {
-        localStorage.setItem('autrobook_active_story_card', JSON.stringify(storyObj));
+        sessionStorage.setItem('autrobook_active_story_card', JSON.stringify(storyObj));
       } catch (_) {}
       const idParam = storyObj?.id ? `?id=${encodeURIComponent(storyObj.id)}` : '';
       window.location.href = `story-card.html${idParam}`;
@@ -1538,7 +1570,7 @@
           .select('*', { count: 'exact', head: true });
         if (!error && typeof count === 'number') {
           liveCount = count;
-          localStorage.setItem('autro_live_count', String(liveCount));
+          safeStorageSet('autro_live_count', String(liveCount));
         }
       } catch (_) {}
       refreshLiveLockBadge();
@@ -1552,7 +1584,7 @@
       }
 
       liveCount += 1;
-      localStorage.setItem('autro_live_count', String(liveCount));
+      safeStorageSet('autro_live_count', String(liveCount));
       refreshLiveLockBadge();
 
       if (activeUser && sb) {
@@ -1922,7 +1954,7 @@
 
       const savedReports = JSON.parse(localStorage.getItem('autro_comment_reports') || '[]');
       savedReports.unshift(payload);
-      localStorage.setItem('autro_comment_reports', JSON.stringify(savedReports));
+      safeStorageSet('autro_comment_reports', JSON.stringify(savedReports));
 
       if (sb && activeUser && !String(payload.comment_id).startsWith('cmt-')) {
         try {
@@ -2527,7 +2559,7 @@
       try {
         const existing = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
         existing.unshift(newPost);
-        localStorage.setItem('autro_instant_feed_posts', JSON.stringify(existing));
+        safeStorageSet('autro_instant_feed_posts', JSON.stringify(existing));
         sessionStorage.setItem('autro_picked_gallery_media', JSON.stringify({
           name: file.name,
           type: file.type,
@@ -2539,25 +2571,6 @@
 
       loadHomeFeedPosts(true);
       showToast(`Selected "${file.name}"`);
-
-      if (file.size <= 6 * 1024 * 1024) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          if (!dataUrl) return;
-          try {
-            sessionStorage.setItem('autro_picked_gallery_data_url', dataUrl);
-            const list = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
-            const target = list.find(x => x.id === newPost.id);
-            if (target) {
-              target.media_url = dataUrl;
-              localStorage.setItem('autro_instant_feed_posts', JSON.stringify(list));
-              loadHomeFeedPosts(true);
-            }
-          } catch (_) {}
-        };
-        reader.readAsDataURL(file);
-      }
     }
 
     function openGalleryPicker() {
@@ -2627,7 +2640,7 @@
         comment: activeCommentMenuData.comment,
         savedAt: new Date().toISOString()
       });
-      localStorage.setItem('autro_saved_items', JSON.stringify(savedList));
+      safeStorageSet('autro_saved_items', JSON.stringify(savedList));
 
       if (sb && activeUser && !String(activeCommentMenuData.comment.id).startsWith('cmt-')) {
         try {
