@@ -193,6 +193,7 @@
       justify-content: center;
       gap: 7px;
       user-select: none;
+      touch-action: manipulation;
     }
 
     .fb-action-btn:hover {
@@ -205,19 +206,22 @@
       font-weight: 800;
     }
 
-    /* REACTION POPUP */
+    /* REACTION POPUP - ALL 7 EMOJIS VISIBLE ON MOBILE */
     .reaction-popup {
       position: fixed;
-      z-index: 220;
+      z-index: 260;
       display: none;
       align-items: center;
-      gap: 4px;
-      padding: 6px 10px;
+      justify-content: center;
+      gap: 2px;
+      padding: 5px 7px;
       border-radius: 999px;
       background: var(--bg-surface);
       color: var(--text-main);
       border: 1px solid var(--border-line);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
       user-select: none;
+      max-width: calc(100vw - 16px);
     }
 
     .reaction-popup.open {
@@ -225,21 +229,25 @@
     }
 
     .reaction-emoji-btn {
-      width: 38px;
-      height: 38px;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
       border-radius: 50%;
       border: none;
       background: transparent;
-      font-size: 22px;
+      font-size: 20px;
+      line-height: 1;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      transition: transform 0.14s ease, background 0.14s ease;
     }
 
-    .reaction-emoji-btn:hover {
+    .reaction-emoji-btn:hover,
+    .reaction-emoji-btn:active {
       background: var(--bg-soft);
-      transform: scale(1.18);
+      transform: scale(1.22);
     }
 
     /* SHARE LONG-PRESS MENU */
@@ -255,6 +263,7 @@
       flex-direction: column;
       gap: 3px;
       min-width: 150px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     }
 
     .share-menu.open {
@@ -378,6 +387,7 @@
       font-weight: 600;
       cursor: pointer;
       user-select: none;
+      touch-action: manipulation;
     }
 
     .c-chip-btn.active {
@@ -415,6 +425,7 @@
       flex-direction: column;
       gap: 3px;
       min-width: 130px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     }
 
     .dots-menu.open {
@@ -590,6 +601,7 @@
     let activeCommentMenuData = null;
     let selectedReason = REPORT_REASONS[0];
     let audioCtx = null;
+    let ignoreNextDocumentClick = false;
 
     // 30-second voice recorder state
     let mediaRecorder = null;
@@ -649,6 +661,7 @@
 
     function openShareMenu(anchorBtn, postObj) {
       activeSharePost = postObj;
+      ignoreNextDocumentClick = true;
       const menu = document.getElementById('shareMenu');
       const rect = anchorBtn.getBoundingClientRect();
       menu.classList.add('open');
@@ -684,6 +697,7 @@
       btnEl.addEventListener('pointercancel', cancelPress);
       btnEl.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        wasLongPress = true;
         openShareMenu(btnEl, postObj);
       });
 
@@ -810,6 +824,7 @@
 
     function openReactionPopup(anchorEl, target) {
       activeReactionTarget = target;
+      ignoreNextDocumentClick = true;
       const popup = document.getElementById('reactionPopup');
       popup.innerHTML = '';
 
@@ -818,19 +833,23 @@
         btn.type = 'button';
         btn.className = 'reaction-emoji-btn';
         btn.textContent = emoji;
-        btn.onclick = (e) => {
+        btn.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+        });
+        btn.addEventListener('click', (e) => {
           e.stopPropagation();
           applyReaction(activeReactionTarget, emoji);
           closeReactionPopup();
-        };
+        });
         popup.appendChild(btn);
       });
 
       const rect = anchorEl.getBoundingClientRect();
       popup.classList.add('open');
       const pRect = popup.getBoundingClientRect();
-      const left = Math.min(window.innerWidth - pRect.width - 10, Math.max(10, rect.left));
-      const top = Math.max(10, rect.top - pRect.height - 8);
+      const centerX = rect.left + rect.width / 2 - pRect.width / 2;
+      const left = Math.min(window.innerWidth - pRect.width - 8, Math.max(8, centerX));
+      const top = Math.max(8, rect.top - pRect.height - 8);
       popup.style.left = `${left}px`;
       popup.style.top = `${top}px`;
       playReactionSound();
@@ -845,13 +864,14 @@
       let pressTimer = null;
       let wasLongPress = false;
 
-      const startPress = () => {
+      const startPress = (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         wasLongPress = false;
         clearTimeout(pressTimer);
         pressTimer = setTimeout(() => {
           wasLongPress = true;
           openReactionPopup(btnEl, target);
-        }, 380);
+        }, 360);
       };
 
       const cancelPress = () => clearTimeout(pressTimer);
@@ -862,6 +882,7 @@
       btnEl.addEventListener('pointercancel', cancelPress);
       btnEl.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        wasLongPress = true;
         openReactionPopup(btnEl, target);
       });
 
@@ -953,6 +974,17 @@
 
     function openDotsMenu(anchorBtn, postId, commentObj) {
       activeCommentMenuData = { postId, comment: commentObj };
+      ignoreNextDocumentClick = true;
+
+      const reportBtn = document.getElementById('reportCommentOption');
+      const isOwnComment = Boolean(
+        (activeUser?.id && commentObj.user_id && commentObj.user_id === activeUser.id) ||
+        (!commentObj.user_id && activeAuthorName && commentObj.author === activeAuthorName)
+      );
+      if (reportBtn) {
+        reportBtn.style.display = isOwnComment ? 'none' : 'block';
+      }
+
       const menu = document.getElementById('dotsMenu');
       const rect = anchorBtn.getBoundingClientRect();
       menu.classList.add('open');
@@ -1177,6 +1209,7 @@
 
           const newComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            user_id: activeUser?.id || null,
             author: activeAuthorName || '',
             text: textVal,
             voiceUrl: hasVoice ? recordedVoiceUrl : '',
@@ -1328,6 +1361,7 @@
             cmt.replies = Array.isArray(cmt.replies) ? cmt.replies : [];
             cmt.replies.push({
               id: `rep-${Date.now()}`,
+              user_id: activeUser?.id || null,
               author: activeAuthorName || '',
               text: rVal
             });
@@ -1575,6 +1609,10 @@
     document.getElementById('sendReportBtn').addEventListener('click', () => submitReportAction('Send'));
 
     document.addEventListener('click', (e) => {
+      if (ignoreNextDocumentClick) {
+        ignoreNextDocumentClick = false;
+        return;
+      }
       const popup = document.getElementById('reactionPopup');
       if (popup.classList.contains('open') && !popup.contains(e.target)) {
         closeReactionPopup();
