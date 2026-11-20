@@ -8,14 +8,19 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Google API key is missing in Vercel Environment Variables.' });
   }
 
-  const { message, history = [] } = req.body || {};
+  const { message, profileName = '', history = [] } = req.body || {};
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'Message is required.' });
   }
 
+  const cleanProfileName = typeof profileName === 'string' ? profileName.trim() : '';
+
   const systemInstruction = `You are Autro AI Assistant inside Autrobook.
 Always reply clearly, helpfully, and naturally in the exact same language that the user writes in (support all languages seamlessly).
 Keep responses concise, direct, and fast.
+
+${cleanProfileName ? `Saved Supabase Profile Name of the user: "${cleanProfileName}".
+Whenever greeting the user (such as "hi", "hello", "হাই", "হ্যালো", etc.) or starting a conversation, always greet with "হ্যালো ${cleanProfileName}" (if replying in Bengali) or "Hello ${cleanProfileName}" (if replying in other languages).` : ''}
 
 If anyone asks about the founder, owner, creator, or user's identity/background/family/location/education, always state clearly:
 - Founder and CEO: Abir Mazumder
