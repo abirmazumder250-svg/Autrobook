@@ -1852,7 +1852,6 @@
 
   <div id="reactionPopup" class="reaction-popup"></div>
 
-  <!-- Post Three-Dot Menu -->
   <div id="postDotsMenu" class="post-dots-menu">
     <button type="button" class="post-dots-btn" id="postDotsSaveBtn">
       <span class="menu-left-group"><i class="far fa-bookmark"></i><span>Save</span></span>
@@ -1869,7 +1868,6 @@
     </button>
   </div>
 
-  <!-- Share Action Menu -->
   <div id="shareMenu" class="share-menu">
     <button type="button" class="share-menu-btn" id="shareSaveOption">
       <span class="menu-left-group"><i class="far fa-bookmark"></i><span>Save</span></span>
@@ -1882,7 +1880,6 @@
     </a>
   </div>
 
-  <!-- Share Sheet -->
   <div id="shareSheetModal" class="share-sheet-backdrop">
     <div class="share-sheet-card" onclick="event.stopPropagation()">
       <div class="share-handle"></div>
@@ -1948,7 +1945,6 @@
     </div>
   </div>
 
-  <!-- Select Destination Sheet -->
   <div id="destSheetModal" class="dest-sheet-backdrop">
     <div class="dest-sheet-card" onclick="event.stopPropagation()">
       <div class="dest-sheet-header">
@@ -1980,7 +1976,6 @@
     </div>
   </div>
 
-  <!-- Comment Three-Dot Menu -->
   <div id="dotsMenu" class="dots-menu">
     <button type="button" class="dots-menu-btn" id="saveCommentOption">
       <span class="menu-left-group"><i class="far fa-bookmark"></i><span>Save</span></span>
@@ -1990,7 +1985,6 @@
     </button>
   </div>
 
-  <!-- Report Modal -->
   <div id="reportModal" class="modal-backdrop">
     <div class="modal-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -2819,6 +2813,31 @@
       } catch (_) {}
     }
 
+    function readAllLocalPostSources() {
+      const sources = [];
+      try {
+        const u = JSON.parse(localStorage.getItem('autrobook_user') || '{}') || {};
+        if (Array.isArray(u.posts)) sources.push(...u.posts);
+      } catch (_) {}
+      try {
+        const pPosts = JSON.parse(localStorage.getItem('autro_profile_posts') || '[]');
+        if (Array.isArray(pPosts)) sources.push(...pPosts);
+      } catch (_) {}
+      try {
+        const fPosts = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
+        if (Array.isArray(fPosts)) sources.push(...fPosts);
+      } catch (_) {}
+      try {
+        const cPosts = JSON.parse(localStorage.getItem('autro_post_cards') || '[]');
+        if (Array.isArray(cPosts)) sources.push(...cPosts);
+      } catch (_) {}
+      try {
+        const singleNew = JSON.parse(localStorage.getItem('autro_new_post_created') || 'null');
+        if (singleNew && typeof singleNew === 'object') sources.unshift(singleNew);
+      } catch (_) {}
+      return sources;
+    }
+
     function prependInstantPostToProfile(newPostObj) {
       const stored = readStoredProfile();
       const existing = Array.isArray(stored.posts) ? stored.posts : [];
@@ -2826,12 +2845,12 @@
       stored.posts = updated;
       safePersistProfileStore(stored);
 
-      const validPosts = filterValidPosts(updated);
-      renderLivePosts(validPosts);
+      const mergedAll = filterValidPosts([...updated, ...readAllLocalPostSources()]);
+      renderLivePosts(mergedAll);
       renderPhotos(
         stored.avatar_url || stored.selfie_url || '',
         stored.cover_url || '',
-        validPosts
+        mergedAll
       );
 
       const postsSection = document.getElementById('profilePostsSection');
@@ -2996,7 +3015,15 @@
 
     function getPostImageUrl(post) {
       if (!post) return '';
-      return String(post.media_url || post.image_url || post.video_url || '').trim();
+      const raw = String(post.media_url || post.image_url || post.video_url || '').trim();
+      if (!raw) return '';
+      if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:') || raw.startsWith('blob:')) {
+        return raw;
+      }
+      if (sb) {
+        return sb.storage.from('media').getPublicUrl(raw.replace(/^\/+/, '')).data.publicUrl || raw;
+      }
+      return raw;
     }
 
     function isVideoUrl(url) {
@@ -3108,7 +3135,6 @@
         const post = renderedPostsModel.find(p => p.id === target.postId);
         if (!post) return;
 
-        // Undo if same emoji is selected again
         if (post.userReaction === emoji) {
           post.userReaction = null;
           post.reaction_count = Math.max(0, Number(post.reaction_count || 0) - 1);
@@ -3125,7 +3151,6 @@
           return;
         }
 
-        // First-time reaction increments count; switching emoji keeps count
         if (!post.userReaction && !post._reactedByActor) {
           post.reaction_count = Number(post.reaction_count || 0) + 1;
         }
@@ -3151,7 +3176,6 @@
           cmt.dislike_count = Math.max(0, Number(cmt.dislike_count || 0) - 1);
         }
 
-        // Undo if same emoji is selected again
         if (cmt.userReaction === emoji) {
           cmt.userReaction = null;
           cmt.like_count = Math.max(0, Number(cmt.like_count || 0) - 1);
@@ -3517,7 +3541,7 @@
       menu.classList.add('open');
       const mRect = menu.getBoundingClientRect();
       menu.style.left = `${Math.min(window.innerWidth - mRect.width - 10, Math.max(10, rect.left - mRect.width + 24))}px`;
-      menu.style.top = `${Math.min(window.innerHeight - mRect.height - 10, rect.bottom + 4)}px`;
+      menu.style.top = `${Math.min(window.innerHeight - mRect.height - 10, Math.max(10, rect.bottom + 4))}px`;
     }
 
     function closeDotsMenu() {
@@ -3614,8 +3638,8 @@
       const sharedSet = readSharedPostsSet();
       const id = rawPost.id || `post-${idx}`;
       const locR = localReactions[id];
-      const baseCount = Number(rawPost.reaction_count ?? rawPost.likes_count ?? rawPost.reactions_count ?? 0);
-      const baseShare = Number(rawPost.share_count ?? rawPost.shares_count ?? 0);
+      const baseCount = Number(rawPost.reaction_count ?? rawPost.likes_count ?? rawPost.reactions_count ?? rawPost.reactions ?? 0);
+      const baseShare = Number(rawPost.share_count ?? rawPost.shares_count ?? rawPost.shares ?? 0);
 
       const prev = renderedPostsModel.find(x => x.id === id);
       const hasLocalKey = Boolean(locR && Object.prototype.hasOwnProperty.call(locR, 'count'));
@@ -3628,11 +3652,11 @@
         content: getPostText(rawPost),
         media_url: getPostImageUrl(rawPost),
         image_url: getPostImageUrl(rawPost),
-        created_at: rawPost.created_at || new Date().toISOString(),
+        created_at: rawPost.created_at || rawPost.posted_at || new Date().toISOString(),
         reaction_count: hasLocalKey ? Number(locR.count || 0) : baseCount,
-        comment_count: Number(rawPost.comment_count ?? rawPost.comments_count ?? 0),
+        comment_count: Number(rawPost.comment_count ?? rawPost.comments_count ?? rawPost.comments ?? 0),
         share_count: Math.max(baseShare, Number(sharedSet[id] || 0)),
-        view_count: Number(rawPost.view_count ?? rawPost.views_count ?? 0),
+        view_count: Number(rawPost.view_count ?? rawPost.views_count ?? rawPost.views ?? 0),
         userReaction: locR ? (locR.emoji ?? null) : (prev?.userReaction ?? null),
         _reactedByActor: locR ? Boolean(locR.reactedByActor) : Boolean(prev?._reactedByActor),
         _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, id) || Boolean(prev?._sharedOnce),
@@ -4329,14 +4353,14 @@
           const text = getPostText(item);
           const img = getPostImageUrl(item);
           if (!text && !img) return false;
-          const key = item.id ? String(item.id) : `${text.slice(0, 24)}__${img.slice(-24)}__${item.created_at || ''}`;
+          const key = item.id ? String(item.id) : `${text.slice(0, 24)}__${img.slice(-24)}__${item.created_at || item.posted_at || ''}`;
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
         })
         .sort((a, b) => {
-          const tA = new Date(a.created_at || 0).getTime() || 0;
-          const tB = new Date(b.created_at || 0).getTime() || 0;
+          const tA = new Date(a.created_at || a.posted_at || 0).getTime() || 0;
+          const tB = new Date(b.created_at || b.posted_at || 0).getTime() || 0;
           return tB - tA;
         });
     }
@@ -4358,7 +4382,7 @@
 
       setFriendsDisplay(data.friends_count ?? 0);
 
-      const postsArr = filterValidPosts(data.posts);
+      const postsArr = filterValidPosts([...(data.posts || []), ...readAllLocalPostSources()]);
       const postsNum = postsArr.length;
       document.getElementById('postsCountLabel').textContent = `${postsNum} ${postsNum === 1 ? 'post' : 'posts'}`;
 
@@ -4436,7 +4460,7 @@
 
       const current = readStoredProfile();
       const isOwn = Boolean(!userId || (activeUserId && userId === activeUserId));
-      const cachedPosts = isOwn ? filterValidPosts(current.posts) : [];
+      const cachedPosts = isOwn ? filterValidPosts([...(current.posts || []), ...readAllLocalPostSources()]) : [];
 
       if (!sb) {
         applyProfileData(current);
@@ -4482,7 +4506,7 @@
 
         const { data, error } = await query;
         if (!error && Array.isArray(data)) {
-          dbPosts = filterValidPosts(isOwn ? [...data, ...cachedPosts] : data);
+          dbPosts = filterValidPosts(isOwn ? [...data, ...cachedPosts] : [...data, ...readAllLocalPostSources()]);
         }
       } catch (e) {
         console.warn('Posts fetch error:', e);
@@ -4670,7 +4694,6 @@
       if (target) target.classList.add('active');
     }
 
-    // Post Three-Dot Actions
     document.getElementById('postDotsSaveBtn').addEventListener('click', async () => {
       const targetPost = activePostDotsTarget;
       closePostDotsMenu();
@@ -4703,7 +4726,6 @@
       });
     });
 
-    // Share Menu & Sheet Actions
     document.getElementById('shareSaveOption').addEventListener('click', async () => {
       const targetPost = activeSharePost;
       closeShareMenu();
@@ -4768,7 +4790,6 @@
     document.getElementById('shareSheetModal').addEventListener('click', closeShareSheet);
     document.getElementById('destSheetModal').addEventListener('click', closeDestSheet);
 
-    // Comment Three-Dot Actions
     document.getElementById('saveCommentOption').addEventListener('click', async () => {
       if (!activeCommentMenuData) return;
       const savedList = JSON.parse(localStorage.getItem('autro_saved_items') || '[]');
