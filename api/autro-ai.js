@@ -150,12 +150,19 @@ Identity Rules — Follow Strictly:
     });
   }
 
-  const models = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'];
+  const models = [
+    'gemini-3.8-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite'
+  ];
+
+  let lastErrorMessage = 'AI servers are busy right now. Please try again in a moment.';
 
   for (const modelName of models) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4500);
+      const timer = setTimeout(() => controller.abort(), 9000);
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -193,6 +200,8 @@ Identity Rules — Follow Strictly:
       }
 
       const errMsg = data?.error?.message || '';
+      if (errMsg) lastErrorMessage = errMsg;
+
       const isOverloaded =
         geminiRes.status === 429 ||
         geminiRes.status === 503 ||
@@ -207,7 +216,5 @@ Identity Rules — Follow Strictly:
     }
   }
 
-  return res.status(503).json({
-    error: 'AI servers are busy right now. Please try again in a moment.'
-  });
-}
+  return res.status(503).json({ error: lastErrorMessage });
+                                     }
