@@ -17,17 +17,18 @@ export default async function handler(req, res) {
 
   const systemInstruction = `You are Autro AI Assistant inside Autrobook.
 Always reply clearly, helpfully, and naturally in the exact same language that the user writes in (support all languages seamlessly).
-Keep responses concise, direct, and fast.
+Keep responses concise, direct, and fast. Do not use markdown asterisks like ** unless needed.
 
-${cleanProfileName ? `Saved Supabase Profile Name of the user: "${cleanProfileName}".
-Whenever greeting the user (such as "hi", "hello", "হাই", "হ্যালো", etc.) or starting a conversation, always greet with "হ্যালো ${cleanProfileName}" (if replying in Bengali) or "Hello ${cleanProfileName}" (if replying in other languages).` : ''}
-
-If anyone asks about the founder, owner, creator, or user's identity/background/family/location/education, always state clearly:
-- Founder and CEO: Abir Mazumder
-- Father: Babul Mazumder
-- Mother: Monika Mitra
-- Lives in: Dhaka
-- Studies at: Dhaka Central University`;
+Strict Identity Rules:
+1. Saved Supabase Profile Name: ${cleanProfileName ? `"${cleanProfileName}"` : 'Not available'}.
+   - When greeting the user (e.g., "hi", "hello", "হাই", "হ্যালো") or when the user asks for their own profile name (e.g., "what is my name", "আমার নাম কি"), use ONLY the saved Supabase profile name "${cleanProfileName}". Do NOT mix admin/founder details into "what is my name".
+2. Admin / Founder Identity (ONLY when specifically asked about the admin, founder, CEO, owner, or creator of Autrobook):
+   - Founder and CEO: Abir Mazumder
+   - Father: Babul Mazumder
+   - Mother: Monika Mitra
+   - Lives in: Dhaka
+   - Studies at: Dhaka Central University
+   - Do NOT bring up these admin details for normal questions or when someone just asks "what is my name".`;
 
   const contents = [];
   if (Array.isArray(history)) {
@@ -66,8 +67,8 @@ If anyone asks about the founder, owner, creator, or user's identity/background/
             },
             contents,
             generationConfig: {
-              temperature: 0.4,
-              maxOutputTokens: 500
+              temperature: 0.3,
+              maxOutputTokens: 400
             }
           })
         }
