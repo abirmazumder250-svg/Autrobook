@@ -206,7 +206,6 @@
       font-weight: 800;
     }
 
-    /* REACTION POPUP - ALL 7 EMOJIS VISIBLE ON MOBILE */
     .reaction-popup {
       position: fixed;
       z-index: 260;
@@ -250,7 +249,6 @@
       transform: scale(1.22);
     }
 
-    /* SHARE LONG-PRESS MENU */
     .share-menu {
       position: fixed;
       z-index: 250;
@@ -289,7 +287,6 @@
       background: var(--bg-soft);
     }
 
-    /* COMMENTS & REPLIES */
     .comments-panel {
       border-top: 1px solid var(--border-line);
       padding: 10px 14px 12px;
@@ -412,7 +409,6 @@
       font-size: 12.5px;
     }
 
-    /* THREE-DOT MENU & REPORT MODAL */
     .dots-menu {
       position: fixed;
       z-index: 260;
@@ -528,10 +524,8 @@
 
   <main id="feedStream" class="feed-stream"></main>
 
-  <!-- REACTION POPUP -->
   <div id="reactionPopup" class="reaction-popup"></div>
 
-  <!-- SHARE LONG-PRESS MENU -->
   <div id="shareMenu" class="share-menu">
     <button type="button" class="share-menu-btn" id="shareToChatOption">
       <i class="fas fa-share"></i>
@@ -543,13 +537,11 @@
     </button>
   </div>
 
-  <!-- THREE-DOT COMMENT MENU -->
   <div id="dotsMenu" class="dots-menu">
     <button type="button" class="dots-menu-btn" id="saveCommentOption">Save</button>
     <button type="button" class="dots-menu-btn" id="reportCommentOption">Report</button>
   </div>
 
-  <!-- REPORT MODAL WITH 10 REASONS + SUBMIT & SEND -->
   <div id="reportModal" class="modal-backdrop">
     <div class="modal-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -603,7 +595,6 @@
     let audioCtx = null;
     let ignoreNextDocumentClick = false;
 
-    // 30-second voice recorder state
     let mediaRecorder = null;
     let voiceChunks = [];
     let recordedVoiceUrl = '';
@@ -652,6 +643,26 @@
       if (diffHr < 24) return `${diffHr}h`;
       const diffDay = Math.floor(diffHr / 24);
       return `${diffDay}d`;
+    }
+
+    function readLocalReactionState() {
+      return JSON.parse(localStorage.getItem('autro_post_reactions_local') || '{}');
+    }
+
+    function writeLocalReactionState(postId, data) {
+      const all = readLocalReactionState();
+      all[postId] = data;
+      localStorage.setItem('autro_post_reactions_local', JSON.stringify(all));
+    }
+
+    function readSharedPostsSet() {
+      return JSON.parse(localStorage.getItem('autro_shared_posts_set') || '{}');
+    }
+
+    function markPostSharedLocal(postId, countVal) {
+      const setObj = readSharedPostsSet();
+      setObj[postId] = Number(countVal || 0);
+      localStorage.setItem('autro_shared_posts_set', JSON.stringify(setObj));
     }
 
     function buildPostShareUrl(postId) {
@@ -707,7 +718,15 @@
           wasLongPress = false;
           return;
         }
+        const sharedSet = readSharedPostsSet();
+        if (postObj._sharedOnce || Object.prototype.hasOwnProperty.call(sharedSet, postObj.id)) {
+          showToast('Already shared');
+          return;
+        }
+        postObj._sharedOnce = true;
         postObj.share_count = Number(postObj.share_count || 0) + 1;
+        markPostSharedLocal(postObj.id, postObj.share_count);
+
         if (sb && postObj.id && !String(postObj.id).startsWith('local-')) {
           try {
             await sb.from('posts').update({ share_count: postObj.share_count }).eq('id', postObj.id);
@@ -775,6 +794,10 @@
         if (post.userReaction === emoji) {
           post.userReaction = null;
           post.reaction_count = Math.max(0, Number(post.reaction_count || 0) - 1);
+          writeLocalReactionState(post.id, {
+            emoji: null,
+            count: post.reaction_count
+          });
           if (activeUser && sb && !String(post.id).startsWith('local-')) {
             await sb.from('post_reactions').delete().eq('post_id', post.id).eq('user_id', activeUser.id);
           }
@@ -788,6 +811,10 @@
           post.reaction_count = Number(post.reaction_count || 0) + 1;
         }
         post.userReaction = emoji;
+        writeLocalReactionState(post.id, {
+          emoji: post.userReaction,
+          count: post.reaction_count
+        });
 
         if (activeUser && sb && !String(post.id).startsWith('local-')) {
           await sb.from('post_reactions').upsert(
@@ -1420,6 +1447,8 @@
     async function loadPostsStream() {
       const urlParams = new URLSearchParams(window.location.search);
       const targetPostId = urlParams.get('post');
+      const localReactions = readLocalReactionState();
+      const sharedSet = readSharedPostsSet();
       const map = new Map();
 
       if (sb) {
@@ -1432,6 +1461,11 @@
 
           if (!error && Array.isArray(rows)) {
             rows.forEach(r => {
+              const locR = localReactions[r.id];
+              const dbCount = Number(r.reaction_count || 0);
+              const resolvedCount = Math.max(dbCount, Number(locR?.count || 0));
+              const resolvedShare = Math.max(Number(r.share_count || 0), Number(sharedSet[r.id] || 0));
+
               map.set(r.id, {
                 id: r.id,
                 author_name: String(r.author_name || '').trim(),
@@ -1439,12 +1473,13 @@
                 is_bold: Boolean(r.is_bold),
                 media_url: String(r.media_url || '').trim(),
                 is_video: String(r.media_type || '').startsWith('video'),
-                reaction_count: Number(r.reaction_count || 0),
+                reaction_count: resolvedCount,
                 comment_count: Number(r.comment_count || 0),
-                share_count: Number(r.share_count || 0),
+                share_count: resolvedShare,
                 view_count: Number(r.view_count || 0),
                 created_at: r.created_at || new Date().toISOString(),
-                userReaction: null,
+                userReaction: locR?.emoji || null,
+                _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, r.id),
                 _commentsOpen: Boolean(targetPostId && targetPostId === r.id)
               });
             });
@@ -1459,7 +1494,13 @@
 
             (myReactions || []).forEach(mr => {
               const p = map.get(mr.post_id);
-              if (p) p.userReaction = mr.reaction_emoji;
+              if (p) {
+                p.userReaction = mr.reaction_emoji;
+                writeLocalReactionState(p.id, {
+                  emoji: p.userReaction,
+                  count: p.reaction_count
+                });
+              }
             });
           }
         } catch (_) {}
@@ -1471,6 +1512,10 @@
         [...q1, ...q2].forEach(item => {
           if (!item) return;
           const id = item.id || `local-${Math.random().toString(36).slice(2, 8)}`;
+          const locR = localReactions[id];
+          const baseCount = Number(item.reaction_count ?? item.reactions ?? 0);
+          const baseShare = Number(item.share_count ?? item.shares ?? 0);
+
           map.set(id, {
             id,
             author_name: String(item.author_name || '').trim(),
@@ -1478,12 +1523,13 @@
             is_bold: Boolean(item.is_bold),
             media_url: String(item.media_url || '').trim(),
             is_video: Boolean(item.is_video),
-            reaction_count: Number(item.reaction_count ?? item.reactions ?? 0),
+            reaction_count: Math.max(baseCount, Number(locR?.count || 0)),
             comment_count: Number(item.comment_count ?? item.comments ?? 0),
-            share_count: Number(item.share_count ?? item.shares ?? 0),
+            share_count: Math.max(baseShare, Number(sharedSet[id] || 0)),
             view_count: Number(item.view_count ?? item.views ?? 0),
             created_at: item.created_at || item.posted_at || new Date().toISOString(),
-            userReaction: null,
+            userReaction: locR?.emoji || null,
+            _sharedOnce: Object.prototype.hasOwnProperty.call(sharedSet, id),
             _commentsOpen: Boolean(targetPostId && targetPostId === id)
           });
         });
@@ -1515,10 +1561,10 @@
             if (existing) {
               existing.author_name = String(row.author_name ?? existing.author_name ?? '').trim();
               existing.caption = String(row.caption ?? existing.caption ?? '').trim();
-              existing.reaction_count = Number(row.reaction_count ?? existing.reaction_count ?? 0);
+              existing.reaction_count = Math.max(existing.reaction_count, Number(row.reaction_count ?? 0));
               existing.comment_count = Number(row.comment_count ?? existing.comment_count ?? 0);
-              existing.share_count = Number(row.share_count ?? existing.share_count ?? 0);
-              existing.view_count = Number(row.view_count ?? existing.view_count ?? 0);
+              existing.share_count = Math.max(existing.share_count, Number(row.share_count ?? 0));
+              existing.view_count = Math.max(existing.view_count, Number(row.view_count ?? 0));
               renderPostsStream();
             } else if (payload.eventType === 'INSERT') {
               postsList.unshift({
@@ -1534,6 +1580,7 @@
                 view_count: Number(row.view_count || 0),
                 created_at: row.created_at || new Date().toISOString(),
                 userReaction: null,
+                _sharedOnce: false,
                 _commentsOpen: false
               });
               renderPostsStream();
