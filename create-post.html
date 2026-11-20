@@ -725,6 +725,62 @@
     let selectedFeeling = null;
     let isBoldText = false;
 
+    function safeLocalStorageSet(key, valueStr) {
+      const cleanStr = String(valueStr || '');
+      // Avoid storing huge base64/blob strings in localStorage
+      if (cleanStr.includes('data:image/') || cleanStr.includes('data:video/') || cleanStr.includes('data:audio/')) {
+        return false;
+      }
+      try {
+        localStorage.setItem(key, cleanStr);
+        return true;
+      } catch (_) {
+        try {
+          localStorage.removeItem('autro_instant_feed_posts');
+          localStorage.removeItem('autro_post_cards');
+          localStorage.removeItem('autro_profile_posts');
+          if (cleanStr.length < 250000) {
+            localStorage.setItem(key, cleanStr);
+            return true;
+          }
+        } catch (_) {}
+        return false;
+      }
+    }
+
+    function sanitizePostForCache(post) {
+      const item = { ...post };
+      if (typeof item.media_url === 'string' && (item.media_url.startsWith('data:') || item.media_url.startsWith('blob:'))) {
+        item.media_url = '';
+      }
+      if (typeof item.music_url === 'string' && (item.music_url.startsWith('data:') || item.music_url.startsWith('blob:'))) {
+        item.music_url = '';
+      }
+      if (typeof item.poster_url === 'string' && (item.poster_url.startsWith('data:') || item.poster_url.startsWith('blob:'))) {
+        item.poster_url = '';
+      }
+      if (typeof item.avatar === 'string' && item.avatar.startsWith('data:')) {
+        item.avatar = '';
+      }
+      return item;
+    }
+
+    function appendPostToLocalCache(storageKey, newPost, maxItems) {
+      try {
+        let list = [];
+        try {
+          const raw = localStorage.getItem(storageKey);
+          list = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(list)) list = [];
+        } catch (_) {
+          list = [];
+        }
+        const safePost = sanitizePostForCache(newPost);
+        const trimmed = [safePost, ...list.map(sanitizePostForCache)].slice(0, maxItems);
+        safeLocalStorageSet(storageKey, JSON.stringify(trimmed));
+      } catch (_) {}
+    }
+
     function showToast(msg) {
       const el = document.getElementById('toast');
       el.textContent = msg;
@@ -1192,17 +1248,9 @@
           shares: 0
         };
 
-        const feedQueue = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
-        feedQueue.unshift(postPayload);
-        localStorage.setItem('autro_instant_feed_posts', JSON.stringify(feedQueue.slice(0, 30)));
-
-        const profilePosts = JSON.parse(localStorage.getItem('autro_profile_posts') || '[]');
-        profilePosts.unshift(postPayload);
-        localStorage.setItem('autro_profile_posts', JSON.stringify(profilePosts.slice(0, 50)));
-
-        const postCardQueue = JSON.parse(localStorage.getItem('autro_post_cards') || '[]');
-        postCardQueue.unshift(postPayload);
-        localStorage.setItem('autro_post_cards', JSON.stringify(postCardQueue.slice(0, 30)));
+        appendPostToLocalCache('autro_instant_feed_posts', postPayload, 12);
+        appendPostToLocalCache('autro_profile_posts', postPayload, 20);
+        appendPostToLocalCache('autro_post_cards', postPayload, 12);
 
         setProgress(100, 'Posted to index.html & post-card.html!');
         showToast('Post published!');
@@ -1232,4 +1280,4 @@
     });
   </script>
 </body>
-        </html>
+  </html>
