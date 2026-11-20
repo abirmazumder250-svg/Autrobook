@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Post Card</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --bg-page: #000000;
+      --bg-card: #18191a;
+      --bg-soft: #242526;
+      --bg-hover: #303234;
+      --text-main: #e4e6eb;
+      --text-muted: #b0b3b8;
+      --border-line: rgba(255, 255, 255, 0.14);
+      --invert-bg: #ffffff;
+      --invert-fg: #000000;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-page: #f0f2f5;
+        --bg-card: #ffffff;
+        --bg-soft: #f0f2f5;
+        --bg-hover: #e4e6eb;
+        --text-main: #050505;
+        --text-muted: #65676b;
+        --border-line: rgba(0, 0, 0, 0.12);
+        --invert-bg: #050505;
+        --invert-fg: #ffffff;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    .top-nav-links {
+      max-width: 540px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-line);
+      border-radius: 12px;
+      padding: 10px 14px;
+    }
+
+    .nav-link-btn {
+      text-decoration: none;
+      color: var(--text-main);
+      background: var(--bg-soft);
+      border: 1px solid var(--border-line);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .nav-link-btn:hover {
+      background: var(--bg-hover);
+    }
+
+    .nav-link-btn.primary {
+      background: var(--invert-bg);
+      color: var(--invert-fg);
+    }
+
+    .feed-stack {
+      max-width: 540px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .post-card {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px 8px;
+      gap: 10px;
+    }
+
+    .post-author-name {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      min-height: 20px;
+    }
+
+    .post-text {
+      padding: 4px 14px 12px;
+      font-size: 15px;
+      line-height: 1.45;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .post-media {
+      width: 100%;
+      max-height: 440px;
+      object-fit: cover;
+      display: block;
+      border-top: 1px solid var(--border-line);
+      border-bottom: 1px solid var(--border-line);
+    }
+
+    .post-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      padding: 9px 14px;
+    }
+
+    /* SCREENSHOT-STYLE LIKE / COMMENT / SHARE BAR */
+    .post-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 4px 8px;
+      border-top: 1px solid var(--border-line);
+    }
+
+    .action-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .action-btn i {
+      font-size: 18px;
+    }
+
+    .action-btn:hover {
+      background: var(--bg-soft);
+      color: var(--text-main);
+    }
+
+    .action-btn.active {
+      color: var(--text-main);
+      font-weight: 800;
+    }
+
+    /* REACTION POPUP */
+    .reaction-popup {
+      position: fixed;
+      z-index: 200;
+      display: none;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      user-select: none;
+    }
+
+    .reaction-popup.open {
+      display: flex;
+    }
+
+    .reaction-item-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      font-size: 21px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .reaction-item-btn:hover {
+      background: var(--bg-soft);
+      transform: scale(1.15);
+    }
+
+    /* COMMENTS SECTION */
+    .comments-section {
+      border-top: 1px solid var(--border-line);
+      padding: 12px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .comments-section.open {
+      display: flex;
+    }
+
+    .composer-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .comment-input {
+      flex: 1;
+      background: var(--bg-soft);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      border-radius: 20px;
+      padding: 9px 13px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .comment-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .mini-btn {
+      background: var(--bg-soft);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      border-radius: 18px;
+      padding: 7px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .mini-btn:hover {
+      background: var(--bg-hover);
+    }
+
+    .mini-btn.solid {
+      background: var(--invert-bg);
+      color: var(--invert-fg);
+    }
+
+    .comment-box {
+      background: var(--bg-soft);
+      border: 1px solid var(--border-line);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .comment-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .comment-author {
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .comment-text {
+      font-size: 14px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .comment-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .c-react-btn {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      border-radius: 14px;
+      padding: 4px 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .c-react-btn.active {
+      background: var(--invert-bg);
+      color: var(--invert-fg);
+    }
+
+    .replies-wrap {
+      margin-left: 14px;
+      padding-left: 10px;
+      border-left: 1px solid var(--border-line);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .reply-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-line);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 13px;
+    }
+
+    .dropdown-menu {
+      position: fixed;
+      z-index: 250;
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      border-radius: 10px;
+      padding: 6px;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 140px;
+    }
+
+    .dropdown-menu.open {
+      display: flex;
+    }
+
+    .dropdown-item {
+      background: transparent;
+      color: var(--text-main);
+      border: none;
+      border-radius: 7px;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .dropdown-item:hover {
+      background: var(--bg-soft);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      border-radius: 12px;
+      padding: 14px;
+      width: 100%;
+      max-width: 400px;
+      max-height: 85vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .reason-btn {
+      background: var(--bg-soft);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .reason-btn.selected {
+      background: var(--invert-bg);
+      color: var(--invert-fg);
+      font-weight: 700;
+    }
+
+    .toast-msg {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--invert-bg);
+      color: var(--invert-fg);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      z-index: 400;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CONNECTED LINKS TO index.html AND create-post.html -->
+  <nav class="top-nav-links">
+    <a href="index.html" class="nav-link-btn" id="indexLinkBtn">
+      <i class="fas fa-house"></i>
+      <span id="indexLinkLabel">Feed</span>
+    </a>
+    <a href="create-post.html" class="nav-link-btn primary" id="createPostLinkBtn">
+      <i class="fas fa-plus"></i>
+      <span id="createPostLinkLabel">Create Post</span>
+    </a>
+  </nav>
+
+  <div id="feedStack" class="feed-stack"></div>
+
+  <!-- REACTION POPUP -->
+  <div id="reactionPopup" class="reaction-popup"></div>
+
+  <!-- COMMENT THREE-DOT MENU -->
+  <div id="commentDotsMenu" class="dropdown-menu">
+    <button type="button" class="dropdown-item" id="menuSaveCommentBtn">Save</button>
+    <button type="button" class="dropdown-item" id="menuReportCommentBtn">Report</button>
+  </div>
+
+  <!-- REPORT MODAL -->
+  <div id="reportModal" class="modal-overlay">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b id="reportModalTitle">Report Comment</b>
+        <button type="button" id="closeReportModalBtn" class="mini-btn">Close</button>
+      </div>
+      <div id="reportReasonsBox" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div class="composer-row" style="margin-top:6px;">
+        <button type="button" id="submitReportBtn" class="mini-btn solid" style="flex:1;">Submit</button>
+        <button type="button" id="sendReportBtn" class="mini-btn solid" style="flex:1;">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastMsg" class="toast-msg"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+    const REACTIONS = ['❤️', '👍', '😆', '🥰', '😮', '😢', '😠'];
+
+    function detectLocale() {
+      const langs = Array.isArray(navigator.languages) && navigator.languages.length
+        ? navigator.languages
+        : [navigator.language || 'en'];
+      return String(langs[0] || 'en').toLowerCase().startsWith('bn') ? 'bn' : 'en';
+    }
+
+    const LANG = detectLocale();
+    document.documentElement.lang = LANG;
+
+    const T = LANG === 'bn' ? {
+      feed: 'ফিড',
+      createPost: 'পোস্ট তৈরি',
+      like: 'Like',
+      comment: 'Comment',
+      share: 'Share',
+      commentsSuffix: 'কমেন্ট',
+      sharesSuffix: 'শেয়ার',
+      writeComment: 'কমেন্ট লিখুন...',
+      send: 'সেন্ড',
+      submit: 'সাবমিট',
+      voice30s: '🎙️ ৩০s ভয়েস',
+      stop: '⏹️ থামান',
+      cancel: 'বাতিল',
+      voiceReady: (s) => `ভয়েস (${s}s)`,
+      micDenied: 'মাইক্রোফোন পারমিশন প্রয়োজন।',
+      voiceUnsupported: 'ভয়েস রেকর্ডিং সাপোর্ট করছে না।',
+      likeShort: '👍 লাইক',
+      dislikeShort: '👎 ডিজলাইক',
+      reply: 'রিপ্লাই',
+      writeReply: 'রিপ্লাই লিখুন...',
+      save: 'Save',
+      report: 'Report',
+      reportTitle: 'Report Comment',
+      close: 'Close',
+      undone: 'Reaction undone',
+      saved: 'Saved to save-item.html',
+      reported: (a) => `${a} done`,
+      shared: 'Shared',
+      reasons: [
+        'স্প্যাম বা অবাঞ্ছিত প্রচারণা',
+        'হিংসা বা বিদ্বেষমূলক বক্তব্য',
+        'হয়রানি বা ব্যক্তিগত আক্রমণ',
+        'সহিংসতা বা হুমকি',
+        'অশ্লীল বা অনুপযুক্ত বিষয়বস্তু',
+        'ভুয়া তথ্য বা বিভ্রান্তিকর দাবি',
+        'প্রতারণা বা স্ক্যাম',
+        'কপিরাইট লঙ্ঘন',
+        'আত্মক্ষতি বা বিপজ্জনক আচরণ',
+        'কমিউনিটি নীতিমালা লঙ্ঘন'
+      ]
+    } : {
+      feed: 'Feed',
+      createPost: 'Create Post',
+      like: 'Like',
+      comment: 'Comment',
+      share: 'Share',
+      commentsSuffix: 'comments',
+      sharesSuffix: 'shares',
+      writeComment: 'Write a comment...',
+      send: 'Send',
+      submit: 'Submit',
+      voice30s: '🎙️ 30s Voice',
+      stop: '⏹️ Stop',
+      cancel: 'Cancel',
+      voiceReady: (s) => `Voice (${s}s)`,
+      micDenied: 'Microphone permission required.',
+      voiceUnsupported: 'Voice recording is not supported.',
+      likeShort: '👍 Like',
+      dislikeShort: '👎 Dislike',
+      reply: 'Reply',
+      writeReply: 'Write a reply...',
+      save: 'Save',
+      report: 'Report',
+      reportTitle: 'Report Comment',
+      close: 'Close',
+      undone: 'Reaction undone',
+      saved: 'Saved to save-item.html',
+      reported: (a) => `Report ${a}`,
+      shared: 'Shared',
+      reasons: [
+        'Spam or misleading promotion',
+        'Hate speech or discriminatory content',
+        'Harassment or personal attack',
+        'Violence or threats',
+        'Nudity or inappropriate content',
+        'False information or misinformation',
+        'Scam or fraud',
+        'Copyright infringement',
+        'Self-harm or dangerous behavior',
+        'Violation of community guidelines'
+      ]
+    };
+
+    let sb = null;
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (_) {}
+
+    let currentLoginName = '';
+    let posts = [];
+    let activeReactionTarget = null;
+    let activeCommentForMenu = null;
+    let selectedReportReason = T.reasons[0];
+    let audioCtx = null;
+
+    // 30s voice recorder per active post
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordedAudioUrl = '';
+    let voiceInterval = null;
+    let voiceSecondsElapsed = 0;
+    let isRecordingVoice = false;
+    let recordingForPostId = null;
+
+    function showToast(msg) {
+      const el = document.getElementById('toastMsg');
+      el.textContent = msg;
+      el.style.display = 'block';
+      clearTimeout(window._tToast);
+      window._tToast = setTimeout(() => { el.style.display = 'none'; }, 2200);
+    }
+
+    function playPopupSound() {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!audioCtx) audioCtx = new Ctx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(540, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(860, audioCtx.currentTime + 0.09);
+        gain.gain.setValueAtTime(0.14, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } catch (_) {}
+    }
+
+    async function loadLoggedInName() {
+      if (!sb) return;
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        const user = session?.user;
+        if (!user) return;
+        const { data: prof } = await sb
+          .from('profiles')
+          .select('full_name, name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        currentLoginName =
+          prof?.full_name ||
+          prof?.name ||
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          '';
+      } catch (_) {}
+    }
+
+    function getPostComments(postId) {
+      const all = JSON.parse(localStorage.getItem('autro_post_comments_v2') || '{}');
+      return Array.isArray(all[postId]) ? all[postId] : [];
+    }
+
+    function savePostComments(postId, arr) {
+      const all = JSON.parse(localStorage.getItem('autro_post_comments_v2') || '{}');
+      all[postId] = arr;
+      localStorage.setItem('autro_post_comments_v2', JSON.stringify(all));
+    }
+
+    function applyReaction(target, emoji) {
+      if (!target) return;
+
+      if (target.type === 'post') {
+        const p = posts.find(x => x.id === target.postId);
+        if (!p) return;
+        if (p.userReaction === emoji) {
+          p.userReaction = null;
+          p.reactionCount = Math.max(0, Number(p.reactionCount || 0) - 1);
+          renderFeed();
+          showToast(T.undone);
+          return;
+        }
+        if (!p.userReaction) {
+          p.reactionCount = Number(p.reactionCount || 0) + 1;
+        }
+        p.userReaction = emoji;
+        renderFeed();
+      } else if (target.type === 'comment') {
+        const arr = getPostComments(target.postId);
+        const c = arr.find(x => x.id === target.commentId);
+        if (!c) return;
+        if (c.userReaction === emoji) {
+          c.userReaction = null;
+          c.likeCount = Math.max(0, Number(c.likeCount || 0) - 1);
+          savePostComments(target.postId, arr);
+          renderFeed();
+          showToast(T.undone);
+          return;
+        }
+        if (!c.userReaction) {
+          c.likeCount = Number(c.likeCount || 0) + 1;
+        }
+        c.userReaction = emoji;
+        savePostComments(target.postId, arr);
+        renderFeed();
+      }
+    }
+
+    function openReactionPopup(anchorEl, target) {
+      activeReactionTarget = target;
+      const popup = document.getElementById('reactionPopup');
+      popup.innerHTML = '';
+
+      REACTIONS.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'reaction-item-btn';
+        btn.textContent = emoji;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          applyReaction(activeReactionTarget, emoji);
+          closeReactionPopup();
+        };
+        popup.appendChild(btn);
+      });
+
+      const rect = anchorEl.getBoundingClientRect();
+      popup.classList.add('open');
+      const pRect = popup.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - pRect.width - 10, Math.max(10, rect.left));
+      const top = Math.max(10, rect.top - pRect.height - 8);
+      popup.style.left = `${left}px`;
+      popup.style.top = `${top}px`;
+      playPopupSound();
+    }
+
+    function closeReactionPopup() {
+      document.getElementById('reactionPopup').classList.remove('open');
+      activeReactionTarget = null;
+    }
+
+    function bindLongPressAndUndo(btnEl, target, defaultEmoji) {
+      let timer = null;
+      let longPressed = false;
+
+      const onDown = () => {
+        longPressed = false;
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          longPressed = true;
+          openReactionPopup(btnEl, target);
+        }, 420);
+      };
+
+      const onCancel = () => clearTimeout(timer);
+
+      btnEl.addEventListener('pointerdown', onDown);
+      btnEl.addEventListener('pointerup', onCancel);
+      btnEl.addEventListener('pointerleave', onCancel);
+      btnEl.addEventListener('pointercancel', onCancel);
+      btnEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openReactionPopup(btnEl, target);
+      });
+
+      btnEl.addEventListener('click', (e) => {
+        if (longPressed) {
+          e.preventDefault();
+          longPressed = false;
+          return;
+        }
+        if (target.type === 'post') {
+          const p = posts.find(x => x.id === target.postId);
+          if (!p) return;
+          applyReaction(target, p.userReaction || defaultEmoji);
+        } else if (target.type === 'comment') {
+          const c = getPostComments(target.postId).find(x => x.id === target.commentId);
+          if (!c) return;
+          applyReaction(target, c.userReaction || defaultEmoji);
+        }
+      });
+    }
+
+    async function toggleVoiceForPost(postId, btnEl, statusEl, cancelEl) {
+      if (!isRecordingVoice) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          return showToast(T.voiceUnsupported);
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          recordedChunks = [];
+          recordedAudioUrl = '';
+          recordingForPostId = postId;
+          mediaRecorder = new MediaRecorder(stream);
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            clearInterval(voiceInterval);
+            isRecordingVoice = false;
+            btnEl.textContent = T.voice30s;
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            recordedAudioUrl = URL.createObjectURL(blob);
+            statusEl.textContent = T.voiceReady(voiceSecondsElapsed);
+            cancelEl.style.display = 'inline-block';
+          };
+
+          mediaRecorder.start();
+          isRecordingVoice = true;
+          voiceSecondsElapsed = 0;
+          btnEl.textContent = T.stop;
+          cancelEl.style.display = 'none';
+          statusEl.textContent = '0s / 30s';
+
+          voiceInterval = setInterval(() => {
+            voiceSecondsElapsed += 1;
+            statusEl.textContent = `${voiceSecondsElapsed}s / 30s`;
+            if (voiceSecondsElapsed >= 30 && mediaRecorder && mediaRecorder.state === 'recording') {
+              mediaRecorder.stop();
+            }
+          }, 1000);
+        } catch (_) {
+          showToast(T.micDenied);
+        }
+      } else if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+    }
+
+    function openCommentDotsMenu(anchorEl, postId, commentObj) {
+      activeCommentForMenu = { postId, comment: commentObj };
+      const menu = document.getElementById('commentDotsMenu');
+      const rect = anchorEl.getBoundingClientRect();
+      menu.classList.add('open');
+      const mRect = menu.getBoundingClientRect();
+      menu.style.left = `${Math.min(window.innerWidth - mRect.width - 10, Math.max(10, rect.left - mRect.width + 24))}px`;
+      menu.style.top = `${Math.min(window.innerHeight - mRect.height - 10, rect.bottom + 4)}px`;
+    }
+
+    function closeCommentDotsMenu() {
+      document.getElementById('commentDotsMenu').classList.remove('open');
+    }
+
+    function openReportModal() {
+      closeCommentDotsMenu();
+      selectedReportReason = T.reasons[0];
+      const box = document.getElementById('reportReasonsBox');
+      box.innerHTML = '';
+      T.reasons.forEach((reason, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = `reason-btn ${i === 0 ? 'selected' : ''}`;
+        b.textContent = `${i + 1}. ${reason}`;
+        b.onclick = () => {
+          selectedReportReason = reason;
+          box.querySelectorAll('.reason-btn').forEach(x => x.classList.remove('selected'));
+          b.classList.add('selected');
+        };
+        box.appendChild(b);
+      });
+      document.getElementById('reportModal').classList.add('open');
+    }
+
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.remove('open');
+    }
+
+    function dispatchReport(actionLabel) {
+      if (!activeCommentForMenu) return;
+      const list = JSON.parse(localStorage.getItem('autro_comment_reports') || '[]');
+      list.unshift({
+        postId: activeCommentForMenu.postId,
+        commentId: activeCommentForMenu.comment.id,
+        reason: selectedReportReason,
+        action: actionLabel,
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem('autro_comment_reports', JSON.stringify(list));
+      closeReportModal();
+      showToast(T.reported(actionLabel));
+    }
+
+    function renderFeed() {
+      const stack = document.getElementById('feedStack');
+      stack.innerHTML = '';
+
+      posts.forEach(p => {
+        const comments = getPostComments(p.id);
+        const card = document.createElement('article');
+        card.className = 'post-card';
+
+        const authorName = p.author_name || currentLoginName || '';
+        const head = document.createElement('div');
+        head.className = 'post-header';
+        head.innerHTML = `<div class="post-author-name">${authorName}</div>`;
+        card.appendChild(head);
+
+        if (p.caption) {
+          const cap = document.createElement('div');
+          cap.className = 'post-text';
+          cap.textContent = p.caption;
+          card.appendChild(cap);
+        }
+
+        if (p.media_url) {
+          if (p.is_video) {
+            const vid = document.createElement('video');
+            vid.className = 'post-media';
+            vid.src = p.media_url;
+            vid.controls = true;
+            vid.playsInline = true;
+            card.appendChild(vid);
+          } else {
+            const img = document.createElement('img');
+            img.className = 'post-media';
+            img.src = p.media_url;
+            img.alt = '';
+            card.appendChild(img);
+          }
+        }
+
+        const stats = document.createElement('div');
+        stats.className = 'post-stats';
+        stats.innerHTML = `
+          <span>${p.userReaction || '👍'} ${Number(p.reactionCount || 0)}</span>
+          <span>${comments.length} ${T.commentsSuffix} · ${Number(p.shareCount || 0)} ${T.sharesSuffix}</span>
+        `;
+        card.appendChild(stats);
+
+        // Screenshot-style Like · Comment · Share bar
+        const actions = document.createElement('div');
+        actions.className = 'post-actions';
+
+        const likeBtn = document.createElement('button');
+        likeBtn.type = 'button';
+        likeBtn.className = `action-btn ${p.userReaction ? 'active' : ''}`;
+        likeBtn.innerHTML = p.userReaction
+          ? `<span>${p.userReaction}</span><span>${T.like}</span>`
+          : `<i class="far fa-thumbs-up"></i><span>${T.like}</span>`;
+        bindLongPressAndUndo(likeBtn, { type: 'post', postId: p.id }, '👍');
+
+        const cmtBtn = document.createElement('button');
+        cmtBtn.type = 'button';
+        cmtBtn.className = 'action-btn';
+        cmtBtn.innerHTML = `<i class="far fa-comment"></i><span>${T.comment}</span>`;
+
+        const shrBtn = document.createElement('button');
+        shrBtn.type = 'button';
+        shrBtn.className = 'action-btn';
+        shrBtn.innerHTML = `<i class="fas fa-share"></i><span>${T.share}</span>`;
+        shrBtn.onclick = () => {
+          p.shareCount = Number(p.shareCount || 0) + 1;
+          renderFeed();
+          showToast(T.shared);
+        };
+
+        actions.appendChild(likeBtn);
+        actions.appendChild(cmtBtn);
+        actions.appendChild(shrBtn);
+        card.appendChild(actions);
+
+        // Comments section
+        const cSection = document.createElement('div');
+        cSection.className = `comments-section ${p._commentsOpen ? 'open' : ''}`;
+
+        cmtBtn.onclick = () => {
+          p._commentsOpen = !p._commentsOpen;
+          renderFeed();
+        };
+
+        const comp = document.createElement('div');
+        comp.style.display = 'flex';
+        comp.style.flexDirection = 'column';
+        comp.style.gap = '8px';
+
+        const row1 = document.createElement('div');
+        row1.className = 'composer-row';
+
+        const cInput = document.createElement('input');
+        cInput.type = 'text';
+        cInput.className = 'comment-input';
+        cInput.placeholder = T.writeComment;
+
+        const sendCmtBtn = document.createElement('button');
+        sendCmtBtn.type = 'button';
+        sendCmtBtn.className = 'mini-btn solid';
+        sendCmtBtn.textContent = T.send;
+
+        const row2 = document.createElement('div');
+        row2.className = 'composer-row';
+
+        const voiceBtn = document.createElement('button');
+        voiceBtn.type = 'button';
+        voiceBtn.className = 'mini-btn';
+        voiceBtn.textContent = T.voice30s;
+
+        const voiceStatus = document.createElement('span');
+        voiceStatus.style.fontSize = '12.5px';
+        voiceStatus.style.color = 'var(--text-muted)';
+
+        const voiceCancel = document.createElement('button');
+        voiceCancel.type = 'button';
+        voiceCancel.className = 'mini-btn';
+        voiceCancel.textContent = T.cancel;
+        voiceCancel.style.display = 'none';
+
+        voiceBtn.onclick = () => toggleVoiceForPost(p.id, voiceBtn, voiceStatus, voiceCancel);
+        voiceCancel.onclick = () => {
+          if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+          recordedAudioUrl = '';
+          voiceStatus.textContent = '';
+          voiceCancel.style.display = 'none';
+        };
+
+        sendCmtBtn.onclick = () => {
+          const txt = cInput.value.trim();
+          const hasVoice = recordingForPostId === p.id && Boolean(recordedAudioUrl);
+          if (!txt && !hasVoice) return;
+          comments.push({
+            id: `cmt-${Date.now()}`,
+            author: currentLoginName || '',
+            text: txt,
+            audioUrl: hasVoice ? recordedAudioUrl : '',
+            likeCount: 0,
+            dislikeCount: 0,
+            userReaction: null,
+            disliked: false,
+            replies: []
+          });
+          savePostComments(p.id, comments);
+          if (hasVoice) {
+            recordedAudioUrl = '';
+            recordingForPostId = null;
+          }
+          cInput.value = '';
+          p._commentsOpen = true;
+          renderFeed();
+        };
+
+        row1.appendChild(cInput);
+        row1.appendChild(sendCmtBtn);
+        row2.appendChild(voiceBtn);
+        row2.appendChild(voiceStatus);
+        row2.appendChild(voiceCancel);
+        comp.appendChild(row1);
+        comp.appendChild(row2);
+        cSection.appendChild(comp);
+
+        comments.forEach(c => {
+          const cBox = document.createElement('div');
+          cBox.className = 'comment-box';
+
+          const cHead = document.createElement('div');
+          cHead.className = 'comment-head';
+
+          const cAuth = document.createElement('span');
+          cAuth.className = 'comment-author';
+          cAuth.textContent = c.author || '';
+
+          const dotsBtn = document.createElement('button');
+          dotsBtn.type = 'button';
+          dotsBtn.className = 'mini-btn';
+          dotsBtn.textContent = '⋮';
+          dotsBtn.onclick = (e) => {
+            e.stopPropagation();
+            openCommentDotsMenu(dotsBtn, p.id, c);
+          };
+
+          cHead.appendChild(cAuth);
+          cHead.appendChild(dotsBtn);
+          cBox.appendChild(cHead);
+
+          if (c.text) {
+            const cTxt = document.createElement('div');
+            cTxt.className = 'comment-text';
+            cTxt.textContent = c.text;
+            cBox.appendChild(cTxt);
+          }
+
+          if (c.audioUrl) {
+            const aud = document.createElement('audio');
+            aud.controls = true;
+            aud.src = c.audioUrl;
+            aud.style.width = '100%';
+            cBox.appendChild(aud);
+          }
+
+          const cCtrl = document.createElement('div');
+          cCtrl.className = 'comment-controls';
+
+          const cLike = document.createElement('button');
+          cLike.type = 'button';
+          cLike.className = `c-react-btn ${c.userReaction ? 'active' : ''}`;
+          cLike.textContent = c.userReaction
+            ? `${c.userReaction} ${c.likeCount}`
+            : `${T.likeShort} ${c.likeCount}`;
+          bindLongPressAndUndo(cLike, { type: 'comment', postId: p.id, commentId: c.id }, '👍');
+
+          const cDislike = document.createElement('button');
+          cDislike.type = 'button';
+          cDislike.className = `c-react-btn ${c.disliked ? 'active' : ''}`;
+          cDislike.textContent = `${T.dislikeShort} ${c.dislikeCount}`;
+          cDislike.onclick = () => {
+            c.disliked = !c.disliked;
+            c.dislikeCount = Math.max(0, Number(c.dislikeCount || 0) + (c.disliked ? 1 : -1));
+            savePostComments(p.id, comments);
+            renderFeed();
+          };
+
+          const cReplyBtn = document.createElement('button');
+          cReplyBtn.type = 'button';
+          cReplyBtn.className = 'c-react-btn';
+          cReplyBtn.textContent = T.reply;
+
+          cCtrl.appendChild(cLike);
+          cCtrl.appendChild(cDislike);
+          cCtrl.appendChild(cReplyBtn);
+          cBox.appendChild(cCtrl);
+
+          const repRow = document.createElement('div');
+          repRow.className = 'composer-row';
+          repRow.style.display = 'none';
+
+          const repInp = document.createElement('input');
+          repInp.type = 'text';
+          repInp.className = 'comment-input';
+          repInp.placeholder = T.writeReply;
+
+          const repSend = document.createElement('button');
+          repSend.type = 'button';
+          repSend.className = 'mini-btn solid';
+          repSend.textContent = T.send;
+          repSend.onclick = () => {
+            const val = repInp.value.trim();
+            if (!val) return;
+            c.replies = c.replies || [];
+            c.replies.push({ id: `r-${Date.now()}`, author: currentLoginName || '', text: val });
+            savePostComments(p.id, comments);
+            renderFeed();
+          };
+
+          cReplyBtn.onclick = () => {
+            repRow.style.display = repRow.style.display === 'none' ? 'flex' : 'none';
+          };
+
+          repRow.appendChild(repInp);
+          repRow.appendChild(repSend);
+          cBox.appendChild(repRow);
+
+          if (c.replies && c.replies.length > 0) {
+            const rWrap = document.createElement('div');
+            rWrap.className = 'replies-wrap';
+            c.replies.forEach(r => {
+              const rDiv = document.createElement('div');
+              rDiv.className = 'reply-item';
+              rDiv.innerHTML = `<b>${r.author || ''}</b> <div>${r.text}</div>`;
+              rWrap.appendChild(rDiv);
+            });
+            cBox.appendChild(rWrap);
+          }
+
+          cSection.appendChild(cBox);
+        });
+
+        card.appendChild(cSection);
+        stack.appendChild(card);
+      });
+    }
+
+    async function loadPosts() {
+      const q1 = JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]');
+      const q2 = JSON.parse(localStorage.getItem('autro_profile_posts') || '[]');
+      const map = new Map();
+
+      [...q1, ...q2].forEach(item => {
+        if (item && item.id) {
+          map.set(item.id, {
+            ...item,
+            reactionCount: Number(item.reactions || 0),
+            shareCount: Number(item.shares || 0),
+            userReaction: null,
+            _commentsOpen: false
+          });
+        }
+      });
+
+      if (sb) {
+        try {
+          const { data } = await sb
+            .from('posts')
+            .select('*, profiles(full_name)')
+            .order('created_at', { ascending: false })
+            .limit(30);
+          if (Array.isArray(data)) {
+            data.forEach(row => {
+              const prev = map.get(row.id) || {};
+              map.set(row.id, {
+                ...prev,
+                id: row.id,
+                author_name: row.profiles?.full_name || prev.author_name || '',
+                caption: row.caption ?? prev.caption ?? '',
+                media_url: row.media_url ?? prev.media_url ?? '',
+                is_video: row.media_type ? String(row.media_type).startsWith('video') : Boolean(prev.is_video),
+                reactionCount: Number(prev.reactionCount || 0),
+                shareCount: Number(prev.shareCount || 0),
+                userReaction: prev.userReaction || null,
+                _commentsOpen: Boolean(prev._commentsOpen)
+              });
+            });
+          }
+        } catch (_) {}
+      }
+
+      posts = Array.from(map.values());
+      if (posts.length === 0) {
+        posts = [{
+          id: 'post-default',
+          author_name: currentLoginName || '',
+          caption: '',
+          media_url: '',
+          is_video: false,
+          reactionCount: 0,
+          shareCount: 0,
+          userReaction: null,
+          _commentsOpen: false
+        }];
+      }
+
+      renderFeed();
+    }
+
+    document.getElementById('indexLinkLabel').textContent = T.feed;
+    document.getElementById('createPostLinkLabel').textContent = T.createPost;
+    document.getElementById('menuSaveCommentBtn').textContent = T.save;
+    document.getElementById('menuReportCommentBtn').textContent = T.report;
+    document.getElementById('reportModalTitle').textContent = T.reportTitle;
+    document.getElementById('closeReportModalBtn').textContent = T.close;
+    document.getElementById('submitReportBtn').textContent = T.submit;
+    document.getElementById('sendReportBtn').textContent = T.send;
+
+    document.getElementById('menuSaveCommentBtn').addEventListener('click', () => {
+      if (!activeCommentForMenu) return;
+      const saved = JSON.parse(localStorage.getItem('autro_saved_items') || '[]');
+      saved.unshift({ ...activeCommentForMenu.comment, savedAt: new Date().toISOString() });
+      localStorage.setItem('autro_saved_items', JSON.stringify(saved));
+      closeCommentDotsMenu();
+      showToast(T.saved);
+      window.location.href = 'save-item.html';
+    });
+
+    document.getElementById('menuReportCommentBtn').addEventListener('click', openReportModal);
+    document.getElementById('closeReportModalBtn').addEventListener('click', closeReportModal);
+    document.getElementById('submitReportBtn').addEventListener('click', () => dispatchReport(T.submit));
+    document.getElementById('sendReportBtn').addEventListener('click', () => dispatchReport(T.send));
+
+    document.addEventListener('click', (e) => {
+      const popup = document.getElementById('reactionPopup');
+      if (popup.classList.contains('open') && !popup.contains(e.target)) {
+        closeReactionPopup();
+      }
+      const dMenu = document.getElementById('commentDotsMenu');
+      if (dMenu.classList.contains('open') && !dMenu.contains(e.target)) {
+        closeCommentDotsMenu();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadLoggedInName();
+      await loadPosts();
+    });
+  </script>
+</body>
+  </html>
