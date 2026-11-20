@@ -31,6 +31,7 @@
     /* System Dark: White text on Black theme */
     html[data-theme="dark"],
     body.dark,
+    body.dark-theme,
     body.theme-dark {
       --bg-page: #000000;
       --bg-card: #0c0c0c;
@@ -748,6 +749,57 @@
       </div>
     </section>
 
+    <!-- New Feature: Break & Check-in Reminder -->
+    <section class="fc-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-mug-hot"></i>
+          </span>
+          <h2 class="fc-heading">Break &amp; Check-in Reminder</h2>
+        </div>
+        <span class="badge-tag" id="breakCountBadge">0 Breaks</span>
+      </div>
+
+      <div class="options-list">
+        <div class="toggle-row">
+          <div class="option-copy">
+            <strong>Periodic Break Reminders</strong>
+            <span>Remind household members to step away and rest</span>
+          </div>
+          <label class="switch-control" aria-label="Periodic Break Reminders">
+            <input type="checkbox" id="breakReminderToggle" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="option-row">
+          <div class="option-copy">
+            <strong>Reminder Interval</strong>
+            <span>How often break prompts appear</span>
+          </div>
+          <select id="breakIntervalSelect" class="fc-select" aria-label="Break Reminder Interval">
+            <option value="20">Every 20 mins</option>
+            <option value="30" selected>Every 30 mins</option>
+            <option value="45">Every 45 mins</option>
+            <option value="60">Every 60 mins</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fc-summary-box">
+        <strong class="summary-title" id="breakStatusTitle">Ready for next check-in</strong>
+        <p class="summary-desc" id="breakStatusDesc">No break logged in this session yet.</p>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-outline" id="takeBreakNowBtn">
+          <i class="fa-solid fa-pause"></i>
+          <span>Take a Break Now</span>
+        </button>
+      </div>
+    </section>
+
     <!-- Connected Family Members -->
     <section class="fc-card">
       <div class="card-header">
@@ -852,6 +904,10 @@
           quiet_end: "07:00",
           share_activity_digest: true,
           restrict_stranger_dms: true,
+          break_reminders_enabled: true,
+          break_interval_mins: 30,
+          breaks_taken_count: 0,
+          last_break_at: "",
           members: [],
           family_notes: ""
         };
@@ -917,6 +973,13 @@
           restrict_stranger_dms: Boolean(
             document.getElementById("restrictDmsToggle")?.checked
           ),
+          break_reminders_enabled: Boolean(
+            document.getElementById("breakReminderToggle")?.checked
+          ),
+          break_interval_mins:
+            Number(document.getElementById("breakIntervalSelect")?.value) || 30,
+          breaks_taken_count: Number(fcState.breaks_taken_count) || 0,
+          last_break_at: fcState.last_break_at || "",
           members: Array.isArray(fcState.members) ? fcState.members : [],
           family_notes: (
             document.getElementById("familyNotesTextarea")?.value || ""
@@ -967,6 +1030,36 @@
         });
       }
 
+      function renderBreakUI() {
+        const breaksCount = Number(fcState.breaks_taken_count) || 0;
+        const interval = Number(fcState.break_interval_mins) || 30;
+        const enabled = Boolean(fcState.break_reminders_enabled);
+
+        const badge = document.getElementById("breakCountBadge");
+        const title = document.getElementById("breakStatusTitle");
+        const desc = document.getElementById("breakStatusDesc");
+
+        if (badge) {
+          badge.textContent = `${breaksCount} ${breaksCount === 1 ? "Break" : "Breaks"}`;
+        }
+        if (title) {
+          title.textContent = enabled
+            ? `Reminders every ${interval} mins`
+            : "Break reminders paused";
+        }
+        if (desc) {
+          if (fcState.last_break_at) {
+            const formatted = new Date(fcState.last_break_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            });
+            desc.textContent = `Last break logged at ${formatted} • Total breaks: ${breaksCount}`;
+          } else {
+            desc.textContent = "No break logged yet. Tap 'Take a Break Now' to log a pause.";
+          }
+        }
+      }
+
       function renderFcUI() {
         const enabled = Boolean(fcState.family_center_enabled);
 
@@ -980,6 +1073,8 @@
         const qEnd = document.getElementById("quietEndInput");
         const digestTgl = document.getElementById("activityDigestToggle");
         const dmTgl = document.getElementById("restrictDmsToggle");
+        const brkTgl = document.getElementById("breakReminderToggle");
+        const brkSel = document.getElementById("breakIntervalSelect");
         const notesEl = document.getElementById("familyNotesTextarea");
         const sumTitle = document.getElementById("fcSummaryTitle");
         const sumDesc = document.getElementById("fcSummaryDesc");
@@ -1001,11 +1096,14 @@
         if (qEnd) qEnd.value = fcState.quiet_end || "07:00";
         if (digestTgl) digestTgl.checked = Boolean(fcState.share_activity_digest);
         if (dmTgl) dmTgl.checked = Boolean(fcState.restrict_stranger_dms);
+        if (brkTgl) brkTgl.checked = Boolean(fcState.break_reminders_enabled);
+        if (brkSel) brkSel.value = String(fcState.break_interval_mins || 30);
         if (notesEl && document.activeElement !== notesEl) {
           notesEl.value = fcState.family_notes || "";
         }
 
         renderMembers();
+        renderBreakUI();
 
         const memberCount = Array.isArray(fcState.members) ? fcState.members.length : 0;
         if (sumTitle) {
@@ -1017,8 +1115,11 @@
           const quietTxt = fcState.quiet_hours_enabled
             ? `${fcState.quiet_start} – ${fcState.quiet_end}`
             : "OFF";
+          const breakTxt = fcState.break_reminders_enabled
+            ? `Every ${fcState.break_interval_mins}m (${fcState.breaks_taken_count || 0})`
+            : "OFF";
           const noteTxt = fcState.family_notes ? ` • Note: ${fcState.family_notes}` : "";
-          sumDesc.textContent = `Daily limit: ${fcState.daily_time_limit_mins} mins • Quiet hours: ${quietTxt} • ${memberCount} ${
+          sumDesc.textContent = `Daily limit: ${fcState.daily_time_limit_mins} mins • Quiet hours: ${quietTxt} • Breaks: ${breakTxt} • ${memberCount} ${
             memberCount === 1 ? "member" : "members"
           }${noteTxt}.`;
         }
@@ -1049,6 +1150,11 @@
                 typeof r.share_activity_digest === "boolean" ? r.share_activity_digest : true,
               restrict_stranger_dms:
                 typeof r.restrict_stranger_dms === "boolean" ? r.restrict_stranger_dms : true,
+              break_reminders_enabled:
+                typeof r.break_reminders_enabled === "boolean" ? r.break_reminders_enabled : true,
+              break_interval_mins: Number(r.break_interval_mins) || 30,
+              breaks_taken_count: Number(r.breaks_taken_count) || 0,
+              last_break_at: r.last_break_at || "",
               members: Array.isArray(r.members) ? r.members : [],
               family_notes: r.family_notes || ""
             });
@@ -1134,6 +1240,14 @@
         window._fcToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
       }
 
+      document.getElementById("takeBreakNowBtn")?.addEventListener("click", () => {
+        fcState.breaks_taken_count = (Number(fcState.breaks_taken_count) || 0) + 1;
+        fcState.last_break_at = new Date().toISOString();
+        writeLocal(fcState);
+        renderFcUI();
+        showToast("Break logged — enjoy a healthy pause");
+      });
+
       document.getElementById("addMemberBtn")?.addEventListener("click", () => {
         const nameEl = document.getElementById("memberNameInput");
         const roleEl = document.getElementById("memberRoleSelect");
@@ -1160,6 +1274,8 @@
         "quietEndInput",
         "activityDigestToggle",
         "restrictDmsToggle",
+        "breakReminderToggle",
+        "breakIntervalSelect",
         "familyNotesTextarea"
       ].forEach((id) => {
         document.getElementById(id)?.addEventListener("input", () => {
@@ -1204,5 +1320,151 @@
       }
     })();
   </script>
+
+  <script>
+    (function () {
+      const THEME_KEYS = ['autro_theme', 'autrobook_theme', 'theme', 'autrobook_dark_mode'];
+      const LANG_KEYS = ['autro_lang_code', 'autrobook_lang', 'lang', 'language'];
+
+      function readTheme() {
+        for (const k of THEME_KEYS) {
+          try {
+            const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').toLowerCase().trim();
+            if (v === 'dark' || v === '1' || v === 'true') return 'dark';
+            if (v === 'light' || v === '0' || v === 'false') return 'light';
+          } catch (_) {}
+        }
+        const match = document.cookie.match(/(?:^|;\s*)(?:autro_theme|autrobook_theme)=(dark|light)/i);
+        return match ? match[1].toLowerCase() : 'light';
+      }
+
+      function applyGlobalTheme(theme) {
+        const t = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        if (document.body) {
+          document.body.setAttribute('data-theme', t);
+          document.body.classList.toggle('dark-theme', t === 'dark');
+        }
+      }
+
+      function readLang() {
+        for (const k of LANG_KEYS) {
+          try {
+            const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').trim();
+            if (v) return v;
+          } catch (_) {}
+        }
+        const match = document.cookie.match(/(?:^|;\s*)(?:autro_lang_code|autrobook_lang|lang)=([^;]+)/i);
+        return match ? decodeURIComponent(match[1]) : 'en';
+      }
+
+      async function applyGlobalLang(code) {
+        const lang = code || 'en';
+        document.documentElement.setAttribute('lang', lang);
+        document.documentElement.setAttribute('dir', ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr');
+
+        const dictMap = {
+          en: {
+            'Settings & privacy': 'Settings & privacy',
+            'Search settings': 'Search settings',
+            'Autrobook Account': 'Autrobook Account',
+            'Personal details': 'Personal details',
+            'Password and security': 'Password and security',
+            'Ad preferences': 'Ad preferences',
+            'Verification': 'Verification',
+            'See more in Autrobook Account': 'See more in Autrobook Account',
+            'Subscriptions': 'Subscriptions',
+            'Autro Premium': 'Autro Premium',
+            'Tools and resources': 'Tools and resources',
+            'Privacy checkup': 'Privacy checkup'
+          },
+          bn: {
+            'Settings & privacy': 'সেটিংস ও প্রাইভেসি',
+            'Search settings': 'সেটিংস খুঁজুন',
+            'Autrobook Account': 'অট্রোবুক অ্যাকাউন্ট',
+            'Personal details': 'ব্যক্তিগত তথ্য',
+            'Password and security': 'পাসওয়ার্ড ও নিরাপত্তা',
+            'Ad preferences': 'বিজ্ঞাপন পছন্দ',
+            'Verification': 'ভেরিফিকেশন',
+            'See more in Autrobook Account': 'অট্রোবুক অ্যাকাউন্টে আরও দেখুন',
+            'Subscriptions': 'সাবস্ক্রিপশন',
+            'Autro Premium': 'অট্রো প্রিমিয়াম',
+            'Tools and resources': 'টুলস ও রিসোর্স',
+            'Privacy checkup': 'প্রাইভেসি চেকআপ'
+          }
+        };
+
+        const nodes = document.querySelectorAll('h1, h2, h3, h4, p, span, a, button, label, div');
+        for (const el of nodes) {
+          if (el.children.length > 0) continue;
+          if (!el.dataset.origText) {
+            el.dataset.origText = (el.textContent || '').trim();
+          }
+          const baseText = el.dataset.origText;
+          if (!baseText) continue;
+
+          if (lang === 'en') {
+            el.textContent = baseText;
+          } else if (dictMap[lang] && dictMap[lang][baseText]) {
+            el.textContent = dictMap[lang][baseText];
+          } else {
+            try {
+              const res = await fetch(
+                `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(baseText)}`
+              );
+              if (res.ok) {
+                const data = await res.json();
+                const translated = Array.isArray(data?.[0]) ? data[0].map((p) => p[0]).join('') : '';
+                if (translated && readLang() === lang) {
+                  el.textContent = translated;
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
+        if (searchInput) {
+          if (!searchInput.dataset.origPlaceholder) {
+            searchInput.dataset.origPlaceholder = searchInput.placeholder || '';
+          }
+          const ph = searchInput.dataset.origPlaceholder;
+          if (lang === 'en') {
+            searchInput.placeholder = ph;
+          } else if (dictMap[lang] && dictMap[lang][ph]) {
+            searchInput.placeholder = dictMap[lang][ph];
+          }
+        }
+      }
+
+      function syncAll() {
+        applyGlobalTheme(readTheme());
+        applyGlobalLang(readLang());
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', syncAll);
+      } else {
+        syncAll();
+      }
+
+      window.addEventListener('pageshow', syncAll);
+      window.addEventListener('storage', syncAll);
+      window.addEventListener('autro:theme-updated', (e) => applyGlobalTheme(e?.detail?.theme || readTheme()));
+      window.addEventListener('autro:lang-updated', (e) => applyGlobalLang(e?.detail?.code || readLang()));
+
+      try {
+        if ('BroadcastChannel' in window) {
+          new BroadcastChannel('autrobook_theme_sync').onmessage = (e) => {
+            if (e?.data?.theme) applyGlobalTheme(e.data.theme);
+          };
+          new BroadcastChannel('autrobook_lang_sync').onmessage = (e) => {
+            if (e?.data?.code) applyGlobalLang(e.data.code);
+          };
+        }
+      } catch (_) {}
+    })();
+  </script>
 </body>
-            </html>
+  </html>
