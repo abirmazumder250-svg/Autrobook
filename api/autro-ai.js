@@ -1,17 +1,17 @@
 const DEFAULT_SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
 const DEFAULT_SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-async function fetchSupabaseProfileFallback(userProfile = {}, profileName = '') {
-  const supabaseUrl =
-    process.env.SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    DEFAULT_SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    DEFAULT_SUPABASE_KEY;
+async function fetchWithTimeout(url, options = {}, timeoutMs = 4500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
+async function fetchSupabaseProfileFallback(userProfile = {}, profileName = '') {
   const merged = {
     userId: typeof userProfile?.userId === 'string' ? userProfile.userId.trim() : '',
     fullName:
@@ -25,6 +25,20 @@ async function fetchSupabaseProfileFallback(userProfile = {}, profileName = '') 
     education: typeof userProfile?.education === 'string' ? userProfile.education.trim() : ''
   };
 
+  if (merged.fullName && (merged.location || merged.education || merged.bio)) {
+    return merged;
+  }
+
+  const supabaseUrl =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    DEFAULT_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    DEFAULT_SUPABASE_KEY;
+
   if (!supabaseUrl || !supabaseKey) return merged;
 
   const headers = {
@@ -34,45 +48,24 @@ async function fetchSupabaseProfileFallback(userProfile = {}, profileName = '') 
   };
 
   try {
-    if (merged.userId) {
-      const pRes = await fetch(
-        `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(merged.userId)}&select=*&limit=1`,
-        { headers }
-      );
-      if (pRes.ok) {
-        const rows = await pRes.json();
-        if (Array.isArray(rows) && rows[0]) {
-          const r = rows[0];
-          if (r.full_name) merged.fullName = String(r.full_name).trim();
-          if (r.username) merged.username = String(r.username).trim();
-          if (r.email) merged.email = String(r.email).trim();
-          if (r.bio) merged.bio = String(r.bio).trim();
-          if (r.location || r.city || r.lives_in) {
-            merged.location = String(r.location || r.city || r.lives_in).trim();
-          }
-          if (r.education || r.university || r.school) {
-            merged.education = String(r.education || r.university || r.school).trim();
-          }
-        }
-      }
-    }
-
-    const queryUrl = merged.userId
-      ? `${supabaseUrl}/rest/v1/account_settings?user_id=eq.${encodeURIComponent(merged.userId)}&order=updated_at.desc&limit=1`
+    const targetUrl = merged.userId
+      ? `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(merged.userId)}&select=*&limit=1`
       : `${supabaseUrl}/rest/v1/account_settings?order=updated_at.desc&limit=1`;
 
-    const sRes = await fetch(queryUrl, { headers });
-    if (sRes.ok) {
-      const sRows = await sRes.json();
-      if (Array.isArray(sRows) && sRows[0]) {
-        const s = sRows[0];
-        if (s.full_name) merged.fullName = String(s.full_name).trim();
-        if (s.bio) merged.bio = String(s.bio).trim();
-        if (s.location || s.city || s.lives_in) {
-          merged.location = String(s.location || s.city || s.lives_in).trim();
+    const res = await fetchWithTimeout(targetUrl, { headers }, 1500);
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows[0]) {
+        const r = rows[0];
+        if (!merged.fullName && r.full_name) merged.fullName = String(r.full_name).trim();
+        if (!merged.username && r.username) merged.username = String(r.username).trim();
+        if (!merged.email && r.email) merged.email = String(r.email).trim();
+        if (!merged.bio && r.bio) merged.bio = String(r.bio).trim();
+        if (!merged.location && (r.location || r.city || r.lives_in)) {
+          merged.location = String(r.location || r.city || r.lives_in).trim();
         }
-        if (s.education || s.university || s.school) {
-          merged.education = String(s.education || s.university || s.school).trim();
+        if (!merged.education && (r.education || r.university || r.school)) {
+          merged.education = String(r.education || r.university || r.school).trim();
         }
       }
     }
@@ -82,7 +75,9 @@ async function fetchSupabaseProfileFallback(userProfile = {}, profileName = '') 
 }
 
 async function askGroq(groqKey, systemInstruction, contents, message) {
-  if (!groqKey) return null;
+  if (!groqKey) {
+    throw new Error('GROQ_API_KEY missing');
+  }
 
   const messages = [{ role: 'system', content: systemInstruction }];
   if (Array.isArray(contents) && contents.length > 0) {
@@ -99,82 +94,85 @@ async function askGroq(groqKey, systemInstruction, contents, message) {
     messages.push({ role: 'user', content: message });
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6500);
-
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetchWithTimeout(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${groqKey}`
       },
-      signal: controller.signal,
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages,
-        temperature: 0.35,
-        max_tokens: 550
+        temperature: 0.3,
+        max_tokens: 450
       })
-    });
-    clearTimeout(timer);
+    },
+    5500
+  );
 
-    const data = await response.json();
-    if (response.ok) {
-      const reply = data?.choices?.[0]?.message?.content?.trim() || '';
-      if (reply) return { reply, model: 'groq-llama-3.3-70b' };
-    }
-  } catch (_) {
-    clearTimeout(timer);
+  const data = await response.json();
+  const reply = data?.choices?.[0]?.message?.content?.trim() || '';
+  if (!response.ok || !reply) {
+    throw new Error(data?.error?.message || 'Groq failed');
   }
-  return null;
+
+  return { reply, model: 'groq-llama-3.3-70b' };
+}
+
+async function askGeminiSingleModel(geminiKey, modelName, systemInstruction, contents) {
+  const geminiRes = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 450
+        }
+      })
+    },
+    6000
+  );
+
+  const data = await geminiRes.json();
+  const reply =
+    data?.candidates?.[0]?.content?.parts
+      ?.map((p) => p.text)
+      .filter(Boolean)
+      .join('')
+      .trim() || '';
+
+  if (!geminiRes.ok || !reply) {
+    throw new Error(data?.error?.message || `${modelName} failed`);
+  }
+
+  return { reply, model: modelName };
 }
 
 async function askGemini(geminiKey, systemInstruction, contents) {
-  if (!geminiKey) return null;
+  if (!geminiKey) {
+    throw new Error('GEMINI_API_KEY missing');
+  }
 
-  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+  let lastError = null;
 
   for (const modelName of models) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 7000);
-
     try {
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstruction }]
-            },
-            contents,
-            generationConfig: {
-              temperature: 0.35,
-              maxOutputTokens: 550
-            }
-          })
-        }
-      );
-      clearTimeout(timer);
-
-      const data = await geminiRes.json();
-      if (geminiRes.ok) {
-        const reply =
-          data?.candidates?.[0]?.content?.parts
-            ?.map((p) => p.text)
-            .filter(Boolean)
-            .join('')
-            .trim() || '';
-        if (reply) return { reply, model: modelName };
-      }
-    } catch (_) {
-      clearTimeout(timer);
+      return await askGeminiSingleModel(geminiKey, modelName, systemInstruction, contents);
+    } catch (err) {
+      lastError = err;
     }
   }
-  return null;
+
+  throw lastError || new Error('Gemini failed');
 }
 
 export default async function handler(req, res) {
@@ -207,7 +205,9 @@ export default async function handler(req, res) {
     profile.bio ? `Bio: ${profile.bio}` : '',
     profile.location ? `Location: ${profile.location}` : '',
     profile.education ? `Education: ${profile.education}` : ''
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const systemInstruction = `You are Autro AI Assistant inside Autrobook.
 Always reply accurately, clearly, helpfully, and naturally in the exact same language that the user writes in (support all languages seamlessly).
@@ -219,9 +219,11 @@ ${currentUserInfoLines}
 Identity Rules — Follow Strictly:
 1. When the user asks about THEMSELVES (e.g., "আমি কে", "আমার নাম কি", "আমার পরিচয়", "who am i", "what is my name", "my profile"):
    - Tell ONLY this current user's own saved profile details above (${cleanName || 'their saved profile name'}).
-   - ${isCurrentUserFounder
+   - ${
+     isCurrentUserFounder
        ? 'Since this profile belongs to Abir Mazumder, you may mention his founder details if asked about his identity.'
-       : 'Do NOT claim this user is the Founder/CEO or give Abir Mazumder\'s family/university details unless their own profile says so.'}
+       : "Do NOT claim this user is the Founder/CEO or give Abir Mazumder's family/university details unless their own profile says so."
+   }
 2. When greeting the user (e.g., "hi", "hello", "হাই", "হ্যালো"):
    - Greet with "হ্যালো ${cleanName}" (in Bengali) or "Hello ${cleanName}" (in other languages) if ${cleanName ? `"${cleanName}"` : 'a name'} is available, cleanly and briefly.
 3. When someone asks about the ADMIN / FOUNDER / CEO / CREATOR of Autrobook (e.g., "ফাউন্ডার কে", "অ্যাডমিন কে", "CEO কে", "who is the founder/CEO/admin"):
@@ -250,17 +252,22 @@ Identity Rules — Follow Strictly:
     });
   }
 
-  const groqResult = await askGroq(groqKey, systemInstruction, contents, message);
-  if (groqResult?.reply) {
-    return res.status(200).json(groqResult);
+  const racers = [];
+  if (groqKey) {
+    racers.push(askGroq(groqKey, systemInstruction, contents, message));
+  }
+  if (geminiKey) {
+    racers.push(askGemini(geminiKey, systemInstruction, contents));
   }
 
-  const geminiResult = await askGemini(geminiKey, systemInstruction, contents);
-  if (geminiResult?.reply) {
-    return res.status(200).json(geminiResult);
-  }
+  try {
+    const winner = await Promise.any(racers);
+    if (winner?.reply) {
+      return res.status(200).json(winner);
+    }
+  } catch (_) {}
 
   return res.status(503).json({
     error: 'AI servers are busy right now. Please try again in a moment.'
   });
-                             }
+}
