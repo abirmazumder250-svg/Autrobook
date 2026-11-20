@@ -27,8 +27,31 @@
     --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.08);
   }
 
+  html[data-theme="dark"],
+  body.dark-theme,
+  body.dark {
+    --bg-color: #121314;
+    --header-bg: #18191a;
+    --card-color: #18191a;
+    --surface-elevated: #242526;
+    --soft-btn-bg: #303234;
+    --soft-btn-hover: #3f4245;
+    --text-color: #f1f5f9;
+    --muted-color: #9ca3af;
+    --border-color: #2f3133;
+    --hover-color: rgba(255, 255, 255, 0.06);
+    --cta-bg: #f1f5f9;
+    --cta-text: #0f172a;
+    --cta-hover: #e2e8f0;
+    --badge-bg: rgba(148, 163, 184, 0.16);
+    --badge-text: #e2e8f0;
+    --icon-color: #cbd5e1;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --bg-color: #121314;
       --header-bg: #18191a;
       --card-color: #18191a;
@@ -61,6 +84,7 @@
     color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   .app-shell {
@@ -375,7 +399,7 @@
 <div class="app-shell">
   <!-- Top Header -->
   <header class="top-header">
-    <a href="index.html" class="back-btn" aria-label="Back to Home">
+    <a href="settings.html" class="back-btn" aria-label="Back to Settings">
       <i class="fa-solid fa-arrow-left"></i>
     </a>
     <h1 class="header-title">Default audience settings</h1>
@@ -711,6 +735,154 @@
     renderUI();
     await loadFromCloud();
   });
+</script>
+
+<script>
+  (function () {
+    const THEME_KEYS = ['autro_theme', 'autrobook_theme', 'theme', 'autrobook_dark_mode'];
+    const LANG_KEYS = ['autro_lang_code', 'autrobook_lang', 'lang', 'language'];
+
+    function readTheme() {
+      for (const k of THEME_KEYS) {
+        try {
+          const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').toLowerCase().trim();
+          if (v === 'dark' || v === '1' || v === 'true') return 'dark';
+          if (v === 'light' || v === '0' || v === 'false') return 'light';
+        } catch (_) {}
+      }
+      const match = document.cookie.match(/(?:^|;\s*)(?:autro_theme|autrobook_theme)=(dark|light)/i);
+      if (match) return match[1].toLowerCase();
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyGlobalTheme(theme) {
+      const t = theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.classList.toggle('dark', t === 'dark');
+      if (document.body) {
+        document.body.setAttribute('data-theme', t);
+        document.body.classList.toggle('dark-theme', t === 'dark');
+        document.body.classList.toggle('dark', t === 'dark');
+      }
+    }
+
+    function readLang() {
+      for (const k of LANG_KEYS) {
+        try {
+          const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').trim();
+          if (v) return v;
+        } catch (_) {}
+      }
+      const match = document.cookie.match(/(?:^|;\s*)(?:autro_lang_code|autrobook_lang|lang)=([^;]+)/i);
+      return match ? decodeURIComponent(match[1]) : 'en';
+    }
+
+    async function applyGlobalLang(code) {
+      const lang = code || 'en';
+      document.documentElement.setAttribute('lang', lang);
+      document.documentElement.setAttribute('dir', ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr');
+
+      const dictMap = {
+        en: {
+          'Settings & privacy': 'Settings & privacy',
+          'Search settings': 'Search settings',
+          'Autrobook Account': 'Autrobook Account',
+          'Personal details': 'Personal details',
+          'Password and security': 'Password and security',
+          'Ad preferences': 'Ad preferences',
+          'Verification': 'Verification',
+          'See more in Autrobook Account': 'See more in Autrobook Account',
+          'Subscriptions': 'Subscriptions',
+          'Autro Premium': 'Autro Premium',
+          'Tools and resources': 'Tools and resources',
+          'Privacy checkup': 'Privacy checkup'
+        },
+        bn: {
+          'Settings & privacy': 'সেটিংস ও প্রাইভেসি',
+          'Search settings': 'সেটিংস খুঁজুন',
+          'Autrobook Account': 'অট্রোবুক অ্যাকাউন্ট',
+          'Personal details': 'ব্যক্তিগত তথ্য',
+          'Password and security': 'পাসওয়ার্ড ও নিরাপত্তা',
+          'Ad preferences': 'বিজ্ঞাপন পছন্দ',
+          'Verification': 'ভেরিফিকেশন',
+          'See more in Autrobook Account': 'অট্রোবুক অ্যাকাউন্টে আরও দেখুন',
+          'Subscriptions': 'সাবস্ক্রিপশন',
+          'Autro Premium': 'অট্রো প্রিমিয়াম',
+          'Tools and resources': 'টুলস ও রিসোর্স',
+          'Privacy checkup': 'প্রাইভেসি চেকআপ'
+        }
+      };
+
+      const nodes = document.querySelectorAll('h1, h2, h3, h4, p, span, a, button, label, div');
+      for (const el of nodes) {
+        if (el.children.length > 0) continue;
+        if (!el.dataset.origText) {
+          el.dataset.origText = (el.textContent || '').trim();
+        }
+        const baseText = el.dataset.origText;
+        if (!baseText) continue;
+
+        if (lang === 'en') {
+          el.textContent = baseText;
+        } else if (dictMap[lang] && dictMap[lang][baseText]) {
+          el.textContent = dictMap[lang][baseText];
+        } else {
+          try {
+            const res = await fetch(
+              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(baseText)}`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              const translated = Array.isArray(data?.[0]) ? data[0].map((p) => p[0]).join('') : '';
+              if (translated && readLang() === lang) {
+                el.textContent = translated;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
+      if (searchInput) {
+        if (!searchInput.dataset.origPlaceholder) {
+          searchInput.dataset.origPlaceholder = searchInput.placeholder || '';
+        }
+        const ph = searchInput.dataset.origPlaceholder;
+        if (lang === 'en') {
+          searchInput.placeholder = ph;
+        } else if (dictMap[lang] && dictMap[lang][ph]) {
+          searchInput.placeholder = dictMap[lang][ph];
+        }
+      }
+    }
+
+    function syncAll() {
+      applyGlobalTheme(readTheme());
+      applyGlobalLang(readLang());
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', syncAll);
+    } else {
+      syncAll();
+    }
+
+    window.addEventListener('pageshow', syncAll);
+    window.addEventListener('storage', syncAll);
+    window.addEventListener('autro:theme-updated', (e) => applyGlobalTheme(e?.detail?.theme || readTheme()));
+    window.addEventListener('autro:lang-updated', (e) => applyGlobalLang(e?.detail?.code || readLang()));
+
+    try {
+      if ('BroadcastChannel' in window) {
+        new BroadcastChannel('autrobook_theme_sync').onmessage = (e) => {
+          if (e?.data?.theme) applyGlobalTheme(e.data.theme);
+        };
+        new BroadcastChannel('autrobook_lang_sync').onmessage = (e) => {
+          if (e?.data?.code) applyGlobalLang(e.data.code);
+        };
+      }
+    } catch (_) {}
+  })();
 </script>
 </body>
 </html>
