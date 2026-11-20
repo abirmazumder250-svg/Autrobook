@@ -153,46 +153,6 @@
       bottom: 12px;
     }
 
-    .preview-chip-btn {
-      position: absolute;
-      display: none;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 13px;
-      border-radius: 999px;
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      background: var(--dark-green);
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.2px;
-      cursor: pointer;
-      z-index: 6;
-      box-shadow: var(--shadow-sm);
-      transition: background 0.18s ease, transform 0.15s ease;
-    }
-
-    .preview-chip-btn.visible {
-      display: inline-flex;
-    }
-
-    .preview-chip-btn:hover {
-      background: var(--dark-green-hover);
-    }
-
-    .preview-chip-btn:active {
-      transform: scale(0.96);
-    }
-
-    .cover-preview-btn {
-      left: 14px;
-      bottom: 12px;
-    }
-
-    .avatar-preview-btn {
-      margin-top: 8px;
-    }
-
     /* Avatar + Thought Bubble */
     .avatar-section {
       position: relative;
@@ -889,10 +849,6 @@
   <!-- Cover Photo (Only shown when set) -->
   <div class="cover-wrap">
     <img id="coverImg" class="cover-img" alt="Cover">
-    <button type="button" id="coverPreviewBtn" class="preview-chip-btn cover-preview-btn" onclick="openPreviewEditor('cover')">
-      <i class="fas fa-eye"></i>
-      <span>Preview</span>
-    </button>
     <label for="coverInput" class="cam-btn cover-cam" title="Change Cover">
       <i class="fas fa-camera"></i>
     </label>
@@ -909,10 +865,6 @@
       </label>
       <input type="file" id="avatarInput" accept="image/*" hidden onchange="handleFileSelected(event, 'avatar')">
     </div>
-    <button type="button" id="avatarPreviewBtn" class="preview-chip-btn avatar-preview-btn" onclick="openPreviewEditor('avatar')">
-      <i class="fas fa-eye"></i>
-      <span>Preview</span>
-    </button>
   </div>
 
   <!-- Name, Username & Live Friends Count -->
@@ -1174,7 +1126,8 @@
           const { count, error } = await sb
             .from('stories')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .gt('expires_at', new Date().toISOString());
           if (!error && typeof count === 'number' && count > 0) {
             active = true;
           }
@@ -1184,17 +1137,15 @@
       setStoryRingActive(active);
     }
 
-    function setImageIfPresent(imgEl, url, previewBtnEl) {
+    function setImageIfPresent(imgEl, url) {
       if (!imgEl) return;
       const cleanUrl = (url && typeof url === 'string') ? url.trim() : '';
       if (cleanUrl) {
         imgEl.src = cleanUrl;
         imgEl.classList.add('has-img');
-        if (previewBtnEl) previewBtnEl.classList.add('visible');
       } else {
         imgEl.removeAttribute('src');
         imgEl.classList.remove('has-img');
-        if (previewBtnEl) previewBtnEl.classList.remove('visible');
       }
     }
 
@@ -1402,6 +1353,7 @@
             try {
               await sb.from('posts').insert({
                 user_id: activeUserId,
+                author_id: activeUserId,
                 caption: postContent,
                 content: postContent,
                 media_url: finalUrl,
@@ -1566,19 +1518,67 @@
     function readLocalFallbackPosts() {
       const map = new Map();
       const stored = readStoredProfile();
-      const sources = [
-        ...(Array.isArray(stored.posts) ? stored.posts : []),
-        ...JSON.parse(localStorage.getItem('autro_instant_feed_posts') || '[]'),
-        ...JSON.parse(localStorage.getItem('autro_post_cards') || '[]')
+      const extraKeys = [
+        'autro_instant_feed_posts',
+        'autro_post_cards',
+        'autro_posts',
+        'autrobook_posts',
+        'feed_posts'
       ];
-      sources.forEach((item, idx) => {
-        if (!item) return;
-        const id = item.id || `local-p-${idx}-${getPostText(item).slice(0, 12)}`;
-        if (!map.has(id) && (getPostText(item) || getPostImageUrl(item))) {
-          map.set(id, item);
+
+      const collected = [
+        ...(Array.isArray(stored.posts) ? stored.posts : [])
+      ];
+
+      extraKeys.forEach((key) => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            collected.push(...parsed);
+          } else if (parsed && Array.isArray(parsed.posts)) {
+            collected.push(...parsed.posts);
+          }
+        } catch (e) {}
+      });
+
+      collected.forEach((item, idx) => {
+        if (!item || typeof item !== 'object') return;
+        const text = getPostText(item);
+        const img = getPostImageUrl(item);
+        if (!text && !img) return;
+        const uniqueKey = item.id ? String(item.id) : `${text.slice(0, 24)}__${img.slice(-24)}__${item.created_at || idx}`;
+        if (!map.has(uniqueKey)) {
+          map.set(uniqueKey, item);
         }
       });
-      return Array.from(map.values());
+
+      return Array.from(map.values()).sort((a, b) => {
+        const tA = new Date(a.created_at || 0).getTime() || 0;
+        const tB = new Date(b.created_at || 0).getTime() || 0;
+        return tB - tA;
+      });
+    }
+
+    function mergeUniquePosts(dbPosts, localPosts) {
+      const map = new Map();
+      const all = [...(Array.isArray(dbPosts) ? dbPosts : []), ...(Array.isArray(localPosts) ? localPosts : [])];
+      all.forEach((p, idx) => {
+        if (!p || typeof p !== 'object') return;
+        const text = getPostText(p);
+        const img = getPostImageUrl(p);
+        if (!text && !img) return;
+        const key = p.id ? String(p.id) : `${text.slice(0, 24)}__${img.slice(-24)}__${p.created_at || idx}`;
+        if (!map.has(key)) {
+          map.set(key, p);
+        }
+      });
+      return Array.from(map.values()).sort((a, b) => {
+        const tA = new Date(a.created_at || 0).getTime() || 0;
+        const tB = new Date(b.created_at || 0).getTime() || 0;
+        return tB - tA;
+      });
     }
 
     function applyProfileData(data) {
@@ -1590,9 +1590,7 @@
 
       setFriendsDisplay(data.friends_count ?? 0);
 
-      const postsArr = Array.isArray(data.posts) && data.posts.length > 0
-        ? data.posts
-        : readLocalFallbackPosts();
+      const postsArr = mergeUniquePosts(data.posts, readLocalFallbackPosts());
       const postsNum = postsArr.length > 0 ? postsArr.length : Number(data.posts_count || 0);
       document.getElementById('postsCountLabel').textContent = `${postsNum} ${postsNum === 1 ? 'post' : 'posts'}`;
 
@@ -1604,16 +1602,8 @@
       const avatarUrl = data.avatar_url || data.selfie_url || '';
       const coverUrl = data.cover_url || '';
 
-      setImageIfPresent(
-        document.getElementById('avatarImg'),
-        avatarUrl,
-        document.getElementById('avatarPreviewBtn')
-      );
-      setImageIfPresent(
-        document.getElementById('coverImg'),
-        coverUrl,
-        document.getElementById('coverPreviewBtn')
-      );
+      setImageIfPresent(document.getElementById('avatarImg'), avatarUrl);
+      setImageIfPresent(document.getElementById('coverImg'), coverUrl);
       renderPhotos(avatarUrl, coverUrl, postsArr);
       renderLivePosts(postsArr);
       renderDetails(data);
@@ -1643,65 +1633,63 @@
 
     async function refreshLiveCounts(userId) {
       await refreshStoryRing(userId);
-      if (!sb || !userId) return;
+      const localPosts = readLocalFallbackPosts();
+
+      if (!sb) {
+        renderLivePosts(localPosts);
+        return;
+      }
 
       let friendsTotal = 0;
-      let postsList = [];
+      let dbPosts = [];
 
-      try {
-        const { data: rpcCounts, error: rpcErr } = await sb
-          .rpc('get_profile_live_counts', { target_user_id: userId })
-          .maybeSingle();
+      if (userId) {
+        try {
+          const { data: rpcCounts, error: rpcErr } = await sb
+            .rpc('get_profile_live_counts', { target_user_id: userId })
+            .maybeSingle();
 
-        if (!rpcErr && rpcCounts && typeof rpcCounts.friends_count !== 'undefined') {
-          friendsTotal = Number(rpcCounts.friends_count || 0);
-        } else {
-          const { count, error } = await sb
-            .from('friends')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'accepted')
-            .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
-          if (!error && typeof count === 'number') {
-            friendsTotal = count;
+          if (!rpcErr && rpcCounts && typeof rpcCounts.friends_count !== 'undefined') {
+            friendsTotal = Number(rpcCounts.friends_count || 0);
+          } else {
+            const { count, error } = await sb
+              .from('friends')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'accepted')
+              .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+            if (!error && typeof count === 'number') {
+              friendsTotal = count;
+            }
           }
+        } catch (e) {
+          console.warn('Friends count error:', e);
         }
-      } catch (e) {
-        console.warn('Friends count error:', e);
       }
 
       try {
         const { data, error } = await sb
           .from('posts')
           .select('*')
-          .or(`user_id.eq.${userId},author_id.eq.${userId}`)
-          .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data) && data.length > 0) {
-          postsList = data;
-        } else {
-          const { data: allRecent } = await sb
-            .from('posts')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20);
-          if (Array.isArray(allRecent)) {
-            postsList = allRecent.filter(p => p.user_id === userId || p.author_id === userId);
-          }
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (!error && Array.isArray(data)) {
+          dbPosts = userId
+            ? data.filter(p => (!p.user_id && !p.author_id) || p.user_id === userId || p.author_id === userId)
+            : data;
         }
       } catch (e) {
         console.warn('Posts fetch error:', e);
       }
 
-      if (!postsList.length) {
-        postsList = readLocalFallbackPosts();
-      }
+      const finalPosts = mergeUniquePosts(dbPosts, localPosts);
 
       setFriendsDisplay(friendsTotal);
-      renderLivePosts(postsList);
+      renderLivePosts(finalPosts);
 
       const current = readStoredProfile();
       const avatarUrl = current.avatar_url || current.selfie_url || '';
       const coverUrl = current.cover_url || '';
-      renderPhotos(avatarUrl, coverUrl, postsList);
+      renderPhotos(avatarUrl, coverUrl, finalPosts);
     }
 
     function subscribeRealtime(userId) {
