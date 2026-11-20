@@ -27,8 +27,31 @@
     --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.07);
   }
 
+  html[data-theme="dark"],
+  body.dark-theme,
+  body.dark {
+    --bg-color: #121314;
+    --header-bg: #18191a;
+    --card-color: #18191a;
+    --surface-elevated: #242526;
+    --soft-btn-bg: #303234;
+    --soft-btn-hover: #3f4245;
+    --text-color: #f1f5f9;
+    --muted-color: #9ca3af;
+    --border-color: #2f3133;
+    --hover-color: rgba(255, 255, 255, 0.06);
+    --cta-bg: #f1f5f9;
+    --cta-text: #0f172a;
+    --cta-hover: #e2e8f0;
+    --badge-bg: rgba(148, 163, 184, 0.16);
+    --badge-text: #e2e8f0;
+    --icon-color: #cbd5e1;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --bg-color: #121314;
       --header-bg: #18191a;
       --card-color: #18191a;
@@ -372,6 +395,85 @@
     border: 1.5px solid var(--text-color);
   }
 
+  /* Promo & Summary Box */
+  .promo-box {
+    margin: 0 16px 18px;
+    background-color: var(--surface-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .promo-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .promo-input {
+    flex: 1;
+    min-width: 170px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-color);
+    color: var(--text-color);
+    font-size: 13.5px;
+    font-weight: 600;
+    outline: none;
+  }
+
+  .promo-input:focus {
+    border-color: var(--text-color);
+  }
+
+  .promo-apply-btn,
+  .promo-reset-btn {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .promo-apply-btn {
+    background-color: var(--cta-bg);
+    color: var(--cta-text);
+    border-color: transparent;
+  }
+
+  .promo-reset-btn {
+    background-color: var(--soft-btn-bg);
+    color: var(--text-color);
+  }
+
+  .summary-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    font-size: 13px;
+    color: var(--muted-color);
+    flex-wrap: wrap;
+  }
+
+  .summary-strip strong {
+    color: var(--text-color);
+    font-size: 14px;
+  }
+
   /* Highlights Section */
   .section-block {
     padding: 18px 0 8px;
@@ -490,6 +592,8 @@
     display: none;
     z-index: 1200;
     box-shadow: var(--shadow-md);
+    max-width: 90vw;
+    text-align: center;
   }
 
   #toast.show {
@@ -611,6 +715,25 @@
     </article>
   </section>
 
+  <!-- New Feature: Promo Code & Plan Summary -->
+  <section class="promo-box" aria-label="Promo code and summary">
+    <div class="promo-row">
+      <input type="text" id="promoInput" class="promo-input" maxlength="24" placeholder="Promo code (try AUTRO15 or CREATOR20)" aria-label="Promo code">
+      <button type="button" class="promo-apply-btn" id="applyPromoBtn">
+        <i class="fa-solid fa-tag"></i>
+        <span>Apply</span>
+      </button>
+      <button type="button" class="promo-reset-btn" id="resetPromoBtn">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span>Reset</span>
+      </button>
+    </div>
+    <div class="summary-strip">
+      <span id="discountStatusText">No promo discount applied</span>
+      <strong id="estimatedTotalText">Estimated: $0.00</strong>
+    </div>
+  </section>
+
   <!-- Key Highlights -->
   <section class="section-block">
     <h2 class="section-title">What you get</h2>
@@ -661,7 +784,7 @@
           <i class="fa-solid fa-chevron-down"></i>
         </button>
         <div class="faq-body">
-          Yes. This page automatically adapts to your device's system light or dark theme preference.
+          Yes. This page adapts to your global Autrobook theme or device appearance preference.
         </div>
       </div>
     </div>
@@ -674,9 +797,23 @@
   document.addEventListener('DOMContentLoaded', () => {
     const PLAN_STORAGE_KEY = 'autro_premium_plan';
     const CYCLE_STORAGE_KEY = 'autro_premium_cycle';
+    const PROMO_STORAGE_KEY = 'autro_premium_promo';
+
+    const PROMO_CODES = {
+      AUTRO15: 0.15,
+      CREATOR20: 0.20,
+      WELCOME10: 0.10
+    };
+
+    const BASE_PRICES = {
+      Standard: { monthly: 0, yearly: 0 },
+      'Autro Plus': { monthly: 4.99, yearly: 47.90 },
+      'Autro Pro': { monthly: 9.99, yearly: 95.90 }
+    };
 
     let cycle = 'monthly';
     let currentPlan = 'Standard';
+    let promoCode = '';
 
     try {
       const savedCycle = localStorage.getItem(CYCLE_STORAGE_KEY);
@@ -684,8 +821,12 @@
         cycle = savedCycle;
       }
       const savedPlan = localStorage.getItem(PLAN_STORAGE_KEY);
-      if (savedPlan) {
+      if (savedPlan && BASE_PRICES[savedPlan]) {
         currentPlan = savedPlan;
+      }
+      const savedPromo = (localStorage.getItem(PROMO_STORAGE_KEY) || '').trim().toUpperCase();
+      if (savedPromo && PROMO_CODES[savedPromo]) {
+        promoCode = savedPromo;
       }
     } catch (_) {}
 
@@ -696,7 +837,16 @@
     const proAmount = document.getElementById('proAmount');
     const proCycle = document.getElementById('proCycle');
     const activePlanLabel = document.getElementById('activePlanLabel');
+    const promoInput = document.getElementById('promoInput');
+    const applyPromoBtn = document.getElementById('applyPromoBtn');
+    const resetPromoBtn = document.getElementById('resetPromoBtn');
+    const discountStatusText = document.getElementById('discountStatusText');
+    const estimatedTotalText = document.getElementById('estimatedTotalText');
     const toast = document.getElementById('toast');
+
+    if (promoInput && promoCode) {
+      promoInput.value = promoCode;
+    }
 
     function notify(message) {
       if (!toast) return;
@@ -708,16 +858,40 @@
       }, 2200);
     }
 
+    function getDiscountRate() {
+      return promoCode && PROMO_CODES[promoCode] ? PROMO_CODES[promoCode] : 0;
+    }
+
+    function formatPrice(baseVal) {
+      const discounted = Math.max(0, baseVal * (1 - getDiscountRate()));
+      return discounted === 0 ? '$0' : '$' + discounted.toFixed(2);
+    }
+
     function renderBilling() {
       const yearly = cycle === 'yearly';
       if (btnMonthly) btnMonthly.classList.toggle('active', !yearly);
       if (btnYearly) btnYearly.classList.toggle('active', yearly);
 
-      if (plusAmount) plusAmount.textContent = yearly ? '$47.90' : '$4.99';
+      if (plusAmount) plusAmount.textContent = formatPrice(BASE_PRICES['Autro Plus'][cycle]);
       if (plusCycle) plusCycle.textContent = yearly ? 'per year' : 'per month';
 
-      if (proAmount) proAmount.textContent = yearly ? '$95.90' : '$9.99';
+      if (proAmount) proAmount.textContent = formatPrice(BASE_PRICES['Autro Pro'][cycle]);
       if (proCycle) proCycle.textContent = yearly ? 'per year' : 'per month';
+
+      const rate = getDiscountRate();
+      if (discountStatusText) {
+        discountStatusText.textContent =
+          rate > 0 ? `Promo ${promoCode} (${Math.round(rate * 100)}% off)` : 'No promo discount applied';
+      }
+
+      const planBase = (BASE_PRICES[currentPlan] && BASE_PRICES[currentPlan][cycle]) || 0;
+      const finalPrice = Math.max(0, planBase * (1 - rate));
+      if (estimatedTotalText) {
+        estimatedTotalText.textContent =
+          currentPlan === 'Standard'
+            ? 'Estimated: Free ($0.00)'
+            : `Estimated: $${finalPrice.toFixed(2)} / ${yearly ? 'yr' : 'mo'}`;
+      }
     }
 
     function renderPlans() {
@@ -741,6 +915,8 @@
           btn.textContent = isCurrent ? `Current plan: ${planName}` : `Choose ${planName}`;
         }
       });
+
+      renderBilling();
     }
 
     if (btnMonthly) {
@@ -756,6 +932,32 @@
         cycle = 'yearly';
         try { localStorage.setItem(CYCLE_STORAGE_KEY, cycle); } catch (_) {}
         renderBilling();
+      });
+    }
+
+    if (applyPromoBtn) {
+      applyPromoBtn.addEventListener('click', () => {
+        const entered = (promoInput?.value || '').trim().toUpperCase();
+        if (!entered) {
+          return notify('Enter a promo code first');
+        }
+        if (!PROMO_CODES[entered]) {
+          return notify('Invalid promo code. Try AUTRO15 or CREATOR20');
+        }
+        promoCode = entered;
+        try { localStorage.setItem(PROMO_STORAGE_KEY, promoCode); } catch (_) {}
+        renderBilling();
+        notify(`Applied ${promoCode} (${Math.round(PROMO_CODES[promoCode] * 100)}% off)`);
+      });
+    }
+
+    if (resetPromoBtn) {
+      resetPromoBtn.addEventListener('click', () => {
+        promoCode = '';
+        if (promoInput) promoInput.value = '';
+        try { localStorage.removeItem(PROMO_STORAGE_KEY); } catch (_) {}
+        renderBilling();
+        notify('Promo code reset');
       });
     }
 
@@ -779,9 +981,156 @@
       });
     });
 
-    renderBilling();
     renderPlans();
   });
 </script>
+
+<script>
+  (function () {
+    const THEME_KEYS = ['autro_theme', 'autrobook_theme', 'theme', 'autrobook_dark_mode'];
+    const LANG_KEYS = ['autro_lang_code', 'autrobook_lang', 'lang', 'language'];
+
+    function readTheme() {
+      for (const k of THEME_KEYS) {
+        try {
+          const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').toLowerCase().trim();
+          if (v === 'dark' || v === '1' || v === 'true') return 'dark';
+          if (v === 'light' || v === '0' || v === 'false') return 'light';
+        } catch (_) {}
+      }
+      const match = document.cookie.match(/(?:^|;\s*)(?:autro_theme|autrobook_theme)=(dark|light)/i);
+      if (match) return match[1].toLowerCase();
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyGlobalTheme(theme) {
+      const t = theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.classList.toggle('dark', t === 'dark');
+      if (document.body) {
+        document.body.setAttribute('data-theme', t);
+        document.body.classList.toggle('dark-theme', t === 'dark');
+        document.body.classList.toggle('dark', t === 'dark');
+      }
+    }
+
+    function readLang() {
+      for (const k of LANG_KEYS) {
+        try {
+          const v = (localStorage.getItem(k) || sessionStorage.getItem(k) || '').trim();
+          if (v) return v;
+        } catch (_) {}
+      }
+      const match = document.cookie.match(/(?:^|;\s*)(?:autro_lang_code|autrobook_lang|lang)=([^;]+)/i);
+      return match ? decodeURIComponent(match[1]) : 'en';
+    }
+
+    async function applyGlobalLang(code) {
+      const lang = code || 'en';
+      document.documentElement.setAttribute('lang', lang);
+      document.documentElement.setAttribute('dir', ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr');
+
+      const dictMap = {
+        en: {
+          'Settings & privacy': 'Settings & privacy',
+          'Search settings': 'Search settings',
+          'Autrobook Account': 'Autrobook Account',
+          'Personal details': 'Personal details',
+          'Password and security': 'Password and security',
+          'Ad preferences': 'Ad preferences',
+          'Verification': 'Verification',
+          'See more in Autrobook Account': 'See more in Autrobook Account',
+          'Subscriptions': 'Subscriptions',
+          'Autro Premium': 'Autro Premium',
+          'Tools and resources': 'Tools and resources',
+          'Privacy checkup': 'Privacy checkup'
+        },
+        bn: {
+          'Settings & privacy': 'সেটিংস ও প্রাইভেসি',
+          'Search settings': 'সেটিংস খুঁজুন',
+          'Autrobook Account': 'অট্রোবুক অ্যাকাউন্ট',
+          'Personal details': 'ব্যক্তিগত তথ্য',
+          'Password and security': 'পাসওয়ার্ড ও নিরাপত্তা',
+          'Ad preferences': 'বিজ্ঞাপন পছন্দ',
+          'Verification': 'ভেরিফিকেশন',
+          'See more in Autrobook Account': 'অট্রোবুক অ্যাকাউন্টে আরও দেখুন',
+          'Subscriptions': 'সাবস্ক্রিপশন',
+          'Autro Premium': 'অট্রো প্রিমিয়াম',
+          'Tools and resources': 'টুলস ও রিসোর্স',
+          'Privacy checkup': 'প্রাইভেসি চেকআপ'
+        }
+      };
+
+      const nodes = document.querySelectorAll('h1, h2, h3, h4, p, span, a, button, label, div');
+      for (const el of nodes) {
+        if (el.children.length > 0) continue;
+        if (!el.dataset.origText) {
+          el.dataset.origText = (el.textContent || '').trim();
+        }
+        const baseText = el.dataset.origText;
+        if (!baseText) continue;
+
+        if (lang === 'en') {
+          el.textContent = baseText;
+        } else if (dictMap[lang] && dictMap[lang][baseText]) {
+          el.textContent = dictMap[lang][baseText];
+        } else {
+          try {
+            const res = await fetch(
+              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(baseText)}`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              const translated = Array.isArray(data?.[0]) ? data[0].map((p) => p[0]).join('') : '';
+              if (translated && readLang() === lang) {
+                el.textContent = translated;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
+      if (searchInput) {
+        if (!searchInput.dataset.origPlaceholder) {
+          searchInput.dataset.origPlaceholder = searchInput.placeholder || '';
+        }
+        const ph = searchInput.dataset.origPlaceholder;
+        if (lang === 'en') {
+          searchInput.placeholder = ph;
+        } else if (dictMap[lang] && dictMap[lang][ph]) {
+          searchInput.placeholder = dictMap[lang][ph];
+        }
+      }
+    }
+
+    function syncAll() {
+      applyGlobalTheme(readTheme());
+      applyGlobalLang(readLang());
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', syncAll);
+    } else {
+      syncAll();
+    }
+
+    window.addEventListener('pageshow', syncAll);
+    window.addEventListener('storage', syncAll);
+    window.addEventListener('autro:theme-updated', (e) => applyGlobalTheme(e?.detail?.theme || readTheme()));
+    window.addEventListener('autro:lang-updated', (e) => applyGlobalLang(e?.detail?.code || readLang()));
+
+    try {
+      if ('BroadcastChannel' in window) {
+        new BroadcastChannel('autrobook_theme_sync').onmessage = (e) => {
+          if (e?.data?.theme) applyGlobalTheme(e.data.theme);
+        };
+        new BroadcastChannel('autrobook_lang_sync').onmessage = (e) => {
+          if (e?.data?.code) applyGlobalLang(e.data.code);
+        };
+      }
+    } catch (_) {}
+  })();
+</script>
 </body>
-  </html>
+</html>
