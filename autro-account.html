@@ -737,7 +737,7 @@
           </span>
         </div>
         <p class="hero-username" id="heroUsernameText"></p>
-        <p class="hero-email-sub" id="heroEmailText">No email set yet</p>
+        <p class="hero-email-sub" id="heroEmailText"></p>
         <p class="hero-caption">Central account hub for your profile, email, password, verification, and preferences.</p>
       </div>
     </section>
@@ -746,7 +746,7 @@
       <div class="section-header-row">
         <div>
           <h3 id="personalDetailsHeading" class="section-title">Personal Details &amp; Email</h3>
-          <p class="section-desc">Synced from Supabase with profile.html picture, Name, Username, Email, and Posts.</p>
+          <p class="section-desc">Synced from Supabase with profile.html picture, Name, Username, Email, and Profile Header.</p>
         </div>
         <span class="section-badge">Account</span>
       </div>
@@ -773,7 +773,7 @@
             </button>
           </div>
         </div>
-        <small class="field-help" id="profilePicHelp">Loads photo directly from Supabase data and syncs across profile.html.</small>
+        <small class="field-help" id="profilePicHelp">Shows saved Supabase photo and updates profile.html and profile header immediately.</small>
       </div>
 
       <div class="inner-box">
@@ -788,7 +788,7 @@
           placeholder="Enter your full name"
           autocomplete="name"
         />
-        <small class="field-help">Loaded from Supabase and updates Autro Account, profile.html, and post headers.</small>
+        <small class="field-help">Synced with Supabase, profile.html, profile header, and posts.</small>
       </div>
 
       <div class="inner-box">
@@ -802,11 +802,11 @@
             type="text"
             id="usernameInput"
             class="text-input username-field"
-            placeholder="your_username"
+            placeholder="username"
             autocomplete="username"
           />
         </div>
-        <small class="field-help" id="usernamePreviewText">Profile handle: @your_username</small>
+        <small class="field-help" id="usernamePreviewText"></small>
       </div>
 
       <div class="inner-box">
@@ -818,7 +818,7 @@
           type="email"
           id="emailChangeInput"
           class="text-input"
-          placeholder="Enter new email address"
+          placeholder="Enter email address"
           autocomplete="email"
         />
         <small class="field-help">Updates your account email and saves to Supabase.</small>
@@ -1042,6 +1042,13 @@
       let manualPreviewTheme = null;
       let currentAvatarDataUrl = '';
       let supabaseLoadedOnce = false;
+      let broadcastChannel = null;
+
+      try {
+        if ('BroadcastChannel' in window) {
+          broadcastChannel = new BroadcastChannel('autrobook_profile_sync');
+        }
+      } catch (_) {}
 
       function sanitizeName(raw) {
         const val = (raw || '').toString().trim();
@@ -1052,11 +1059,13 @@
       }
 
       function sanitizeUsername(raw) {
-        return (raw || '')
+        const val = (raw || '')
           .toString()
           .trim()
           .replace(/^@+/, '')
           .replace(/[^a-zA-Z0-9._-]/g, '_');
+        if (!val || val.toLowerCase() === 'your_username') return '';
+        return val;
       }
 
       function sanitizeEmail(raw) {
@@ -1155,6 +1164,63 @@
         } catch (e) {}
       }
 
+      function applyToExternalHeaderAndProfileDOM(dataObj) {
+        const selectors = {
+          name: [
+            '#headerProfileName', '#profileHeaderName', '.profile-header-name',
+            '.header-profile-name', '[data-profile-name]', '[data-header-name]',
+            '#profileDisplayName', '.profile-display-name'
+          ],
+          username: [
+            '#headerProfileUsername', '#profileHeaderUsername', '.profile-header-username',
+            '.header-profile-username', '[data-profile-username]', '[data-header-username]',
+            '#profileHandle', '.profile-handle'
+          ],
+          email: [
+            '#headerProfileEmail', '#profileHeaderEmail', '.profile-header-email',
+            '[data-profile-email]'
+          ],
+          avatar: [
+            '#headerProfileAvatar', '#profileHeaderAvatar', '.profile-header-avatar',
+            '.header-profile-avatar', '[data-profile-avatar]', '[data-header-avatar]',
+            '#profileAvatarImg', '.profile-avatar-img'
+          ]
+        };
+
+        selectors.name.forEach((sel) => {
+          document.querySelectorAll(sel).forEach((el) => {
+            el.textContent = dataObj.full_name || '';
+          });
+        });
+
+        selectors.username.forEach((sel) => {
+          document.querySelectorAll(sel).forEach((el) => {
+            el.textContent = dataObj.username ? '@' + dataObj.username : '';
+          });
+        });
+
+        selectors.email.forEach((sel) => {
+          document.querySelectorAll(sel).forEach((el) => {
+            el.textContent = dataObj.email || '';
+          });
+        });
+
+        selectors.avatar.forEach((sel) => {
+          document.querySelectorAll(sel).forEach((el) => {
+            if (el.tagName === 'IMG') {
+              if (dataObj.avatar_url) {
+                el.src = dataObj.avatar_url;
+                el.style.display = 'block';
+              } else {
+                el.removeAttribute('src');
+              }
+            } else if (dataObj.avatar_url) {
+              el.style.backgroundImage = `url("${dataObj.avatar_url}")`;
+            }
+          });
+        });
+      }
+
       function syncIdentityEverywhere({ fullName, username, email, avatarUrl, isVerified }) {
         const cleanName = sanitizeName(fullName);
         const cleanUser = sanitizeUsername(username);
@@ -1166,6 +1232,8 @@
 
         writeRawValue(KEYS.profileName, cleanName);
         writeRawValue(KEYS.sharedAvatar, cleanAvatar);
+        writeRawValue('autro_profile_username', cleanUser);
+        writeRawValue('autro_profile_email', cleanEmail);
 
         PROFILE_AVATAR_KEYS.forEach((k) => {
           writeRawValue(k, cleanAvatar);
@@ -1173,8 +1241,11 @@
 
         const baseObj = {
           full_name: cleanName,
+          fullName: cleanName,
           name: cleanName,
+          display_name: cleanName,
           username: cleanUser,
+          handle: cleanUser,
           email: cleanEmail,
           avatar_url: cleanAvatar,
           avatar: cleanAvatar,
@@ -1197,6 +1268,19 @@
             ...baseObj
           });
         });
+
+        applyToExternalHeaderAndProfileDOM(baseObj);
+
+        try {
+          window.dispatchEvent(new CustomEvent('autro:profile-updated', { detail: baseObj }));
+          window.dispatchEvent(new CustomEvent('autrobook:identity-sync', { detail: baseObj }));
+        } catch (_) {}
+
+        try {
+          if (broadcastChannel) {
+            broadcastChannel.postMessage({ type: 'PROFILE_SYNC', payload: baseObj });
+          }
+        } catch (_) {}
       }
 
       function discoverProfileFromStorage() {
@@ -1213,10 +1297,11 @@
         let discoveredUser =
           sanitizeUsername(autroUser.username) ||
           sanitizeUsername(savedProfile.username) ||
+          sanitizeUsername(readRawValue('autro_profile_username')) ||
           '';
 
         let discoveredEmail =
-          (autroUser.email || savedProfile.email || '').trim();
+          (autroUser.email || savedProfile.email || readRawValue('autro_profile_email') || '').trim();
 
         let discoveredAvatar =
           sanitizeAvatar(autroUser.avatar_url) ||
@@ -1384,8 +1469,8 @@
 
         if (nameEl) nameEl.textContent = cleanName;
         if (userEl) userEl.textContent = cleanUser ? '@' + cleanUser : '';
-        if (emailEl) emailEl.textContent = cleanEmail || 'No email set yet';
-        if (previewEl) previewEl.textContent = 'Profile handle: ' + (cleanUser ? '@' + cleanUser : '@your_username');
+        if (emailEl) emailEl.textContent = cleanEmail || '';
+        if (previewEl) previewEl.textContent = cleanUser ? 'Profile handle: @' + cleanUser : '';
 
         if (chipEl && chipTextEl) {
           chipEl.classList.toggle('is-verified', isVerified);
@@ -1483,7 +1568,7 @@
         }
 
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
           const dataUrl = sanitizeAvatar(typeof reader.result === 'string' ? reader.result : '');
           if (!dataUrl) return;
 
@@ -1491,17 +1576,25 @@
           const nameVal = sanitizeName(document.getElementById('fullNameInput')?.value || existing.full_name);
           const userVal = sanitizeUsername(document.getElementById('usernameInput')?.value || existing.username);
           const emailVal = (document.getElementById('emailChangeInput')?.value || existing.email || '').trim();
+          const isVerifiedNow = computeAccountVerified(nameVal, userVal, emailVal, dataUrl, true);
 
           syncIdentityEverywhere({
             fullName: nameVal,
             username: userVal,
             email: emailVal,
             avatarUrl: dataUrl,
-            isVerified: existing.is_verified
+            isVerified: isVerifiedNow
           });
 
-          updateHero(nameVal, userVal, emailVal, Boolean(existing.is_verified), dataUrl);
-          toast('Photo selected! Click "Save Details & Email" to save to Supabase.');
+          updateHero(nameVal, userVal, emailVal, isVerifiedNow, dataUrl);
+          await persistToSupabase({
+            full_name: nameVal || null,
+            username: userVal || null,
+            email: emailVal || null,
+            avatar_url: dataUrl,
+            is_verified: isVerifiedNow
+          });
+          toast('Photo updated & synced everywhere!');
         };
         reader.readAsDataURL(file);
       }
@@ -1880,7 +1973,7 @@
 
         if (res.ok) {
           await initAndLoad();
-          toast(isVerifiedNow ? 'Account Verified & saved!' : 'Saved! Add email & photo to get Verified.');
+          toast(isVerifiedNow ? 'Verified & synced everywhere!' : 'Saved & synced everywhere!');
         } else {
           toast('Saved locally! (DB note: ' + res.reason + ')');
         }
@@ -1977,12 +2070,33 @@
             PROFILE_AVATAR_KEYS.includes(e.key) ||
             PROFILE_OBJECT_KEYS.includes(e.key) ||
             e.key === KEYS.profile ||
-            e.key === KEYS.profileName
+            e.key === KEYS.profileName ||
+            e.key === 'autro_profile_username' ||
+            e.key === 'autro_profile_email'
           ) {
             const updated = discoverProfileFromStorage();
             hydrateUI(updated, readStore(KEYS.cross, {}), readStore(KEYS.ads, {}));
           }
         });
+
+        if (broadcastChannel) {
+          broadcastChannel.onmessage = (ev) => {
+            if (ev?.data?.type === 'PROFILE_SYNC' && ev?.data?.payload) {
+              const p = ev.data.payload;
+              hydrateUI(
+                {
+                  full_name: sanitizeName(p.full_name),
+                  username: sanitizeUsername(p.username),
+                  email: (p.email || '').trim(),
+                  avatar_url: sanitizeAvatar(p.avatar_url),
+                  is_verified: Boolean(p.is_verified)
+                },
+                readStore(KEYS.cross, {}),
+                readStore(KEYS.ads, {})
+              );
+            }
+          };
+        }
 
         document.getElementById('themeToggleBtn')?.addEventListener('click', toggleThemePreview);
 
@@ -2011,24 +2125,49 @@
           });
           updateHero(nameVal, userVal, emailVal, false, '');
           await persistToSupabase({ avatar_url: null, is_verified: false });
-          toast('Profile picture removed from Supabase.');
+          toast('Profile picture removed & synced!');
         });
 
         document.getElementById('fullNameInput')?.addEventListener('input', (e) => {
           const val = sanitizeName(e.target.value);
-          const nameEl = document.getElementById('heroDisplayName');
-          if (nameEl) nameEl.textContent = val;
-          if (!currentAvatarDataUrl) {
-            renderAvatar('', val || 'A');
-          }
+          const userVal = sanitizeUsername(document.getElementById('usernameInput')?.value || '');
+          const emailVal = (document.getElementById('emailChangeInput')?.value || '').trim();
+          updateHero(val, userVal, emailVal, false, currentAvatarDataUrl);
+          syncIdentityEverywhere({
+            fullName: val,
+            username: userVal,
+            email: emailVal,
+            avatarUrl: currentAvatarDataUrl,
+            isVerified: false
+          });
         });
 
         document.getElementById('usernameInput')?.addEventListener('input', (e) => {
           const handle = sanitizeUsername(e.target.value);
-          const preview = document.getElementById('usernamePreviewText');
-          const heroUser = document.getElementById('heroUsernameText');
-          if (preview) preview.textContent = 'Profile handle: ' + (handle ? '@' + handle : '@your_username');
-          if (heroUser) heroUser.textContent = handle ? '@' + handle : '';
+          const nameVal = sanitizeName(document.getElementById('fullNameInput')?.value || '');
+          const emailVal = (document.getElementById('emailChangeInput')?.value || '').trim();
+          updateHero(nameVal, handle, emailVal, false, currentAvatarDataUrl);
+          syncIdentityEverywhere({
+            fullName: nameVal,
+            username: handle,
+            email: emailVal,
+            avatarUrl: currentAvatarDataUrl,
+            isVerified: false
+          });
+        });
+
+        document.getElementById('emailChangeInput')?.addEventListener('input', (e) => {
+          const emailVal = (e.target.value || '').trim();
+          const nameVal = sanitizeName(document.getElementById('fullNameInput')?.value || '');
+          const handle = sanitizeUsername(document.getElementById('usernameInput')?.value || '');
+          updateHero(nameVal, handle, emailVal, false, currentAvatarDataUrl);
+          syncIdentityEverywhere({
+            fullName: nameVal,
+            username: handle,
+            email: emailVal,
+            avatarUrl: currentAvatarDataUrl,
+            isVerified: false
+          });
         });
 
         document
@@ -2057,4 +2196,4 @@
     })();
   </script>
 </body>
-  </html>
+            </html>
