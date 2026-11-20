@@ -74,35 +74,24 @@
       flex-shrink: 0;
     }
 
-    .header-close-btn,
-    .header-link-pill {
+    .header-close-btn {
+      width: 36px;
       height: 36px;
       border-radius: 999px;
       border: 1px solid var(--border-color);
       background: var(--bg-chip);
       color: var(--text-primary);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
       cursor: pointer;
       text-decoration: none;
       flex-shrink: 0;
     }
 
-    .header-close-btn {
-      width: 36px;
-      padding: 0;
-    }
-
-    .header-link-pill {
-      padding: 0 12px;
-    }
-
-    .header-close-btn:hover,
-    .header-link-pill:hover {
+    .header-close-btn:hover {
       background: var(--bg-chip-hover);
     }
 
@@ -569,19 +558,11 @@
 </head>
 <body>
 
-  <!-- TOP HEADER CONNECTED TO index.html AND post-card.html -->
+  <!-- TOP HEADER -->
   <header class="composer-header">
     <div class="header-nav-group">
-      <a href="index.html" class="header-close-btn" title="Home (index.html)">
+      <a href="index.html" class="header-close-btn" title="Close">
         <i class="fas fa-xmark"></i>
-      </a>
-      <a href="index.html" class="header-link-pill" title="Go to index.html">
-        <i class="fas fa-house"></i>
-        <span>index.html</span>
-      </a>
-      <a href="post-card.html" class="header-link-pill" title="Go to post-card.html">
-        <i class="far fa-id-card"></i>
-        <span>post-card.html</span>
       </a>
     </div>
 
@@ -714,6 +695,12 @@
       { label: 'Motivated', emoji: '💪' }
     ];
 
+    const CACHE_KEYS = [
+      'autro_instant_feed_posts',
+      'autro_post_cards',
+      'autro_profile_posts'
+    ];
+
     let currentUser = null;
     let currentProfile = null;
     let galleryFile = null;
@@ -725,59 +712,83 @@
     let selectedFeeling = null;
     let isBoldText = false;
 
+    function pruneHeavyLocalKeys() {
+      const heavyCandidates = [
+        'autro_instant_feed_posts',
+        'autro_post_cards',
+        'autro_profile_posts',
+        'autro_comments_store',
+        'autro_saved_items',
+        'autro_reports_log'
+      ];
+      for (const k of heavyCandidates) {
+        try {
+          const val = localStorage.getItem(k);
+          if (val && val.length > 180000) {
+            localStorage.removeItem(k);
+          }
+        } catch (_) {}
+      }
+    }
+
     function safeLocalStorageSet(key, valueStr) {
       const cleanStr = String(valueStr || '');
-      // Avoid storing huge base64/blob strings in localStorage
-      if (cleanStr.includes('data:image/') || cleanStr.includes('data:video/') || cleanStr.includes('data:audio/')) {
+      if (!cleanStr || cleanStr.includes('data:image/') || cleanStr.includes('data:video/') || cleanStr.includes('data:audio/')) {
+        return false;
+      }
+      if (cleanStr.length > 220000) {
         return false;
       }
       try {
         localStorage.setItem(key, cleanStr);
         return true;
       } catch (_) {
-        try {
-          localStorage.removeItem('autro_instant_feed_posts');
-          localStorage.removeItem('autro_post_cards');
-          localStorage.removeItem('autro_profile_posts');
-          if (cleanStr.length < 250000) {
-            localStorage.setItem(key, cleanStr);
-            return true;
+        pruneHeavyLocalKeys();
+        for (const k of CACHE_KEYS) {
+          if (k !== key) {
+            try { localStorage.removeItem(k); } catch (_) {}
           }
-        } catch (_) {}
-        return false;
+        }
+        try {
+          localStorage.setItem(key, cleanStr);
+          return true;
+        } catch (_) {
+          try { localStorage.removeItem(key); } catch (__) {}
+          return false;
+        }
       }
     }
 
     function sanitizePostForCache(post) {
       const item = { ...post };
-      if (typeof item.media_url === 'string' && (item.media_url.startsWith('data:') || item.media_url.startsWith('blob:'))) {
-        item.media_url = '';
-      }
-      if (typeof item.music_url === 'string' && (item.music_url.startsWith('data:') || item.music_url.startsWith('blob:'))) {
-        item.music_url = '';
-      }
-      if (typeof item.poster_url === 'string' && (item.poster_url.startsWith('data:') || item.poster_url.startsWith('blob:'))) {
-        item.poster_url = '';
-      }
-      if (typeof item.avatar === 'string' && item.avatar.startsWith('data:')) {
-        item.avatar = '';
+      const stripVolatileUrl = (u) => {
+        if (typeof u !== 'string') return '';
+        if (u.startsWith('data:') || u.startsWith('blob:')) return '';
+        return u;
+      };
+      item.media_url = stripVolatileUrl(item.media_url);
+      item.music_url = stripVolatileUrl(item.music_url);
+      item.poster_url = stripVolatileUrl(item.poster_url);
+      item.avatar = stripVolatileUrl(item.avatar);
+      if (typeof item.caption === 'string' && item.caption.length > 1000) {
+        item.caption = item.caption.slice(0, 1000);
       }
       return item;
     }
 
-    function appendPostToLocalCache(storageKey, newPost, maxItems) {
+    function appendPostToLocalCache(storageKey, newPost, maxItems = 5) {
       try {
         let list = [];
         try {
           const raw = localStorage.getItem(storageKey);
-          list = raw ? JSON.parse(raw) : [];
-          if (!Array.isArray(list)) list = [];
+          const parsed = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(parsed)) list = parsed;
         } catch (_) {
           list = [];
         }
         const safePost = sanitizePostForCache(newPost);
-        const trimmed = [safePost, ...list.map(sanitizePostForCache)].slice(0, maxItems);
-        safeLocalStorageSet(storageKey, JSON.stringify(trimmed));
+        const deduped = [safePost, ...list.filter(p => p && p.id !== safePost.id).map(sanitizePostForCache)].slice(0, maxItems);
+        safeLocalStorageSet(storageKey, JSON.stringify(deduped));
       } catch (_) {}
     }
 
@@ -945,7 +956,9 @@
         people: selectedPeople,
         bold: isBoldText
       };
-      sessionStorage.setItem('autro_create_post_draft', JSON.stringify(draft));
+      try {
+        sessionStorage.setItem('autro_create_post_draft', JSON.stringify(draft));
+      } catch (_) {}
       window.location.href = 'id-friends.html?from=create-post';
     }
 
@@ -1189,6 +1202,7 @@
 
       const btn = document.getElementById('doneBtn');
       btn.disabled = true;
+      pruneHeavyLocalKeys();
       setProgress(15, 'Preparing post...');
 
       try {
@@ -1212,19 +1226,33 @@
         let savedRow = null;
         if (sb) {
           setProgress(85, 'Saving to Supabase...');
+          const insertPayload = {
+            user_id: authorId,
+            caption,
+            media_url: mediaUrl || musicUrl || null,
+            media_type: galleryMediaType ? `${galleryMediaType}/*` : (musicFile ? 'audio/*' : 'text'),
+            audience,
+            created_at: createdAt
+          };
+          if (authorName) insertPayload.author_name = authorName;
+
           const { data, error } = await sb
             .from('posts')
-            .insert({
-              user_id: authorId,
-              caption,
-              media_url: mediaUrl || musicUrl || null,
-              media_type: galleryMediaType ? `${galleryMediaType}/*` : (musicFile ? 'audio/*' : 'text'),
-              audience,
-              created_at: createdAt
-            })
+            .insert(insertPayload)
             .select()
-            .single();
-          if (!error && data) savedRow = data;
+            .maybeSingle();
+
+          if (error && authorName) {
+            delete insertPayload.author_name;
+            const retryRes = await sb
+              .from('posts')
+              .insert(insertPayload)
+              .select()
+              .maybeSingle();
+            if (!retryRes.error && retryRes.data) savedRow = retryRes.data;
+          } else if (!error && data) {
+            savedRow = data;
+          }
         }
 
         const postPayload = {
@@ -1236,8 +1264,8 @@
           quality: '1080p',
           is_bold: isBoldText,
           is_video: galleryMediaType === 'video',
-          media_url: mediaUrl || (galleryFile ? URL.createObjectURL(galleryFile) : ''),
-          music_url: musicUrl || (musicFile ? URL.createObjectURL(musicFile) : ''),
+          media_url: mediaUrl || '',
+          music_url: musicUrl || '',
           music_name: selectedMusicName || '',
           poster_url: galleryMediaType === 'image' ? (mediaUrl || '') : authorAvatar,
           caption,
@@ -1248,15 +1276,17 @@
           shares: 0
         };
 
-        appendPostToLocalCache('autro_instant_feed_posts', postPayload, 12);
-        appendPostToLocalCache('autro_profile_posts', postPayload, 20);
-        appendPostToLocalCache('autro_post_cards', postPayload, 12);
+        appendPostToLocalCache('autro_instant_feed_posts', postPayload, 5);
+        appendPostToLocalCache('autro_profile_posts', postPayload, 6);
 
-        setProgress(100, 'Posted to index.html & post-card.html!');
+        setProgress(100, 'Posted!');
         showToast('Post published!');
 
-        const goTarget = sessionStorage.getItem('autro_post_return_target');
-        sessionStorage.removeItem('autro_post_return_target');
+        let goTarget = '';
+        try {
+          goTarget = sessionStorage.getItem('autro_post_return_target') || '';
+          sessionStorage.removeItem('autro_post_return_target');
+        } catch (_) {}
 
         setTimeout(() => {
           if (goTarget === 'post-card') {
@@ -1266,7 +1296,7 @@
           } else {
             window.location.href = 'index.html';
           }
-        }, 450);
+        }, 400);
       } catch (err) {
         btn.disabled = false;
         document.getElementById('progressBox').classList.remove('active');
@@ -1275,9 +1305,10 @@
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
+      pruneHeavyLocalKeys();
       await loadSupabaseAccount();
       restoreDraftAndFriends();
     });
   </script>
 </body>
-  </html>
+        </html>
