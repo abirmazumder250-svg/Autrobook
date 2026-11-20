@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook — Notes</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-page: #f0f2f5;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-pill: #f0f2f5;
+      --bg-pill-hover: #e4e6eb;
+      --text-primary: #050505;
+      --text-secondary: #65676b;
+      --border-subtle: rgba(0, 0, 0, 0.12);
+      --accent-btn: #050505;
+      --accent-btn-fg: #ffffff;
+      --danger: #dc2626;
+      --shadow-card: 0 10px 28px rgba(0, 0, 0, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-page: #000000;
+        --bg-surface: #121212;
+        --bg-card: #18191a;
+        --bg-pill: #242526;
+        --bg-pill-hover: #303234;
+        --text-primary: #e4e6eb;
+        --text-secondary: #b0b3b8;
+        --border-subtle: rgba(255, 255, 255, 0.14);
+        --accent-btn: #ffffff;
+        --accent-btn-fg: #000000;
+        --danger: #f87171;
+        --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding-bottom: 48px;
+      line-height: 1.45;
+    }
+
+    /* TOP HEADER */
+    .note-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--bg-pill);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      background: var(--bg-pill-hover);
+    }
+
+    .page-title {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.25px;
+    }
+
+    .save-note-btn {
+      background: var(--accent-btn);
+      color: var(--accent-btn-fg);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 9px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: transform 0.12s ease, opacity 0.15s ease, background-color 0.2s ease;
+      touch-action: manipulation;
+    }
+
+    .save-note-btn:hover {
+      opacity: 0.9;
+    }
+
+    .save-note-btn:active {
+      transform: scale(0.96);
+    }
+
+    .save-note-btn.success {
+      background: #10b981; /* Green for success feedback */
+      color: white;
+      border-color: #10b981;
+    }
+
+    /* MAIN CONTAINER */
+    .note-container {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* COMPOSER CARD */
+    .composer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .author-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .author-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--bg-pill);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .author-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .author-name {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    /* NOTE BUBBLE */
+    .note-bubble-box {
+      background: var(--bg-pill);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .note-textarea {
+      width: 100%;
+      min-height: 96px;
+      resize: vertical;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 15.5px;
+      line-height: 1.5;
+    }
+
+    .note-textarea::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .note-footer-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* MUSIC PICKER */
+    .music-section {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .music-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .music-label {
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Changed to label for native mobile file picker support */
+    .phone-files-btn {
+      background: var(--bg-pill);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 8px 15px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: background 0.15s ease;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .phone-files-btn:hover {
+      background: var(--bg-pill-hover);
+    }
+
+    .hidden-file-input {
+      display: none;
+    }
+
+    .selected-track-card {
+      background: var(--bg-pill);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .selected-track-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .track-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .track-disc {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--accent-btn);
+      color: var(--accent-btn-fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .track-text {
+      min-width: 0;
+    }
+
+    .track-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-source {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    .remove-track-btn {
+      background: var(--bg-surface);
+      color: var(--danger);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .audio-player {
+      width: 100%;
+      height: 36px;
+    }
+
+    /* SAVED NOTES */
+    .saved-section-title {
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+    }
+
+    .notes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .saved-note-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .saved-note-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .saved-note-author {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .saved-note-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .saved-note-body {
+      font-size: 15px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .saved-note-music {
+      background: var(--bg-pill);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .saved-music-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .card-actions-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .delete-note-btn {
+      background: var(--bg-pill);
+      color: var(--danger);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 16px;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-subtle);
+      border-radius: 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent-btn);
+      color: var(--accent-btn-fg);
+      border: 1px solid var(--border-subtle);
+      padding: 9px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      z-index: 300;
+      display: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    }
+  </style>
+</head>
+<body>
+  <header class="note-topbar">
+    <div class="topbar-left">
+      <a href="index.html" class="back-btn" id="backHomeBtn" title="Back to Home">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <h1 class="page-title">Notes</h1>
+    </div>
+    <button type="button" class="save-note-btn" id="saveNoteBtn">
+      <i class="fas fa-check"></i>
+      <span id="saveBtnText">Save Note</span>
+    </button>
+  </header>
+
+  <main class="note-container">
+    <section class="composer-card" aria-label="Create Note">
+      <div class="author-row">
+        <div class="author-avatar" id="noteAuthorAvatar">
+          <i class="fas fa-user"></i>
+        </div>
+        <div class="author-name" id="noteAuthorName">Autrobook User</div>
+      </div>
+
+      <div class="note-bubble-box">
+        <textarea
+          id="noteTextInput"
+          class="note-textarea"
+          maxlength="240"
+          placeholder="Write a short note or share what's on your mind..."
+        ></textarea>
+        <div class="note-footer-meta">
+          <span>Attach audio from your phone files</span>
+          <span id="noteCharCount">0 / 240</span>
+        </div>
+      </div>
+
+      <div class="music-section">
+        <div class="music-header">
+          <div class="music-label">
+            <i class="fas fa-music"></i>
+            <span>Music</span>
+          </div>
+          <!-- Label used here to trigger file picker natively on all mobile browsers -->
+          <label for="phoneMusicFileInput" class="phone-files-btn" id="phoneFilesMusicLabel">
+            <i class="fas fa-folder-open"></i>
+            <span>Phone Files</span>
+          </label>
+          <input
+            type="file"
+            id="phoneMusicFileInput"
+            class="hidden-file-input"
+            accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm"
+          />
+        </div>
+
+        <div class="selected-track-card" id="selectedTrackCard" style="display:none;">
+          <div class="selected-track-top">
+            <div class="track-info">
+              <div class="track-disc">
+                <i class="fas fa-music"></i>
+              </div>
+              <div class="track-text">
+                <div class="track-title" id="selectedTrackTitle">No audio selected</div>
+                <div class="track-source">Phone Files</div>
+              </div>
+            </div>
+            <button type="button" class="remove-track-btn" id="removeTrackBtn">Remove</button>
+          </div>
+          <audio id="previewAudioPlayer" class="audio-player" controls preload="metadata" style="display:none;"></audio>
+        </div>
+      </div>
+    </section>
+
+    <div class="saved-section-title">
+      <span>Saved Notes</span>
+      <span id="savedNotesCount" style="font-size:12.5px;color:var(--text-secondary);font-weight:600;">0 notes</span>
+    </div>
+
+    <section class="notes-list" id="savedNotesList" aria-label="Saved Notes"></section>
+  </main>
+
+  <div class="toast" id="noteToast"></div>
+
+  <script>
+    (function () {
+      const STORAGE_NOTES_KEY = 'autrobook_saved_notes';
+      let selectedMusic = null;
+      let savedNotes = [];
+
+      function showToast(message) {
+        const toast = document.getElementById('noteToast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.style.display = 'block';
+        clearTimeout(window._noteToastTimer);
+        window._noteToastTimer = setTimeout(() => {
+          toast.style.display = 'none';
+        }, 2300);
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function loadProfileHeader() {
+        const savedName = (localStorage.getItem('autro_profile_name') || '').trim();
+        const savedAvatar = (localStorage.getItem('autro_profile_avatar') || '').trim();
+        const nameEl = document.getElementById('noteAuthorName');
+        const avatarEl = document.getElementById('noteAuthorAvatar');
+        if (nameEl && savedName) {
+          nameEl.textContent = savedName;
+        }
+        if (avatarEl && savedAvatar) {
+          avatarEl.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = savedAvatar;
+          img.alt = savedName || 'Profile';
+          img.onerror = () => {
+            avatarEl.innerHTML = '<i class="fas fa-user"></i>';
+          };
+          avatarEl.appendChild(img);
+        }
+      }
+
+      function updateSelectedMusicUI() {
+        const card = document.getElementById('selectedTrackCard');
+        const titleEl = document.getElementById('selectedTrackTitle');
+        const audioEl = document.getElementById('previewAudioPlayer');
+        if (!card || !titleEl || !audioEl) return;
+
+        if (!selectedMusic) {
+          card.style.display = 'none';
+          audioEl.pause();
+          audioEl.removeAttribute('src');
+          audioEl.style.display = 'none';
+          return;
+        }
+
+        card.style.display = 'flex';
+        titleEl.textContent = selectedMusic.title;
+
+        if (selectedMusic.audioUrl) {
+          audioEl.src = selectedMusic.audioUrl;
+          audioEl.style.display = 'block';
+        } else {
+          audioEl.pause();
+          audioEl.removeAttribute('src');
+          audioEl.style.display = 'none';
+        }
+      }
+
+      function readSavedNotes() {
+        try {
+          const raw = JSON.parse(localStorage.getItem(STORAGE_NOTES_KEY) || '[]');
+          savedNotes = Array.isArray(raw) ? raw : [];
+        } catch (_) {
+          savedNotes = [];
+        }
+      }
+
+      function writeSavedNotes() {
+        try {
+          localStorage.setItem(STORAGE_NOTES_KEY, JSON.stringify(savedNotes));
+        } catch (_) {
+          try {
+            // If the audio base64 is too large, strip it to save space
+            const compact = savedNotes.map((n) => ({
+              ...n,
+              music: n.music
+                ? {
+                    title: n.music.title,
+                    source: n.music.source,
+                    audioUrl: n.music.audioUrl && n.music.audioUrl.startsWith('data:') ? '' : (n.music.audioUrl || '')
+                  }
+                : null
+            }));
+            localStorage.setItem(STORAGE_NOTES_KEY, JSON.stringify(compact));
+          } catch (err) {
+            console.warn("Could not save to localStorage (Quota exceeded or blocked in iframe).", err);
+          }
+        }
+      }
+
+      function formatTimeAgo(isoStr) {
+        const ms = new Date(isoStr || '').getTime();
+        if (Number.isNaN(ms)) return 'Just now';
+        const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+        if (diffSec < 60) return `${diffSec}s ago`;
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}m ago`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24) return `${diffHr}h ago`;
+        return `${Math.floor(diffHr / 24)}d ago`;
+      }
+
+      function renderSavedNotes() {
+        const listEl = document.getElementById('savedNotesList');
+        const countEl = document.getElementById('savedNotesCount');
+        if (!listEl) return;
+
+        if (countEl) {
+          countEl.textContent = `${savedNotes.length} ${savedNotes.length === 1 ? 'note' : 'notes'}`;
+        }
+
+        if (!savedNotes.length) {
+          listEl.innerHTML = '<div class="empty-state">No notes saved yet. Pick an audio file, write a note, and tap Save Note.</div>';
+          return;
+        }
+
+        listEl.innerHTML = '';
+        savedNotes.forEach((item) => {
+          const card = document.createElement('article');
+          card.className = 'saved-note-card';
+
+          const head = document.createElement('div');
+          head.className = 'saved-note-head';
+          head.innerHTML = `
+            <span class="saved-note-author">${escapeHtml(item.author || 'Autrobook User')}</span>
+            <span class="saved-note-time">${formatTimeAgo(item.created_at)}</span>
+          `;
+          card.appendChild(head);
+
+          if (item.text) {
+            const body = document.createElement('div');
+            body.className = 'saved-note-body';
+            body.textContent = item.text;
+            card.appendChild(body);
+          }
+
+          if (item.music && item.music.title) {
+            const musicBox = document.createElement('div');
+            musicBox.className = 'saved-note-music';
+
+            const mTitle = document.createElement('div');
+            mTitle.className = 'saved-music-title';
+            mTitle.innerHTML = `<i class="fas fa-music"></i><span>${escapeHtml(item.music.title)}</span>`;
+            musicBox.appendChild(mTitle);
+
+            if (item.music.audioUrl) {
+              const aud = document.createElement('audio');
+              aud.className = 'audio-player';
+              aud.controls = true;
+              aud.preload = 'metadata';
+              aud.src = item.music.audioUrl;
+              musicBox.appendChild(aud);
+            }
+
+            card.appendChild(musicBox);
+          }
+
+          const actions = document.createElement('div');
+          actions.className = 'card-actions-row';
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'delete-note-btn';
+          delBtn.innerHTML = '<i class="far fa-trash-can"></i> Delete';
+          delBtn.addEventListener('click', () => {
+            savedNotes = savedNotes.filter((n) => n.id !== item.id);
+            writeSavedNotes();
+            renderSavedNotes();
+            showToast('Note deleted');
+          });
+          actions.appendChild(delBtn);
+          card.appendChild(actions);
+
+          listEl.appendChild(card);
+        });
+      }
+
+      function saveCurrentNote() {
+        const saveBtn = document.getElementById('saveNoteBtn');
+        const saveBtnText = document.getElementById('saveBtnText');
+        const textarea = document.getElementById('noteTextInput');
+        const charCount = document.getElementById('noteCharCount');
+        const noteText = textarea ? textarea.value.trim() : '';
+
+        if (!noteText && !selectedMusic) {
+          showToast('Write a note or select audio first');
+          return;
+        }
+
+        try {
+          const authorName = (document.getElementById('noteAuthorName')?.textContent || 'Autrobook User').trim();
+          const newEntry = {
+            id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            author: authorName,
+            text: noteText,
+            music: selectedMusic ? { ...selectedMusic } : null,
+            created_at: new Date().toISOString()
+          };
+
+          savedNotes.unshift(newEntry);
+          writeSavedNotes();
+          renderSavedNotes();
+
+          if (textarea) textarea.value = '';
+          if (charCount) charCount.textContent = '0 / 240';
+          selectedMusic = null;
+          updateSelectedMusicUI();
+          
+          showToast('Note saved successfully');
+
+          // Visual feedback on the button
+          if (saveBtn && saveBtnText) {
+            saveBtn.classList.add('success');
+            saveBtnText.textContent = 'Saved!';
+            setTimeout(() => {
+              saveBtn.classList.remove('success');
+              saveBtnText.textContent = 'Save Note';
+            }, 2000);
+          }
+        } catch (error) {
+          console.error(error);
+          showToast('Error saving note. Please try again.');
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadProfileHeader();
+        readSavedNotes();
+        renderSavedNotes();
+
+        const textarea = document.getElementById('noteTextInput');
+        const charCount = document.getElementById('noteCharCount');
+        const fileInput = document.getElementById('phoneMusicFileInput');
+        const removeTrackBtn = document.getElementById('removeTrackBtn');
+        const saveBtn = document.getElementById('saveNoteBtn');
+
+        if (textarea && charCount) {
+          textarea.addEventListener('input', () => {
+            charCount.textContent = `${textarea.value.length} / 240`;
+          });
+        }
+
+        if (saveBtn) {
+          saveBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveCurrentNote();
+          });
+        }
+
+        // Note: Removed the JS click listener for the Files button. 
+        // The <label for="phoneMusicFileInput"> handles opening the picker natively now.
+
+        if (fileInput) {
+          fileInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            const cleanTitle = file.name.replace(/\.[^/.]+$/, '') || file.name;
+            const objectUrl = URL.createObjectURL(file);
+
+            selectedMusic = {
+              title: cleanTitle,
+              fileName: file.name,
+              source: 'Phone Files',
+              audioUrl: objectUrl
+            };
+            updateSelectedMusicUI();
+            showToast(`Selected "${cleanTitle}"`);
+
+            // Check if file is small enough to convert to base64 for permanent storage
+            if (file.size <= 3 * 1024 * 1024) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                if (selectedMusic && selectedMusic.fileName === file.name && typeof reader.result === 'string') {
+                  selectedMusic.audioUrl = reader.result;
+                  updateSelectedMusicUI();
+                }
+              };
+              reader.readAsDataURL(file);
+            } else {
+              showToast('Audio is large. It will play now, but may not persist after reload.');
+            }
+          });
+        }
+
+        if (removeTrackBtn) {
+          removeTrackBtn.addEventListener('click', () => {
+            selectedMusic = null;
+            updateSelectedMusicUI();
+            showToast('Audio removed');
+          });
+        }
+      });
+    })();
+  </script>
+</body>
+  </html>
