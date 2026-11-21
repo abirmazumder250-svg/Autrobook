@@ -566,6 +566,7 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
+      text-decoration: none;
     }
 
     .mini-btn:hover {
@@ -740,6 +741,7 @@
         <span class="badge-tag" id="echoCountBadge">0 Echoes</span>
       </div>
 
+      <input type="search" id="searchEchoesInput" class="vb-input" placeholder="Search echoes by name, mood, or caption..." />
       <div class="filter-strip" id="filterStrip"></div>
       <div class="echo-list" id="echoesList"></div>
     </section>
@@ -755,8 +757,8 @@
 
   <script>
     (function () {
-      const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
-      const SUPABASE_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const DB_ENDPOINT = "https://gemyqaniztqrsilayblx.supabase.co";
+      const DB_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
       const LOCAL_ECHOES_KEY = "autrobook_voice_bio_echoes_v1";
       const PROFILE_NAME_KEY = "autrobook_profile_name";
       const MAX_SECONDS = 60;
@@ -771,6 +773,7 @@
 
       let echoes = [];
       let activeFilter = "All";
+      let searchQuery = "";
       let mediaRecorder = null;
       let audioChunks = [];
       let currentAudioDataUrl = "";
@@ -1041,26 +1044,26 @@
         } catch (_) {}
       }
 
-      async function syncEchoToSupabase(record) {
+      async function syncEchoToCloud(record) {
         const statusEl = document.getElementById("syncStatusText");
         try {
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/voice_bio_echoes`, {
+          const res = await fetch(`${DB_ENDPOINT}/rest/v1/voice_bio_echoes`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "apikey": SUPABASE_KEY,
-              "Authorization": `Bearer ${SUPABASE_KEY}`,
+              "apikey": DB_KEY,
+              "Authorization": `Bearer ${DB_KEY}`,
               "Prefer": "return=minimal"
             },
             body: JSON.stringify(record)
           });
 
           if (res.ok) {
-            if (statusEl) statusEl.textContent = "Published and synced to Supabase.";
+            if (statusEl) statusEl.textContent = "Published and synced.";
             return true;
           }
           if (statusEl) {
-            statusEl.textContent = "Saved on device. Create public.voice_bio_echoes in Supabase for cloud sync.";
+            statusEl.textContent = "Saved on device.";
           }
           return false;
         } catch (_) {
@@ -1072,11 +1075,11 @@
       async function fetchRemoteEchoes() {
         try {
           const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/voice_bio_echoes?select=*&order=created_at.desc&limit=20`,
+            `${DB_ENDPOINT}/rest/v1/voice_bio_echoes?select=*&order=created_at.desc&limit=20`,
             {
               headers: {
-                "apikey": SUPABASE_KEY,
-                "Authorization": `Bearer ${SUPABASE_KEY}`
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`
               }
             }
           );
@@ -1111,11 +1114,15 @@
       function renderEchoes() {
         const listEl = document.getElementById("echoesList");
         const countBadge = document.getElementById("echoCountBadge");
+        const q = searchQuery.trim().toLowerCase();
 
-        const visibleEchoes =
-          activeFilter === "All"
-            ? echoes
-            : echoes.filter((e) => (e.mood || "Voice Bio").trim() === activeFilter);
+        const visibleEchoes = echoes.filter((e) => {
+          const moodMatch = activeFilter === "All" || (e.mood || "Voice Bio").trim() === activeFilter;
+          if (!moodMatch) return false;
+          if (!q) return true;
+          const hay = `${e.author || ""} ${e.mood || ""} ${e.transcript || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
 
         if (countBadge) {
           countBadge.textContent = `${visibleEchoes.length} ${visibleEchoes.length === 1 ? "Echo" : "Echoes"}`;
@@ -1142,6 +1149,12 @@
               ? `<audio src="${item.audioUrl}" controls preload="metadata"></audio>`
               : `<span class="vb-text">Text voice note (${formatTime(item.durationSec || 0)})</span>`;
 
+            const downloadBtn = item.audioUrl
+              ? `<a class="mini-btn" href="${item.audioUrl}" download="${escapeHtml(item.id || "voice-echo")}.webm" title="Download audio">
+                   <i class="fa-solid fa-download"></i>
+                 </a>`
+              : "";
+
             return `
               <article class="echo-item" data-id="${escapeHtml(item.id)}">
                 <div class="echo-top">
@@ -1154,11 +1167,12 @@
                 ${item.transcript ? `<p class="echo-transcript">${escapeHtml(item.transcript)}</p>` : ""}
                 <div class="echo-footer">
                   ${audioBlock}
-                  <div style="display:flex;gap:7px;">
+                  <div style="display:flex;gap:7px;align-items:center;">
                     <button type="button" class="mini-btn like-btn ${item.liked ? "liked" : ""}" data-id="${escapeHtml(item.id)}">
                       <i class="fa-solid fa-heart"></i>
                       <span>${item.likes || 0}</span>
                     </button>
+                    ${downloadBtn}
                     <button type="button" class="mini-btn copy-btn" data-id="${escapeHtml(item.id)}" title="Copy caption">
                       <i class="fa-regular fa-copy"></i>
                     </button>
@@ -1228,6 +1242,11 @@
 
       document.getElementById("discardAudioBtn")?.addEventListener("click", discardClip);
 
+      document.getElementById("searchEchoesInput")?.addEventListener("input", (e) => {
+        searchQuery = e.target.value || "";
+        renderEchoes();
+      });
+
       document.getElementById("publishEchoBtn")?.addEventListener("click", async () => {
         if (isRecording) stopRecording();
 
@@ -1277,7 +1296,7 @@
           created_at: createdAt
         };
 
-        const synced = await syncEchoToSupabase(remotePayload);
+        const synced = await syncEchoToCloud(remotePayload);
         showToast(synced ? "Voice echo published" : "Voice echo saved");
       });
 
@@ -1307,4 +1326,4 @@
     })();
   </script>
 </body>
-        </html>
+</html>
