@@ -3,2265 +3,805 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autrobook - Reels</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<title>Reels - Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-/* ============================================================
-   AUTROBOOK REELS - FULL INTERACTIVE EDITION
-   ============================================================ */
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-}
-body{
-  background:#0f1115;
-  color:#fff;
-  padding-bottom:68px;
-  overflow-x:hidden;
-}
+  :root {
+    --bg-color: #ffffff;
+    --surface-color: #ffffff;
+    --card-bg: #f8fafc;
+    --input-bg: #f1f5f9;
+    --text-color: #0f172a;
+    --muted-color: #5f6368;
+    --border-color: #e5e7eb;
+    --hover-color: rgba(0, 0, 0, 0.06);
+    --dark-green: #14532d;
+    --dark-green-hover: #166534;
+    --dark-green-soft: rgba(20, 83, 45, 0.14);
+    --btn-text: #ffffff;
+    --reel-stage-bg: #0f1412;
+  }
 
-:root{
-  --btn-green:#14532d;
-  --btn-green-hover:#166534;
-  --accent-green:#4ade80;
-  --card-bg:#1c1e21;
-  --surface-2:#242526;
-  --text-main:#fff;
-  --text-secondary:#9ca3af;
-  --border:#2d3035;
-}
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #202124;
+      --surface-color: #202124;
+      --card-bg: #292a2d;
+      --input-bg: #303134;
+      --text-color: #f1f5f9;
+      --muted-color: #9aa0a6;
+      --border-color: #3c4043;
+      --hover-color: rgba(255, 255, 255, 0.08);
+      --dark-green: #15803d;
+      --dark-green-hover: #166534;
+      --dark-green-soft: rgba(21, 128, 61, 0.24);
+      --btn-text: #ffffff;
+      --reel-stage-bg: #121316;
+    }
+  }
 
-/* ---------- TOP BAR ---------- */
-.reels-topbar{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  z-index:100;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:12px 16px;
-  background:rgba(15, 17, 21, 0.9);
-  backdrop-filter:blur(10px);
-}
-.top-left{
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-.back-icon-btn{
-  background:none;
-  border:none;
-  color:#fff;
-  font-size:20px;
-  cursor:pointer;
-}
-.logo{
-  font-size:20px;
-  font-weight:800;
-  letter-spacing:-0.5px;
-}
-.logo span{
-  color:var(--accent-green);
-  font-size:14px;
-  font-weight:600;
-  background:rgba(74, 222, 128, 0.15);
-  padding:2px 8px;
-  border-radius:12px;
-  margin-left:4px;
-}
-.top-right{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-.top-icon-btn{
-  border:none;
-  color:#fff;
-  font-size:17px;
-  cursor:pointer;
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:rgba(255,255,255,0.1);
-}
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-/* ---------- SEARCH & TABS CONTAINER ---------- */
-.reels-header-area{
-  position:fixed;
-  top:60px;
-  left:0;
-  right:0;
-  z-index:90;
-  background:rgba(15, 17, 21, 0.92);
-  padding:8px 16px 12px;
-  backdrop-filter:blur(10px);
-  max-width:500px;
-  margin:0 auto;
-}
-.reels-search{
-  display:flex;
-  gap:8px;
-  margin-bottom:8px;
-}
-.reels-search input{
-  flex:1;
-  padding:9px 14px;
-  border:1px solid var(--border);
-  border-radius:20px;
-  outline:none;
-  font-size:14px;
-  background:var(--surface-2);
-  color:#fff;
-}
-.reels-tabs{
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  scrollbar-width:none;
-}
-.reels-tabs::-webkit-scrollbar{ display:none; }
-.tab-btn{
-  white-space:nowrap;
-  padding:6px 14px;
-  border-radius:16px;
-  border:1px solid var(--border);
-  background:var(--surface-2);
-  color:#fff;
-  cursor:pointer;
-  font-size:13px;
-  font-weight:600;
-}
-.tab-btn.active{
-  background:var(--btn-green) !important;
-  border-color:var(--btn-green-hover);
-}
+  body {
+    background: var(--bg-color);
+    color: var(--text-color);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-/* ---------- REELS FEED ---------- */
-.reels-feed{
-  max-width:500px;
-  margin:125px auto 0;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-  padding:0 8px;
-}
-.loading-card{
-  text-align:center;
-  padding:40px;
-  color:var(--text-secondary);
-  font-size:14px;
-}
-.reel-viewport{
-  position:relative;
-  background:#000;
-  border-radius:12px;
-  overflow:hidden;
-  height:calc(100vh - 185px);
-  min-height:500px;
-  box-shadow:0 4px 20px rgba(0,0,0,0.5);
-}
-.reel-video-container{
-  position:absolute;
-  inset:0;
-}
-.reel-video-container video{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-.ai-badge-indicator{
-  position:absolute;
-  top:12px;
-  left:12px;
-  z-index:5;
-  background:rgba(0,0,0,0.65);
-  color:#fff;
-  font-size:11px;
-  font-weight:600;
-  padding:5px 10px;
-  border-radius:20px;
-  backdrop-filter:blur(4px);
-}
-.ai-badge-indicator i{ color:var(--accent-green); margin-right:4px; }
+  /* Top Header */
+  .reels-header {
+    background: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 25;
+    flex-shrink: 0;
+  }
 
-/* ---------- SOUND / MUTE CONTROL ON REEL ---------- */
-.sound-toggle-btn{
-  position:absolute;
-  top:12px;
-  right:12px;
-  z-index:6;
-  background:rgba(0,0,0,0.68);
-  color:#fff;
-  border:1px solid rgba(255,255,255,0.22);
-  padding:6px 11px;
-  border-radius:20px;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  backdrop-filter:blur(6px);
-}
-.sound-toggle-btn.unmuted{
-  border-color:rgba(74, 222, 128, 0.55);
-  color:var(--accent-green);
-}
+  .header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
 
-/* ---------- OVERLAY (BOTTOM LEFT INFO) ---------- */
-.reel-overlay{
-  position:absolute;
-  left:0;
-  right:70px;
-  bottom:0;
-  padding:16px 12px;
-  background:linear-gradient(to top, rgba(0,0,0,0.92), rgba(0,0,0,0.45), transparent);
-  color:#fff;
-  z-index:4;
-}
-.reel-profile{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-bottom:8px;
-}
-.avatar-img{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  object-fit:cover;
-  border:2px solid #fff;
-}
-.reel-username{
-  font-weight:700;
-  font-size:14px;
-  flex:1;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.follow-btn{
-  background:var(--btn-green);
-  color:#fff;
-  border:1px solid rgba(255,255,255,0.4);
-  padding:5px 12px;
-  border-radius:16px;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
-}
-.follow-btn.following{ background:#4b5563; }
-.reel-caption{
-  font-size:13px;
-  line-height:1.4;
-  margin:6px 0;
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-}
-.views-hud-tag{
-  font-size:11px;
-  opacity:0.88;
-  margin-top:4px;
-}
-.views-hud-tag i{ margin-right:4px; }
-.reel-quick-btns{
-  display:flex;
-  gap:6px;
-  margin-top:8px;
-}
-.quick-pill-btn{
-  background:var(--btn-green);
-  color:#fff;
-  border:none;
-  padding:5px 10px;
-  border-radius:12px;
-  font-size:11px;
-  font-weight:600;
-  cursor:pointer;
-}
-.quick-pill-btn:hover{ background:var(--btn-green-hover); }
+  .header-brand-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
 
-/* ---------- RIGHT SIDEBAR ACTIONS ---------- */
-.reel-actions-sidebar{
-  position:absolute;
-  right:10px;
-  bottom:20px;
-  z-index:6;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-  align-items:center;
-}
-.action-item{
-  position:relative;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:3px;
-  cursor:pointer;
-  color:#fff;
-  font-size:11px;
-  font-weight:600;
-  user-select:none;
-  -webkit-user-select:none;
-  touch-action:manipulation;
-}
-.action-btn-circle{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  border:none;
-  background:rgba(0,0,0,0.5);
-  color:#fff;
-  font-size:18px;
-  cursor:pointer;
-  backdrop-filter:blur(4px);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  transition:transform 0.12s ease, background 0.15s ease;
-}
-.action-btn-circle:active{ transform:scale(0.9); }
-.action-btn-circle.reacted{
-  background:rgba(20, 83, 45, 0.85);
-  border:1px solid var(--accent-green);
-}
-.react-counter-label{
-  font-size:11px;
-  text-shadow:0 1px 2px rgba(0,0,0,0.85);
-}
+  .back-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
 
-/* ---------- FLOATING REACTION PICKER (❤️👍🥰😆😮😢😠) ---------- */
-.reaction-picker{
-  position:fixed;
-  z-index:350;
-  display:none;
-  align-items:center;
-  gap:6px;
-  background:#1f2227;
-  border:1px solid #45484e;
-  padding:6px 10px;
-  border-radius:30px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.75);
-  user-select:none;
-  -webkit-user-select:none;
-}
-.reaction-picker.open{
-  display:flex;
-  animation:popIn 0.15s ease-out;
-}
-@keyframes popIn{
-  from{ transform:scale(0.82); opacity:0; }
-  to{ transform:scale(1); opacity:1; }
-}
-.react-emoji-btn{
-  background:none;
-  border:none;
-  font-size:22px;
-  cursor:pointer;
-  padding:2px 4px;
-  border-radius:50%;
-  transition:transform 0.15s ease, background 0.15s ease;
-  line-height:1;
-}
-.react-emoji-btn:hover{
-  transform:scale(1.35) translateY(-3px);
-  background:rgba(255,255,255,0.08);
-}
+  .back-btn:hover {
+    background: var(--hover-color);
+  }
 
-/* ---------- BOTTOM NAV (EXACT MATCH TO IMAGE 1: 6 ICON-ONLY TABS) ---------- */
-.bottom-nav{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  z-index:100;
-  height:56px;
-  display:grid;
-  grid-template-columns:repeat(6, 1fr);
-  align-items:center;
-  background:#111315;
-  border-top:1px solid #22262a;
-}
-.bottom-nav a{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  height:100%;
-  text-decoration:none;
-  color:#9ca3af;
-  font-size:21px;
-  transition:color 0.15s ease;
-}
-.bottom-nav a:hover{
-  color:#e5e7eb;
-}
-.bottom-nav a.active{
-  color:#4ade80;
-}
+  .brand-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+  }
 
-/* ---------- MODALS / SHEETS ---------- */
-.modal{
-  display:none;
-  position:fixed;
-  inset:0;
-  z-index:200;
-  background:rgba(0,0,0,0.68);
-  align-items:flex-end;
-  justify-content:center;
-}
-.modal.active{ display:flex; }
-.modal.top-layer{ z-index:260; }
+  .reels-pill {
+    background: var(--dark-green-soft);
+    color: var(--text-color);
+    border: 1px solid var(--dark-green);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+  }
 
-.modal-content{
-  width:100%;
-  max-width:500px;
-  background:var(--surface-2);
-  color:#fff;
-  border-radius:20px 20px 0 0;
-  padding:18px;
-  max-height:88vh;
-  overflow-y:auto;
-  box-shadow:0 -8px 28px rgba(0,0,0,0.6);
-}
-.comments-sheet-content{
-  display:flex;
-  flex-direction:column;
-  height:84vh;
-  max-height:84vh;
-  padding-bottom:12px;
-}
-.modal-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:12px;
-  padding-bottom:8px;
-  border-bottom:1px solid var(--border);
-}
-.modal-header h3{ font-size:16px; }
-.close-btn{
-  width:30px;
-  height:30px;
-  border-radius:50%;
-  border:none;
-  background:var(--border);
-  color:#fff;
-  cursor:pointer;
-  font-size:13px;
-}
+  .header-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-/* ---------- COMMENTS & REPLIES THREAD ---------- */
-.comments-list{
-  flex:1;
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  padding-right:4px;
-  margin-bottom:10px;
-}
-.empty-comments{
-  text-align:center;
-  color:var(--text-secondary);
-  font-size:13px;
-  padding:30px 10px;
-}
-.comment-card{
-  background:var(--card-bg);
-  border:1px solid rgba(255,255,255,0.06);
-  border-radius:14px;
-  padding:10px 12px;
-}
-.comment-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:8px;
-}
-.comment-author-wrap{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.comment-avatar{
-  width:30px;
-  height:30px;
-  border-radius:50%;
-  object-fit:cover;
-}
-.comment-author{
-  font-size:13px;
-  font-weight:700;
-  color:#fff;
-}
-.comment-time{
-  font-size:11px;
-  color:var(--text-secondary);
-  margin-left:6px;
-}
-.comment-three-dot{
-  background:none;
-  border:none;
-  color:var(--text-secondary);
-  font-size:15px;
-  cursor:pointer;
-  padding:2px 6px;
-  border-radius:50%;
-}
-.comment-three-dot:hover{
-  background:rgba(255,255,255,0.08);
-  color:#fff;
-}
-.comment-body{
-  margin:6px 0 6px 38px;
-  font-size:13px;
-  line-height:1.4;
-  color:#f3f4f6;
-  word-break:break-word;
-}
-.voice-bubble{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  background:#15261c;
-  border:1px solid rgba(74, 222, 128, 0.35);
-  padding:6px 10px;
-  border-radius:14px;
-  margin-top:4px;
-}
-.voice-bubble audio{
-  height:28px;
-  max-width:190px;
-}
-.voice-dur-badge{
-  font-size:11px;
-  color:var(--accent-green);
-  font-weight:700;
-}
+  .circle-action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+  }
 
-.comment-actions-bar{
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:10px;
-  margin-left:38px;
-  margin-top:4px;
-}
-.c-act-btn{
-  background:none;
-  border:none;
-  color:var(--text-secondary);
-  font-size:12px;
-  font-weight:600;
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  gap:4px;
-  padding:3px 7px;
-  border-radius:10px;
-  user-select:none;
-  -webkit-user-select:none;
-}
-.c-act-btn:hover{
-  background:rgba(255,255,255,0.07);
-  color:#fff;
-}
-.c-act-btn.active-like{
-  color:var(--accent-green);
-  background:rgba(74, 222, 128, 0.12);
-}
-.c-act-btn.active-dislike{
-  color:#f87171;
-  background:rgba(248, 113, 113, 0.12);
-}
+  .circle-action-btn:hover {
+    background: var(--hover-color);
+  }
 
-.replies-wrapper{
-  margin-top:8px;
-  margin-left:38px;
-  padding-left:10px;
-  border-left:2px solid rgba(74, 222, 128, 0.28);
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.reply-card{
-  background:#17191c;
-  border-radius:10px;
-  padding:8px 10px;
-}
+  .search-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 8px 14px;
+    color: var(--muted-color);
+  }
 
-/* Composer Area (Text + 30s Voice Recorder) */
-.composer-area{
-  border-top:1px solid var(--border);
-  padding-top:10px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.replying-banner{
-  display:none;
-  justify-content:space-between;
-  align-items:center;
-  background:#14281d;
-  border:1px solid rgba(74, 222, 128, 0.35);
-  color:var(--accent-green);
-  font-size:12px;
-  font-weight:600;
-  padding:6px 10px;
-  border-radius:10px;
-}
-.replying-banner.active{ display:flex; }
-.voice-30s-bar{
-  display:none;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  background:#181a1d;
-  border:1px solid var(--border);
-  padding:8px 12px;
-  border-radius:14px;
-}
-.voice-30s-bar.active{ display:flex; }
-.voice-timer-pill{
-  font-size:12px;
-  font-weight:700;
-  color:var(--accent-green);
-  min-width:74px;
-}
-.composer-row{
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-.composer-row input{
-  flex:1;
-  padding:9px 13px;
-  border-radius:18px;
-  border:1px solid var(--border);
-  background:var(--card-bg);
-  color:#fff;
-  font-size:13px;
-  outline:none;
-}
-.icon-round-btn{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:var(--card-bg);
-  color:#fff;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:14px;
-}
-.icon-round-btn.recording{
-  background:#991b1b;
-  border-color:#ef4444;
-  animation:pulseRec 1s infinite;
-}
-@keyframes pulseRec{
-  0%,100%{ transform:scale(1); }
-  50%{ transform:scale(1.08); }
-}
-.send-green-btn{
-  background:var(--btn-green);
-  color:#fff;
-  border:none;
-  padding:8px 14px;
-  border-radius:16px;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
-}
-.send-green-btn:hover{ background:var(--btn-green-hover); }
+  .search-bar-wrap input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 13.5px;
+    outline: none;
+  }
 
-.option-group{ margin-bottom:12px; }
-.option-group label{
-  display:block;
-  font-size:12px;
-  font-weight:600;
-  margin-bottom:6px;
-  color:var(--text-secondary);
-}
-.option-group select{
-  width:100%;
-  padding:10px;
-  background:var(--card-bg);
-  color:#fff;
-  border:1px solid var(--border);
-  border-radius:10px;
-  outline:none;
-  font-size:13px;
-}
-.menu-actions{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  margin-top:8px;
-}
-.menu-action-row{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  width:100%;
-  padding:12px 10px;
-  border:none;
-  background:transparent;
-  color:#fff;
-  text-align:left;
-  font-size:14px;
-  font-weight:500;
-  cursor:pointer;
-  border-radius:10px;
-}
-.menu-action-row:hover{ background:var(--border); }
-.menu-action-row i{ width:20px; text-align:center; color:var(--accent-green); }
-.menu-action-row.danger{ color:#f87171; }
-.menu-action-row.danger i{ color:#f87171; }
+  .filter-tabs-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
 
-/* ---------- TOAST ---------- */
-.toast{
-  position:fixed;
-  bottom:70px;
-  left:50%;
-  transform:translateX(-50%) translateY(20px);
-  background:#111;
-  color:#fff;
-  padding:10px 16px;
-  border-radius:20px;
-  font-size:12px;
-  font-weight:600;
-  opacity:0;
-  pointer-events:none;
-  transition:0.25s;
-  z-index:9999;
-  border:1px solid var(--border);
-  box-shadow:0 4px 12px rgba(0,0,0,0.45);
-}
-.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .filter-tabs-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-chip {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .filter-chip.active {
+    background: var(--dark-green);
+    color: var(--btn-text);
+    border-color: var(--dark-green);
+  }
+
+  .user-filter-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--dark-green-soft);
+    border: 1px solid var(--dark-green);
+    color: var(--text-color);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .user-filter-banner.show {
+    display: flex;
+  }
+
+  .clear-filter-btn {
+    border: none;
+    background: var(--dark-green);
+    color: var(--btn-text);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Vertical Snap Feed Container (Screenshot 2 Card Style) */
+  .reels-feed-scroller {
+    flex: 1;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    background: var(--reel-stage-bg);
+    position: relative;
+  }
+
+  .reels-feed-scroller::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .reel-snap-slide {
+    width: 100%;
+    height: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0;
+  }
+
+  .reel-card-frame-shell {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    overflow: hidden;
+    background: #000000;
+    position: relative;
+  }
+
+  .reel-card-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #000000;
+  }
+
+  .floating-create-fab {
+    position: fixed;
+    right: 16px;
+    bottom: 76px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--dark-green);
+    color: var(--btn-text);
+    border: 2px solid var(--surface-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    text-decoration: none;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+    z-index: 22;
+  }
+
+  .floating-create-fab:hover {
+    background: var(--dark-green-hover);
+  }
+
+  .empty-state-box {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+    color: #f1f5f9;
+  }
+
+  .empty-cta-btn {
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--dark-green);
+    color: var(--btn-text);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 13.5px;
+  }
+
+  /* Bottom Navigation (#FFFFFF / #202124) */
+  .bottom-nav {
+    height: 58px;
+    background: var(--surface-color);
+    border-top: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: center;
+    flex-shrink: 0;
+    z-index: 30;
+  }
+
+  .nav-item {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-decoration: none;
+    color: var(--muted-color);
+    font-size: 18px;
+    position: relative;
+    transition: color 0.15s ease;
+  }
+
+  .nav-item span {
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .nav-item.active {
+    color: var(--dark-green);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .nav-item.active {
+      color: #4ade80;
+    }
+  }
+
+  .nav-item.active::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 34px;
+    height: 3px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background: var(--dark-green);
+  }
+
+  /* Bottom-right Profile Avatar Slot: empty when no image */
+  .nav-profile-avatar-slot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-color);
+    background: transparent;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-item.active .nav-profile-avatar-slot {
+    border-color: var(--dark-green);
+  }
+
+  .nav-profile-avatar-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<header class="reels-topbar">
-  <div class="top-left">
-    <button class="back-icon-btn" onclick="goBackToHome()"><i class="fas fa-arrow-left"></i></button>
-    <h1 class="logo">Autrobook <span>Reels</span></h1>
+<header class="reels-header">
+  <div class="header-top-row">
+    <div class="header-brand-left">
+      <a href="index.html" class="back-btn" id="backToIndexBtn" title="Back to Home">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <span class="brand-title">Autrobook</span>
+      <span class="reels-pill">Reels</span>
+    </div>
+
+    <div class="header-right-actions">
+      <button type="button" class="circle-action-btn" id="toggleGlobalMuteBtn" title="Toggle Sound">
+        <i class="fa-solid fa-volume-high" id="globalMuteIcon"></i>
+      </button>
+      <a href="create-reels.html" class="circle-action-btn create-reel-plus-link" id="headerCreateReelBtn" title="Create Reel">
+        <i class="fa-solid fa-plus"></i>
+      </a>
+    </div>
   </div>
-  <div class="top-right">
-    <button class="top-icon-btn" id="globalSoundBtn" onclick="toggleGlobalSound()" title="Toggle Sound"><i class="fas fa-volume-high"></i></button>
-    <button class="top-icon-btn" onclick="triggerAiUpload()" title="Upload Reel"><i class="fas fa-plus"></i></button>
-    <input type="file" id="reelUploadInput" accept="video/*" style="display:none;" onchange="handleReelUpload(event)">
+
+  <div class="search-bar-wrap">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="search" id="reelSearchInput" placeholder="Search reels, people...">
+  </div>
+
+  <div class="filter-tabs-row" id="filterTabsRow">
+    <button type="button" class="filter-chip active" data-filter="all">All Reels</button>
+    <button type="button" class="filter-chip" data-filter="following">Following</button>
+    <button type="button" class="filter-chip" data-filter="saved">Saved</button>
+    <button type="button" class="filter-chip" data-filter="mine">My Reels</button>
+  </div>
+
+  <div class="user-filter-banner" id="userFilterBanner">
+    <span id="userFilterLabel">Filtered by creator</span>
+    <button type="button" class="clear-filter-btn" id="clearUserFilterBtn">Show All</button>
   </div>
 </header>
 
-<!-- SEARCH & TABS -->
-<div class="reels-header-area">
-  <div class="reels-search">
-    <input type="text" id="reelSearchInput" placeholder="Search reels, people..." oninput="searchReels(this.value)">
+<main class="reels-feed-scroller" id="reelsFeedScroller">
+  <div class="empty-state-box" id="loadingState">
+    <i class="fa-solid fa-clapperboard" style="font-size:28px;color:#15803d;"></i>
+    <div style="font-weight:700;font-size:15px;">Loading Reels Feed...</div>
   </div>
-  <div class="reels-tabs">
-    <button class="tab-btn active" onclick="filterReels('all', this)">All Reels</button>
-    <button class="tab-btn" onclick="filterReels('following', this)">Following</button>
-    <button class="tab-btn" onclick="filterReels('saved', this)">Saved</button>
-    <button class="tab-btn" onclick="filterReels('mine', this)">My Reels</button>
-  </div>
-</div>
-
-<!-- REELS FEED -->
-<main id="reelsContainer" class="reels-feed">
-  <div class="loading-card">Loading Reels...</div>
 </main>
 
-<!-- BOTTOM NAV (EXACT 6 ICON TABS MATCHING FIRST IMAGE) -->
-<nav class="bottom-nav" aria-label="Primary Navigation">
-  <a href="index.html" title="Home"><i class="fas fa-house"></i></a>
-  <a href="reels.html" class="active" title="Reels"><i class="fas fa-clapperboard"></i></a>
-  <a href="friends.html" title="Friends"><i class="fas fa-user-group"></i></a>
-  <a href="groups.html" title="Groups"><i class="fas fa-users"></i></a>
-  <a href="notifications.html" title="Notifications"><i class="fas fa-bell"></i></a>
-  <a href="profile.html" title="Profile"><i class="fas fa-user"></i></a>
+<a href="create-reels.html" class="floating-create-fab create-reel-plus-link" id="floatingCreateReelBtn" title="Create New Reel">
+  <i class="fa-solid fa-plus"></i>
+</a>
+
+<nav class="bottom-nav" aria-label="Main Navigation">
+  <a href="index.html" class="nav-item" id="navHomeLink" title="Home">
+    <i class="fa-solid fa-house"></i>
+    <span>Home</span>
+  </a>
+  <a href="reels.html" class="nav-item active" id="navReelsLink" title="Reels">
+    <i class="fa-solid fa-clapperboard"></i>
+    <span>Reels</span>
+  </a>
+  <a href="friend-request.html" class="nav-item" title="Friends">
+    <i class="fa-solid fa-user-group"></i>
+    <span>Friends</span>
+  </a>
+  <a href="groups.html" class="nav-item" title="Groups">
+    <i class="fa-solid fa-users"></i>
+    <span>Groups</span>
+  </a>
+  <a href="notifications.html" class="nav-item" title="Notifications">
+    <i class="fa-solid fa-bell"></i>
+    <span>Alerts</span>
+  </a>
+  <a href="profile.html" class="nav-item" id="bottomProfileLink" title="Profile">
+    <span class="nav-profile-avatar-slot" id="bottomProfileAvatarSlot"></span>
+    <span>Profile</span>
+  </a>
 </nav>
 
-<!-- FLOATING REACTION PICKER (❤️👍🥰😆😮😢😠) -->
-<div id="reactionPicker" class="reaction-picker" role="menu">
-  <button class="react-emoji-btn" data-emoji="❤️" onclick="selectEmojiFromPicker('❤️', event)">❤️</button>
-  <button class="react-emoji-btn" data-emoji="👍" onclick="selectEmojiFromPicker('👍', event)">👍</button>
-  <button class="react-emoji-btn" data-emoji="🥰" onclick="selectEmojiFromPicker('🥰', event)">🥰</button>
-  <button class="react-emoji-btn" data-emoji="😆" onclick="selectEmojiFromPicker('😆', event)">😆</button>
-  <button class="react-emoji-btn" data-emoji="😮" onclick="selectEmojiFromPicker('😮', event)">😮</button>
-  <button class="react-emoji-btn" data-emoji="😢" onclick="selectEmojiFromPicker('😢', event)">😢</button>
-  <button class="react-emoji-btn" data-emoji="😠" onclick="selectEmojiFromPicker('😠', event)">😠</button>
-</div>
-
-<!-- REEL OPTIONS MODAL -->
-<div id="mReelOptions" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>Reel Options</h3>
-      <button class="close-btn" onclick="closeModal('mReelOptions')">✕</button>
-    </div>
-    <div class="option-group">
-      <label>Resolution Profile</label>
-      <select id="resolutionScaler" onchange="changeResolutionProfile()">
-        <option value="4K">4K Ultra HD</option>
-        <option value="8K">8K Cinema</option>
-        <option value="16K">16K Neural</option>
-      </select>
-    </div>
-    <div id="reelActionsMenu" class="menu-actions"></div>
-  </div>
-</div>
-
-<!-- COMMENTS & REPLIES SHEET MODAL -->
-<div id="mCommentsSheet" class="modal">
-  <div class="modal-content comments-sheet-content">
-    <div class="modal-header">
-      <h3 id="commentsSheetTitle">Comments (0)</h3>
-      <button class="close-btn" onclick="closeCommentsSheet()">✕</button>
-    </div>
-
-    <div id="commentsListContainer" class="comments-list"></div>
-
-    <div class="composer-area">
-      <div id="replyingBanner" class="replying-banner">
-        <span id="replyingToText">Replying to @user</span>
-        <button onclick="cancelReplyTarget()" style="background:none;border:none;color:#f87171;font-weight:700;cursor:pointer;">✕</button>
-      </div>
-
-      <!-- 30s Voice Recorder Bar -->
-      <div id="sheetVoiceBar" class="voice-30s-bar">
-        <span id="sheetVoiceTimer" class="voice-timer-pill">00:00 / 00:30</span>
-        <button class="send-green-btn" id="sheetRecToggleBtn" onclick="toggleSheetVoiceRecord()">
-          <i class="fas fa-microphone"></i> Record (Max 30s)
-        </button>
-        <button class="send-green-btn" onclick="sendSheetVoiceClip()">
-          <i class="fas fa-paper-plane"></i> Send Voice
-        </button>
-        <button onclick="closeSheetVoiceBar()" style="background:none;border:none;color:#b0b3b8;cursor:pointer;font-size:14px;">✕</button>
-      </div>
-
-      <div class="composer-row">
-        <button id="sheetMicIconBtn" class="icon-round-btn" title="30s Voice Comment" onclick="openSheetVoiceBar()">
-          <i class="fas fa-microphone"></i>
-        </button>
-        <input type="text" id="mainCommentInput" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') submitMainCommentOrReply()">
-        <button class="send-green-btn" onclick="submitMainCommentOrReply()">Post</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- COMMENT THREE-DOT MENU MODAL -->
-<div id="mCommentOptions" class="modal top-layer">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="commentOptionsTitle">Comment Options</h3>
-      <button class="close-btn" onclick="closeModal('mCommentOptions')">✕</button>
-    </div>
-    <div id="commentOptionsMenu" class="menu-actions"></div>
-  </div>
-</div>
-
-<!-- COMMENT / REPLY SHARE MENU MODAL (Save + Share -> autro-chat.html) -->
-<div id="mShareOptions" class="modal top-layer">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>Share & Save</h3>
-      <button class="close-btn" onclick="closeModal('mShareOptions')">✕</button>
-    </div>
-    <div id="shareOptionsMenu" class="menu-actions"></div>
-  </div>
-</div>
-
-<!-- REPORT MODAL (10 VALID REASONS + CUSTOM + SUBMIT) -->
-<div id="mReportModal" class="modal top-layer">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="reportModalTitle">Report Content</h3>
-      <button class="close-btn" onclick="closeModal('mReportModal')">✕</button>
-    </div>
-    <p style="font-size:12px;color:#b0b3b8;margin-bottom:8px;">Select a valid reason. Reports are reviewed within 24–48 hours.</p>
-    <select id="reportReasonSelect" onchange="handleReportReasonChange(this.value)" style="width:100%;padding:10px;background:#1c1e21;color:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;"></select>
-    <textarea id="reportCustomText" placeholder="Describe the issue in detail..." style="width:100%;padding:10px;min-height:75px;background:#1c1e21;color:#fff;border:1px solid var(--border);border-radius:8px;display:none;margin-bottom:8px;"></textarea>
-    <div style="display:flex;gap:8px;">
-      <button onclick="submitContentReport()" style="flex:1;background:#14532d;color:#fff;padding:10px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Submit Report</button>
-      <button onclick="closeModal('mReportModal')" style="flex:1;background:#3a3b3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- TOAST -->
-<div id="toast" class="toast"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// =================================================================
-// AUTROBOOK REELS FULL CONTROLLER
-// =================================================================
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-const DEFAULT_EMOJI = "👍";
-const REACTION_EMOJIS = ["❤️", "👍", "🥰", "😆", "😮", "😢", "😠"];
-const MAX_VOICE_SECONDS = 30;
-const LONG_PRESS_MS = 1000; // 1 second long press
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
-const REPORT_REASONS = [
-  "Spam or misleading",
-  "Harassment or bullying",
-  "Hate speech",
-  "Violent or graphic content",
-  "Nudity or sexual content",
-  "Fake information / Misinformation",
-  "Copyright violation",
-  "Scam or fraud",
-  "Self-harm or dangerous acts",
-  "Child safety issue"
-];
+  const urlParams = new URLSearchParams(window.location.search);
+  let targetUserId = urlParams.get('user_id') || '';
+  let activeFilter = 'all';
+  let searchQuery = '';
+  let globalSoundEnabled = true;
+  let currentUserId = null;
+  let allReels = [];
+  let followingIds = new Set();
+  let savedReelIds = new Set();
 
-let currentUser = { id: "user_abir_01", name: "Abir Mazumder", handle: "abir_dev", avatar: "https://i.pravatar.cc/80?img=12" };
-let systemReelsDataset = [];
-let currentFilterMode = 'all';
-let viewedReels = new Set();
+  const scrollerEl = document.getElementById('reelsFeedScroller');
+  const searchInputEl = document.getElementById('reelSearchInput');
+  const userFilterBanner = document.getElementById('userFilterBanner');
+  const userFilterLabel = document.getElementById('userFilterLabel');
+  const bottomProfileAvatarSlot = document.getElementById('bottomProfileAvatarSlot');
 
-// Sound state: user prefers sound ON when interacting
-let isSoundEnabled = true;
-
-// Active sheets & context states
-let activeCommentsReelId = null;
-let activeContextReelId = null;
-let activeReplyTarget = null;
-let activeThreeDotItem = null;
-let activeShareItem = null;
-let activeReportTarget = null;
-
-// Reaction picker state
-let activePickerContext = null;
-let longPressTimer = null;
-let longPressTriggered = false;
-
-// 30s Voice recorder state
-let voiceRecorder = null;
-let voiceChunks = [];
-let voiceInterval = null;
-let voiceElapsedSec = 0;
-let recordedVoiceDataUrl = null;
-let recordedVoiceDuration = 0;
-
-const nowTs = Date.now();
-
-const FALLBACK_REELS = [
-  {
-    id: "r1",
-    author: "Shreya Khirwal",
-    author_id: "u_shreya",
-    avatar: "https://i.pravatar.cc/80?img=47",
-    caption: "this music 🔥 Traditional outfit aesthetic loop",
-    videoUrl: "https://videos.pexels.com/video-files/3205624/3205624-hd_1920_1080_25fps.mp4",
-    views_count: 39000,
-    baseReactions: 39000,
-    userReaction: null,
-    isFollowing: false,
-    isSaved: false,
-    comments: [
-      {
-        id: "c101",
-        author: "Rafiq Hasan",
-        author_id: "u_rafiq",
-        avatar: "https://i.pravatar.cc/80?img=12",
-        text: "So clean and aesthetic! Love the transition.",
-        voiceUrl: null,
-        voiceDuration: 0,
-        createdAt: nowTs - 1000 * 60 * 42,
-        userReaction: null,
-        extraLikes: 14,
-        dislikes: 1,
-        userDisliked: false,
-        isSaved: false,
-        replies: [
-          {
-            id: "rep201",
-            author: "Shreya Khirwal",
-            author_id: "u_shreya",
-            avatar: "https://i.pravatar.cc/80?img=47",
-            text: "Thank you so much Rafiq!",
-            voiceUrl: null,
-            voiceDuration: 0,
-            createdAt: nowTs - 1000 * 60 * 18,
-            userReaction: null,
-            extraLikes: 4,
-            dislikes: 0,
-            userDisliked: false,
-            isSaved: false
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: "r2",
-    author: "Rafiq Hasan",
-    author_id: "u_rafiq",
-    avatar: "https://i.pravatar.cc/80?img=12",
-    caption: "Dhaka city night lights & cinematic vibe ✨",
-    videoUrl: "https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4",
-    views_count: 12400,
-    baseReactions: 1420,
-    userReaction: null,
-    isFollowing: false,
-    isSaved: false,
-    comments: []
-  },
-  {
-    id: "r3",
-    author: "Anika Rahman",
-    author_id: "u_anika",
-    avatar: "https://i.pravatar.cc/80?img=32",
-    caption: "Morning productivity & workflow setup",
-    videoUrl: "https://videos.pexels.com/video-files/3205624/3205624-hd_1920_1080_25fps.mp4",
-    views_count: 8500,
-    baseReactions: 340,
-    userReaction: null,
-    isFollowing: false,
-    isSaved: false,
-    comments: []
+  function getCreateReelsUrl() {
+    const createUrl = new URL('create-reels.html', window.location.href);
+    createUrl.searchParams.set('return_to', 'reels.html');
+    if (currentUserId) createUrl.searchParams.set('user_id', currentUserId);
+    return createUrl.toString();
   }
-];
 
-// ---------- SOUND / AUDIO CONTROLS FOR REELS ----------
-function syncAllVideosAudioState() {
-  document.querySelectorAll(".reel-viewport").forEach(card => {
-    const reelId = card.dataset.reelId;
-    const video = card.querySelector("video");
-    const btn = document.getElementById(`soundBtn-${reelId}`);
-    if (video) {
-      video.muted = !isSoundEnabled;
-      video.volume = isSoundEnabled ? 1.0 : 0.0;
-    }
-    if (btn) {
-      btn.classList.toggle("unmuted", isSoundEnabled);
-      btn.innerHTML = isSoundEnabled
-        ? `<i class="fas fa-volume-high"></i> Sound On`
-        : `<i class="fas fa-volume-xmark"></i> Muted`;
-    }
-  });
-
-  const topBtn = document.getElementById("globalSoundBtn");
-  if (topBtn) {
-    topBtn.innerHTML = isSoundEnabled
-      ? `<i class="fas fa-volume-high"></i>`
-      : `<i class="fas fa-volume-xmark"></i>`;
-  }
-}
-
-function toggleGlobalSound() {
-  isSoundEnabled = !isSoundEnabled;
-  syncAllVideosAudioState();
-  if (isSoundEnabled) {
-    const activeVid = getMostVisibleVideo();
-    if (activeVid) {
-      activeVid.muted = false;
-      activeVid.volume = 1.0;
-      activeVid.play().catch(() => {});
-    }
-    displayToast("Reel sound ON");
-  } else {
-    displayToast("Reel sound MUTED");
-  }
-}
-
-function toggleReelSound(reelId, ev) {
-  if (ev) ev.stopPropagation();
-  const card = document.querySelector(`.reel-viewport[data-reel-id="${reelId}"]`);
-  const video = card ? card.querySelector("video") : null;
-  if (!video) return;
-
-  if (!video.muted && isSoundEnabled) {
-    isSoundEnabled = false;
-    syncAllVideosAudioState();
-    displayToast("Sound muted");
-  } else {
-    isSoundEnabled = true;
-    video.muted = false;
-    video.volume = 1.0;
-    video.play().catch(() => {});
-    syncAllVideosAudioState();
-    displayToast("Sound enabled");
-  }
-}
-
-function handleVideoTapPlayOrUnmute(video, reelId) {
-  if (!video) return;
-  if (video.paused) {
-    video.muted = !isSoundEnabled;
-    video.play().catch(() => {
-      video.muted = true;
-      video.play().catch(() => {});
+  function syncCreateReelLinks() {
+    const targetUrl = getCreateReelsUrl();
+    document.querySelectorAll('.create-reel-plus-link').forEach((el) => {
+      el.setAttribute('href', targetUrl);
+      el.onclick = (e) => {
+        e.preventDefault();
+        window.location.href = targetUrl;
+      };
     });
-  } else if (video.muted) {
-    isSoundEnabled = true;
-    video.muted = false;
-    video.volume = 1.0;
-    syncAllVideosAudioState();
-    displayToast("Sound ON");
-  } else {
-    video.pause();
   }
-}
 
-function getMostVisibleVideo() {
-  let bestVideo = null;
-  let bestRatio = 0;
-  document.querySelectorAll(".reel-viewport video").forEach(v => {
-    const rect = v.getBoundingClientRect();
-    const visibleH = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0));
-    const ratio = rect.height > 0 ? visibleH / rect.height : 0;
-    if (ratio > bestRatio) {
-      bestRatio = ratio;
-      bestVideo = v;
-    }
-  });
-  return bestVideo;
-}
+  function escapeAttr(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
 
-// ---------- SUBTLE WEB AUDIO SOUND FEEDBACK ----------
-function playReactionSound(type = 'pop') {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type === 'picker' ? 'triangle' : 'sine';
-    const startFreq = type === 'picker' ? 520 : type === 'undo' ? 340 : 440;
-    const endFreq = type === 'picker' ? 780 : type === 'undo' ? 240 : 660;
-    osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + 0.09);
-
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.11);
-  } catch (e) {}
-}
-
-// ---------- TIME AGO FORMATTER ----------
-function formatTimeAgo(timestamp) {
-  const diffSec = Math.max(1, Math.floor((Date.now() - Number(timestamp || Date.now())) / 1000));
-  if (diffSec < 60) return `${diffSec}s ago`;
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 30) return `${diffDay}d ago`;
-  const diffMo = Math.floor(diffDay / 30);
-  if (diffMo < 12) return `${diffMo}mo ago`;
-  return `${Math.floor(diffMo / 12)}y ago`;
-}
-
-// ---------- LIVE COMMENT + REPLY COUNT ----------
-function getTotalCommentAndReplyCount(reel) {
-  if (!reel || !Array.isArray(reel.comments)) return 0;
-  return reel.comments.reduce((sum, c) => {
-    const repliesCount = Array.isArray(c.replies) ? c.replies.length : 0;
-    return sum + 1 + repliesCount;
-  }, 0);
-}
-
-// ---------- INIT ----------
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    if (typeof supabase !== 'undefined' && window.SUPABASE_CLIENT) {
-      const { data: { user } } = await window.SUPABASE_CLIENT.auth.getUser();
-      if (user) {
-        currentUser.id = user.id;
-        currentUser.name = user.user_metadata?.full_name || user.email?.split('@')[0] || currentUser.name;
-      }
-    }
-  } catch (e) {}
-
-  await loadReelsFromDB();
-  populateReportReasonsSelect();
-  initializeReelDisplayGrid();
-  setupVideoPlaybackObservers();
-  syncAllVideosAudioState();
-
-  // Unlock audio on first user gesture anywhere on page if browser blocked unmuted autoplay
-  const unlockAudioOnce = () => {
-    if (isSoundEnabled) {
-      const vid = getMostVisibleVideo();
-      if (vid && !vid.paused) {
-        vid.muted = false;
-        vid.volume = 1.0;
-        vid.play().catch(() => {});
-      }
-    }
-    window.removeEventListener("pointerdown", unlockAudioOnce);
-  };
-  window.addEventListener("pointerdown", unlockAudioOnce, { once: true });
-
-  document.addEventListener("click", (e) => {
-    const picker = document.getElementById("reactionPicker");
-    if (picker && picker.classList.contains("open")) {
-      if (!picker.contains(e.target) && !e.target.closest("[data-react-trigger='true']")) {
-        hideReactionPicker();
-      }
-    }
-  });
-});
-
-async function loadReelsFromDB() {
-  try {
-    if (typeof supabase === 'undefined' || !window.SUPABASE_CLIENT) {
-      systemReelsDataset = JSON.parse(JSON.stringify(FALLBACK_REELS));
+  function setBottomProfileAvatar(avatarUrl) {
+    const cleanUrl = (avatarUrl || '').trim();
+    if (!cleanUrl) {
+      bottomProfileAvatarSlot.innerHTML = '';
       return;
     }
-    const { data } = await window.SUPABASE_CLIENT
-      .from('reels')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(30);
+    bottomProfileAvatarSlot.innerHTML = `<img src="${escapeAttr(cleanUrl)}" alt="Profile">`;
+  }
 
-    if (!data || !data.length) {
-      systemReelsDataset = JSON.parse(JSON.stringify(FALLBACK_REELS));
+  async function syncProfileAvatarFromSupabase() {
+    let localAvatar = '';
+    try {
+      const savedProfile = JSON.parse(localStorage.getItem('autrobook_profile') || '{}');
+      localAvatar = savedProfile.avatar_url || savedProfile.avatar || '';
+    } catch (e) {}
+
+    if (localAvatar) {
+      setBottomProfileAvatar(localAvatar);
+    }
+
+    if (!supabaseClient) return;
+
+    try {
+      const { data } = await supabaseClient.auth.getUser();
+      if (data?.user?.id) {
+        currentUserId = data.user.id;
+        document.getElementById('bottomProfileLink').href = `profile.html?user=${encodeURIComponent(currentUserId)}`;
+        syncCreateReelLinks();
+
+        const metaAvatar = data.user.user_metadata?.avatar_url || '';
+        const { data: prof } = await supabaseClient
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', currentUserId)
+          .maybeSingle();
+
+        const resolvedAvatar = prof?.avatar_url || metaAvatar || localAvatar || '';
+        setBottomProfileAvatar(resolvedAvatar);
+      }
+    } catch (e) {}
+  }
+
+  function buildCardIframeSrc(reel) {
+    const u = new URL('reels-card.html', window.location.href);
+    u.searchParams.set('id', reel.id);
+    if (reel.user_id) u.searchParams.set('user_id', reel.user_id);
+    if (reel.author_name) u.searchParams.set('author', reel.author_name);
+    if (reel.author_avatar) u.searchParams.set('avatar', reel.author_avatar);
+    if (reel.media_url) u.searchParams.set('media', reel.media_url);
+    if (reel.media_type) u.searchParams.set('type', reel.media_type);
+    if (reel.caption) u.searchParams.set('caption', reel.caption);
+    if (reel.audio_name) u.searchParams.set('audio', reel.audio_name);
+    if (reel.quality) u.searchParams.set('quality', reel.quality);
+    if (reel.audience) u.searchParams.set('audience', reel.audience);
+    u.searchParams.set('from', 'reels.html');
+    u.searchParams.set('home', 'index.html');
+    u.searchParams.set('embedded', '1');
+    return u.toString();
+  }
+
+  function loadLocalLists() {
+    try {
+      const drafts = JSON.parse(localStorage.getItem('autrobook_drafts') || '[]');
+      drafts.forEach((d) => {
+        if (d.items?.[0]?.src) savedReelIds.add(d.items[0].src);
+        if (d.id) savedReelIds.add(d.id);
+      });
+    } catch (e) {}
+
+    try {
+      const saved = JSON.parse(localStorage.getItem('autrobook_saved_reels') || '[]');
+      saved.forEach((id) => savedReelIds.add(id));
+    } catch (e) {}
+  }
+
+  async function fetchReelsFromSources() {
+    let localReels = [];
+    try {
+      localReels = JSON.parse(localStorage.getItem('autrobook_live_reels') || '[]');
+    } catch (e) {}
+
+    let remoteReels = [];
+    if (supabaseClient) {
+      try {
+        const { data } = await supabaseClient
+          .from('reels')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(80);
+        if (Array.isArray(data)) remoteReels = data;
+      } catch (e) {}
+
+      if (currentUserId) {
+        try {
+          const { data: friendsData } = await supabaseClient
+            .from('friends')
+            .select('user_id, friend_id')
+            .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`);
+          (friendsData || []).forEach((row) => {
+            const otherId = row.user_id === currentUserId ? row.friend_id : row.user_id;
+            if (otherId) followingIds.add(otherId);
+          });
+        } catch (e) {}
+      }
+    }
+
+    const map = new Map();
+    [...remoteReels, ...localReels].forEach((r) => {
+      if (r && r.id) {
+        map.set(r.id, { ...map.get(r.id), ...r });
+      }
+    });
+
+    allReels = Array.from(map.values()).sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
+  }
+
+  function getFilteredReels() {
+    const q = searchQuery.trim().toLowerCase();
+
+    return allReels.filter((r) => {
+      if (targetUserId && r.user_id !== targetUserId) {
+        return false;
+      }
+
+      if (activeFilter === 'following') {
+        if (!followingIds.has(r.user_id)) return false;
+      } else if (activeFilter === 'saved') {
+        if (!savedReelIds.has(r.id) && !savedReelIds.has(r.media_url)) return false;
+      } else if (activeFilter === 'mine') {
+        const mineId = currentUserId || 'creator_user';
+        if (r.user_id !== mineId) return false;
+      }
+
+      if (q) {
+        const hay = `${r.caption || ''} ${r.author_name || ''} ${r.audio_name || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+
+      return true;
+    });
+  }
+
+  function updateUserFilterBanner(filteredList) {
+    if (!targetUserId) {
+      userFilterBanner.classList.remove('show');
       return;
     }
-    systemReelsDataset = data.map(r => ({
-      id: r.id,
-      author: 'User',
-      author_id: r.user_id,
-      avatar: 'https://i.pravatar.cc/80?img=12',
-      caption: r.caption || '',
-      videoUrl: r.video_url,
-      views_count: r.views_count || 0,
-      baseReactions: r.likes_count || 0,
-      userReaction: null,
-      isFollowing: false,
-      isSaved: false,
-      comments: []
-    }));
-  } catch (e) {
-    systemReelsDataset = JSON.parse(JSON.stringify(FALLBACK_REELS));
-  }
-}
-
-function goBackToHome() {
-  window.location.href = 'index.html';
-}
-
-// ---------- RENDER REELS FEED ----------
-function initializeReelDisplayGrid(filteredList) {
-  const container = document.getElementById("reelsContainer");
-  if (!container) return;
-  container.innerHTML = "";
-  const list = filteredList || systemReelsDataset;
-
-  if (!list.length) {
-    container.innerHTML = `<div class="loading-card">No reels found in this category.</div>`;
-    return;
+    const creatorName = filteredList[0]?.author_name || targetUserId;
+    userFilterLabel.textContent = `Showing reels by ${creatorName}`;
+    userFilterBanner.classList.add('show');
   }
 
-  list.forEach(reel => {
-    const isOwnReel = currentUser && reel.author_id === currentUser.id;
-    const totalReactions = Math.max(0, (reel.baseReactions || 0) + (reel.userReaction ? 1 : 0));
-    const totalComments = getTotalCommentAndReplyCount(reel);
+  function renderVerticalReelsFeed() {
+    const list = getFilteredReels();
+    updateUserFilterBanner(list);
 
-    const card = document.createElement("div");
-    card.className = "reel-viewport";
-    card.dataset.reelId = reel.id;
-    card.innerHTML = `
-      <div class="reel-video-container">
-        <div class="ai-badge-indicator" id="resolutionTag-${reel.id}"><i class="fas fa-microchip"></i> 4K Ultra HD</div>
-        <button class="sound-toggle-btn ${isSoundEnabled ? 'unmuted' : ''}" id="soundBtn-${reel.id}" onclick="toggleReelSound('${reel.id}', event)">
-          <i class="fas ${isSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}"></i> ${isSoundEnabled ? 'Sound On' : 'Muted'}
-        </button>
-        <video src="${reel.videoUrl}" loop ${isSoundEnabled ? '' : 'muted'} playsinline preload="metadata" onclick="handleVideoTapPlayOrUnmute(this, '${reel.id}')"></video>
-      </div>
-
-      <div class="reel-overlay">
-        <div class="reel-profile">
-          <img src="${reel.avatar}" class="avatar-img" onclick="openProfile('${reel.author_id}')" style="cursor:pointer;">
-          <span class="reel-username" onclick="openProfile('${reel.author_id}')" style="cursor:pointer;">@${escapeHtml(reel.author)}</span>
-          ${!isOwnReel && reel.author_id ? `<button class="follow-btn ${reel.isFollowing ? 'following' : ''}" onclick="toggleFollowState('${reel.id}', this)">${reel.isFollowing ? 'Following' : 'Follow'}</button>` : ''}
+    if (!list.length) {
+      const createHref = getCreateReelsUrl();
+      scrollerEl.innerHTML = `
+        <div class="empty-state-box">
+          <i class="fa-solid fa-film" style="font-size:32px;color:#9aa0a6;"></i>
+          <div style="font-size:15px;font-weight:700;">No reels match this view</div>
+          <div style="font-size:12.5px;color:#9aa0a6;">Create a new reel or switch filters.</div>
+          <a href="${escapeAttr(createHref)}" class="empty-cta-btn create-reel-plus-link"><i class="fa-solid fa-plus"></i> Create Reel</a>
         </div>
-        <div class="reel-caption">${escapeHtml(reel.caption)}</div>
-        <div class="views-hud-tag"><i class="fas fa-eye"></i> ${formatMetricDisplay(reel.views_count)} views</div>
-        <div class="reel-quick-btns">
-          <button class="quick-pill-btn" onclick="openCommentsSheet('${reel.id}', true)">🎤 Voice (30s)</button>
-          <button class="quick-pill-btn" onclick="openCommentsSheet('${reel.id}', false)">💬 Comment (${totalComments})</button>
-        </div>
-      </div>
-
-      <div class="reel-actions-sidebar">
-        <div class="action-item"
-             data-react-trigger="true"
-             onpointerdown="handleLongPressStart(event, { scope:'reel', reelId:'${reel.id}' })"
-             onpointerup="handleLongPressEnd(event, { scope:'reel', reelId:'${reel.id}' })"
-             onpointercancel="cancelLongPress()"
-             oncontextmenu="event.preventDefault(); showReactionPickerAt(event, { scope:'reel', reelId:'${reel.id}' });">
-          <button class="action-btn-circle ${reel.userReaction ? 'reacted' : ''}" id="reelReactBtn-${reel.id}">
-            ${reel.userReaction ? `<span style="font-size:20px;line-height:1;">${reel.userReaction}</span>` : `<i class="fas fa-thumbs-up"></i>`}
-          </button>
-          <span class="react-counter-label" id="reelReactCount-${reel.id}">${formatMetricDisplay(totalReactions)}</span>
-        </div>
-
-        <div class="action-item" onclick="openCommentsSheet('${reel.id}', false)">
-          <button class="action-btn-circle"><i class="fas fa-comment-dots"></i></button>
-          <span class="react-counter-label" id="reelCommentCount-${reel.id}">${formatMetricDisplay(totalComments)}</span>
-        </div>
-
-        <div class="action-item" onclick="shareReel('${reel.id}')">
-          <button class="action-btn-circle"><i class="fas fa-share"></i></button>
-          <span class="react-counter-label">365</span>
-        </div>
-
-        <div class="action-item" onclick="toggleSaveReel('${reel.id}', this)">
-          <button class="action-btn-circle"><i class="${reel.isSaved ? 'fas' : 'far'} fa-bookmark"></i></button>
-          <span class="react-counter-label">5.5k</span>
-        </div>
-
-        <div class="action-item" onclick="openOptionsContextLayer('${reel.id}')">
-          <button class="action-btn-circle"><i class="fas fa-ellipsis-h"></i></button>
-        </div>
-      </div>
-    `;
-    container.appendChild(card);
-  });
-  syncAllVideosAudioState();
-}
-
-// ---------- 1-SECOND LONG PRESS & SINGLE REACTION LOGIC ----------
-function handleLongPressStart(e, ctx) {
-  if (e.button && e.button !== 0) return;
-  longPressTriggered = false;
-  clearTimeout(longPressTimer);
-  const clientX = e.clientX || (e.touches && e.touches[0]?.clientX) || 200;
-  const clientY = e.clientY || (e.touches && e.touches[0]?.clientY) || 300;
-
-  longPressTimer = setTimeout(() => {
-    longPressTriggered = true;
-    playReactionSound('picker');
-    showReactionPickerAt({ clientX, clientY }, ctx);
-  }, LONG_PRESS_MS);
-}
-
-function handleLongPressEnd(e, ctx) {
-  clearTimeout(longPressTimer);
-  if (longPressTriggered) {
-    e.preventDefault();
-    e.stopPropagation();
-    longPressTriggered = false;
-    return;
-  }
-  toggleOrUndoReaction(ctx, DEFAULT_EMOJI);
-}
-
-function cancelLongPress() {
-  clearTimeout(longPressTimer);
-  longPressTriggered = false;
-}
-
-function showReactionPickerAt(posOrEvent, ctx) {
-  activePickerContext = ctx;
-  const picker = document.getElementById("reactionPicker");
-  if (!picker) return;
-  const x = posOrEvent.clientX ?? 180;
-  const y = posOrEvent.clientY ?? 300;
-
-  picker.style.left = Math.max(12, Math.min(window.innerWidth - 275, x - 120)) + "px";
-  picker.style.top = Math.max(12, y - 64) + "px";
-  picker.classList.add("open");
-}
-
-function hideReactionPicker() {
-  const picker = document.getElementById("reactionPicker");
-  if (picker) picker.classList.remove("open");
-  activePickerContext = null;
-}
-
-function selectEmojiFromPicker(emoji, event) {
-  if (event) event.stopPropagation();
-  if (!activePickerContext) return;
-  const ctx = { ...activePickerContext };
-  hideReactionPicker();
-  setSpecificReaction(ctx, emoji);
-}
-
-function toggleOrUndoReaction(ctx, defaultEmoji) {
-  if (ctx.scope === 'reel') {
-    const reel = systemReelsDataset.find(r => String(r.id) === String(ctx.reelId));
-    if (!reel) return;
-    if (reel.userReaction) {
-      reel.userReaction = null;
-      playReactionSound('undo');
-      displayToast("Reaction removed");
-    } else {
-      reel.userReaction = defaultEmoji;
-      playReactionSound('pop');
-      displayToast(`Reacted with ${defaultEmoji}`);
+      `;
+      syncCreateReelLinks();
+      return;
     }
-    refreshReelReactionUI(reel);
-    return;
-  }
 
-  const targetObj = findCommentOrReply(ctx.reelId, ctx.commentId, ctx.replyId);
-  if (!targetObj) return;
-
-  if (targetObj.userReaction) {
-    targetObj.userReaction = null;
-    playReactionSound('undo');
-    displayToast("Reaction removed");
-  } else {
-    targetObj.userReaction = defaultEmoji;
-    targetObj.userDisliked = false;
-    playReactionSound('pop');
-    displayToast(`Reacted with ${defaultEmoji}`);
-  }
-  renderCommentsThread(ctx.reelId);
-}
-
-function setSpecificReaction(ctx, emoji) {
-  if (ctx.scope === 'reel') {
-    const reel = systemReelsDataset.find(r => String(r.id) === String(ctx.reelId));
-    if (!reel) return;
-    reel.userReaction = emoji;
-    playReactionSound('pop');
-    displayToast(`Reacted with ${emoji}`);
-    refreshReelReactionUI(reel);
-    return;
-  }
-
-  const targetObj = findCommentOrReply(ctx.reelId, ctx.commentId, ctx.replyId);
-  if (!targetObj) return;
-  targetObj.userReaction = emoji;
-  targetObj.userDisliked = false;
-  playReactionSound('pop');
-  displayToast(`Reacted with ${emoji}`);
-  renderCommentsThread(ctx.reelId);
-}
-
-function refreshReelReactionUI(reel) {
-  const btn = document.getElementById(`reelReactBtn-${reel.id}`);
-  const countEl = document.getElementById(`reelReactCount-${reel.id}`);
-  const total = Math.max(0, (reel.baseReactions || 0) + (reel.userReaction ? 1 : 0));
-  if (btn) {
-    btn.classList.toggle("reacted", Boolean(reel.userReaction));
-    btn.innerHTML = reel.userReaction
-      ? `<span style="font-size:20px;line-height:1;">${reel.userReaction}</span>`
-      : `<i class="fas fa-thumbs-up"></i>`;
-  }
-  if (countEl) countEl.textContent = formatMetricDisplay(total);
-}
-
-// ---------- DISLIKE LOGIC FOR COMMENT & REPLY ----------
-function toggleCommentOrReplyDislike(reelId, commentId, replyId = null) {
-  const targetObj = findCommentOrReply(reelId, commentId, replyId);
-  if (!targetObj) return;
-  targetObj.userDisliked = !targetObj.userDisliked;
-  if (targetObj.userDisliked) {
-    targetObj.userReaction = null;
-    playReactionSound('undo');
-    displayToast("Disliked");
-  } else {
-    displayToast("Dislike removed");
-  }
-  renderCommentsThread(reelId);
-}
-
-// ---------- COMMENTS & REPLIES SHEET ----------
-function openCommentsSheet(reelId, openVoiceImmediately = false) {
-  activeCommentsReelId = reelId;
-  activeReplyTarget = null;
-  updateReplyingBanner();
-  renderCommentsThread(reelId);
-  openModal("mCommentsSheet");
-  if (openVoiceImmediately) {
-    openSheetVoiceBar();
-  }
-}
-
-function closeCommentsSheet() {
-  stopAndCleanupVoiceRecording(false);
-  closeSheetVoiceBar();
-  closeModal("mCommentsSheet");
-}
-
-function syncAllCommentCounters(reelId) {
-  const reel = systemReelsDataset.find(r => String(r.id) === String(reelId));
-  if (!reel) return;
-  const total = getTotalCommentAndReplyCount(reel);
-
-  const titleEl = document.getElementById("commentsSheetTitle");
-  if (titleEl) titleEl.textContent = `Comments (${total})`;
-
-  const sidebarCount = document.getElementById(`reelCommentCount-${reelId}`);
-  if (sidebarCount) sidebarCount.textContent = formatMetricDisplay(total);
-
-  const cardEl = document.querySelector(`.reel-viewport[data-reel-id="${reelId}"]`);
-  if (cardEl) {
-    const quickBtns = cardEl.querySelectorAll(".quick-pill-btn");
-    if (quickBtns[1]) quickBtns[1].textContent = `💬 Comment (${total})`;
-  }
-}
-
-function renderCommentsThread(reelId) {
-  const reel = systemReelsDataset.find(r => String(r.id) === String(reelId));
-  const listEl = document.getElementById("commentsListContainer");
-  if (!reel || !listEl) return;
-
-  syncAllCommentCounters(reelId);
-
-  if (!reel.comments || !reel.comments.length) {
-    listEl.innerHTML = `<div class="empty-comments">No comments yet. Be the first to comment or send a 30s voice note!</div>`;
-    return;
-  }
-
-  listEl.innerHTML = reel.comments.map(c => buildCommentCardHTML(reelId, c)).join("");
-}
-
-function buildCommentCardHTML(reelId, c) {
-  const likeCount = (c.extraLikes || 0) + (c.userReaction ? 1 : 0);
-  const dislikeCount = (c.dislikes || 0) + (c.userDisliked ? 1 : 0);
-  const reactLabel = c.userReaction ? `${c.userReaction} ${likeCount}` : `Like (${likeCount})`;
-
-  const repliesHtml = (c.replies || []).map(rep => {
-    const rLikeCount = (rep.extraLikes || 0) + (rep.userReaction ? 1 : 0);
-    const rDislikeCount = (rep.dislikes || 0) + (rep.userDisliked ? 1 : 0);
-    const rReactLabel = rep.userReaction ? `${rep.userReaction} ${rLikeCount}` : `Like (${rLikeCount})`;
-    return `
-      <div class="reply-card">
-        <div class="comment-top">
-          <div class="comment-author-wrap">
-            <img src="${rep.avatar}" class="comment-avatar">
-            <div>
-              <span class="comment-author">${escapeHtml(rep.author)}</span>
-              <span class="comment-time">${formatTimeAgo(rep.createdAt)}</span>
-            </div>
+    scrollerEl.innerHTML = list.map((reel, idx) => {
+      const iframeSrc = buildCardIframeSrc(reel);
+      return `
+        <section class="reel-snap-slide" data-index="${idx}" data-reel-id="${escapeAttr(reel.id)}">
+          <div class="reel-card-frame-shell">
+            <iframe
+              src="${escapeAttr(iframeSrc)}"
+              class="reel-card-iframe"
+              title="Reel ${idx + 1}"
+              allow="autoplay; encrypted-media; microphone"
+              loading="${idx < 2 ? 'eager' : 'lazy'}"
+            ></iframe>
           </div>
-          <button class="comment-three-dot" onclick="openCommentThreeDotMenu('${reelId}', '${c.id}', '${rep.id}', '${rep.author_id}', '${escapeJs(rep.author)}')">
-            <i class="fas fa-ellipsis-v"></i>
-          </button>
-        </div>
-        <div class="comment-body" style="margin-left:38px;">
-          ${rep.text ? `<div>${escapeHtml(rep.text)}</div>` : ''}
-          ${rep.voiceUrl ? `
-            <div class="voice-bubble">
-              <audio controls src="${rep.voiceUrl}"></audio>
-              <span class="voice-dur-badge">${rep.voiceDuration || 1}s</span>
-            </div>` : ''}
-        </div>
-        <div class="comment-actions-bar" style="margin-left:38px;">
-          <button class="c-act-btn ${rep.userReaction ? 'active-like' : ''}"
-                  data-react-trigger="true"
-                  onpointerdown="handleLongPressStart(event, { scope:'reply', reelId:'${reelId}', commentId:'${c.id}', replyId:'${rep.id}' })"
-                  onpointerup="handleLongPressEnd(event, { scope:'reply', reelId:'${reelId}', commentId:'${c.id}', replyId:'${rep.id}' })"
-                  onpointercancel="cancelLongPress()"
-                  oncontextmenu="event.preventDefault(); showReactionPickerAt(event, { scope:'reply', reelId:'${reelId}', commentId:'${c.id}', replyId:'${rep.id}' });">
-            ${rReactLabel}
-          </button>
-          <button class="c-act-btn ${rep.userDisliked ? 'active-dislike' : ''}" onclick="toggleCommentOrReplyDislike('${reelId}', '${c.id}', '${rep.id}')">
-            <i class="far fa-thumbs-down"></i> ${rDislikeCount}
-          </button>
-          <button class="c-act-btn" onclick="setReplyTarget('${reelId}', '${c.id}', '${escapeJs(rep.author)}')">
-            <i class="fas fa-reply"></i> Reply
-          </button>
-          <button class="c-act-btn" onclick="openShareMenu('reply', '${reelId}', '${c.id}', '${rep.id}', '${escapeJs(rep.text || 'Voice reply')}', '${escapeJs(rep.author)}')">
-            <i class="fas fa-share"></i> Share
-          </button>
-        </div>
-      </div>
-    `;
-  }).join("");
+        </section>
+      `;
+    }).join('');
 
-  return `
-    <div class="comment-card" id="commentCard-${c.id}">
-      <div class="comment-top">
-        <div class="comment-author-wrap">
-          <img src="${c.avatar}" class="comment-avatar">
-          <div>
-            <span class="comment-author">${escapeHtml(c.author)}</span>
-            <span class="comment-time">${formatTimeAgo(c.createdAt)}</span>
-          </div>
-        </div>
-        <button class="comment-three-dot" onclick="openCommentThreeDotMenu('${reelId}', '${c.id}', null, '${c.author_id}', '${escapeJs(c.author)}')">
-          <i class="fas fa-ellipsis-v"></i>
-        </button>
-      </div>
-
-      <div class="comment-body">
-        ${c.text ? `<div>${escapeHtml(c.text)}</div>` : ''}
-        ${c.voiceUrl ? `
-          <div class="voice-bubble">
-            <audio controls src="${c.voiceUrl}"></audio>
-            <span class="voice-dur-badge">${c.voiceDuration || 1}s</span>
-          </div>` : ''}
-      </div>
-
-      <div class="comment-actions-bar">
-        <button class="c-act-btn ${c.userReaction ? 'active-like' : ''}"
-                data-react-trigger="true"
-                onpointerdown="handleLongPressStart(event, { scope:'comment', reelId:'${reelId}', commentId:'${c.id}', replyId:null })"
-                onpointerup="handleLongPressEnd(event, { scope:'comment', reelId:'${reelId}', commentId:'${c.id}', replyId:null })"
-                onpointercancel="cancelLongPress()"
-                oncontextmenu="event.preventDefault(); showReactionPickerAt(event, { scope:'comment', reelId:'${reelId}', commentId:'${c.id}', replyId:null });">
-          ${reactLabel}
-        </button>
-
-        <button class="c-act-btn ${c.userDisliked ? 'active-dislike' : ''}" onclick="toggleCommentOrReplyDislike('${reelId}', '${c.id}', null)">
-          <i class="far fa-thumbs-down"></i> ${dislikeCount}
-        </button>
-
-        <button class="c-act-btn" onclick="setReplyTarget('${reelId}', '${c.id}', '${escapeJs(c.author)}')">
-          <i class="fas fa-reply"></i> Reply (${(c.replies || []).length})
-        </button>
-
-        <button class="c-act-btn" onclick="openShareMenu('comment', '${reelId}', '${c.id}', null, '${escapeJs(c.text || 'Voice comment')}', '${escapeJs(c.author)}')">
-          <i class="fas fa-share"></i> Share
-        </button>
-      </div>
-
-      ${repliesHtml ? `<div class="replies-wrapper">${repliesHtml}</div>` : ''}
-    </div>
-  `;
-}
-
-// ---------- REPLY TARGET & POSTING ----------
-function setReplyTarget(reelId, commentId, authorName) {
-  activeCommentsReelId = reelId;
-  activeReplyTarget = { commentId, authorName };
-  updateReplyingBanner();
-  const input = document.getElementById("mainCommentInput");
-  if (input) {
-    input.placeholder = `Reply to @${authorName}...`;
-    input.focus();
-  }
-}
-
-function cancelReplyTarget() {
-  activeReplyTarget = null;
-  updateReplyingBanner();
-  const input = document.getElementById("mainCommentInput");
-  if (input) input.placeholder = "Write a comment...";
-}
-
-function updateReplyingBanner() {
-  const banner = document.getElementById("replyingBanner");
-  const txt = document.getElementById("replyingToText");
-  if (!banner || !txt) return;
-  if (activeReplyTarget) {
-    txt.textContent = `Replying to @${activeReplyTarget.authorName}`;
-    banner.classList.add("active");
-  } else {
-    banner.classList.remove("active");
-  }
-}
-
-function submitMainCommentOrReply() {
-  const input = document.getElementById("mainCommentInput");
-  if (!input || !activeCommentsReelId) return;
-  const text = input.value.trim();
-  if (!text) return;
-
-  appendCommentOrReplyItem(activeCommentsReelId, {
-    text,
-    voiceUrl: null,
-    voiceDuration: 0
-  });
-
-  input.value = "";
-  cancelReplyTarget();
-}
-
-function appendCommentOrReplyItem(reelId, payload) {
-  const reel = systemReelsDataset.find(r => String(r.id) === String(reelId));
-  if (!reel) return;
-  if (!Array.isArray(reel.comments)) reel.comments = [];
-
-  const newEntry = {
-    id: (activeReplyTarget ? "rep_" : "c_") + Date.now() + "_" + Math.floor(Math.random() * 1000),
-    author: currentUser.name,
-    author_id: currentUser.id,
-    avatar: currentUser.avatar,
-    text: payload.text || "",
-    voiceUrl: payload.voiceUrl || null,
-    voiceDuration: payload.voiceDuration || 0,
-    createdAt: Date.now(),
-    userReaction: null,
-    extraLikes: 0,
-    dislikes: 0,
-    userDisliked: false,
-    isSaved: false,
-    replies: []
-  };
-
-  if (activeReplyTarget) {
-    const parentComment = reel.comments.find(c => String(c.id) === String(activeReplyTarget.commentId));
-    if (parentComment) {
-      if (!Array.isArray(parentComment.replies)) parentComment.replies = [];
-      parentComment.replies.push(newEntry);
-      displayToast("Reply posted!");
-    }
-    cancelReplyTarget();
-  } else {
-    reel.comments.unshift(newEntry);
-    displayToast("Comment posted!");
+    setupActiveSlideAutoplay();
   }
 
-  renderCommentsThread(reelId);
-}
+  function setupActiveSlideAutoplay() {
+    const slides = scrollerEl.querySelectorAll('.reel-snap-slide');
+    if (!slides.length || !('IntersectionObserver' in window)) return;
 
-// ---------- 30-SECOND VOICE RECORDER ----------
-function openSheetVoiceBar() {
-  const bar = document.getElementById("sheetVoiceBar");
-  if (bar) bar.classList.add("active");
-}
-
-function closeSheetVoiceBar() {
-  stopAndCleanupVoiceRecording(false);
-  recordedVoiceDataUrl = null;
-  recordedVoiceDuration = 0;
-  const timerEl = document.getElementById("sheetVoiceTimer");
-  if (timerEl) timerEl.textContent = "00:00 / 00:30";
-  const bar = document.getElementById("sheetVoiceBar");
-  if (bar) bar.classList.remove("active");
-}
-
-async function toggleSheetVoiceRecord() {
-  if (voiceRecorder && voiceRecorder.state === "recording") {
-    stopAndCleanupVoiceRecording(true);
-    return;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    voiceChunks = [];
-    voiceElapsedSec = 0;
-    recordedVoiceDataUrl = null;
-    recordedVoiceDuration = 0;
-
-    voiceRecorder = new MediaRecorder(stream);
-    voiceRecorder.ondataavailable = e => {
-      if (e.data && e.data.size > 0) voiceChunks.push(e.data);
-    };
-
-    voiceRecorder.onstop = () => {
-      const blob = new Blob(voiceChunks, { type: voiceRecorder.mimeType || "audio/webm" });
-      recordedVoiceDuration = Math.max(1, Math.min(MAX_VOICE_SECONDS, voiceElapsedSec));
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        recordedVoiceDataUrl = reader.result;
-        displayToast(`Voice recorded (${recordedVoiceDuration}s). Click Send Voice.`);
-      };
-      reader.readAsDataURL(blob);
-      stream.getTracks().forEach(t => t.stop());
-    };
-
-    voiceRecorder.start();
-    const recBtn = document.getElementById("sheetRecToggleBtn");
-    const micIcon = document.getElementById("sheetMicIconBtn");
-    if (recBtn) recBtn.innerHTML = `<i class="fas fa-stop"></i> Stop`;
-    if (micIcon) micIcon.classList.add("recording");
-
-    clearInterval(voiceInterval);
-    voiceInterval = setInterval(() => {
-      voiceElapsedSec++;
-      const cur = String(voiceElapsedSec).padStart(2, "0");
-      const timerEl = document.getElementById("sheetVoiceTimer");
-      if (timerEl) timerEl.textContent = `00:${cur} / 00:30`;
-
-      if (voiceElapsedSec >= MAX_VOICE_SECONDS) {
-        stopAndCleanupVoiceRecording(true);
-        displayToast("30s max voice limit reached");
-      }
-    }, 1000);
-
-    displayToast("Recording voice (up to 30s)...");
-  } catch (err) {
-    displayToast("Microphone permission required for voice comment");
-  }
-}
-
-function stopAndCleanupVoiceRecording(keepData) {
-  clearInterval(voiceInterval);
-  const recBtn = document.getElementById("sheetRecToggleBtn");
-  const micIcon = document.getElementById("sheetMicIconBtn");
-  if (recBtn) recBtn.innerHTML = `<i class="fas fa-microphone"></i> Record (Max 30s)`;
-  if (micIcon) micIcon.classList.remove("recording");
-
-  if (voiceRecorder && voiceRecorder.state !== "inactive") {
-    if (!keepData) {
-      voiceRecorder.onstop = () => {
-        if (voiceRecorder.stream) voiceRecorder.stream.getTracks().forEach(t => t.stop());
-      };
-    }
-    voiceRecorder.stop();
-  }
-  voiceRecorder = null;
-}
-
-function sendSheetVoiceClip() {
-  if (!activeCommentsReelId) return;
-  if (voiceRecorder && voiceRecorder.state === "recording") {
-    stopAndCleanupVoiceRecording(true);
-    setTimeout(() => {
-      if (!recordedVoiceDataUrl) {
-        displayToast("Please record a voice clip first");
-        return;
-      }
-      finalizeVoiceSend();
-    }, 250);
-    return;
-  }
-
-  if (!recordedVoiceDataUrl) {
-    displayToast("Please record a voice clip first");
-    return;
-  }
-  finalizeVoiceSend();
-}
-
-function finalizeVoiceSend() {
-  appendCommentOrReplyItem(activeCommentsReelId, {
-    text: "",
-    voiceUrl: recordedVoiceDataUrl,
-    voiceDuration: recordedVoiceDuration || 1
-  });
-  closeSheetVoiceBar();
-}
-
-// ---------- COMMENT THREE-DOT MENU ----------
-function openCommentThreeDotMenu(reelId, commentId, replyId, authorId, authorName) {
-  activeThreeDotItem = {
-    kind: replyId ? 'reply' : 'comment',
-    reelId,
-    commentId,
-    replyId,
-    authorId,
-    authorName
-  };
-
-  const titleEl = document.getElementById("commentOptionsTitle");
-  const menuEl = document.getElementById("commentOptionsMenu");
-  if (!titleEl || !menuEl) return;
-
-  const isOwn = currentUser && String(authorId) === String(currentUser.id);
-  const itemObj = findCommentOrReply(reelId, commentId, replyId);
-  const isSaved = Boolean(itemObj && itemObj.isSaved);
-
-  titleEl.textContent = isOwn ? "Your Comment Options" : `@${authorName}'s Comment`;
-
-  if (isOwn) {
-    menuEl.innerHTML = `
-      <button class="menu-action-row" onclick="goToOwnProfile()">
-        <i class="fas fa-user"></i> Go to My Profile
-      </button>
-      <button class="menu-action-row" onclick="toggleSaveCommentItem()">
-        <i class="${isSaved ? 'fas' : 'far'} fa-bookmark"></i> ${isSaved ? 'Remove from Saved' : 'Save'}
-      </button>
-      <button class="menu-action-row danger" onclick="deleteOwnCommentOrReply()">
-        <i class="fas fa-trash"></i> Delete
-      </button>
-    `;
-  } else {
-    menuEl.innerHTML = `
-      <button class="menu-action-row" onclick="toggleSaveCommentItem()">
-        <i class="${isSaved ? 'fas' : 'far'} fa-bookmark"></i> ${isSaved ? 'Remove from Saved' : 'Save'}
-      </button>
-      <button class="menu-action-row danger" onclick="openReportFromThreeDot()">
-        <i class="fas fa-flag"></i> Report
-      </button>
-    `;
-  }
-
-  openModal("mCommentOptions");
-}
-
-function goToOwnProfile() {
-  closeModal("mCommentOptions");
-  window.location.href = "profile.html";
-}
-
-function toggleSaveCommentItem() {
-  if (!activeThreeDotItem) return;
-  const item = findCommentOrReply(activeThreeDotItem.reelId, activeThreeDotItem.commentId, activeThreeDotItem.replyId);
-  if (item) {
-    item.isSaved = !item.isSaved;
-    displayToast(item.isSaved ? "Saved!" : "Removed from saved");
-  }
-  closeModal("mCommentOptions");
-}
-
-function deleteOwnCommentOrReply() {
-  if (!activeThreeDotItem) return;
-  const reel = systemReelsDataset.find(r => String(r.id) === String(activeThreeDotItem.reelId));
-  if (!reel) return;
-
-  if (activeThreeDotItem.replyId) {
-    const c = reel.comments.find(x => String(x.id) === String(activeThreeDotItem.commentId));
-    if (c && Array.isArray(c.replies)) {
-      c.replies = c.replies.filter(rep => String(rep.id) !== String(activeThreeDotItem.replyId));
-    }
-  } else {
-    reel.comments = reel.comments.filter(x => String(x.id) !== String(activeThreeDotItem.commentId));
-  }
-
-  closeModal("mCommentOptions");
-  renderCommentsThread(activeThreeDotItem.reelId);
-  displayToast("Deleted successfully");
-}
-
-function openReportFromThreeDot() {
-  if (!activeThreeDotItem) return;
-  closeModal("mCommentOptions");
-  activeReportTarget = {
-    kind: activeThreeDotItem.kind,
-    reelId: activeThreeDotItem.reelId,
-    commentId: activeThreeDotItem.commentId,
-    replyId: activeThreeDotItem.replyId,
-    authorName: activeThreeDotItem.authorName
-  };
-  document.getElementById("reportModalTitle").textContent = `Report @${activeThreeDotItem.authorName}`;
-  resetReportForm();
-  openModal("mReportModal");
-}
-
-// ---------- COMMENT & REPLY SHARE MENU ----------
-function openShareMenu(kind, reelId, commentId, replyId, text, authorName) {
-  activeShareItem = { kind, reelId, commentId, replyId, text, authorName };
-  const menuEl = document.getElementById("shareOptionsMenu");
-  if (!menuEl) return;
-
-  const itemObj = findCommentOrReply(reelId, commentId, replyId);
-  const isSaved = Boolean(itemObj && itemObj.isSaved);
-
-  menuEl.innerHTML = `
-    <button class="menu-action-row" onclick="saveSharedCommentItem()">
-      <i class="${isSaved ? 'fas' : 'far'} fa-bookmark"></i> ${isSaved ? 'Saved (Click to Unsave)' : 'Save'}
-    </button>
-    <button class="menu-action-row" onclick="shareToAutroChat()">
-      <i class="fas fa-paper-plane"></i> Share to Autro Chat
-    </button>
-  `;
-  openModal("mShareOptions");
-}
-
-function saveSharedCommentItem() {
-  if (!activeShareItem) return;
-  const itemObj = findCommentOrReply(activeShareItem.reelId, activeShareItem.commentId, activeShareItem.replyId);
-  if (itemObj) {
-    itemObj.isSaved = !itemObj.isSaved;
-    displayToast(itemObj.isSaved ? "Saved to your items" : "Removed from saved");
-  }
-  closeModal("mShareOptions");
-}
-
-function shareToAutroChat() {
-  if (!activeShareItem) return;
-  const sharePayload = {
-    source: "autrobook-reels",
-    kind: activeShareItem.kind,
-    reelId: activeShareItem.reelId,
-    commentId: activeShareItem.commentId,
-    replyId: activeShareItem.replyId || null,
-    authorName: activeShareItem.authorName,
-    text: activeShareItem.text,
-    sharedAt: Date.now()
-  };
-  try {
-    localStorage.setItem("autro_chat_pending_share", JSON.stringify(sharePayload));
-  } catch (e) {}
-
-  const params = new URLSearchParams({
-    share_type: activeShareItem.kind,
-    reel_id: String(activeShareItem.reelId),
-    text: activeShareItem.text || ""
-  });
-  closeModal("mShareOptions");
-  window.location.href = `autro-chat.html?${params.toString()}`;
-}
-
-// ---------- REPORT SYSTEM ----------
-function populateReportReasonsSelect() {
-  const select = document.getElementById("reportReasonSelect");
-  if (!select) return;
-  select.innerHTML = REPORT_REASONS.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
-}
-
-function resetReportForm() {
-  const select = document.getElementById("reportReasonSelect");
-  const custom = document.getElementById("reportCustomText");
-  if (select) select.selectedIndex = 0;
-  if (custom) {
-    custom.value = "";
-    custom.style.display = "none";
-  }
-}
-
-function handleReportReasonChange(val) {
-  const custom = document.getElementById("reportCustomText");
-  if (!custom) return;
-  custom.style.display = val === "Other valid violation" ? "block" : "none";
-}
-
-function openReportModal(reelId) {
-  activeContextReelId = reelId;
-  closeModal("mReelOptions");
-  const reel = systemReelsDataset.find(r => String(r.id) === String(reelId));
-  activeReportTarget = {
-    kind: "reel",
-    reelId,
-    authorName: reel ? reel.author : "User"
-  };
-  document.getElementById("reportModalTitle").textContent = "Report Reel";
-  resetReportForm();
-  openModal("mReportModal");
-}
-
-function submitContentReport() {
-  const reason = document.getElementById("reportReasonSelect")?.value || REPORT_REASONS[0];
-  const customDetail = document.getElementById("reportCustomText")?.value.trim() || "";
-
-  const reportRecord = {
-    id: "rep_" + Date.now(),
-    target: activeReportTarget,
-    reason,
-    customDetail,
-    reporterId: currentUser.id,
-    status: "pending",
-    createdAt: Date.now()
-  };
-
-  try {
-    const existing = JSON.parse(localStorage.getItem("autrobook_reports") || "[]");
-    existing.unshift(reportRecord);
-    localStorage.setItem("autrobook_reports", JSON.stringify(existing));
-  } catch (e) {}
-
-  closeModal("mReportModal");
-  displayToast(`Report submitted (${reason}). Reviewed within 24–48h.`);
-}
-
-// ---------- REEL OPTIONS, FOLLOW, SAVE, SEARCH, FILTER, UPLOAD ----------
-function openOptionsContextLayer(id) {
-  activeContextReelId = id;
-  const reel = systemReelsDataset.find(r => String(r.id) === String(id));
-  if (!reel) return;
-  const menu = document.getElementById("reelActionsMenu");
-  const isOwn = currentUser && reel.author_id === currentUser.id;
-  menu.innerHTML = isOwn ? `
-    <button class="menu-action-row" onclick="triggerAiDownload('${reel.id}'); closeModal('mReelOptions')"><i class="fas fa-download"></i> Download 4K</button>
-    <button class="menu-action-row danger" onclick="deleteReelInstance('${reel.id}')"><i class="fas fa-trash"></i> Delete Reel</button>` : `
-    <button class="menu-action-row" onclick="triggerAiDownload('${reel.id}'); closeModal('mReelOptions')"><i class="fas fa-download"></i> Download 4K</button>
-    <button class="menu-action-row danger" onclick="openReportModal('${reel.id}')"><i class="fas fa-flag"></i> Report Reel</button>`;
-  openModal("mReelOptions");
-}
-
-function changeResolutionProfile() {
-  const val = document.getElementById("resolutionScaler").value;
-  displayToast(`Resolution profile updated to ${val}`);
-}
-
-async function triggerAiDownload(id) {
-  const reel = systemReelsDataset.find(r => String(r.id) === String(id));
-  if (!reel) return;
-  displayToast("Initiating 4K download...");
-  try {
-    const res = await fetch(reel.videoUrl);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `autrobook-reel-${id}-4K.mp4`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    displayToast("Download complete!");
-  } catch (e) {
-    window.open(reel.videoUrl, '_blank');
-  }
-}
-
-async function deleteReelInstance(id) {
-  systemReelsDataset = systemReelsDataset.filter(r => String(r.id) !== String(id));
-  closeModal("mReelOptions");
-  initializeReelDisplayGrid();
-  setupVideoPlaybackObservers();
-  displayToast("Reel deleted permanently");
-}
-
-function setupVideoPlaybackObservers() {
-  const container = document.getElementById("reelsContainer");
-  if (!container) return;
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const video = entry.target.querySelector("video");
-      if (!video) return;
-      const reelId = entry.target.dataset.reelId;
-      if (entry.isIntersecting) {
-        video.muted = !isSoundEnabled;
-        video.volume = isSoundEnabled ? 1.0 : 0.0;
-        video.play().catch(() => {
-          // If browser blocks unmuted autoplay, play muted and notify user
-          video.muted = true;
-          video.play().catch(() => {});
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const iframe = entry.target.querySelector('iframe');
+          if (!iframe || !iframe.contentWindow) return;
+          try {
+            const vid = iframe.contentWindow.document.getElementById('reelVideo');
+            if (vid) {
+              if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                vid.muted = !globalSoundEnabled;
+                vid.play().catch(() => {});
+              } else {
+                vid.pause();
+              }
+            }
+          } catch (e) {}
         });
-        if (reelId) incrementViews(reelId, entry.target);
-      } else {
-        video.pause();
-      }
-    });
-  }, { threshold: 0.6 });
-  setTimeout(() => document.querySelectorAll(".reel-viewport").forEach(el => observer.observe(el)), 300);
-}
+      },
+      { root: scrollerEl, threshold: [0.6] }
+    );
 
-async function incrementViews(reelId, cardEl) {
-  if (viewedReels.has(reelId)) return;
-  viewedReels.add(reelId);
-  const reel = systemReelsDataset.find(r => String(r.id) === String(reelId));
-  if (!reel) return;
-  reel.views_count++;
-  const tag = cardEl ? cardEl.querySelector('.views-hud-tag') : null;
-  if (tag) tag.innerHTML = `<i class="fas fa-eye"></i> ${formatMetricDisplay(reel.views_count)} views`;
-}
-
-function filterReels(mode, btn) {
-  currentFilterMode = mode;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  let list = systemReelsDataset;
-  if (mode === 'following') list = systemReelsDataset.filter(r => r.isFollowing);
-  else if (mode === 'saved') list = systemReelsDataset.filter(r => r.isSaved);
-  else if (mode === 'mine') list = currentUser ? systemReelsDataset.filter(r => r.author_id === currentUser.id) : [];
-  initializeReelDisplayGrid(list);
-  setupVideoPlaybackObservers();
-}
-
-function searchReels(query) {
-  query = query.toLowerCase().trim();
-  if (!query) {
-    filterReels(currentFilterMode);
-    return;
+    slides.forEach((s) => observer.observe(s));
   }
-  const filtered = systemReelsDataset.filter(r =>
-    r.caption.toLowerCase().includes(query) || r.author.toLowerCase().includes(query)
-  );
-  initializeReelDisplayGrid(filtered);
-  setupVideoPlaybackObservers();
-}
 
-function openProfile(userId) {
-  if (userId) window.location.href = `profile.html?id=${userId}`;
-}
-
-function shareReel(reelId) {
-  navigator.clipboard?.writeText(window.location.href);
-  displayToast("Reel link copied to clipboard!");
-}
-
-async function toggleFollowState(reelId, btn) {
-  const reel = systemReelsDataset.find(r => String(r.id) === String(reelId));
-  if (!reel) return;
-  reel.isFollowing = !reel.isFollowing;
-  btn.textContent = reel.isFollowing ? "Following" : "Follow";
-  btn.classList.toggle("following", reel.isFollowing);
-  displayToast(reel.isFollowing ? `Following ${reel.author}` : `Unfollowed ${reel.author}`);
-}
-
-async function toggleSaveReel(id, target) {
-  const reel = systemReelsDataset.find(r => String(r.id) === String(id));
-  if (!reel) return;
-  reel.isSaved = !reel.isSaved;
-  const icon = target.querySelector("i");
-  if (icon) icon.className = `${reel.isSaved ? 'fas' : 'far'} fa-bookmark`;
-  displayToast(reel.isSaved ? "Saved to collection" : "Removed from saved");
-}
-
-function triggerAiUpload() {
-  document.getElementById("reelUploadInput").click();
-}
-
-function handleReelUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  displayToast("Processing and uploading in 4K...");
-  systemReelsDataset.unshift({
-    id: 'r_' + Date.now(),
-    author: currentUser.name,
-    author_id: currentUser.id,
-    avatar: currentUser.avatar,
-    caption: prompt("Enter reel caption:") || 'My new reel',
-    videoUrl: URL.createObjectURL(file),
-    views_count: 1,
-    baseReactions: 0,
-    userReaction: null,
-    isFollowing: false,
-    isSaved: false,
-    comments: []
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'PROFILE_AVATAR_UPDATED') {
+      setBottomProfileAvatar(data.avatar_url || '');
+    } else if (data.type === 'NAVIGATE' && data.url) {
+      window.location.href = data.url;
+    }
   });
-  initializeReelDisplayGrid();
-  setupVideoPlaybackObservers();
-}
 
-// ---------- HELPERS ----------
-function findCommentOrReply(reelId, commentId, replyId = null) {
-  const reel = systemReelsDataset.find(r => String(r.id) === String(reelId));
-  if (!reel || !Array.isArray(reel.comments)) return null;
-  const comment = reel.comments.find(c => String(c.id) === String(commentId));
-  if (!comment) return null;
-  if (!replyId) return comment;
-  return (comment.replies || []).find(rep => String(rep.id) === String(replyId)) || null;
-}
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'autrobook_profile') {
+      try {
+        const parsed = JSON.parse(event.newValue || '{}');
+        setBottomProfileAvatar(parsed.avatar_url || parsed.avatar || '');
+      } catch (e) {}
+    }
+  });
 
-function formatMetricDisplay(count) {
-  count = count || 0;
-  if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-  if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
-  return count.toString();
-}
+  document.getElementById('toggleGlobalMuteBtn').addEventListener('click', () => {
+    globalSoundEnabled = !globalSoundEnabled;
+    document.getElementById('globalMuteIcon').className = globalSoundEnabled
+      ? 'fa-solid fa-volume-high'
+      : 'fa-solid fa-volume-xmark';
 
-function escapeHtml(str) {
-  return str ? String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : '';
-}
+    scrollerEl.querySelectorAll('iframe').forEach((iframe) => {
+      try {
+        const vid = iframe.contentWindow?.document?.getElementById('reelVideo');
+        if (vid) vid.muted = !globalSoundEnabled;
+      } catch (e) {}
+    });
+  });
 
-function escapeJs(str) {
-  return str ? String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' ') : '';
-}
+  document.querySelectorAll('#filterTabsRow .filter-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#filterTabsRow .filter-chip').forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeFilter = chip.getAttribute('data-filter') || 'all';
+      renderVerticalReelsFeed();
+    });
+  });
 
-function displayToast(msg) {
-  const c = document.getElementById("toast");
-  if (!c) return;
-  c.textContent = msg;
-  c.classList.add("show");
-  setTimeout(() => c.classList.remove("show"), 3000);
-}
+  searchInputEl.addEventListener('input', () => {
+    searchQuery = searchInputEl.value;
+    renderVerticalReelsFeed();
+  });
 
-function openModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add("active");
-}
+  document.getElementById('clearUserFilterBtn').addEventListener('click', () => {
+    targetUserId = '';
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('user_id');
+    window.history.replaceState({}, '', cleanUrl.toString());
+    renderVerticalReelsFeed();
+  });
 
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove("active");
-}
+  document.addEventListener('DOMContentLoaded', async () => {
+    syncCreateReelLinks();
+    loadLocalLists();
+    await syncProfileAvatarFromSupabase();
+    await fetchReelsFromSources();
+    renderVerticalReelsFeed();
+  });
 </script>
 </body>
-                                                                                  </html>
+       </html>
