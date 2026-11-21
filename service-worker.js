@@ -1,10 +1,14 @@
 // ==========================================
-// Version Update Rule: Change the version number on every update (v2 -> v3 -> v4)
+// Version Update Rule: Increase version number on every update (v5 -> v6 -> v7)
 // ==========================================
-const CACHE_NAME = 'autrobook-v3'; // <-- Increase this number every time you update
+const CACHE_NAME = 'autrobook-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './splash.html',
+  './reels.html',
+  './create-reels.html',
+  './profile.html',
   './css/index.css',
   './js/index.js',
   './logo.png'
@@ -15,62 +19,57 @@ const ASSETS_TO_CACHE = [
 // ==========================================
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
-  self.skipWaiting(); // Activate immediately
+  self.skipWaiting();
 });
 
 // ==========================================
-// 2. ACTIVATE: Delete old caches
+// 2. ACTIVATE: Delete all old caches
 // ==========================================
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
+    caches.keys().then((cacheNames) =>
+      Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            console.log('Deleting old cache:', cache);
             return caches.delete(cache);
           }
         })
-      );
-    })
+      )
+    )
   );
-  self.clients.claim(); // Take control immediately
+  self.clients.claim();
 });
 
 // ==========================================
-// 3. FETCH: Network-First with Cache Fallback
+// 3. FETCH: Always try fresh network first
 // ==========================================
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((networkResponse) => {
-        // Save new files to cache
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
         return networkResponse;
       })
-      .catch(() => {
-        // If offline, serve from cache
-        return caches.match(event.request).then((cachedResponse) => {
+      .catch(() =>
+        caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Fallback to index.html for navigation requests
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }
-        });
-      })
+        })
+      )
   );
 });
