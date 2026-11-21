@@ -585,7 +585,10 @@
         author: reelObj.author_name || '',
         user_id: reelObj.user_id || '',
         from: '/create-reels.html',
-        home: '/home/index.html'
+        home: '/index.html',
+        profile: '/profile.html',
+        reels: '/reels.html',
+        card: '/reels-card.html'
       });
       return `/reels-card.html?${params.toString()}`;
     }
@@ -594,7 +597,10 @@
       const params = new URLSearchParams({
         reel: reelObj.id || '',
         id: reelObj.id || '',
-        from: '/create-reels.html'
+        from: '/create-reels.html',
+        home: '/index.html',
+        profile: '/profile.html',
+        card: '/reels-card.html'
       });
       return `/reels.html?${params.toString()}`;
     }
@@ -607,11 +613,16 @@
       const reelObj = {
         id: tile.getAttribute('data-id') || `reel_${Date.now()}`,
         media_url: tile.getAttribute('data-src') || '',
+        video_url: tile.getAttribute('data-src') || '',
         media_type: tile.getAttribute('data-type') || 'video',
+        is_video: (tile.getAttribute('data-type') || 'video') === 'video',
+        is_reel: true,
         caption: reelCaptionInput.value.trim() || tile.getAttribute('data-title') || 'Autrobook Reel',
         audio_name: selectedAudioName || 'Original Audio',
         author_name: localStorage.getItem('autro_profile_name') || 'Autrobook User',
-        user_id: localStorage.getItem('autro_user_id') || ''
+        author_avatar: localStorage.getItem('autro_profile_avatar') || '',
+        user_id: localStorage.getItem('autro_user_id') || '',
+        created_at: new Date().toISOString()
       };
       try {
         localStorage.setItem('autrobook_active_reel_card', JSON.stringify(reelObj));
@@ -659,33 +670,90 @@
       syncEmptyState();
     }
 
-    function saveReelEverywhere(reelRecord) {
-      const listKeys = [
+    function fileToDataUrl(file) {
+      return new Promise((resolve) => {
+        if (!file) return resolve('');
+        if (file.size > 6 * 1024 * 1024) return resolve('');
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function saveReelEverywhere(reelRecord, fallbackDataUrl = '') {
+      const portableRecord = {
+        ...reelRecord,
+        media_url: (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
+          ? reelRecord.media_url
+          : (fallbackDataUrl || reelRecord.media_url || ''),
+        video_url: (reelRecord.video_url && !String(reelRecord.video_url).startsWith('blob:'))
+          ? reelRecord.video_url
+          : (fallbackDataUrl || reelRecord.video_url || reelRecord.media_url || '')
+      };
+
+      const feedAndCardKeys = [
         'autrobook_live_reels',
         'autro_reels',
         'autrobook_reels',
         'autro_instant_reels',
-        'autrobook_profile_reels',
-        'autrobook_reel_cards'
+        'autrobook_reel_cards',
+        'autro_instant_feed_posts',
+        'autro_post_cards'
       ];
 
-      if (reelRecord.user_id) {
-        listKeys.push(`autrobook_profile_reels_${reelRecord.user_id}`);
+      const profileKeys = [
+        'autrobook_profile_reels',
+        'autro_profile_reels',
+        'autrobook_user_reels',
+        'autrobook_profile_posts',
+        'autro_profile_posts'
+      ];
+
+      if (portableRecord.user_id) {
+        profileKeys.push(`autrobook_profile_reels_${portableRecord.user_id}`);
+        profileKeys.push(`autrobook_profile_posts_${portableRecord.user_id}`);
       }
 
-      listKeys.forEach((key) => {
+      const writeList = (key, maxLen = 40) => {
         try {
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
-          const arr = Array.isArray(existing) ? existing.filter((x) => x && x.id !== reelRecord.id) : [];
-          arr.unshift(reelRecord);
-          localStorage.setItem(key, JSON.stringify(arr.slice(0, 40)));
-        } catch (e) {}
-      });
+          const arr = Array.isArray(existing) ? existing.filter((x) => x && String(x.id) !== String(portableRecord.id)) : [];
+          arr.unshift(portableRecord);
+          localStorage.setItem(key, JSON.stringify(arr.slice(0, maxLen)));
+        } catch (e) {
+          try {
+            const slim = {
+              id: portableRecord.id,
+              user_id: portableRecord.user_id || '',
+              author_name: portableRecord.author_name || 'Autrobook User',
+              author_avatar: portableRecord.author_avatar || '',
+              caption: portableRecord.caption || '',
+              is_reel: true,
+              is_video: Boolean(portableRecord.is_video),
+              media_type: portableRecord.media_type || 'video',
+              media_url: String(portableRecord.media_url || '').startsWith('data:') ? '' : (portableRecord.media_url || ''),
+              video_url: String(portableRecord.video_url || '').startsWith('data:') ? '' : (portableRecord.video_url || ''),
+              audio_name: portableRecord.audio_name || 'Original Audio',
+              reaction_count: 0,
+              comment_count: 0,
+              share_count: 0,
+              view_count: 0,
+              created_at: portableRecord.created_at
+            };
+            localStorage.setItem(key, JSON.stringify([slim]));
+          } catch (__) {}
+        }
+      };
+
+      [...feedAndCardKeys, ...profileKeys].forEach((k) => writeList(k, 40));
 
       try {
-        localStorage.setItem('autro_new_reel_created', JSON.stringify(reelRecord));
-        localStorage.setItem('autrobook_active_reel_card', JSON.stringify(reelRecord));
-        sessionStorage.setItem('autrobook_active_reel_card', JSON.stringify(reelRecord));
+        localStorage.setItem('autro_new_reel_created', JSON.stringify(portableRecord));
+        localStorage.setItem('autro_new_post_created', JSON.stringify(portableRecord));
+        localStorage.setItem('autrobook_active_reel_card', JSON.stringify(portableRecord));
+        sessionStorage.setItem('autrobook_active_reel_card', JSON.stringify(portableRecord));
+        window.dispatchEvent(new CustomEvent('autrobook:reel-created', { detail: portableRecord }));
       } catch (e) {}
     }
 
@@ -707,8 +775,14 @@
               .select('full_name, avatar_url')
               .eq('id', userId)
               .maybeSingle();
-            if (prof?.full_name) authorName = prof.full_name;
-            if (prof?.avatar_url) authorAvatar = prof.avatar_url;
+            if (prof?.full_name) {
+              authorName = prof.full_name;
+              localStorage.setItem('autro_profile_name', authorName);
+            }
+            if (prof?.avatar_url) {
+              authorAvatar = prof.avatar_url;
+              localStorage.setItem('autro_profile_avatar', authorAvatar);
+            }
           }
         } catch (e) {}
       }
@@ -716,6 +790,8 @@
       reelRecord.user_id = userId || reelRecord.user_id || '';
       reelRecord.author_name = authorName;
       reelRecord.author_avatar = authorAvatar;
+
+      const dataUrlBackup = rawFile ? await fileToDataUrl(rawFile) : '';
 
       if (supabaseClient && rawFile && !String(reelRecord.media_url).startsWith('http')) {
         try {
@@ -778,7 +854,7 @@
         }
       } catch (e) {}
 
-      saveReelEverywhere(reelRecord);
+      saveReelEverywhere(reelRecord, dataUrlBackup);
       return reelRecord;
     }
 
@@ -803,9 +879,11 @@
         media_url: mediaUrl,
         video_url: mediaUrl,
         media_type: mediaType,
+        is_video: mediaType === 'video',
         caption: captionText || (chosenTile && chosenTile.getAttribute('data-title')) || 'New Reel',
         audio_name: selectedAudioName || 'Original Audio',
         is_reel: true,
+        card_page: 'reels-card.html',
         likes: 0,
         reaction_count: 0,
         comment_count: 0,
@@ -817,7 +895,7 @@
       const savedRecord = await persistReelToBackend(reelRecord, rawFile);
       saveReelEverywhere(savedRecord);
 
-      notify('Reel Uploaded!');
+      notify('Reel Uploaded! Opening Reels...');
       setTimeout(() => {
         window.location.href = buildReelsFeedUrl(savedRecord);
       }, 300);
