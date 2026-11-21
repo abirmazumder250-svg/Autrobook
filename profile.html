@@ -511,6 +511,82 @@
       border: 1px solid var(--border);
     }
 
+    /* Separate Profile Reels Grid */
+    .reels-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .reel-profile-card {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .reel-profile-media-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      background: #0f1110;
+      overflow: hidden;
+    }
+
+    .reel-profile-media-wrap video,
+    .reel-profile-media-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .reel-badge-pill {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(11, 61, 32, 0.88);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .reel-profile-meta {
+      padding: 9px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .reel-profile-caption {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .reel-profile-sub {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
     .post-card {
       padding: 12px 0 10px;
       margin-bottom: 12px;
@@ -1839,11 +1915,13 @@
   </div>
 
   <div id="panel-reels" class="tab-panel">
-    <section class="section-block">
+    <section class="section-block" id="profileReelsSection">
       <div class="section-head">
         <h2 class="section-title">Reels</h2>
+        <span class="section-link" id="reelsCountLabel">0 reels</span>
       </div>
-      <div class="empty-state">
+      <div class="reels-grid" id="profileReelsGrid"></div>
+      <div class="empty-state" id="reelsEmptyState">
         <i class="fas fa-clapperboard"></i>
         No reels available
       </div>
@@ -2126,6 +2204,7 @@
     let isFramed = false;
 
     let renderedPostsModel = [];
+    let renderedReelsModel = [];
     let commentsByPost = new Map();
     let userFriendsList = [];
     let activeReactionTarget = null;
@@ -2838,6 +2917,135 @@
       return sources;
     }
 
+    function readAllLocalReelSources() {
+      const sources = [];
+      const keys = [
+        'autrobook_profile_reels',
+        'autrobook_live_reels',
+        'autro_reels',
+        'autrobook_reels',
+        'autro_instant_reels',
+        'autrobook_reel_cards'
+      ];
+
+      if (viewedUserId) keys.push(`autrobook_profile_reels_${viewedUserId}`);
+      if (activeUserId) keys.push(`autrobook_profile_reels_${activeUserId}`);
+
+      for (const k of keys) {
+        try {
+          const arr = JSON.parse(localStorage.getItem(k) || '[]');
+          if (Array.isArray(arr)) sources.push(...arr);
+        } catch (_) {}
+      }
+
+      try {
+        const singleReel = JSON.parse(localStorage.getItem('autro_new_reel_created') || 'null');
+        if (singleReel && typeof singleReel === 'object') sources.unshift(singleReel);
+      } catch (_) {}
+
+      return sources;
+    }
+
+    function normalizeReelItem(rawReel, idx) {
+      if (!rawReel || typeof rawReel !== 'object') return null;
+      const mediaUrl = String(rawReel.media_url || rawReel.video_url || rawReel.src || '').trim();
+      const caption = String(rawReel.caption || rawReel.title || '').trim();
+      if (!mediaUrl && !caption) return null;
+
+      return {
+        id: rawReel.id || `reel-prof-${idx}`,
+        user_id: rawReel.user_id || rawReel.author_id || viewedUserId || activeUserId || '',
+        author_name: rawReel.author_name || activeAuthorName || 'User',
+        media_url: mediaUrl,
+        video_url: mediaUrl,
+        media_type: rawReel.media_type || (isVideoUrl(mediaUrl) ? 'video' : 'image'),
+        caption: caption || 'Reel',
+        audio_name: rawReel.audio_name || rawReel.audio || 'Original Audio',
+        is_reel: true,
+        created_at: rawReel.created_at || rawReel.savedAt || new Date().toISOString()
+      };
+    }
+
+    function filterValidReels(rawReels) {
+      if (!Array.isArray(rawReels)) return [];
+      const seen = new Set();
+      return rawReels
+        .map((r, i) => normalizeReelItem(r, i))
+        .filter((item) => {
+          if (!item) return false;
+          const key = item.id ? String(item.id) : `${item.caption}__${item.media_url.slice(-24)}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => {
+          const tA = new Date(a.created_at || 0).getTime() || 0;
+          const tB = new Date(b.created_at || 0).getTime() || 0;
+          return tB - tA;
+        });
+    }
+
+    function buildReelOpenHref(reel) {
+      const params = new URLSearchParams({
+        id: reel.id || '',
+        reel: reel.id || '',
+        media: reel.media_url || '',
+        type: reel.media_type || 'video',
+        title: reel.caption || 'Autrobook Reel',
+        caption: reel.caption || '',
+        audio: reel.audio_name || '',
+        author: reel.author_name || '',
+        from: 'profile.html'
+      });
+      return `reels-card.html?${params.toString()}`;
+    }
+
+    function renderProfileReels(reelsList) {
+      const grid = document.getElementById('profileReelsGrid');
+      const empty = document.getElementById('reelsEmptyState');
+      const countEl = document.getElementById('reelsCountLabel');
+      const items = filterValidReels(reelsList);
+      renderedReelsModel = items;
+
+      if (countEl) {
+        countEl.textContent = `${items.length} ${items.length === 1 ? 'reel' : 'reels'}`;
+      }
+      if (!grid || !empty) return;
+
+      if (!items.length) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.innerHTML = items.map((reel) => {
+        const href = buildReelOpenHref(reel);
+        const isVid = reel.media_type === 'video' || isVideoUrl(reel.media_url);
+        const mediaHtml = reel.media_url
+          ? (isVid
+              ? `<video src="${escapeHtml(reel.media_url)}" muted playsinline preload="metadata"></video>`
+              : `<img src="${escapeHtml(reel.media_url)}" alt="${escapeHtml(reel.caption)}">`)
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:28px;"><i class="fas fa-clapperboard"></i></div>`;
+
+        return `
+          <a href="${escapeHtml(href)}" class="reel-profile-card">
+            <div class="reel-profile-media-wrap">
+              ${mediaHtml}
+              <span class="reel-badge-pill"><i class="fas fa-play"></i> Reel</span>
+            </div>
+            <div class="reel-profile-meta">
+              <div class="reel-profile-caption">${escapeHtml(reel.caption)}</div>
+              <div class="reel-profile-sub">
+                <span>${escapeHtml(reel.audio_name)}</span>
+                <span>${escapeHtml(formatShortElapsed(reel.created_at))}</span>
+              </div>
+            </div>
+          </a>
+        `;
+      }).join('');
+    }
+
     function prependInstantPostToProfile(newPostObj) {
       const stored = readStoredProfile();
       const existing = Array.isArray(stored.posts) ? stored.posts : [];
@@ -3032,7 +3240,7 @@
 
     function getPostText(post) {
       if (!post) return '';
-      return String(post.caption || post.content || post.text || '').trim();
+      return String(post.caption || post.content || post.text || post.title || '').trim();
     }
 
     function renderPhotos(avatarUrl, coverUrl, posts) {
@@ -4382,7 +4590,8 @@
 
       setFriendsDisplay(data.friends_count ?? 0);
 
-      const postsArr = filterValidPosts([...(data.posts || []), ...readAllLocalPostSources()]);
+      const reelsArr = filterValidReels(readAllLocalReelSources());
+      const postsArr = filterValidPosts([...(data.posts || []), ...readAllLocalPostSources(), ...reelsArr]);
       const postsNum = postsArr.length;
       document.getElementById('postsCountLabel').textContent = `${postsNum} ${postsNum === 1 ? 'post' : 'posts'}`;
 
@@ -4398,6 +4607,7 @@
       setImageIfPresent(document.getElementById('coverImg'), coverUrl);
       renderPhotos(avatarUrl, coverUrl, postsArr);
       renderLivePosts(postsArr);
+      renderProfileReels(reelsArr);
       renderDetails(data);
       evaluateBlackVerificationTick(data);
     }
@@ -4460,7 +4670,8 @@
 
       const current = readStoredProfile();
       const isOwn = Boolean(!userId || (activeUserId && userId === activeUserId));
-      const cachedPosts = isOwn ? filterValidPosts([...(current.posts || []), ...readAllLocalPostSources()]) : [];
+      const localReels = filterValidReels(readAllLocalReelSources());
+      const cachedPosts = isOwn ? filterValidPosts([...(current.posts || []), ...readAllLocalPostSources(), ...localReels]) : [];
 
       if (!sb) {
         applyProfileData(current);
@@ -4469,6 +4680,7 @@
 
       let friendsTotal = isOwn ? Number(current.friends_count || 0) : 0;
       let dbPosts = cachedPosts;
+      let dbReels = localReels;
 
       if (userId) {
         try {
@@ -4506,14 +4718,30 @@
 
         const { data, error } = await query;
         if (!error && Array.isArray(data)) {
-          dbPosts = filterValidPosts(isOwn ? [...data, ...cachedPosts] : [...data, ...readAllLocalPostSources()]);
+          dbPosts = filterValidPosts(isOwn ? [...data, ...cachedPosts] : [...data, ...readAllLocalPostSources(), ...localReels]);
         }
       } catch (e) {
         console.warn('Posts fetch error:', e);
       }
 
+      try {
+        let rQuery = sb
+          .from('reels')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(40);
+        if (userId) {
+          rQuery = rQuery.eq('user_id', userId);
+        }
+        const { data: rData, error: rErr } = await rQuery;
+        if (!rErr && Array.isArray(rData)) {
+          dbReels = filterValidReels([...rData, ...localReels]);
+        }
+      } catch (_) {}
+
       setFriendsDisplay(friendsTotal);
       renderLivePosts(dbPosts);
+      renderProfileReels(dbReels);
 
       const avatarUrl = document.getElementById('avatarImg')?.getAttribute('src') || (isOwn ? (current.avatar_url || current.selfie_url || '') : '');
       const coverUrl = document.getElementById('coverImg')?.getAttribute('src') || (isOwn ? (current.cover_url || '') : '');
@@ -4527,6 +4755,7 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` }, () => loadProfile())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => refreshLiveCounts(userId))
           .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => refreshLiveCounts(userId))
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'reels' }, () => refreshLiveCounts(userId))
           .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => refreshStoryRing(userId))
           .on('postgres_changes', { event: '*', schema: 'public', table: 'account_restrictions' }, () => refreshRestrictionState(userId))
           .subscribe();
@@ -4538,6 +4767,12 @@
     async function loadProfile() {
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('user') || urlParams.get('id') || '';
+      const paramTab = (urlParams.get('tab') || '').toLowerCase();
+
+      if (['all', 'photos', 'reels'].includes(paramTab)) {
+        const tabBtn = document.querySelector(`.sub-tab[data-panel="${paramTab}"]`);
+        switchSubTab(paramTab, tabBtn);
+      }
 
       const localData = readStoredProfile();
       await loadUserFriendsList(null);
