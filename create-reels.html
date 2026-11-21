@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create reel - Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-color: #ffffff;
+    --surface-color: #ffffff;
+    --card-bg: #f8fafc;
+    --input-bg: #f1f5f9;
+    --text-color: #0f172a;
+    --muted-color: #5f6368;
+    --border-color: #e5e7eb;
+    --hover-color: rgba(0, 0, 0, 0.05);
+    --accent-color: #111827;
+    --accent-hover: #1f2937;
+    --accent-soft: rgba(17, 24, 39, 0.08);
+    --accent-glow: rgba(17, 24, 39, 0.16);
+    --quick-circle-bg: #e9ecef;
+    --btn-text: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #202124;
+      --surface-color: #202124;
+      --card-bg: #292a2d;
+      --input-bg: #303134;
+      --text-color: #f1f5f9;
+      --muted-color: #9aa0a6;
+      --border-color: #3c4043;
+      --hover-color: rgba(255, 255, 255, 0.07);
+      --accent-color: #e8eaed;
+      --accent-hover: #ffffff;
+      --accent-soft: rgba(232, 234, 237, 0.12);
+      --accent-glow: rgba(0, 0, 0, 0.28);
+      --quick-circle-bg: #3c4043;
+      --btn-text: #202124;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-shell {
+    max-width: 680px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background-color: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top Bar matching screenshot */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .top-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.18s ease, transform 0.15s ease;
+  }
+
+  .icon-btn:hover {
+    background-color: var(--hover-color);
+    transform: scale(1.04);
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .top-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .share-pill-btn {
+    padding: 8px 15px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background-color: var(--accent-color);
+    color: var(--btn-text);
+    font-size: 13.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    box-shadow: 0 3px 12px var(--accent-glow);
+    transition: transform 0.15s ease, background-color 0.18s ease;
+  }
+
+  .share-pill-btn:hover {
+    transform: translateY(-1px);
+    background-color: var(--accent-hover);
+  }
+
+  /* Horizontal Quick Tools Strip */
+  .quick-tools-strip {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 14px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+  }
+
+  .quick-tools-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-tool-item {
+    flex: 0 0 auto;
+    width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text-color);
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: transform 0.16s ease;
+  }
+
+  .quick-tool-item:hover {
+    transform: translateY(-2px);
+  }
+
+  .quick-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background-color: var(--quick-circle-bg);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .quick-tool-item.active .quick-circle {
+    background-color: var(--accent-color);
+    color: var(--btn-text);
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+
+  .quick-label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--text-color);
+  }
+
+  /* Gallery & Select Multiple Header */
+  .gallery-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .gallery-dropdown-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 17px;
+    font-weight: 700;
+    padding: 6px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .gallery-dropdown-btn:hover {
+    background-color: var(--hover-color);
+  }
+
+  .select-multiple-btn {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 13.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  }
+
+  .select-multiple-btn.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--btn-text);
+    box-shadow: 0 3px 10px var(--accent-glow);
+  }
+
+  /* Gallery Media Grid */
+  .media-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    padding: 0 3px 20px;
+  }
+
+  .empty-gallery-box {
+    grid-column: 1 / -1;
+    margin: 6px 11px 10px;
+    padding: 28px 16px;
+    border-radius: 16px;
+    border: 1.5px dashed var(--border-color);
+    background-color: var(--card-bg);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: border-color 0.18s ease, transform 0.15s ease;
+  }
+
+  .empty-gallery-box:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+  }
+
+  .empty-gallery-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background-color: var(--accent-soft);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .empty-gallery-title {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+
+  .empty-gallery-sub {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted-color);
+  }
+
+  .media-tile {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    background-color: var(--card-bg);
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.16s ease, border-color 0.16s ease, filter 0.16s ease;
+  }
+
+  .media-tile:hover {
+    filter: brightness(0.94);
+  }
+
+  .media-tile.selected {
+    border-color: var(--accent-color);
+  }
+
+  .media-tile img,
+  .media-tile video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.25s ease;
+  }
+
+  .media-tile:hover img,
+  .media-tile:hover video {
+    transform: scale(1.03);
+  }
+
+  .media-badge {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background-color: rgba(32, 33, 36, 0.78);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .select-check {
+    display: none;
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    background-color: rgba(32, 33, 36, 0.55);
+    color: #ffffff;
+    font-size: 12px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .multi-select-mode .select-check {
+    display: inline-flex;
+  }
+
+  .media-tile.selected .select-check {
+    background-color: var(--accent-color);
+    color: var(--btn-text);
+    border-color: var(--accent-color);
+  }
+
+  .status-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    max-width: 90%;
+    z-index: 50;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--btn-text);
+    background-color: var(--accent-color);
+    border-radius: 999px;
+    padding: 9px 16px;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+    display: none;
+  }
+
+  .status-toast.show {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Top Header -->
+  <header class="top-bar">
+    <div class="top-left">
+      <a href="index.html" id="closeToHomeBtn" class="icon-btn" title="Back to Home" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+      <h1 class="page-title">Create reel</h1>
+    </div>
+
+    <div class="top-right">
+      <button type="button" class="share-pill-btn" id="topShareBtn" title="Open Reels Card">
+        <i class="fa-solid fa-clapperboard"></i>
+        <span>Reels</span>
+      </button>
+      <a href="camera-roll-sharing-suggestions.html" class="icon-btn" title="Settings" aria-label="Settings">
+        <i class="fa-solid fa-gear"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- Horizontal Quick Tools -->
+  <nav class="quick-tools-strip" aria-label="Reel creation tools">
+    <button type="button" class="quick-tool-item" id="cameraToolBtn">
+      <span class="quick-circle"><i class="fa-solid fa-camera"></i></span>
+      <span class="quick-label">Camera</span>
+    </button>
+
+    <button type="button" class="quick-tool-item" id="musicToolBtn">
+      <span class="quick-circle"><i class="fa-solid fa-music"></i></span>
+      <span class="quick-label">Music</span>
+    </button>
+
+    <a href="templates.html" class="quick-tool-item" id="templatesToolLink">
+      <span class="quick-circle"><i class="fa-regular fa-square-plus"></i></span>
+      <span class="quick-label">Templates</span>
+    </a>
+
+    <a href="filters.html" class="quick-tool-item" id="filtersToolLink">
+      <span class="quick-circle"><i class="fa-solid fa-sliders"></i></span>
+      <span class="quick-label">Add Filters</span>
+    </a>
+
+    <a href="draft.html" class="quick-tool-item" id="draftsToolLink">
+      <span class="quick-circle"><i class="fa-regular fa-file-lines"></i></span>
+      <span class="quick-label">Drafts</span>
+    </a>
+  </nav>
+
+  <!-- Hidden inputs for Camera, Music, and Gallery uploads -->
+  <input type="file" id="cameraCaptureInput" accept="video/*,image/*" capture="environment" hidden>
+  <input type="file" id="musicFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac" hidden>
+  <input type="file" id="galleryUploadInput" accept="video/*,image/*" multiple hidden>
+
+  <!-- Gallery & Select Multiple Row -->
+  <div class="gallery-header">
+    <button type="button" class="gallery-dropdown-btn" id="galleryPickerBtn">
+      <span>Gallery</span>
+      <i class="fa-solid fa-chevron-down" style="font-size: 13px;"></i>
+    </button>
+
+    <button type="button" class="select-multiple-btn" id="selectMultipleBtn">
+      <i class="fa-regular fa-images"></i>
+      <span>Select multiple</span>
+    </button>
+  </div>
+
+  <!-- Media Grid (Clicking any item opens reels-card.html) -->
+  <section class="media-grid" id="mediaGrid" aria-label="Gallery media">
+    <div class="empty-gallery-box" id="emptyGalleryBox">
+      <span class="empty-gallery-icon"><i class="fa-regular fa-images"></i></span>
+      <h2 class="empty-gallery-title">No media selected yet</h2>
+      <p class="empty-gallery-sub">Tap Gallery or Camera to add photos or videos.</p>
+    </div>
+  </section>
+
+  <div class="status-toast" id="statusToast"></div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const closeToHomeBtn = document.getElementById('closeToHomeBtn');
+    const cameraToolBtn = document.getElementById('cameraToolBtn');
+    const musicToolBtn = document.getElementById('musicToolBtn');
+    const draftsToolLink = document.getElementById('draftsToolLink');
+    const topShareBtn = document.getElementById('topShareBtn');
+
+    const cameraCaptureInput = document.getElementById('cameraCaptureInput');
+    const musicFileInput = document.getElementById('musicFileInput');
+    const galleryUploadInput = document.getElementById('galleryUploadInput');
+    const galleryPickerBtn = document.getElementById('galleryPickerBtn');
+    const selectMultipleBtn = document.getElementById('selectMultipleBtn');
+    const mediaGrid = document.getElementById('mediaGrid');
+    const statusToast = document.getElementById('statusToast');
+
+    let isMultiSelect = false;
+    let selectedAudioName = '';
+
+    if (closeToHomeBtn) {
+      closeToHomeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = 'index.html';
+      });
+    }
+
+    function notify(msg) {
+      statusToast.textContent = msg;
+      statusToast.classList.add('show');
+      clearTimeout(notify._t);
+      notify._t = setTimeout(() => {
+        statusToast.classList.remove('show');
+      }, 2600);
+    }
+
+    function syncEmptyState() {
+      const hasTiles = mediaGrid.querySelectorAll('.media-tile').length > 0;
+      const emptyBox = document.getElementById('emptyGalleryBox');
+      if (emptyBox) {
+        emptyBox.style.display = hasTiles ? 'none' : 'flex';
+      }
+    }
+
+    function openReelsCard(tile) {
+      const src = tile.getAttribute('data-src') || '';
+      const type = tile.getAttribute('data-type') || 'video';
+      const title = tile.getAttribute('data-title') || 'Autrobook Reel';
+      const params = new URLSearchParams({
+        media: src,
+        type: type,
+        title: title,
+        audio: selectedAudioName
+      });
+      window.location.href = `reels-card.html?${params.toString()}`;
+    }
+
+    function bindTileClick(tile) {
+      tile.addEventListener('click', () => {
+        if (isMultiSelect) {
+          tile.classList.toggle('selected');
+        } else {
+          openReelsCard(tile);
+        }
+      });
+    }
+
+    function addMediaTile(file, badgeText) {
+      const url = URL.createObjectURL(file);
+      const isVideo = file.type.startsWith('video/');
+      const tile = document.createElement('div');
+      tile.className = 'media-tile';
+      tile.setAttribute('data-src', url);
+      tile.setAttribute('data-type', isVideo ? 'video' : 'image');
+      tile.setAttribute('data-title', file.name);
+      tile.innerHTML = isVideo
+        ? `<video src="${url}" muted playsinline preload="metadata"></video><span class="media-badge"><i class="fa-solid fa-video"></i> ${badgeText}</span><span class="select-check"><i class="fa-solid fa-check"></i></span>`
+        : `<img src="${url}" alt="${file.name}"><span class="media-badge"><i class="fa-regular fa-image"></i> ${badgeText}</span><span class="select-check"><i class="fa-solid fa-check"></i></span>`;
+      bindTileClick(tile);
+      mediaGrid.prepend(tile);
+      syncEmptyState();
+    }
+
+    const emptyGalleryBox = document.getElementById('emptyGalleryBox');
+    if (emptyGalleryBox) {
+      emptyGalleryBox.addEventListener('click', () => {
+        galleryUploadInput.click();
+      });
+    }
+
+    cameraToolBtn.addEventListener('click', () => {
+      cameraCaptureInput.click();
+    });
+
+    cameraCaptureInput.addEventListener('change', () => {
+      const file = cameraCaptureInput.files && cameraCaptureInput.files[0];
+      if (!file) return;
+      addMediaTile(file, 'Camera');
+      notify(`Captured: ${file.name}`);
+    });
+
+    musicToolBtn.addEventListener('click', () => {
+      musicFileInput.click();
+    });
+
+    musicFileInput.addEventListener('change', () => {
+      const file = musicFileInput.files && musicFileInput.files[0];
+      if (!file) return;
+      selectedAudioName = file.name;
+      notify(`Audio selected: ${file.name}`);
+    });
+
+    galleryPickerBtn.addEventListener('click', () => {
+      galleryUploadInput.click();
+    });
+
+    galleryUploadInput.addEventListener('change', () => {
+      const files = Array.from(galleryUploadInput.files || []);
+      if (!files.length) return;
+      files.forEach((file) => {
+        addMediaTile(file, file.type.startsWith('video/') ? 'Reel' : 'Photo');
+      });
+      notify(`${files.length} item(s) added to Gallery.`);
+    });
+
+    selectMultipleBtn.addEventListener('click', () => {
+      isMultiSelect = !isMultiSelect;
+      selectMultipleBtn.classList.toggle('active', isMultiSelect);
+      mediaGrid.classList.toggle('multi-select-mode', isMultiSelect);
+      if (!isMultiSelect) {
+        mediaGrid.querySelectorAll('.media-tile.selected').forEach((t) => t.classList.remove('selected'));
+      }
+      notify(isMultiSelect ? 'Select multiple enabled.' : 'Select multiple off.');
+    });
+
+    topShareBtn.addEventListener('click', () => {
+      const firstTile = mediaGrid.querySelector('.media-tile.selected') || mediaGrid.querySelector('.media-tile');
+      if (firstTile) {
+        openReelsCard(firstTile);
+      } else {
+        window.location.href = 'reels-card.html';
+      }
+    });
+
+    // Save draft when clicking Drafts in the corner tool bar and open draft.html
+    if (draftsToolLink) {
+      draftsToolLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const selectedItems = Array.from(mediaGrid.querySelectorAll('.media-tile.selected')).map((el) => ({
+          src: el.getAttribute('data-src'),
+          type: el.getAttribute('data-type'),
+          title: el.getAttribute('data-title')
+        }));
+
+        const hasDraftData = selectedItems.length > 0 || Boolean(selectedAudioName);
+        if (hasDraftData) {
+          const newDraft = {
+            id: 'draft_' + Date.now(),
+            audio: selectedAudioName,
+            selectedCount: selectedItems.length,
+            items: selectedItems,
+            savedAt: new Date().toLocaleString()
+          };
+          try {
+            const existing = JSON.parse(localStorage.getItem('autrobook_drafts') || '[]');
+            existing.unshift(newDraft);
+            localStorage.setItem('autrobook_drafts', JSON.stringify(existing));
+          } catch (err) {}
+          notify('Draft saved! Opening drafts...');
+          setTimeout(() => {
+            window.location.href = 'draft.html';
+          }, 350);
+        } else {
+          window.location.href = 'draft.html';
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>
