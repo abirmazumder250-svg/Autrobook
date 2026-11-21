@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Friends — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #FFFFFF;
+      --surface: #f8f9fa;
+      --card: #FFFFFF;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --hover: #f1f3f4;
+      --btn-sec: #f1f3f4;
+      --btn-sec-hover: #e8eaed;
+      --btn-pri: #202124;
+      --btn-pri-text: #FFFFFF;
+      --btn-pri-hover: #3c4043;
+      --danger-bg: rgba(217, 48, 37, 0.12);
+      --danger-text: #d93025;
+      --shadow: 0 2px 10px rgba(32, 33, 36, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #202124;
+        --surface: #292a2d;
+        --card: #202124;
+        --text: #FFFFFF;
+        --muted: #9aa0a6;
+        --border: #3c4043;
+        --hover: #292a2d;
+        --btn-sec: #292a2d;
+        --btn-sec-hover: #3c4043;
+        --btn-pri: #FFFFFF;
+        --btn-pri-text: #202124;
+        --btn-pri-hover: #e8eaed;
+        --danger-bg: rgba(242, 139, 130, 0.16);
+        --danger-text: #f28b82;
+        --shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 72px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Nav */
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      height: 56px;
+      padding: 0 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .top-nav h2 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      flex: 1;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Main Container */
+    .friends-container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      height: 38px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 0.16s ease, color 0.16s ease;
+    }
+
+    .tab-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .tab-btn.active {
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      border-color: var(--btn-pri);
+    }
+
+    .badge {
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* All Friends Count Row */
+    .all-friends-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 2px 2px;
+    }
+
+    .all-friends-count {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* Friend Cards */
+    .friend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .friend-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .friend-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .avatar-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .avatar-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .friend-meta {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .friend-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .friend-sub {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .friend-actions {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .action-btn {
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: background 0.16s ease, transform 0.14s ease;
+    }
+
+    .action-btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-primary {
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      border-color: var(--btn-pri);
+    }
+
+    .btn-primary:hover {
+      background: var(--btn-pri-hover);
+    }
+
+    .btn-remove {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border-color: transparent;
+    }
+
+    .btn-remove:hover {
+      filter: brightness(0.96);
+    }
+
+    .dots-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .dots-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .dots-menu {
+      position: absolute;
+      top: 42px;
+      right: 0;
+      z-index: 20;
+      min-width: 156px;
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .dots-menu.open {
+      display: flex;
+    }
+
+    .dots-item {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .dots-item.danger {
+      color: var(--danger-text);
+      background: var(--danger-bg);
+    }
+
+    .dots-item.confirming {
+      background: var(--danger-text);
+      color: #FFFFFF;
+    }
+
+    /* Empty State */
+    .empty-state {
+      padding: 36px 18px;
+      border-radius: 16px;
+      border: 1px dashed var(--border);
+      background: var(--surface);
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Bottom Nav matching reference layout */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 35;
+      height: 54px;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    .bn-item {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.16s ease, background 0.16s ease;
+    }
+
+    .bn-item:hover {
+      background: var(--hover);
+      color: var(--text);
+    }
+
+    .bn-item.active {
+      color: var(--text);
+    }
+
+    .bn-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 18%;
+      right: 18%;
+      height: 2.5px;
+      background: var(--text);
+      border-radius: 2px 2px 0 0;
+    }
+
+    .bn-avatar-ring {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+
+    .bn-avatar-ring img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 68px;
+      transform: translateX(-50%) translateY(40px);
+      z-index: 100;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.22s ease, opacity 0.22s ease;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <header class="top-nav">
+    <a href="/index.html" class="icon-btn" aria-label="Back to home">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    <h2>Friends</h2>
+    <div class="nav-actions">
+      <a href="search-friend.html" class="icon-btn" aria-label="Search friends">
+        <i class="fas fa-search"></i>
+      </a>
+      <button type="button" class="icon-btn" onclick="reloadSuggestions()" aria-label="Reload suggested friends">
+        <i class="fas fa-rotate-right"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="friends-container">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button type="button" class="tab-btn active" id="tab-requests" onclick="switchTab('requests', this)">
+        Requests <span class="badge" id="requestsBadge">0</span>
+      </button>
+      <button type="button" class="tab-btn" id="tab-suggestions" onclick="switchTab('suggestions', this)">
+        Suggestions <span class="badge" id="suggestionsBadge" style="display:none;"></span>
+      </button>
+      <button type="button" class="tab-btn" id="tab-all" onclick="switchTab('all', this)">
+        All Friends <span class="badge" id="allBadge">0</span>
+      </button>
+    </div>
+
+    <!-- CONTENT CONTAINER -->
+    <div id="friendsContent"></div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <div class="bn-item" onclick="window.location.href='/public/reels.html'" aria-label="Reels">
+      <i class="fas fa-clapperboard"></i>
+    </div>
+    <div class="bn-item" onclick="window.location.href='/public/index.html'" aria-label="Home">
+      <i class="fas fa-home"></i>
+    </div>
+    <div class="bn-item active" onclick="switchTab('all', document.getElementById('tab-all'))" aria-label="Friends">
+      <i class="fas fa-user-friends"></i>
+    </div>
+    <div class="bn-item" onclick="window.location.href='/public/games.html'" aria-label="Games">
+      <i class="fas fa-gamepad"></i>
+    </div>
+    <div class="bn-item" onclick="window.location.href='groups.html'" aria-label="Groups">
+      <i class="fas fa-users"></i>
+    </div>
+    <div class="bn-item" onclick="window.location.href='notifications.html'" aria-label="Notifications">
+      <i class="fas fa-bell"></i>
+    </div>
+    <div class="bn-item" onclick="openOwnProfile()" aria-label="Profile">
+      <div class="bn-avatar-ring" id="bottomNavProfileAvatar">
+        <i class="fas fa-user"></i>
+      </div>
+    </div>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+    const sb = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    let currentUserId = '';
+    let currentUserProfile = {
+      id: '',
+      full_name: '',
+      avatar_url: ''
+    };
+    let activeTab = 'requests';
+
+    let allProfiles = [];
+    let requestsList = [];
+    let friendsList = [];
+    let dismissedIds = new Set();
+    let suggestionCycleSeed = 0;
+    let openMenuUserId = null;
+    let pendingTwoClickRemoveId = null;
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
+
+    function openProfile(userId) {
+      if (!userId) {
+        window.location.href = 'profile.html';
+        return;
+      }
+      window.location.href = `profile.html?id=${encodeURIComponent(userId)}`;
+    }
+
+    function openOwnProfile() {
+      if (currentUserId) {
+        window.location.href = `profile.html?id=${encodeURIComponent(currentUserId)}`;
+      } else {
+        window.location.href = 'profile.html';
+      }
+    }
+
+    function renderBottomNavAvatar() {
+      const wrap = document.getElementById('bottomNavProfileAvatar');
+      if (!wrap) return;
+      if (currentUserProfile.avatar_url) {
+        wrap.innerHTML = `<img src="${escapeHtml(currentUserProfile.avatar_url)}" alt="${escapeHtml(currentUserProfile.full_name || 'Profile')}">`;
+      } else {
+        wrap.innerHTML = `<i class="fas fa-user"></i>`;
+      }
+    }
+
+    function switchTab(tab, btn) {
+      activeTab = tab;
+      openMenuUserId = null;
+      pendingTwoClickRemoveId = null;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderContent();
+    }
+
+    function getSuggestions() {
+      const friendIds = new Set(friendsList.map(f => String(f.id)));
+      const reqIds = new Set(requestsList.map(r => String(r.id)));
+
+      const pool = allProfiles.filter(p => {
+        const pid = String(p.id);
+        if (!pid) return false;
+        if (currentUserId && pid === String(currentUserId)) return false;
+        if (dismissedIds.has(pid)) return false;
+        if (friendIds.has(pid)) return false;
+        if (reqIds.has(pid)) return false;
+        return true;
+      });
+
+      if (suggestionCycleSeed > 0 && pool.length > 1) {
+        const offset = suggestionCycleSeed % pool.length;
+        return [...pool.slice(offset), ...pool.slice(0, offset)];
+      }
+      return pool;
+    }
+
+    function reloadSuggestions() {
+      suggestionCycleSeed += 1;
+      if (activeTab !== 'suggestions') {
+        activeTab = 'suggestions';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-suggestions')?.classList.add('active');
+      }
+      updateBadges();
+      renderContent();
+      showToast('Suggested friends reloaded');
+    }
+
+    function updateBadges() {
+      const reqEl = document.getElementById('requestsBadge');
+      const sugEl = document.getElementById('suggestionsBadge');
+      const allEl = document.getElementById('allBadge');
+
+      if (reqEl) reqEl.textContent = String(requestsList.length);
+      if (sugEl) {
+        sugEl.style.display = 'none';
+        sugEl.textContent = '';
+      }
+      if (allEl) allEl.textContent = String(friendsList.length);
+    }
+
+    function normalizeProfile(row) {
+      const name =
+        row.full_name ||
+        row.name ||
+        row.username ||
+        (row.email ? row.email.split('@')[0] : 'Autrobook Member');
+      return {
+        id: String(row.id || row.user_id || ''),
+        full_name: name,
+        username: row.username || '',
+        avatar_url: row.avatar_url || '',
+        bio: row.bio || 'Autrobook member'
+      };
+    }
+
+    async function loadAllData() {
+      try {
+        const savedFriends = JSON.parse(localStorage.getItem('autrobook_friends') || '[]');
+        const savedDismissed = JSON.parse(localStorage.getItem('autrobook_dismissed_profiles') || '[]');
+        if (Array.isArray(savedFriends)) friendsList = savedFriends;
+        if (Array.isArray(savedDismissed)) dismissedIds = new Set(savedDismissed.map(String));
+      } catch (e) {}
+
+      currentUserId = localStorage.getItem('autro_user_id') || '';
+      currentUserProfile = {
+        id: currentUserId,
+        full_name: localStorage.getItem('autro_profile_name') || '',
+        avatar_url: localStorage.getItem('autro_profile_avatar') || ''
+      };
+      renderBottomNavAvatar();
+
+      if (!sb) {
+        updateBadges();
+        renderContent();
+        return;
+      }
+
+      try {
+        const { data: authData } = await sb.auth.getUser();
+        if (authData?.user?.id) {
+          currentUserId = String(authData.user.id);
+          localStorage.setItem('autro_user_id', currentUserId);
+        }
+      } catch (e) {}
+
+      try {
+        const { data: profilesData, error } = await sb
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && Array.isArray(profilesData)) {
+          allProfiles = profilesData.map(normalizeProfile).filter(p => p.id);
+          const meRow = allProfiles.find(p => String(p.id) === String(currentUserId));
+          if (meRow) {
+            currentUserProfile = meRow;
+            if (meRow.avatar_url) {
+              localStorage.setItem('autro_profile_avatar', meRow.avatar_url);
+            }
+            if (meRow.full_name) {
+              localStorage.setItem('autro_profile_name', meRow.full_name);
+            }
+            renderBottomNavAvatar();
+          }
+        }
+      } catch (e) {
+        console.warn('Profiles fetch error:', e);
+      }
+
+      if (currentUserId) {
+        try {
+          const { data: rels, error: relErr } = await sb
+            .from('friendships')
+            .select('*')
+            .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`);
+
+          if (!relErr && Array.isArray(rels)) {
+            const acceptedIds = new Set();
+            const incomingIds = new Set();
+
+            rels.forEach(r => {
+              const u = String(r.user_id || '');
+              const f = String(r.friend_id || '');
+              const status = String(r.status || '').toLowerCase();
+
+              if (status === 'accepted' || status === 'friends') {
+                const otherId = u === String(currentUserId) ? f : u;
+                if (otherId) acceptedIds.add(otherId);
+              } else if (status === 'pending') {
+                if (f === String(currentUserId) && u) incomingIds.add(u);
+              }
+            });
+
+            friendsList = allProfiles.filter(p => acceptedIds.has(String(p.id)));
+            requestsList = allProfiles.filter(p => incomingIds.has(String(p.id)));
+          }
+        } catch (e) {
+          console.warn('Friendships query skipped:', e);
+        }
+      }
+
+      updateBadges();
+      renderContent();
+    }
+
+    function saveLocalFriends() {
+      try {
+        localStorage.setItem('autrobook_friends', JSON.stringify(friendsList));
+        localStorage.setItem('autrobook_dismissed_profiles', JSON.stringify(Array.from(dismissedIds)));
+      } catch (e) {}
+    }
+
+    async function addFriend(userId) {
+      const profile = allProfiles.find(p => String(p.id) === String(userId));
+      if (!profile) return;
+
+      if (!friendsList.some(f => String(f.id) === String(userId))) {
+        friendsList.unshift(profile);
+      }
+      dismissedIds.delete(String(userId));
+      saveLocalFriends();
+
+      if (sb && currentUserId) {
+        try {
+          await sb.from('friendships').upsert({
+            user_id: currentUserId,
+            friend_id: String(userId),
+            status: 'accepted'
+          }, { onConflict: 'user_id,friend_id' });
+        } catch (e) {}
+      }
+
+      updateBadges();
+      renderContent();
+      showToast(`Added ${profile.full_name}`);
+    }
+
+    async function executeRemoveFriend(userId) {
+      const target =
+        friendsList.find(f => String(f.id) === String(userId)) ||
+        allProfiles.find(p => String(p.id) === String(userId));
+
+      friendsList = friendsList.filter(f => String(f.id) !== String(userId));
+      requestsList = requestsList.filter(r => String(r.id) !== String(userId));
+      dismissedIds.add(String(userId));
+      pendingTwoClickRemoveId = null;
+      openMenuUserId = null;
+      saveLocalFriends();
+
+      if (sb && currentUserId) {
+        try {
+          await sb
+            .from('friendships')
+            .delete()
+            .or(
+              `and(user_id.eq.${currentUserId},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUserId})`
+            );
+        } catch (e) {}
+      }
+
+      updateBadges();
+      renderContent();
+      showToast(target ? `Removed ${target.full_name}` : 'Removed friend');
+    }
+
+    function handleTwoClickRemove(userId, event) {
+      if (event) event.stopPropagation();
+      const idStr = String(userId);
+      if (pendingTwoClickRemoveId !== idStr) {
+        pendingTwoClickRemoveId = idStr;
+        renderContent();
+        showToast('Click Remove friend again to confirm');
+        clearTimeout(window._twoClickTimer);
+        window._twoClickTimer = setTimeout(() => {
+          if (pendingTwoClickRemoveId === idStr) {
+            pendingTwoClickRemoveId = null;
+            renderContent();
+          }
+        }, 3000);
+        return;
+      }
+      executeRemoveFriend(idStr);
+    }
+
+    function toggleDotsMenu(userId, event) {
+      if (event) event.stopPropagation();
+      const idStr = String(userId);
+      if (openMenuUserId === idStr) {
+        openMenuUserId = null;
+        pendingTwoClickRemoveId = null;
+      } else {
+        openMenuUserId = idStr;
+        pendingTwoClickRemoveId = null;
+      }
+      renderContent();
+    }
+
+    async function acceptRequest(userId) {
+      const reqProfile = requestsList.find(r => String(r.id) === String(userId));
+      requestsList = requestsList.filter(r => String(r.id) !== String(userId));
+
+      if (reqProfile && !friendsList.some(f => String(f.id) === String(userId))) {
+        friendsList.unshift(reqProfile);
+      }
+      saveLocalFriends();
+
+      if (sb && currentUserId) {
+        try {
+          await sb
+            .from('friendships')
+            .update({ status: 'accepted' })
+            .eq('user_id', String(userId))
+            .eq('friend_id', currentUserId);
+        } catch (e) {}
+      }
+
+      updateBadges();
+      renderContent();
+      showToast(reqProfile ? `${reqProfile.full_name} added to friends` : 'Request accepted');
+    }
+
+    function renderAvatar(person) {
+      if (person.avatar_url) {
+        return `<div class="avatar-box"><img src="${escapeHtml(person.avatar_url)}" alt="${escapeHtml(person.full_name)}"></div>`;
+      }
+      return `<div class="avatar-box"><i class="fas fa-user"></i></div>`;
+    }
+
+    function renderCard(person, mode) {
+      const pid = escapeHtml(person.id);
+      const isConfirming = pendingTwoClickRemoveId === String(person.id);
+      const isMenuOpen = openMenuUserId === String(person.id);
+      const name = escapeHtml(person.full_name);
+      const handle = person.username ? `@${escapeHtml(person.username)}` : escapeHtml(person.bio);
+
+      let actionsHtml = '';
+
+      if (mode === 'requests') {
+        actionsHtml = `
+          <button type="button" class="action-btn btn-primary" onclick="acceptRequest('${pid}')">
+            <i class="fas fa-check"></i><span>Confirm</span>
+          </button>
+          <button type="button" class="action-btn btn-remove" onclick="handleTwoClickRemove('${pid}', event)">
+            <i class="fas fa-xmark"></i><span>${isConfirming ? 'Confirm remove' : 'Remove'}</span>
+          </button>
+        `;
+      } else if (mode === 'suggestions') {
+        actionsHtml = `
+          <button type="button" class="action-btn btn-primary" onclick="addFriend('${pid}')">
+            <i class="fas fa-user-plus"></i><span>Add friend</span>
+          </button>
+          <button type="button" class="action-btn btn-remove" onclick="handleTwoClickRemove('${pid}', event)">
+            <i class="fas fa-user-minus"></i><span>${isConfirming ? 'Confirm remove' : 'Remove friend'}</span>
+          </button>
+        `;
+      } else {
+        actionsHtml = `
+          <button type="button" class="dots-btn" onclick="toggleDotsMenu('${pid}', event)" aria-label="More friend options">
+            <i class="fas fa-ellipsis-v"></i>
+          </button>
+          <div class="dots-menu ${isMenuOpen ? 'open' : ''}" onclick="event.stopPropagation()">
+            <button type="button" class="dots-item danger ${isConfirming ? 'confirming' : ''}" onclick="handleTwoClickRemove('${pid}', event)">
+              <i class="fas fa-user-minus"></i>
+              <span>${isConfirming ? 'Click again: Remove friend' : 'Remove friend'}</span>
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="friend-card">
+          <div class="friend-left" onclick="openProfile('${pid}')">
+            ${renderAvatar(person)}
+            <div class="friend-meta">
+              <div class="friend-name">${name}</div>
+              <div class="friend-sub">${handle}</div>
+            </div>
+          </div>
+          <div class="friend-actions">
+            ${actionsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderContent() {
+      const container = document.getElementById('friendsContent');
+      if (!container) return;
+
+      if (activeTab === 'requests') {
+        if (!requestsList.length) {
+          container.innerHTML = `<div class="empty-state">No pending friend requests right now.</div>`;
+          return;
+        }
+        container.innerHTML = `<div class="friend-list">${requestsList.map(p => renderCard(p, 'requests')).join('')}</div>`;
+        return;
+      }
+
+      if (activeTab === 'suggestions') {
+        const suggestions = getSuggestions();
+        if (!suggestions.length) {
+          container.innerHTML = `<div class="empty-state">No new profile suggestions available right now.</div>`;
+          return;
+        }
+        container.innerHTML = `<div class="friend-list">${suggestions.map(p => renderCard(p, 'suggestions')).join('')}</div>`;
+        return;
+      }
+
+      const headerHtml = `
+        <div class="all-friends-header">
+          <span class="all-friends-count">${friendsList.length} ${friendsList.length === 1 ? 'Friend' : 'Friends'}</span>
+        </div>
+      `;
+
+      if (!friendsList.length) {
+        container.innerHTML = `${headerHtml}<div class="empty-state">No friends added yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = `${headerHtml}<div class="friend-list">${friendsList.map(p => renderCard(p, 'all')).join('')}</div>`;
+    }
+
+    function subscribeRealtimeProfiles() {
+      if (!sb || typeof sb.channel !== 'function') return;
+      try {
+        sb.channel('public:profiles_friends')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            loadAllData();
+          })
+          .subscribe();
+      } catch (e) {}
+    }
+
+    document.addEventListener('click', () => {
+      if (openMenuUserId !== null || pendingTwoClickRemoveId !== null) {
+        openMenuUserId = null;
+        pendingTwoClickRemoveId = null;
+        renderContent();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAllData();
+      subscribeRealtimeProfiles();
+    });
+  </script>
+</body>
+      </html>
