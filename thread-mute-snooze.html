@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thread Mute &amp; Snooze - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --bg-page: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-box: #F6F7F8;
+      --bg-hover: #ECEEF0;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --border-color: #D4D4D4;
+      --accent-bg: #0B3D20;
+      --accent-hover: #082C17;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(11, 61, 32, 0.12);
+      --shadow-card: 0 2px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #202124;
+      --bg-card: #202124;
+      --bg-box: #292A2D;
+      --bg-hover: #35373B;
+      --text-main: #F1F5F9;
+      --text-muted: #9AA0A6;
+      --border-color: #3C4043;
+      --accent-bg: #14532D;
+      --accent-hover: #0B3D20;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(20, 83, 45, 0.28);
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 56px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .tm-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(16px, 4.2vw, 20px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .badge-tag {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Main Container */
+    .tm-container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Hero */
+    .hero-card {
+      background: linear-gradient(135deg, var(--accent-soft), var(--bg-card));
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 22px 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .hero-title {
+      font-size: clamp(24px, 5.5vw, 34px);
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      color: var(--text-main);
+    }
+
+    .hero-subtitle {
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      max-width: 680px;
+    }
+
+    /* Card */
+    .tm-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background-color: var(--accent-soft);
+      border: 1px solid var(--border-color);
+      color: var(--accent-bg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    html[data-theme="dark"] .card-icon {
+      color: #4ADE80;
+    }
+
+    .tm-heading {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+    }
+
+    .tm-text {
+      font-size: 13.5px;
+      line-height: 1.58;
+      color: var(--text-muted);
+    }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 620px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .field-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .tm-input,
+    .tm-select {
+      width: 100%;
+      padding: 10px 13px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .tm-input:focus,
+    .tm-select:focus {
+      border-color: var(--accent-bg);
+    }
+
+    /* Preset Duration Chips */
+    .preset-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .preset-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+      transition: all 0.15s ease;
+    }
+
+    .preset-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .preset-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Filter Pills */
+    .filter-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-chip {
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Threads List */
+    .threads-list {
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .thread-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .thread-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .thread-title {
+      font-size: 15.5px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .thread-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .thread-note {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    .thread-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* Buttons */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-solid,
+    .btn-outline {
+      padding: 10px 15px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .btn-solid:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .mini-btn {
+      padding: 6px 10px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .mini-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .status-line {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      min-height: 18px;
+    }
+
+    /* Footer */
+    .tm-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+    }
+
+    .footer-brand {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #0B3D20;
+    }
+
+    html[data-theme="dark"] .footer-brand {
+      color: #22C55E;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="tm-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Thread Mute &amp; Snooze</h1>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="top-action-btn" id="unmuteAllBtn" title="Unmute all threads" aria-label="Unmute all threads">
+        <i class="fa-solid fa-bell"></i>
+      </button>
+      <button type="button" class="top-action-btn" id="refreshThreadsBtn" title="Refresh threads" aria-label="Refresh threads">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="tm-container">
+    <!-- Hero -->
+    <section class="hero-card">
+      <span class="hero-kicker">
+        <i class="fa-solid fa-bell-slash"></i>
+        <span>Autrobook Quiet Threads</span>
+      </span>
+      <h2 class="hero-title">Thread Mute &amp; Snooze</h2>
+      <p class="hero-subtitle">
+        Silence noisy discussions, group threads, or active comment chains for a set window and let them return automatically when you are ready.
+      </p>
+    </section>
+
+    <!-- Add Mute / Snooze Rule -->
+    <section class="tm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-moon"></i></span>
+          <h3 class="tm-heading">Mute or Snooze a Thread</h3>
+        </div>
+        <span class="badge-tag" id="activeMuteCountBadge">0 Muted</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="threadNameInput" class="field-label">Thread or Conversation Name</label>
+          <input type="text" id="threadNameInput" class="tm-input" placeholder="e.g., Weekend Project Thread, Story Feedback..." maxlength="100" />
+        </div>
+
+        <div class="field-group">
+          <label for="threadModeSelect" class="field-label">Action Mode</label>
+          <select id="threadModeSelect" class="tm-select">
+            <option value="Snooze">Snooze (Temporary Pause)</option>
+            <option value="Mute">Mute (Silent Notifications)</option>
+          </select>
+        </div>
+
+        <div class="field-group full">
+          <span class="field-label">Duration Preset</span>
+          <div class="preset-strip" id="durationPresetStrip">
+            <button type="button" class="preset-chip" data-hours="1">1 Hour</button>
+            <button type="button" class="preset-chip active" data-hours="4">4 Hours</button>
+            <button type="button" class="preset-chip" data-hours="8">8 Hours</button>
+            <button type="button" class="preset-chip" data-hours="24">24 Hours</button>
+            <button type="button" class="preset-chip" data-hours="72">3 Days</button>
+            <button type="button" class="preset-chip" data-hours="168">7 Days</button>
+          </div>
+        </div>
+
+        <div class="field-group full">
+          <label for="threadNoteInput" class="field-label">Reason / Note (Optional)</label>
+          <input type="text" id="threadNoteInput" class="tm-input" placeholder="e.g., Deep work block, catching up later..." maxlength="160" />
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-solid" id="saveThreadMuteBtn">
+          <i class="fa-solid fa-bell-slash"></i>
+          <span>Apply Mute / Snooze</span>
+        </button>
+      </div>
+
+      <div class="status-line" id="threadMuteStatusText">Timers count down live and sync with your thread rules.</div>
+    </section>
+
+    <!-- Muted & Snoozed Threads -->
+    <section class="tm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-list-ul"></i></span>
+          <h3 class="tm-heading">Managed Threads</h3>
+        </div>
+      </div>
+
+      <input type="search" id="searchThreadsInput" class="tm-input" placeholder="Search threads or notes..." />
+
+      <div class="filter-strip" id="threadFilterStrip">
+        <button type="button" class="filter-chip active" data-filter="All">All</button>
+        <button type="button" class="filter-chip" data-filter="Active">Active</button>
+        <button type="button" class="filter-chip" data-filter="Snooze">Snooze</button>
+        <button type="button" class="filter-chip" data-filter="Mute">Mute</button>
+        <button type="button" class="filter-chip" data-filter="Expired">Expired</button>
+      </div>
+
+      <div class="threads-list" id="threadsList"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="tm-footer">
+      <i class="fa-solid fa-bell-slash footer-brand"></i>
+      <span class="footer-brand">Autrobook Thread Mute &amp; Snooze</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const DB_ENDPOINT = "https://gemyqaniztqrsilayblx.supabase.co";
+      const DB_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const LOCAL_THREADS_KEY = "autrobook_thread_mute_snooze_v1";
+
+      let threads = [];
+      let selectedHours = 4;
+      let activeFilter = "All";
+      let searchQuery = "";
+
+      function syncTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._tmToastTimer);
+        window._tmToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function formatRemaining(expiresAtIso) {
+        const exp = new Date(expiresAtIso).getTime();
+        const diffMs = exp - Date.now();
+        if (!Number.isFinite(exp) || diffMs <= 0) {
+          return { expired: true, text: "Expired" };
+        }
+        const totalMins = Math.ceil(diffMs / 60000);
+        if (totalMins < 60) {
+          return { expired: false, text: `${totalMins}m left` };
+        }
+        const hours = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        if (hours < 24) {
+          return { expired: false, text: mins > 0 ? `${hours}h ${mins}m left` : `${hours}h left` };
+        }
+        const days = Math.floor(hours / 24);
+        const remHours = hours % 24;
+        return {
+          expired: false,
+          text: remHours > 0 ? `${days}d ${remHours}h left` : `${days}d left`
+        };
+      }
+
+      function loadLocalThreads() {
+        try {
+          const raw = localStorage.getItem(LOCAL_THREADS_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) threads = parsed;
+          }
+        } catch (_) {}
+      }
+
+      function saveLocalThreads() {
+        try {
+          localStorage.setItem(LOCAL_THREADS_KEY, JSON.stringify(threads.slice(0, 80)));
+        } catch (_) {}
+      }
+
+      async function syncThreadToCloud(item) {
+        const statusEl = document.getElementById("threadMuteStatusText");
+        try {
+          const res = await fetch(`${DB_ENDPOINT}/rest/v1/thread_mute_snooze_rules`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": DB_KEY,
+              "Authorization": `Bearer ${DB_KEY}`,
+              "Prefer": "resolution=merge-duplicates,return=minimal"
+            },
+            body: JSON.stringify({
+              id: item.id,
+              thread_name: item.threadName,
+              mode: item.mode,
+              duration_hours: item.durationHours,
+              note: item.note,
+              expires_at: item.expiresAt,
+              created_at: item.createdAt
+            })
+          });
+          if (res.ok) {
+            if (statusEl) statusEl.textContent = `Updated "${item.threadName}" and synced.`;
+            return true;
+          }
+          if (statusEl) statusEl.textContent = `Updated "${item.threadName}" on device.`;
+          return false;
+        } catch (_) {
+          if (statusEl) statusEl.textContent = `Updated "${item.threadName}" on device.`;
+          return false;
+        }
+      }
+
+      async function deleteThreadFromCloud(id) {
+        try {
+          await fetch(
+            `${DB_ENDPOINT}/rest/v1/thread_mute_snooze_rules?id=eq.${encodeURIComponent(id)}`,
+            {
+              method: "DELETE",
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`,
+                "Prefer": "return=minimal"
+              }
+            }
+          );
+        } catch (_) {}
+      }
+
+      async function fetchRemoteThreads() {
+        try {
+          const res = await fetch(
+            `${DB_ENDPOINT}/rest/v1/thread_mute_snooze_rules?select=*&order=created_at.desc&limit=50`,
+            {
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`
+              }
+            }
+          );
+          if (!res.ok) return;
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length) {
+            const map = new Map(threads.map((t) => [t.id, t]));
+            rows.forEach((r) => {
+              map.set(r.id, {
+                id: r.id,
+                threadName: r.thread_name || "Untitled Thread",
+                mode: r.mode || "Snooze",
+                durationHours: Number(r.duration_hours) || 4,
+                note: r.note || "",
+                expiresAt: r.expires_at || new Date(Date.now() + 4 * 3600000).toISOString(),
+                createdAt: r.created_at || new Date().toISOString()
+              });
+            });
+            threads = Array.from(map.values());
+            saveLocalThreads();
+            renderThreads();
+          }
+        } catch (_) {}
+      }
+
+      function renderThreads() {
+        const listEl = document.getElementById("threadsList");
+        const badgeEl = document.getElementById("activeMuteCountBadge");
+
+        const activeCount = threads.filter((t) => !formatRemaining(t.expiresAt).expired).length;
+        if (badgeEl) {
+          badgeEl.textContent = `${activeCount} Active`;
+        }
+        if (!listEl) return;
+
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = threads.filter((t) => {
+          const rem = formatRemaining(t.expiresAt);
+          const isExpired = rem.expired;
+
+          if (activeFilter === "Active" && isExpired) return false;
+          if (activeFilter === "Expired" && !isExpired) return false;
+          if ((activeFilter === "Snooze" || activeFilter === "Mute") && t.mode !== activeFilter) {
+            return false;
+          }
+
+          if (!q) return true;
+          const hay = `${t.threadName || ""} ${t.mode || ""} ${t.note || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+        if (!filtered.length) {
+          listEl.innerHTML = `<div class="tm-text">No threads match this filter.</div>`;
+          return;
+        }
+
+        listEl.innerHTML = filtered
+          .map((t) => {
+            const rem = formatRemaining(t.expiresAt);
+            const statusLabel = rem.expired ? "Expired" : `${t.mode} • ${rem.text}`;
+            return `
+              <div class="thread-item">
+                <div class="thread-head">
+                  <div class="thread-title">${escapeHtml(t.threadName)}</div>
+                  <span class="badge-tag">${escapeHtml(statusLabel)}</span>
+                </div>
+                <div class="thread-meta">Window: ${Number(t.durationHours) || 4}h</div>
+                ${t.note ? `<div class="thread-note">${escapeHtml(t.note)}</div>` : ""}
+                <div class="thread-actions">
+                  <button type="button" class="mini-btn resnooze-btn" data-id="${escapeHtml(t.id)}">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Snooze +${selectedHours}h</span>
+                  </button>
+                  <button type="button" class="mini-btn unmute-btn" data-id="${escapeHtml(t.id)}">
+                    <i class="fa-solid fa-bell"></i>
+                    <span>Unmute</span>
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        listEl.querySelectorAll(".resnooze-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            const idx = threads.findIndex((t) => t.id === id);
+            if (idx === -1) return;
+            const nowMs = Date.now();
+            threads[idx] = {
+              ...threads[idx],
+              durationHours: selectedHours,
+              expiresAt: new Date(nowMs + selectedHours * 3600000).toISOString()
+            };
+            saveLocalThreads();
+            renderThreads();
+            await syncThreadToCloud(threads[idx]);
+            showToast(`Snoozed for ${selectedHours}h`);
+          });
+        });
+
+        listEl.querySelectorAll(".unmute-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            threads = threads.filter((t) => t.id !== id);
+            saveLocalThreads();
+            renderThreads();
+            await deleteThreadFromCloud(id);
+            showToast("Thread unmuted");
+          });
+        });
+      }
+
+      document.querySelectorAll("#durationPresetStrip .preset-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll("#durationPresetStrip .preset-chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          selectedHours = Number(chip.getAttribute("data-hours")) || 4;
+          renderThreads();
+        });
+      });
+
+      document.getElementById("saveThreadMuteBtn")?.addEventListener("click", async () => {
+        const nameVal = (document.getElementById("threadNameInput")?.value || "").trim();
+        const modeVal = document.getElementById("threadModeSelect")?.value || "Snooze";
+        const noteVal = (document.getElementById("threadNoteInput")?.value || "").trim();
+
+        if (!nameVal) {
+          showToast("Enter a thread or conversation name");
+          return;
+        }
+
+        const nowIso = new Date().toISOString();
+        const expiresIso = new Date(Date.now() + selectedHours * 3600000).toISOString();
+
+        const item = {
+          id: `tm-${Date.now()}`,
+          threadName: nameVal,
+          mode: modeVal,
+          durationHours: selectedHours,
+          note: noteVal,
+          expiresAt: expiresIso,
+          createdAt: nowIso
+        };
+
+        threads = [item, ...threads];
+        saveLocalThreads();
+        renderThreads();
+
+        document.getElementById("threadNameInput").value = "";
+        document.getElementById("threadNoteInput").value = "";
+
+        await syncThreadToCloud(item);
+        showToast(`${modeVal}d "${nameVal}" for ${selectedHours}h`);
+      });
+
+      document.getElementById("unmuteAllBtn")?.addEventListener("click", async () => {
+        if (!threads.length) {
+          showToast("No muted threads to clear");
+          return;
+        }
+        const ids = threads.map((t) => t.id);
+        threads = [];
+        saveLocalThreads();
+        renderThreads();
+        await Promise.all(ids.map((id) => deleteThreadFromCloud(id)));
+        showToast("Unmuted all threads");
+      });
+
+      document.getElementById("searchThreadsInput")?.addEventListener("input", (e) => {
+        searchQuery = e.target.value || "";
+        renderThreads();
+      });
+
+      document.querySelectorAll("#threadFilterStrip .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll("#threadFilterStrip .filter-chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          activeFilter = chip.getAttribute("data-filter") || "All";
+          renderThreads();
+        });
+      });
+
+      document.getElementById("refreshThreadsBtn")?.addEventListener("click", async () => {
+        await fetchRemoteThreads();
+        showToast("Refreshed threads");
+      });
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTheme);
+      }
+
+      syncTheme();
+      loadLocalThreads();
+      renderThreads();
+      fetchRemoteThreads();
+      setInterval(renderThreads, 30000);
+    })();
+  </script>
+</body>
+  </html>
