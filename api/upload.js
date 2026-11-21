@@ -1,6 +1,7 @@
 import { Storage } from "megajs";
 import formidable from "formidable";
 import fs from "fs";
+import crypto from "crypto";
 import ImageKit from "imagekit";
 
 export const config = {
@@ -85,6 +86,79 @@ async function uploadToImageKit({ file, fileName, folder = "/autrobook-reels" })
   };
 }
 
+function createCloudinarySignature(paramsToSign, apiSecret) {
+  const sortedQuery = Object.keys(paramsToSign)
+    .filter((key) => paramsToSign[key] !== undefined && paramsToSign[key] !== "")
+    .sort()
+    .map((key) => `${key}=${paramsToSign[key]}`)
+    .join("&");
+
+  return crypto
+    .createHash("sha1")
+    .update(`${sortedQuery}${apiSecret}`)
+    .digest("hex");
+}
+
+async function uploadToCloudinary({
+  file,
+  fileName,
+  folder = "autrobook-reels",
+  resourceType = "video",
+}) {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Missing Cloudinary environment variables");
+  }
+
+  if (!file) {
+    throw new Error("File (base64 or URL) is required for Cloudinary");
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const cleanPublicId = fileName
+    ? fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_")
+    : `reel_${timestamp}`;
+
+  const paramsToSign = {
+    folder,
+    public_id: cleanPublicId,
+    timestamp,
+  };
+
+  const signature = createCloudinarySignature(paramsToSign, apiSecret);
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("api_key", apiKey);
+  formData.append("timestamp", String(timestamp));
+  formData.append("signature", signature);
+  formData.append("folder", folder);
+  formData.append("public_id", cleanPublicId);
+
+  const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || "Cloudinary upload failed");
+  }
+
+  return {
+    provider: "cloudinary",
+    url: data.secure_url,
+    name: data.original_filename || cleanPublicId,
+    publicId: data.public_id,
+    resourceType: data.resource_type,
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST method is allowed" });
@@ -106,23 +180,40 @@ export default async function handler(req, res) {
       }
 
       if (provider !== "mega") {
-        return res.status(400).json({ error: "Use JSON base64 payload for ImageKit" });
+        return res.status(400).json({
+          error: "Use JSON base64/URL payload for ImageKit or Cloudinary",
+        });
       }
 
       const data = await uploadToMega(file);
       return res.status(200).json({ success: true, ...data });
     }
 
-    // JSON payload -> ImageKit (base64)
-    const { provider, file, fileName, folder } = req.body || {};
+    // JSON payload -> ImageKit or Cloudinary
+    const { provider, file, fileName, folder, resourceType } = req.body || {};
+
+    if (provider === "cloudinary") {
+      const data = await uploadToCloudinary({
+        file,
+        fileName,
+        folder: folder || "autrobook-reels",
+        resourceType: resourceType || "video",
+      });
+      return res.status(200).json({ success: true, ...data });
+    }
 
     if (provider === "imagekit" || (!provider && file && fileName)) {
-      const data = await uploadToImageKit({ file, fileName, folder });
+      const data = await uploadToImageKit({
+        file,
+        fileName,
+        folder: folder || "/autrobook-reels",
+      });
       return res.status(200).json({ success: true, ...data });
     }
 
     return res.status(400).json({
-      error: "Invalid request. Send multipart/form-data for MEGA or JSON { file, fileName } for ImageKit.",
+      error:
+        "Invalid request. Send multipart/form-data for MEGA, or JSON { provider: 'imagekit' | 'cloudinary', file, fileName }.",
     });
   } catch (error) {
     console.error("Upload error:", error);
