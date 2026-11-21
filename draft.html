@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drafts - Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-color: #ffffff;
+    --surface-color: #ffffff;
+    --card-bg: #f8fafc;
+    --input-bg: #f1f5f9;
+    --text-color: #0f172a;
+    --muted-color: #5f6368;
+    --border-color: #e5e7eb;
+    --hover-color: rgba(0, 0, 0, 0.05);
+    --accent-color: #111827;
+    --accent-hover: #1f2937;
+    --accent-soft: rgba(17, 24, 39, 0.08);
+    --accent-glow: rgba(17, 24, 39, 0.16);
+    --btn-text: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #202124;
+      --surface-color: #202124;
+      --card-bg: #292a2d;
+      --input-bg: #303134;
+      --text-color: #f1f5f9;
+      --muted-color: #9aa0a6;
+      --border-color: #3c4043;
+      --hover-color: rgba(255, 255, 255, 0.07);
+      --accent-color: #e8eaed;
+      --accent-hover: #ffffff;
+      --accent-soft: rgba(232, 234, 237, 0.12);
+      --accent-glow: rgba(0, 0, 0, 0.28);
+      --btn-text: #202124;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-shell {
+    max-width: 680px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background-color: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top Header */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .top-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.18s ease, transform 0.15s ease;
+  }
+
+  .icon-btn:hover {
+    background-color: var(--hover-color);
+    transform: scale(1.04);
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .new-reel-pill {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background-color: var(--accent-color);
+    color: var(--btn-text);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: transform 0.15s ease, background-color 0.18s ease;
+  }
+
+  .new-reel-pill:hover {
+    transform: translateY(-1px);
+    background-color: var(--accent-hover);
+  }
+
+  .content-wrap {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Save New Draft Box */
+  .save-draft-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .card-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .card-heading {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .sync-badge {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted-color);
+    background-color: var(--input-bg);
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+
+  .field-input,
+  .field-textarea {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .field-textarea {
+    min-height: 76px;
+    resize: vertical;
+  }
+
+  .field-input:focus,
+  .field-textarea:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .media-pick-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .secondary-btn {
+    padding: 9px 13px;
+    border-radius: 11px;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .secondary-btn:hover {
+    background-color: var(--hover-color);
+  }
+
+  .file-name-label {
+    font-size: 12.5px;
+    color: var(--muted-color);
+    word-break: break-word;
+  }
+
+  .primary-btn {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background-color: var(--accent-color);
+    color: var(--btn-text);
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 3px 12px var(--accent-glow);
+    transition: transform 0.15s ease, background-color 0.18s ease;
+  }
+
+  .primary-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background-color: var(--accent-hover);
+  }
+
+  .primary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Saved Drafts List */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .draft-count {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted-color);
+  }
+
+  .drafts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .draft-item {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .draft-top {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .draft-thumb {
+    width: 64px;
+    height: 84px;
+    border-radius: 10px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-color);
+    font-size: 20px;
+  }
+
+  .draft-thumb img,
+  .draft-thumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .draft-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .draft-caption {
+    margin: 0 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .draft-sub {
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted-color);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .draft-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .action-chip-btn {
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    font-size: 12.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .action-chip-btn:hover {
+    background-color: var(--hover-color);
+  }
+
+  .action-chip-btn.primary {
+    background-color: var(--accent-color);
+    color: var(--btn-text);
+    border-color: var(--accent-color);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 34px 16px;
+    border: 1.5px dashed var(--border-color);
+    border-radius: 16px;
+    background-color: var(--card-bg);
+    color: var(--muted-color);
+  }
+
+  .empty-state i {
+    font-size: 26px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .status-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    max-width: 90%;
+    z-index: 50;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--btn-text);
+    background-color: var(--accent-color);
+    border-radius: 999px;
+    padding: 9px 16px;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+    display: none;
+  }
+
+  .status-toast.show {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <header class="top-bar">
+    <div class="top-left">
+      <a href="create-reels.html" class="icon-btn" title="Back to Create Reel" aria-label="Back">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="page-title">Drafts</h1>
+    </div>
+
+    <a href="create-reels.html" class="new-reel-pill">
+      <i class="fa-solid fa-plus"></i>
+      <span>Create reel</span>
+    </a>
+  </header>
+
+  <main class="content-wrap">
+    <!-- Save Draft Form -->
+    <section class="save-draft-card" aria-label="Save reel draft">
+      <div class="card-heading-row">
+        <h2 class="card-heading">Save a new draft</h2>
+        <span class="sync-badge" id="syncStatusBadge">Supabase Ready</span>
+      </div>
+
+      <textarea id="draftCaptionInput" class="field-textarea" maxlength="300" placeholder="Write a caption for your draft..."></textarea>
+      <input type="text" id="draftAudioInput" class="field-input" placeholder="Audio track name (optional)">
+
+      <div class="media-pick-row">
+        <button type="button" class="secondary-btn" id="pickDraftMediaBtn">
+          <i class="fa-regular fa-file-video"></i>
+          <span>Attach media</span>
+        </button>
+        <input type="file" id="draftMediaInput" accept="video/*,image/*" hidden>
+        <span class="file-name-label" id="draftFileLabel">No media file attached</span>
+      </div>
+
+      <button type="button" class="primary-btn" id="saveDraftBtn">
+        <i class="fa-regular fa-bookmark"></i>
+        <span>Save Draft</span>
+      </button>
+    </section>
+
+    <!-- Saved Drafts -->
+    <section aria-label="Saved drafts list">
+      <div class="section-header" style="margin-bottom: 10px;">
+        <h2 class="section-title">Saved Drafts</h2>
+        <span class="draft-count" id="draftCountLabel">0 drafts</span>
+      </div>
+
+      <div class="drafts-list" id="draftsList">
+        <div class="empty-state" id="emptyDraftsState">
+          <i class="fa-regular fa-file-lines"></i>
+          <p style="margin: 0; font-weight: 600;">No drafts saved yet</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="status-toast" id="statusToast"></div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  const LOCAL_DRAFTS_KEY = 'autrobook_drafts';
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const captionInput = document.getElementById('draftCaptionInput');
+    const audioInput = document.getElementById('draftAudioInput');
+    const pickDraftMediaBtn = document.getElementById('pickDraftMediaBtn');
+    const draftMediaInput = document.getElementById('draftMediaInput');
+    const draftFileLabel = document.getElementById('draftFileLabel');
+    const saveDraftBtn = document.getElementById('saveDraftBtn');
+    const draftsList = document.getElementById('draftsList');
+    const draftCountLabel = document.getElementById('draftCountLabel');
+    const syncStatusBadge = document.getElementById('syncStatusBadge');
+    const statusToast = document.getElementById('statusToast');
+
+    let attachedFile = null;
+    let attachedPreviewUrl = '';
+    let attachedMediaType = '';
+
+    function notify(message) {
+      statusToast.textContent = message;
+      statusToast.classList.add('show');
+      clearTimeout(notify._timer);
+      notify._timer = setTimeout(() => {
+        statusToast.classList.remove('show');
+      }, 2800);
+    }
+
+    function getLocalDrafts() {
+      try {
+        return JSON.parse(localStorage.getItem(LOCAL_DRAFTS_KEY) || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function setLocalDrafts(list) {
+      try {
+        localStorage.setItem(LOCAL_DRAFTS_KEY, JSON.stringify(list));
+      } catch (e) {}
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function getCurrentUser() {
+      if (!supabaseClient) return null;
+      try {
+        const { data } = await supabaseClient.auth.getUser();
+        return data && data.user ? data.user : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function loadAllDrafts() {
+      const localDrafts = getLocalDrafts().map((d, idx) => ({
+        id: d.id || `local_${idx}`,
+        caption: d.caption || (d.selectedCount ? `${d.selectedCount} media item(s) selected` : 'Untitled draft'),
+        audio_name: d.audio || '',
+        media_url: (d.items && d.items[0] && d.items[0].src) || '',
+        media_type: (d.items && d.items[0] && d.items[0].type) || '',
+        saved_label: d.savedAt || 'Local draft',
+        source: 'local'
+      }));
+
+      let cloudDrafts = [];
+      const user = await getCurrentUser();
+
+      if (supabaseClient && user) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('reel_drafts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (!error && Array.isArray(data)) {
+            syncStatusBadge.textContent = 'Supabase Synced';
+            cloudDrafts = data.map((row) => ({
+              id: row.id,
+              caption: row.caption || 'Untitled draft',
+              audio_name: row.audio_name || '',
+              media_url: row.media_url || '',
+              media_type: row.media_type || '',
+              saved_label: row.created_at ? new Date(row.created_at).toLocaleString() : 'Cloud draft',
+              source: 'supabase'
+            }));
+          } else {
+            syncStatusBadge.textContent = 'Local Storage';
+          }
+        } catch (e) {
+          syncStatusBadge.textContent = 'Local Storage';
+        }
+      } else {
+        syncStatusBadge.textContent = user ? 'Supabase Ready' : 'Local Drafts';
+      }
+
+      const combined = [...cloudDrafts, ...localDrafts];
+      renderDrafts(combined);
+    }
+
+    function renderDrafts(items) {
+      draftCountLabel.textContent = `${items.length} ${items.length === 1 ? 'draft' : 'drafts'}`;
+
+      if (!items.length) {
+        draftsList.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-regular fa-file-lines"></i>
+            <p style="margin: 0; font-weight: 600;">No drafts saved yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      draftsList.innerHTML = items.map((draft) => {
+        const thumbHtml = draft.media_url
+          ? (draft.media_type === 'video'
+              ? `<video src="${escapeHtml(draft.media_url)}" muted playsinline preload="metadata"></video>`
+              : `<img src="${escapeHtml(draft.media_url)}" alt="Draft preview">`)
+          : `<i class="fa-regular fa-file-lines"></i>`;
+
+        const audioText = draft.audio_name ? `<span><i class="fa-solid fa-music"></i> ${escapeHtml(draft.audio_name)}</span>` : '';
+
+        return `
+          <article class="draft-item" data-id="${escapeHtml(draft.id)}" data-source="${escapeHtml(draft.source)}">
+            <div class="draft-top">
+              <div class="draft-thumb">${thumbHtml}</div>
+              <div class="draft-meta">
+                <p class="draft-caption">${escapeHtml(draft.caption)}</p>
+                <p class="draft-sub">
+                  ${audioText}
+                  <span><i class="fa-regular fa-clock"></i> ${escapeHtml(draft.saved_label)}</span>
+                </p>
+              </div>
+            </div>
+            <div class="draft-actions">
+              <button type="button" class="action-chip-btn primary open-reel-btn" data-media="${escapeHtml(draft.media_url)}" data-type="${escapeHtml(draft.media_type || 'video')}" data-caption="${escapeHtml(draft.caption)}" data-audio="${escapeHtml(draft.audio_name)}">
+                <i class="fa-solid fa-clapperboard"></i>
+                <span>Open in Reels</span>
+              </button>
+              <button type="button" class="action-chip-btn delete-draft-btn">
+                <i class="fa-regular fa-trash-can"></i>
+                <span>Delete</span>
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      draftsList.querySelectorAll('.open-reel-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const params = new URLSearchParams({
+            media: btn.getAttribute('data-media') || '',
+            type: btn.getAttribute('data-type') || 'video',
+            caption: btn.getAttribute('data-caption') || '',
+            audio: btn.getAttribute('data-audio') || ''
+          });
+          window.location.href = `reels-card.html?${params.toString()}`;
+        });
+      });
+
+      draftsList.querySelectorAll('.delete-draft-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const card = btn.closest('.draft-item');
+          if (!card) return;
+          const draftId = card.getAttribute('data-id');
+          const source = card.getAttribute('data-source');
+
+          if (source === 'supabase' && supabaseClient) {
+            const { error } = await supabaseClient.from('reel_drafts').delete().eq('id', draftId);
+            if (!error) {
+              notify('Draft deleted from Supabase.');
+              await loadAllDrafts();
+              return;
+            }
+          }
+
+          const updatedLocal = getLocalDrafts().filter((d) => String(d.id) !== String(draftId));
+          setLocalDrafts(updatedLocal);
+          notify('Draft deleted.');
+          await loadAllDrafts();
+        });
+      });
+    }
+
+    pickDraftMediaBtn.addEventListener('click', () => {
+      draftMediaInput.click();
+    });
+
+    draftMediaInput.addEventListener('change', () => {
+      const file = draftMediaInput.files && draftMediaInput.files[0];
+      if (!file) return;
+      attachedFile = file;
+      attachedMediaType = file.type.startsWith('video/') ? 'video' : 'image';
+      attachedPreviewUrl = URL.createObjectURL(file);
+      draftFileLabel.textContent = file.name;
+    });
+
+    saveDraftBtn.addEventListener('click', async () => {
+      const caption = captionInput.value.trim();
+      const audioName = audioInput.value.trim();
+
+      if (!caption && !audioName && !attachedFile) {
+        notify('Add a caption, audio name, or media file first.');
+        return;
+      }
+
+      saveDraftBtn.disabled = true;
+
+      let mediaUrl = attachedPreviewUrl || '';
+      const user = await getCurrentUser();
+      let savedToSupabase = false;
+
+      if (supabaseClient && user) {
+        try {
+          if (attachedFile) {
+            const safeName = attachedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const filePath = `${user.id}/drafts/${Date.now()}-${safeName}`;
+            const { error: uploadError } = await supabaseClient.storage
+              .from('reels')
+              .upload(filePath, attachedFile, { upsert: false });
+
+            if (!uploadError) {
+              const { data: pubData } = supabaseClient.storage.from('reels').getPublicUrl(filePath);
+              if (pubData && pubData.publicUrl) {
+                mediaUrl = pubData.publicUrl;
+              }
+            }
+          }
+
+          const { error: insertError } = await supabaseClient
+            .from('reel_drafts')
+            .insert({
+              user_id: user.id,
+              caption: caption || 'Untitled draft',
+              audio_name: audioName,
+              media_url: mediaUrl,
+              media_type: attachedMediaType || 'video'
+            });
+
+          if (!insertError) {
+            savedToSupabase = true;
+          }
+        } catch (err) {
+          savedToSupabase = false;
+        }
+      }
+
+      if (!savedToSupabase) {
+        const localDraft = {
+          id: 'draft_' + Date.now(),
+          caption: caption || 'Untitled draft',
+          audio: audioName,
+          items: mediaUrl ? [{ src: mediaUrl, type: attachedMediaType || 'video', title: attachedFile ? attachedFile.name : 'Draft media' }] : [],
+          savedAt: new Date().toLocaleString()
+        };
+        const existing = getLocalDrafts();
+        existing.unshift(localDraft);
+        setLocalDrafts(existing);
+      }
+
+      captionInput.value = '';
+      audioInput.value = '';
+      attachedFile = null;
+      attachedPreviewUrl = '';
+      attachedMediaType = '';
+      draftMediaInput.value = '';
+      draftFileLabel.textContent = 'No media file attached';
+      saveDraftBtn.disabled = false;
+
+      notify(savedToSupabase ? 'Draft saved to Supabase!' : 'Draft saved!');
+      await loadAllDrafts();
+    });
+
+    await loadAllDrafts();
+  });
+</script>
+</body>
+  </html>
