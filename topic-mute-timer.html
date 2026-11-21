@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Topic Mute Timer - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --bg-page: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-box: #F6F7F8;
+      --bg-hover: #ECEEF0;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --border-color: #D4D4D4;
+      --accent-bg: #0B3D20;
+      --accent-hover: #082C17;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(11, 61, 32, 0.12);
+      --danger-bg: #991B1B;
+      --shadow-card: 0 2px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #202124;
+      --bg-card: #202124;
+      --bg-box: #292A2D;
+      --bg-hover: #35373B;
+      --text-main: #F1F5F9;
+      --text-muted: #9AA0A6;
+      --border-color: #3C4043;
+      --accent-bg: #14532D;
+      --accent-hover: #0B3D20;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(20, 83, 45, 0.28);
+      --danger-bg: #B91C1C;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 56px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .tm-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(16px, 4.2vw, 20px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .badge-tag {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Main Container */
+    .tm-container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Hero */
+    .hero-card {
+      background: linear-gradient(135deg, var(--accent-soft), var(--bg-card));
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 22px 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .hero-title {
+      font-size: clamp(24px, 5.5vw, 34px);
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      color: var(--text-main);
+    }
+
+    .hero-subtitle {
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      max-width: 680px;
+    }
+
+    /* Card */
+    .tm-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background-color: var(--accent-soft);
+      border: 1px solid var(--border-color);
+      color: var(--accent-bg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    html[data-theme="dark"] .card-icon {
+      color: #4ADE80;
+    }
+
+    .tm-heading {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+    }
+
+    .tm-text {
+      font-size: 13.5px;
+      line-height: 1.58;
+      color: var(--text-muted);
+    }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 620px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .field-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .tm-input,
+    .tm-select {
+      width: 100%;
+      padding: 10px 13px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .tm-input:focus,
+    .tm-select:focus {
+      border-color: var(--accent-bg);
+    }
+
+    /* Filter Pills */
+    .filter-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-chip {
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Muted Topics List */
+    .topics-list {
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .topic-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 15px;
+      padding: 14px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .topic-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .topic-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .topic-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .countdown-pill {
+      font-size: 12px;
+      font-weight: 800;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--accent-soft);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .countdown-pill.expired {
+      background-color: var(--bg-card);
+      color: var(--text-muted);
+    }
+
+    /* Buttons */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-solid,
+    .btn-outline {
+      padding: 10px 15px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .btn-solid:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .mini-btn {
+      padding: 6px 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .mini-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .status-line {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      min-height: 18px;
+    }
+
+    /* Footer */
+    .tm-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+    }
+
+    .footer-brand {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #0B3D20;
+    }
+
+    html[data-theme="dark"] .footer-brand {
+      color: #22C55E;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="tm-topbar">
+    <div class="topbar-left">
+      <a href="profile.html" class="back-btn" aria-label="Back to Profile">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Topic Mute Timer</h1>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="top-action-btn" id="refreshTopicsBtn" title="Refresh timers" aria-label="Refresh timers">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="tm-container">
+    <!-- Hero -->
+    <section class="hero-card">
+      <span class="hero-kicker">
+        <i class="fa-solid fa-volume-xmark"></i>
+        <span>Autrobook Timed Mute</span>
+      </span>
+      <h2 class="hero-title">Topic Mute Timer</h2>
+      <p class="hero-subtitle">
+        Temporarily silence distracting topics, spoilers, or trending buzz for a set duration so your feed returns automatically when you are ready.
+      </p>
+    </section>
+
+    <!-- Add Mute Timer -->
+    <section class="tm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-clock"></i></span>
+          <h3 class="tm-heading">Mute a Topic</h3>
+        </div>
+        <span class="badge-tag" id="activeMuteBadge">0 Active</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="topicNameInput" class="field-label">Topic or Keyword</label>
+          <input type="text" id="topicNameInput" class="tm-input" placeholder="e.g., Spoilers, Match Score, Politics" maxlength="80" />
+        </div>
+
+        <div class="field-group">
+          <label for="topicCategorySelect" class="field-label">Category</label>
+          <select id="topicCategorySelect" class="tm-select">
+            <option value="Spoilers">Spoilers</option>
+            <option value="Sports">Sports</option>
+            <option value="News & Buzz">News &amp; Buzz</option>
+            <option value="General">General</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="muteDurationSelect" class="field-label">Mute Duration</label>
+          <select id="muteDurationSelect" class="tm-select">
+            <option value="1">1 Hour</option>
+            <option value="6">6 Hours</option>
+            <option value="24" selected>24 Hours</option>
+            <option value="72">3 Days</option>
+            <option value="168">7 Days</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="topicReasonInput" class="field-label">Note (Optional)</label>
+          <input type="text" id="topicReasonInput" class="tm-input" placeholder="Optional reminder note..." maxlength="140" />
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-solid" id="startMuteBtn">
+          <i class="fa-solid fa-bell-slash"></i>
+          <span>Start Mute Timer</span>
+        </button>
+      </div>
+
+      <div class="status-line" id="muteStatusText">Timers count down live and stay synced with your topic mute list.</div>
+    </section>
+
+    <!-- Muted Topics List -->
+    <section class="tm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-hourglass-half"></i></span>
+          <h3 class="tm-heading">Timed Mute Queue</h3>
+        </div>
+      </div>
+
+      <input type="search" id="searchTopicsInput" class="tm-input" placeholder="Search topics or categories..." />
+
+      <div class="filter-strip" id="topicFilterStrip">
+        <button type="button" class="filter-chip active" data-cat="All">All</button>
+        <button type="button" class="filter-chip" data-cat="Spoilers">Spoilers</button>
+        <button type="button" class="filter-chip" data-cat="Sports">Sports</button>
+        <button type="button" class="filter-chip" data-cat="News & Buzz">News &amp; Buzz</button>
+        <button type="button" class="filter-chip" data-cat="General">General</button>
+      </div>
+
+      <div class="topics-list" id="topicsList"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="tm-footer">
+      <i class="fa-solid fa-volume-xmark footer-brand"></i>
+      <span class="footer-brand">Autrobook Topic Mute Timer</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const DB_ENDPOINT = "https://gemyqaniztqrsilayblx.supabase.co";
+      const DB_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const LOCAL_TOPICS_KEY = "autrobook_topic_mute_timers_v1";
+
+      let topics = [];
+      let activeCategory = "All";
+      let searchQuery = "";
+
+      function syncTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._tmToastTimer);
+        window._tmToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function formatRemaining(expiresAtMs) {
+        const diff = expiresAtMs - Date.now();
+        if (diff <= 0) return "Expired";
+        const totalSec = Math.floor(diff / 1000);
+        const days = Math.floor(totalSec / 86400);
+        const hrs = Math.floor((totalSec % 86400) / 3600);
+        const mins = Math.floor((totalSec % 3600) / 60);
+        const secs = totalSec % 60;
+        if (days > 0) return `${days}d ${hrs}h ${mins}m left`;
+        if (hrs > 0) return `${hrs}h ${mins}m ${secs}s left`;
+        return `${mins}m ${secs}s left`;
+      }
+
+      function loadLocalTopics() {
+        try {
+          const raw = localStorage.getItem(LOCAL_TOPICS_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) topics = parsed;
+          }
+        } catch (_) {}
+      }
+
+      function saveLocalTopics() {
+        try {
+          localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(topics.slice(0, 60)));
+        } catch (_) {}
+      }
+
+      async function syncTopicToCloud(item) {
+        const statusEl = document.getElementById("muteStatusText");
+        try {
+          const res = await fetch(`${DB_ENDPOINT}/rest/v1/topic_mute_timers`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": DB_KEY,
+              "Authorization": `Bearer ${DB_KEY}`,
+              "Prefer": "resolution=merge-duplicates,return=minimal"
+            },
+            body: JSON.stringify({
+              id: item.id,
+              topic: item.topic,
+              category: item.category,
+              duration_hours: item.durationHours,
+              expires_at: item.expiresAt,
+              reason: item.reason,
+              created_at: item.createdAt
+            })
+          });
+          if (res.ok) {
+            if (statusEl) statusEl.textContent = `Muted "${item.topic}" for ${item.durationHours}h and synced.`;
+            return true;
+          }
+          if (statusEl) statusEl.textContent = `Muted "${item.topic}" for ${item.durationHours}h on device.`;
+          return false;
+        } catch (_) {
+          if (statusEl) statusEl.textContent = `Muted "${item.topic}" for ${item.durationHours}h on device.`;
+          return false;
+        }
+      }
+
+      async function deleteTopicFromCloud(id) {
+        try {
+          await fetch(
+            `${DB_ENDPOINT}/rest/v1/topic_mute_timers?id=eq.${encodeURIComponent(id)}`,
+            {
+              method: "DELETE",
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`,
+                "Prefer": "return=minimal"
+              }
+            }
+          );
+        } catch (_) {}
+      }
+
+      async function fetchRemoteTopics() {
+        try {
+          const res = await fetch(
+            `${DB_ENDPOINT}/rest/v1/topic_mute_timers?select=*&order=created_at.desc&limit=40`,
+            {
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`
+              }
+            }
+          );
+          if (!res.ok) return;
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length) {
+            const map = new Map(topics.map((t) => [t.id, t]));
+            rows.forEach((r) => {
+              map.set(r.id, {
+                id: r.id,
+                topic: r.topic || "Untitled Topic",
+                category: r.category || "General",
+                durationHours: Number(r.duration_hours) || 24,
+                expiresAt: r.expires_at || new Date().toISOString(),
+                reason: r.reason || "",
+                createdAt: r.created_at || new Date().toISOString()
+              });
+            });
+            topics = Array.from(map.values());
+            saveLocalTopics();
+            renderTopics();
+          }
+        } catch (_) {}
+      }
+
+      function renderTopics() {
+        const listEl = document.getElementById("topicsList");
+        const badgeEl = document.getElementById("activeMuteBadge");
+        const now = Date.now();
+        const activeCount = topics.filter((t) => new Date(t.expiresAt).getTime() > now).length;
+
+        if (badgeEl) {
+          badgeEl.textContent = `${activeCount} Active`;
+        }
+        if (!listEl) return;
+
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = topics.filter((t) => {
+          const catMatch = activeCategory === "All" || t.category === activeCategory;
+          if (!catMatch) return false;
+          if (!q) return true;
+          const hay = `${t.topic || ""} ${t.category || ""} ${t.reason || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+        if (!filtered.length) {
+          listEl.innerHTML = `<div class="tm-text">No muted topics in this view.</div>`;
+          return;
+        }
+
+        listEl.innerHTML = filtered
+          .map((t) => {
+            const expMs = new Date(t.expiresAt).getTime();
+            const isExpired = expMs <= now;
+            const remText = formatRemaining(expMs);
+
+            return `
+              <div class="topic-item">
+                <div>
+                  <div class="topic-title">${escapeHtml(t.topic)}</div>
+                  <div class="topic-meta">${escapeHtml(t.category)} • ${Number(t.durationHours) || 24}h timer${
+                    t.reason ? ` • ${escapeHtml(t.reason)}` : ""
+                  }</div>
+                </div>
+
+                <div class="topic-right">
+                  <span class="countdown-pill ${isExpired ? "expired" : ""}">${escapeHtml(remText)}</span>
+                  <button type="button" class="mini-btn unmute-btn" data-id="${escapeHtml(t.id)}" title="Unmute / Remove">
+                    <i class="fa-solid fa-volume-high"></i>
+                    <span>Unmute</span>
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        listEl.querySelectorAll(".unmute-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            topics = topics.filter((t) => t.id !== id);
+            saveLocalTopics();
+            renderTopics();
+            await deleteTopicFromCloud(id);
+            showToast("Topic unmuted");
+          });
+        });
+      }
+
+      document.getElementById("startMuteBtn")?.addEventListener("click", async () => {
+        const topicVal = (document.getElementById("topicNameInput")?.value || "").trim();
+        const catVal = document.getElementById("topicCategorySelect")?.value || "General";
+        const hoursVal = Math.max(1, Math.min(720, Number(document.getElementById("muteDurationSelect")?.value) || 24));
+        const reasonVal = (document.getElementById("topicReasonInput")?.value || "").trim();
+
+        if (!topicVal) {
+          showToast("Please enter a topic or keyword");
+          return;
+        }
+
+        const nowIso = new Date().toISOString();
+        const expiresIso = new Date(Date.now() + hoursVal * 3600 * 1000).toISOString();
+
+        const item = {
+          id: `mute-${Date.now()}`,
+          topic: topicVal,
+          category: catVal,
+          durationHours: hoursVal,
+          expiresAt: expiresIso,
+          reason: reasonVal,
+          createdAt: nowIso
+        };
+
+        topics = [item, ...topics];
+        saveLocalTopics();
+        renderTopics();
+
+        document.getElementById("topicNameInput").value = "";
+        document.getElementById("topicReasonInput").value = "";
+
+        await syncTopicToCloud(item);
+        showToast(`Muted "${topicVal}" for ${hoursVal}h`);
+      });
+
+      document.getElementById("searchTopicsInput")?.addEventListener("input", (e) => {
+        searchQuery = e.target.value || "";
+        renderTopics();
+      });
+
+      document.querySelectorAll("#topicFilterStrip .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll("#topicFilterStrip .filter-chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          activeCategory = chip.getAttribute("data-cat") || "All";
+          renderTopics();
+        });
+      });
+
+      document.getElementById("refreshTopicsBtn")?.addEventListener("click", async () => {
+        await fetchRemoteTopics();
+        showToast("Refreshed timers");
+      });
+
+      setInterval(renderTopics, 1000);
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTheme);
+      }
+
+      syncTheme();
+      loadLocalTopics();
+      renderTopics();
+      fetchRemoteTopics();
+    })();
+  </script>
+</body>
+                                                   </html>
