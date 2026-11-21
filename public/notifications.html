@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Notifications — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #FFFFFF;
+      --surface: #f8f9fa;
+      --card: #FFFFFF;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --hover: #f1f3f4;
+      --btn-sec: #f1f3f4;
+      --btn-sec-hover: #e8eaed;
+      --btn-pri: #202124;
+      --btn-pri-text: #FFFFFF;
+      --btn-pri-hover: #3c4043;
+      --danger-bg: rgba(217, 48, 37, 0.12);
+      --danger-text: #d93025;
+      --shadow: 0 2px 10px rgba(32, 33, 36, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #202124;
+        --surface: #292a2d;
+        --card: #202124;
+        --text: #FFFFFF;
+        --muted: #9aa0a6;
+        --border: #3c4043;
+        --hover: #292a2d;
+        --btn-sec: #292a2d;
+        --btn-sec-hover: #3c4043;
+        --btn-pri: #FFFFFF;
+        --btn-pri-text: #202124;
+        --btn-pri-hover: #e8eaed;
+        --danger-bg: rgba(242, 139, 130, 0.16);
+        --danger-text: #f28b82;
+        --shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 72px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Topbar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      height: 56px;
+      padding: 0 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .logo-img {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      color: var(--text);
+    }
+
+    .top-title {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      color: var(--text);
+      flex: 1;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Main Wrapper */
+    .notif-wrapper {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .notif-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 2px;
+    }
+
+    .notif-summary {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .mark-read-btn {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.16s ease;
+    }
+
+    .mark-read-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .notif-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Notification Card */
+    .notif-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      transition: background 0.16s ease;
+    }
+
+    .notif-card.unread {
+      border-color: var(--text);
+    }
+
+    .notif-main {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .notif-avatar-wrap {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+
+    .notif-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .notif-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .notif-type-badge {
+      position: absolute;
+      right: -2px;
+      bottom: -2px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .notif-content {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .notif-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .notif-text strong {
+      font-weight: 800;
+    }
+
+    .notif-time {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .unread-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text);
+      display: inline-block;
+    }
+
+    .notif-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .dots-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.16s ease;
+    }
+
+    .dots-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    /* Empty State */
+    .empty-state {
+      padding: 36px 18px;
+      border-radius: 16px;
+      border: 1px dashed var(--border);
+      background: var(--surface);
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Modal Backdrop & Dialog */
+    .modal-back {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(0, 0, 0, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-back.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal h3 {
+      font-size: 16px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .close-x {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--btn-sec);
+      color: var(--text);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .modal-actions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .menu-action-btn {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.16s ease;
+    }
+
+    .menu-action-btn:hover {
+      background: var(--btn-sec-hover);
+    }
+
+    .menu-action-btn.danger {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border-color: transparent;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .form-group select {
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .btn {
+      height: 40px;
+      padding: 0 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      border-color: var(--btn-pri);
+    }
+
+    .btn-primary:hover {
+      background: var(--btn-pri-hover);
+    }
+
+    .w-100 {
+      width: 100%;
+    }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 35;
+      height: 54px;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    .bn-item {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.16s ease, background 0.16s ease;
+    }
+
+    .bn-item:hover {
+      background: var(--hover);
+      color: var(--text);
+    }
+
+    .bn-item.active {
+      color: var(--text);
+    }
+
+    .bn-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 18%;
+      right: 18%;
+      height: 2.5px;
+      background: var(--text);
+      border-radius: 2px 2px 0 0;
+    }
+
+    .bn-avatar-ring {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+
+    .bn-avatar-ring img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 68px;
+      transform: translateX(-50%) translateY(40px);
+      z-index: 100;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: var(--btn-pri);
+      color: var(--btn-pri-text);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.22s ease, opacity 0.22s ease;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand" onclick="window.location.href='/public/index.html'">
+    <img src="logo.png" alt="Autrobook" class="logo-img" onerror="this.style.display='none'">
+    <span class="brand-name">Autrobook</span>
+  </div>
+  <div class="top-title">Notifications</div>
+</header>
+
+<div class="notif-wrapper">
+  <div class="notif-toolbar">
+    <span class="notif-summary" id="notifSummary">0 notifications</span>
+    <button type="button" class="mark-read-btn" onclick="markAllAsRead()">Mark all read</button>
+  </div>
+  <div class="notif-box" id="notificationAuditBox"></div>
+</div>
+
+<!-- Notification Context Menu Overlay -->
+<div class="modal-back" id="mNotifOptions" onclick="closeModal('mNotifOptions')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>Notification Settings <i class="fas fa-times close-x" onclick="closeModal('mNotifOptions')"></i></h3>
+    <div class="modal-actions-list" id="notifActionsMenu"></div>
+  </div>
+</div>
+
+<!-- Notification Report Overlay -->
+<div class="modal-back" id="mNotifReport" onclick="closeModal('mNotifReport')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>Report Notification Target <i class="fas fa-times close-x" onclick="closeModal('mNotifReport')"></i></h3>
+    <div class="form-group">
+      <label for="notifReportReason">State reason for flagging this profile interaction:</label>
+      <select id="notifReportReason">
+        <option value="Spam / Unsolicited harassment">Spam / Unsolicited harassment</option>
+        <option value="Abusive language / Threat vectors">Abusive language / Threat vectors</option>
+        <option value="Inappropriate Profile Information">Inappropriate Profile Information</option>
+      </select>
+    </div>
+    <button type="button" class="btn btn-primary w-100" onclick="submitNotifReport()">Submit Content Audit</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" aria-label="Main navigation">
+  <div class="bn-item" onclick="window.location.href='/public/reels.html'" aria-label="Reels">
+    <i class="fas fa-clapperboard"></i>
+  </div>
+  <div class="bn-item" onclick="window.location.href='/public/index.html'" aria-label="Home">
+    <i class="fas fa-home"></i>
+  </div>
+  <div class="bn-item" onclick="window.location.href='friends.html'" aria-label="Friends">
+    <i class="fas fa-user-friends"></i>
+  </div>
+  <div class="bn-item" onclick="window.location.href='/public/games.html'" aria-label="Games">
+    <i class="fas fa-gamepad"></i>
+  </div>
+  <div class="bn-item" onclick="window.location.href='groups.html'" aria-label="Groups">
+    <i class="fas fa-users"></i>
+  </div>
+  <div class="bn-item active" aria-label="Notifications">
+    <i class="fas fa-bell"></i>
+  </div>
+  <div class="bn-item" onclick="openOwnProfile()" aria-label="Profile">
+    <div class="bn-avatar-ring" id="bottomNavProfileAvatar">
+      <i class="fas fa-user"></i>
+    </div>
+  </div>
+</nav>
+
+<div id="toast" class="toast">Action updated</div>
+
+<script>
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+  const sb = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  let currentUserId = '';
+  let currentUserProfile = {
+    id: '',
+    full_name: '',
+    avatar_url: ''
+  };
+
+  let notificationsList = [];
+  let selectedNotifId = null;
+
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg || 'Action updated';
+    el.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+  }
+
+  function formatTimeAgo(isoString) {
+    if (!isoString) return 'Just now';
+    const diffSec = Math.max(0, Math.floor((Date.now() - new Date(isoString).getTime()) / 1000));
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d ago`;
+  }
+
+  function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
+  }
+
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+  }
+
+  function openOwnProfile() {
+    if (currentUserId) {
+      window.location.href = `profile.html?id=${encodeURIComponent(currentUserId)}`;
+    } else {
+      window.location.href = 'profile.html';
+    }
+  }
+
+  function openTargetProfile(actorId) {
+    if (actorId) {
+      window.location.href = `profile.html?id=${encodeURIComponent(actorId)}`;
+    } else {
+      window.location.href = 'profile.html';
+    }
+  }
+
+  function renderBottomNavAvatar() {
+    const wrap = document.getElementById('bottomNavProfileAvatar');
+    if (!wrap) return;
+    if (currentUserProfile.avatar_url) {
+      wrap.innerHTML = `<img src="${escapeHtml(currentUserProfile.avatar_url)}" alt="${escapeHtml(currentUserProfile.full_name || 'Profile')}">`;
+    } else {
+      wrap.innerHTML = `<i class="fas fa-user"></i>`;
+    }
+  }
+
+  function getTypeIconClass(type) {
+    switch (String(type || '').toLowerCase()) {
+      case 'friend_request':
+      case 'friend':
+        return 'fa-user-plus';
+      case 'like':
+      case 'reaction':
+        return 'fa-heart';
+      case 'comment':
+        return 'fa-comment';
+      case 'group':
+        return 'fa-users';
+      default:
+        return 'fa-bell';
+    }
+  }
+
+  function saveLocalNotifications() {
+    try {
+      localStorage.setItem('autrobook_notifications', JSON.stringify(notificationsList));
+    } catch (e) {}
+  }
+
+  async function loadNotificationsData() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('autrobook_notifications') || '[]');
+      if (Array.isArray(saved)) notificationsList = saved;
+    } catch (e) {}
+
+    currentUserId = localStorage.getItem('autro_user_id') || '';
+    currentUserProfile = {
+      id: currentUserId,
+      full_name: localStorage.getItem('autro_profile_name') || '',
+      avatar_url: localStorage.getItem('autro_profile_avatar') || ''
+    };
+    renderBottomNavAvatar();
+
+    if (!sb) {
+      renderNotifications();
+      return;
+    }
+
+    try {
+      const { data: authData } = await sb.auth.getUser();
+      if (authData?.user?.id) {
+        currentUserId = String(authData.user.id);
+        localStorage.setItem('autro_user_id', currentUserId);
+      }
+    } catch (e) {}
+
+    try {
+      const { data: profilesData } = await sb
+        .from('profiles')
+        .select('id, full_name, username, avatar_url');
+
+      const profileMap = new Map();
+      if (Array.isArray(profilesData)) {
+        profilesData.forEach(p => {
+          const pid = String(p.id || '');
+          if (!pid) return;
+          const displayName = p.full_name || p.username || 'Autrobook Member';
+          profileMap.set(pid, {
+            id: pid,
+            full_name: displayName,
+            avatar_url: p.avatar_url || ''
+          });
+          if (currentUserId && pid === String(currentUserId)) {
+            currentUserProfile = {
+              id: pid,
+              full_name: displayName,
+              avatar_url: p.avatar_url || ''
+            };
+            if (p.avatar_url) localStorage.setItem('autro_profile_avatar', p.avatar_url);
+            if (displayName) localStorage.setItem('autro_profile_name', displayName);
+            renderBottomNavAvatar();
+          }
+        });
+      }
+
+      if (currentUserId) {
+        const { data: notifRows, error: notifErr } = await sb
+          .from('notifications')
+          .select('*')
+          .eq('user_id', currentUserId)
+          .order('created_at', { ascending: false });
+
+        if (!notifErr && Array.isArray(notifRows)) {
+          notificationsList = notifRows.map(row => {
+            const actorId = String(row.actor_id || row.sender_id || '');
+            const actor = profileMap.get(actorId) || {};
+            return {
+              id: String(row.id),
+              actor_id: actorId,
+              actor_name: row.actor_name || actor.full_name || 'Autrobook Member',
+              actor_avatar: row.actor_avatar || actor.avatar_url || '',
+              message: row.message || row.body || 'interacted with your profile',
+              type: row.type || 'activity',
+              is_read: Boolean(row.is_read),
+              created_at: row.created_at || new Date().toISOString()
+            };
+          });
+          saveLocalNotifications();
+        }
+      }
+    } catch (e) {
+      console.warn('Notifications fetch skipped:', e);
+    }
+
+    renderNotifications();
+  }
+
+  async function markNotificationRead(notifId, navigate = false) {
+    const item = notificationsList.find(n => String(n.id) === String(notifId));
+    if (!item) return;
+
+    item.is_read = true;
+    saveLocalNotifications();
+
+    if (sb && currentUserId) {
+      try {
+        await sb
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', String(notifId))
+          .eq('user_id', currentUserId);
+      } catch (e) {}
+    }
+
+    renderNotifications();
+    if (navigate) {
+      openTargetProfile(item.actor_id);
+    }
+  }
+
+  async function markAllAsRead() {
+    notificationsList = notificationsList.map(n => ({ ...n, is_read: true }));
+    saveLocalNotifications();
+
+    if (sb && currentUserId) {
+      try {
+        await sb
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', currentUserId);
+      } catch (e) {}
+    }
+
+    renderNotifications();
+    showToast('All notifications marked read');
+  }
+
+  async function deleteNotification(notifId) {
+    notificationsList = notificationsList.filter(n => String(n.id) !== String(notifId));
+    saveLocalNotifications();
+
+    if (sb && currentUserId) {
+      try {
+        await sb
+          .from('notifications')
+          .delete()
+          .eq('id', String(notifId))
+          .eq('user_id', currentUserId);
+      } catch (e) {}
+    }
+
+    closeModal('mNotifOptions');
+    renderNotifications();
+    showToast('Notification removed');
+  }
+
+  function openNotifOptions(notifId, event) {
+    if (event) event.stopPropagation();
+    selectedNotifId = String(notifId);
+    const item = notificationsList.find(n => String(n.id) === selectedNotifId);
+    if (!item) return;
+
+    const menu = document.getElementById('notifActionsMenu');
+    if (menu) {
+      menu.innerHTML = `
+        <button type="button" class="menu-action-btn" onclick="markNotificationRead('${escapeHtml(item.id)}', false); closeModal('mNotifOptions');">
+          <i class="fas fa-check"></i><span>${item.is_read ? 'Already read' : 'Mark as read'}</span>
+        </button>
+        <button type="button" class="menu-action-btn" onclick="closeModal('mNotifOptions'); openTargetProfile('${escapeHtml(item.actor_id)}');">
+          <i class="fas fa-user"></i><span>View profile</span>
+        </button>
+        <button type="button" class="menu-action-btn" onclick="closeModal('mNotifOptions'); openModal('mNotifReport');">
+          <i class="fas fa-flag"></i><span>Report notification</span>
+        </button>
+        <button type="button" class="menu-action-btn danger" onclick="deleteNotification('${escapeHtml(item.id)}')">
+          <i class="fas fa-trash"></i><span>Delete notification</span>
+        </button>
+      `;
+    }
+
+    openModal('mNotifOptions');
+  }
+
+  async function submitNotifReport() {
+    const reasonEl = document.getElementById('notifReportReason');
+    const reason = reasonEl ? reasonEl.value : 'Spam / Unsolicited harassment';
+    const item = notificationsList.find(n => String(n.id) === String(selectedNotifId));
+
+    if (sb && currentUserId && item) {
+      try {
+        await sb.from('notification_reports').insert({
+          reporter_id: currentUserId,
+          notification_id: item.id,
+          target_user_id: item.actor_id || null,
+          reason
+        });
+      } catch (e) {}
+    }
+
+    closeModal('mNotifReport');
+    showToast('Report submitted');
+  }
+
+  function renderNotifications() {
+    const box = document.getElementById('notificationAuditBox');
+    const summary = document.getElementById('notifSummary');
+
+    const unreadCount = notificationsList.filter(n => !n.is_read).length;
+    if (summary) {
+      summary.textContent = unreadCount > 0
+        ? `${unreadCount} unread of ${notificationsList.length}`
+        : `${notificationsList.length} ${notificationsList.length === 1 ? 'notification' : 'notifications'}`;
+    }
+
+    if (!box) return;
+
+    if (!notificationsList.length) {
+      box.innerHTML = `<div class="empty-state">No notifications right now.</div>`;
+      return;
+    }
+
+    box.innerHTML = notificationsList.map(item => {
+      const nid = escapeHtml(item.id);
+      const avatarHtml = item.actor_avatar
+        ? `<img src="${escapeHtml(item.actor_avatar)}" alt="${escapeHtml(item.actor_name)}">`
+        : `<i class="fas fa-user"></i>`;
+      const iconClass = getTypeIconClass(item.type);
+
+      return `
+        <div class="notif-card ${item.is_read ? '' : 'unread'}">
+          <div class="notif-main" onclick="markNotificationRead('${nid}', true)">
+            <div class="notif-avatar-wrap">
+              <div class="notif-avatar">${avatarHtml}</div>
+              <span class="notif-type-badge"><i class="fas ${iconClass}"></i></span>
+            </div>
+            <div class="notif-content">
+              <div class="notif-text"><strong>${escapeHtml(item.actor_name)}</strong> ${escapeHtml(item.message)}</div>
+              <div class="notif-time">
+                ${!item.is_read ? '<span class="unread-dot"></span>' : ''}
+                <span>${escapeHtml(formatTimeAgo(item.created_at))}</span>
+              </div>
+            </div>
+          </div>
+          <div class="notif-actions">
+            <button type="button" class="dots-btn" onclick="openNotifOptions('${nid}', event)" aria-label="Notification options">
+              <i class="fas fa-ellipsis-v"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function subscribeRealtimeNotifications() {
+    if (!sb || typeof sb.channel !== 'function') return;
+    try {
+      sb.channel('public:notifications_page')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+          loadNotificationsData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+          loadNotificationsData();
+        })
+        .subscribe();
+    } catch (e) {}
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadNotificationsData();
+    subscribeRealtimeNotifications();
+  });
+</script>
+</body>
+  </html>
