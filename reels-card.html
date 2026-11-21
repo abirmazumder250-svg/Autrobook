@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reels Card - Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-color: #ffffff;
+    --surface-color: #ffffff;
+    --card-bg: #f8fafc;
+    --input-bg: #f1f5f9;
+    --text-color: #0f172a;
+    --muted-color: #5f6368;
+    --border-color: #e5e7eb;
+    --hover-color: rgba(0, 0, 0, 0.06);
+    --accent-color: #111827;
+    --accent-hover: #1f2937;
+    --btn-text: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #202124;
+      --surface-color: #202124;
+      --card-bg: #292a2d;
+      --input-bg: #303134;
+      --text-color: #f1f5f9;
+      --muted-color: #9aa0a6;
+      --border-color: #3c4043;
+      --hover-color: rgba(255, 255, 255, 0.08);
+      --accent-color: #e8eaed;
+      --accent-hover: #ffffff;
+      --btn-text: #202124;
+    }
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: #000000;
+    color: #ffffff;
+    overflow: hidden;
+  }
+
+  .reel-container {
+    height: 100vh;
+    width: 100vw;
+    max-width: 680px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: #000000;
+  }
+
+  video,
+  .reel-image {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .reel-image {
+    display: none;
+  }
+
+  /* Top Left Quality Badge */
+  .quality-badge {
+    position: absolute;
+    top: 16px;
+    left: 14px;
+    background: rgba(32, 33, 36, 0.72);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    z-index: 12;
+  }
+
+  /* Top Right Controls */
+  .top-right-controls {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 15;
+  }
+
+  .top-pill-btn {
+    height: 36px;
+    min-width: 36px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(32, 33, 36, 0.75);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  /* Three Dots Dropdown Menu */
+  .more-menu {
+    position: absolute;
+    top: 56px;
+    right: 14px;
+    width: 225px;
+    background: #292a2d;
+    border: 1px solid #3c4043;
+    border-radius: 14px;
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 25;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  }
+
+  .more-menu.open {
+    display: flex;
+  }
+
+  .more-menu-item {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #f1f5f9;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .more-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .more-menu-item.danger {
+    color: #f87171;
+  }
+
+  /* Right Side Actions */
+  .actions {
+    position: absolute;
+    right: 12px;
+    bottom: 108px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: center;
+    z-index: 12;
+  }
+
+  .action-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+  }
+
+  .action-btn .icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(32, 33, 36, 0.68);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+
+  .action-btn.active .icon {
+    background: rgba(255, 255, 255, 0.24);
+    transform: scale(1.06);
+  }
+
+  .count-trigger {
+    font-size: 12px;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 8px;
+  }
+
+  .count-trigger:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  /* Bottom Info */
+  .bottom-info {
+    position: absolute;
+    bottom: 18px;
+    left: 14px;
+    right: 74px;
+    z-index: 12;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  }
+
+  .profile-header-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .author-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #ffffff;
+  }
+
+  .author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #303134;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .author-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .username {
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .issue-pill {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.88);
+    color: #ffffff;
+    display: none;
+  }
+
+  .small-follow-btn {
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    background: rgba(32, 33, 36, 0.72);
+    color: #ffffff;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: none;
+  }
+
+  .small-follow-btn.following {
+    background: #ffffff;
+    color: #202124;
+    border-color: #ffffff;
+  }
+
+  .caption {
+    font-size: 13.5px;
+    margin-bottom: 5px;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .audio-small {
+    font-size: 11px;
+    opacity: 0.82;
+    margin-bottom: 3px;
+  }
+
+  .views-line {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.92;
+  }
+
+  /* React Popup */
+  .react-popup {
+    position: fixed;
+    right: 64px;
+    bottom: 114px;
+    background: #292a2d;
+    border: 1px solid #3c4043;
+    padding: 8px 12px;
+    border-radius: 999px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  .react-popup.show {
+    display: flex;
+  }
+
+  .react-popup .emoji {
+    font-size: 23px;
+    cursor: pointer;
+    transition: transform 0.14s ease;
+  }
+
+  .react-popup .emoji:hover {
+    transform: scale(1.22);
+  }
+
+  /* Small Share Box with Small 'A' System Default Logo & Share/Copy Actions */
+  .share-popover {
+    position: fixed;
+    right: 66px;
+    bottom: 114px;
+    width: 255px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 52;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  }
+
+  .share-popover.open {
+    display: flex;
+  }
+
+  .share-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sys-default-a-logo {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--accent-color);
+    color: var(--btn-text);
+    font-size: 13px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .share-brand-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+
+  .share-link-preview {
+    font-size: 11px;
+    color: var(--muted-color);
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .share-actions-grid {
+    display: flex;
+    gap: 6px;
+  }
+
+  .copy-link-action-btn {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: none;
+    background: var(--accent-color);
+    color: var(--btn-text);
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .copy-link-action-btn.secondary {
+    background: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+  }
+
+  /* Bottom Sheets */
+  .bottom-sheet {
+    position: fixed;
+    left: 50%;
+    transform: translate(-50%, 100%);
+    bottom: 0;
+    width: 100%;
+    max-width: 680px;
+    max-height: 82vh;
+    background: var(--surface-color);
+    color: var(--text-color);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-top: 1px solid var(--border-color);
+    z-index: 35;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.24s ease;
+  }
+
+  .bottom-sheet.open {
+    transform: translate(-50%, 0);
+  }
+
+  .sheet-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .sheet-title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .sheet-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .comment-perm-select {
+    background: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    outline: none;
+  }
+
+  .close-sheet-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .comment-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    user-select: none;
+  }
+
+  .comment-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted-color);
+    gap: 8px;
+  }
+
+  .comment-author-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .comment-author {
+    font-weight: 700;
+    color: var(--text-color);
+    text-decoration: none;
+  }
+
+  .comment-name-react-btn {
+    background: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 11px;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+
+  .comment-name-react-btn.active {
+    background: var(--accent-color);
+    color: var(--btn-text);
+    border-color: var(--accent-color);
+  }
+
+  .comment-body {
+    font-size: 13.5px;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .mention-tag {
+    font-weight: 700;
+    color: #2563eb;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .mention-tag {
+      color: #60a5fa;
+    }
+  }
+
+  .comment-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .comment-left-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .c-action-btn {
+    background: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .c-action-btn.active {
+    background: var(--accent-color);
+    color: var(--btn-text);
+    border-color: var(--accent-color);
+  }
+
+  .comment-more-wrap {
+    position: relative;
+  }
+
+  .comment-dots-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .comment-dots-menu {
+    position: fixed;
+    width: 165px;
+    background: #292a2d;
+    border: 1px solid #3c4043;
+    border-radius: 12px;
+    padding: 4px;
+    display: none;
+    flex-direction: column;
+    z-index: 55;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .comment-dots-menu.open {
+    display: flex;
+  }
+
+  .comment-dots-item {
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #f1f5f9;
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .comment-dots-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .comment-dots-item.danger {
+    color: #f87171;
+  }
+
+  .comment-footer {
+    position: relative;
+    padding: 10px 14px 14px;
+    border-top: 1px solid var(--border-color);
+    background: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* @Mention Suggestion Box */
+  .mention-dropdown {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 64px;
+    max-height: 190px;
+    overflow-y: auto;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+    display: none;
+    flex-direction: column;
+    z-index: 45;
+  }
+
+  .mention-dropdown.open {
+    display: flex;
+  }
+
+  .mention-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .mention-item:last-child {
+    border-bottom: none;
+  }
+
+  .mention-item:hover {
+    background: var(--hover-color);
+  }
+
+  .comment-input-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .comment-input {
+    flex: 1;
+    min-width: 0;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    padding: 9px 13px;
+    font-size: 13.5px;
+    outline: none;
+  }
+
+  .round-tool-btn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .round-tool-btn.active {
+    background: var(--accent-color);
+    color: var(--btn-text);
+    border-color: var(--accent-color);
+  }
+
+  .round-tool-btn.primary {
+    background: var(--accent-color);
+    color: var(--btn-text);
+    border-color: var(--accent-color);
+  }
+
+  .round-tool-btn.recording {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+  }
+
+  .voice-status {
+    font-size: 12px;
+    color: var(--muted-color);
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .voice-status.show {
+    display: flex;
+  }
+
+  /* Reactor List Row */
+  .reactor-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 10px;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    text-decoration: none;
+    color: var(--text-color);
+  }
+
+  .reactor-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .reactor-name {
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+
+  .reactor-time {
+    font-size: 11.5px;
+    color: var(--muted-color);
+  }
+
+  /* Report Reason List */
+  .reason-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .report-submit-btn {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent-color);
+    color: var(--btn-text);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .status-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    z-index: 65;
+    background: #292a2d;
+    color: #ffffff;
+    border: 1px solid #3c4043;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    display: none;
+  }
+
+  .status-toast.show {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="reel-container" id="reelCard">
+  <video id="reelVideo" loop playsinline></video>
+  <img id="reelImage" class="reel-image" alt="Reel media">
+
+  <div class="quality-badge" id="quality">HD</div>
+
+  <div class="top-right-controls">
+    <button type="button" class="top-pill-btn" id="soundBtn" title="Mute / Unmute">🔊</button>
+    <button type="button" class="top-pill-btn" id="moreDotsBtn" title="More options" aria-label="More options">
+      <i class="fa-solid fa-ellipsis-vertical"></i>
+    </button>
+    <a href="index.html" class="top-pill-btn" title="Back to Feed"><i class="fa-solid fa-xmark"></i></a>
+  </div>
+
+  <!-- Top-Right Three Dots Menu -->
+  <div class="more-menu" id="moreMenu">
+    <button type="button" class="more-menu-item" id="menuSaveDraftBtn">
+      <i class="fa-regular fa-bookmark"></i>
+      <span>Save drafts</span>
+    </button>
+    <button type="button" class="more-menu-item" id="menuNotifyBtn">
+      <i class="fa-regular fa-bell"></i>
+      <span id="notifyMenuLabel">Notification on for this post</span>
+    </button>
+    <button type="button" class="more-menu-item" id="menuShareBtn">
+      <i class="fa-solid fa-share"></i>
+      <span>Share</span>
+    </button>
+    <button type="button" class="more-menu-item danger" id="menuReportBtn">
+      <i class="fa-regular fa-flag"></i>
+      <span>Report</span>
+    </button>
+  </div>
+
+  <div class="actions">
+    <div class="action-group">
+      <button type="button" class="action-btn" id="likeBtn">
+        <div class="icon" id="likeIcon">❤️</div>
+      </button>
+      <span class="count-trigger" id="likeCount" title="See who reacted">0</span>
+    </div>
+
+    <div class="action-group">
+      <button type="button" class="action-btn" id="commentOpenBtn">
+        <div class="icon"><i class="fa-regular fa-comment"></i></div>
+      </button>
+      <span class="count-trigger" id="commentCount">0</span>
+    </div>
+
+    <div class="action-group">
+      <button type="button" class="action-btn" id="shareBtn">
+        <div class="icon"><i class="fa-solid fa-share"></i></div>
+      </button>
+      <span class="count-trigger" id="shareLabelTrigger">Share</span>
+    </div>
+  </div>
+
+  <!-- Small Share Box with 'A' System Default Logo + Share & Copy Link Actions -->
+  <div class="share-popover" id="sharePopover">
+    <div class="share-brand-row">
+      <span class="sys-default-a-logo" aria-hidden="true">A</span>
+      <span class="share-brand-title">AutroChat Share</span>
+    </div>
+    <div class="share-link-preview" id="shareLinkPreview">autrochat.html</div>
+    <div class="share-actions-grid">
+      <button type="button" class="copy-link-action-btn" id="copyAutroChatLinkBtn">
+        <i class="fa-regular fa-copy"></i>
+        <span>Copy link</span>
+      </button>
+      <a href="autrochat.html" class="copy-link-action-btn secondary" id="openAutroChatBtn">
+        <i class="fa-regular fa-paper-plane"></i>
+        <span>Chat</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="react-popup" id="reactPopup">
+    <div class="emoji">❤️</div>
+    <div class="emoji">👍</div>
+    <div class="emoji">😆</div>
+    <div class="emoji">🥰</div>
+    <div class="emoji">😮</div>
+    <div class="emoji">😢</div>
+    <div class="emoji">😠</div>
+  </div>
+
+  <div class="bottom-info">
+    <div class="profile-header-row">
+      <a href="profile.html?user=creator_user" class="author-link" id="authorProfileLink">
+        <span class="author-avatar" id="authorAvatar"><i class="fa-regular fa-user"></i></span>
+        <span class="username" id="username">Creator</span>
+      </a>
+      <span class="issue-pill" id="creatorIssueBadge">Issue</span>
+      <button type="button" class="small-follow-btn" id="followBtn">Follow</button>
+    </div>
+
+    <div class="caption" id="caption"></div>
+    <div class="audio-small" id="audio">🎵 Original Audio</div>
+    <div class="views-line" id="views">0 views • Just now</div>
+  </div>
+</div>
+
+<!-- Comments Bottom Sheet -->
+<aside class="bottom-sheet" id="commentsSheet" aria-label="Comments">
+  <div class="sheet-header">
+    <span class="sheet-title" id="sheetTitle">Comments (0)</span>
+    <div class="sheet-controls">
+      <select id="commentPermissionSelect" class="comment-perm-select" title="Who can comment">
+        <option value="all">Everyone</option>
+        <option value="followers">Followers</option>
+        <option value="locked">Lock Comments</option>
+      </select>
+      <button type="button" class="close-sheet-btn" id="closeCommentsBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <div class="sheet-body" id="commentsList"></div>
+
+  <div class="comment-footer" id="commentFooter">
+    <div class="mention-dropdown" id="mentionDropdown"></div>
+
+    <div class="voice-status" id="voiceStatus">
+      <span id="voiceStatusText">Voice ready (max 30s)</span>
+      <button type="button" id="clearVoiceBtn" style="background:none;border:none;color:inherit;font-weight:700;cursor:pointer;">Clear</button>
+    </div>
+    <div class="comment-input-row">
+      <button type="button" class="round-tool-btn" id="voiceRecordBtn" title="Record up to 30s voice comment">
+        <i class="fa-solid fa-microphone"></i>
+      </button>
+      <input type="text" id="commentInput" class="comment-input" maxlength="300" placeholder="Add a comment (@mention)...">
+      <button type="button" class="round-tool-btn" id="composerReactBtn" title="React (tap = toggle ❤️, long press = emojis)">
+        <span id="composerReactEmoji">❤️</span>
+      </button>
+      <button type="button" class="round-tool-btn primary" id="sendCommentBtn" title="Send comment">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- Per-comment Three Dots Menu -->
+<div class="comment-dots-menu" id="commentDotsMenu">
+  <button type="button" class="comment-dots-item" id="cMenuSaveBtn">
+    <i class="fa-regular fa-bookmark"></i>
+    <span>Save</span>
+  </button>
+  <button type="button" class="comment-dots-item" id="cMenuShareBtn">
+    <i class="fa-solid fa-share"></i>
+    <span>Share</span>
+  </button>
+  <button type="button" class="comment-dots-item" id="cMenuCommentBtn">
+    <i class="fa-regular fa-comment"></i>
+    <span>Comment</span>
+  </button>
+  <button type="button" class="comment-dots-item danger" id="cMenuReportBtn">
+    <i class="fa-regular fa-flag"></i>
+    <span>Report</span>
+  </button>
+</div>
+
+<!-- Reactors List Bottom Sheet -->
+<aside class="bottom-sheet" id="reactorsSheet" aria-label="People who reacted">
+  <div class="sheet-header">
+    <span class="sheet-title" id="reactorsSheetTitle">Reactions (0)</span>
+    <button type="button" class="close-sheet-btn" id="closeReactorsBtn"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body" id="reactorsList"></div>
+</aside>
+
+<!-- Report Sheet (10 valid reasons + submit) -->
+<aside class="bottom-sheet" id="reportSheet" aria-label="Report reel or comment">
+  <div class="sheet-header">
+    <span class="sheet-title" id="reportSheetTitle">Report</span>
+    <button type="button" class="close-sheet-btn" id="closeReportBtn"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body" id="reportReasonsBox">
+    <label class="reason-option"><input type="radio" name="reportReason" value="Spam or misleading content"> <span>1. Spam or misleading content</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Hate speech or discrimination"> <span>2. Hate speech or discrimination</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Harassment or bullying"> <span>3. Harassment or bullying</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Violence or graphic content"> <span>4. Violence or graphic content</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Nudity or sexually explicit content"> <span>5. Nudity or sexually explicit content</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Copyright or intellectual property infringement"> <span>6. Copyright or intellectual property infringement</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Fake account or impersonation"> <span>7. Fake account or impersonation</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Self-harm or dangerous acts"> <span>8. Self-harm or dangerous acts</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Illegal goods or regulated activities"> <span>9. Illegal goods or regulated activities</span></label>
+    <label class="reason-option"><input type="radio" name="reportReason" value="Privacy violation or personal info exposure"> <span>10. Privacy violation or personal info exposure</span></label>
+
+    <input type="text" id="reportDetailsInput" class="comment-input" style="border-radius:10px;" maxlength="300" placeholder="Additional details (optional)">
+    <button type="button" class="report-submit-btn" id="submitReportBtn">Submit Report</button>
+  </div>
+</aside>
+
+<div class="status-toast" id="statusToast"></div>
+
+<script>
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  const MAX_VOICE_SECONDS = 30;
+  const urlParams = new URLSearchParams(window.location.search);
+
+  function loadStoredReelById(reelId) {
+    try {
+      const stored = JSON.parse(localStorage.getItem('autrobook_live_reels') || '[]');
+      return stored.find((item) => item.id === reelId) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  const targetReelId = urlParams.get('id') || 'default_reel';
+  const cachedReel = loadStoredReelById(targetReelId);
+
+  const reelData = {
+    id: targetReelId,
+    user_id: urlParams.get('user_id') || cachedReel?.user_id || 'creator_user',
+    author_name: urlParams.get('author') || cachedReel?.author_name || 'Creator',
+    author_avatar: urlParams.get('avatar') || cachedReel?.author_avatar || '',
+    media_url: urlParams.get('media') || cachedReel?.media_url || '',
+    media_type: urlParams.get('type') || cachedReel?.media_type || 'video',
+    caption: urlParams.get('caption') || cachedReel?.caption || '',
+    audio_name: urlParams.get('audio') || cachedReel?.audio_name || 'Original Audio',
+    quality: urlParams.get('quality') || cachedReel?.quality || 'HD',
+    views_count: Number(cachedReel?.views_count || 0),
+    likes_count: Number(cachedReel?.likes_count || 0),
+    comments_count: Number(cachedReel?.comments_count || 0),
+    audience: urlParams.get('audience') || cachedReel?.audience || 'public',
+    comment_setting: cachedReel?.comment_setting || 'all',
+    sound_enabled: true,
+    isPublic: (urlParams.get('audience') || cachedReel?.audience || 'public') === 'public',
+    has_issue: false,
+    created_at: cachedReel?.created_at || new Date().toISOString()
+  };
+
+  let currentUserId = null;
+  let currentUserProfile = { name: 'Member', avatar: '' };
+  let isFollowing = false;
+  let userReelReaction = null;
+  let composerDraftReaction = null;
+  let soundOn = true;
+  let postNotifyEnabled = true;
+  let comments = [];
+  let reelReactors = [];
+  let mentionableUsers = [];
+  const profileCache = new Map();
+
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let recordedVoiceUrl = '';
+  let recordedVoiceDuration = 0;
+  let recordTimer = null;
+
+  let activePopupCommentId = null;
+  let activePopupTarget = 'reel';
+  let activeCommentMenuId = null;
+  let activeShareExtraText = '';
+  let reportContext = { targetType: 'reel', targetId: '', targetOwnerId: '', targetOwnerName: '' };
+
+  const videoEl = document.getElementById('reelVideo');
+  const imageEl = document.getElementById('reelImage');
+  const soundBtn = document.getElementById('soundBtn');
+  const moreDotsBtn = document.getElementById('moreDotsBtn');
+  const moreMenu = document.getElementById('moreMenu');
+  const followBtn = document.getElementById('followBtn');
+  const likeBtn = document.getElementById('likeBtn');
+  const likeIcon = document.getElementById('likeIcon');
+  const likeCountEl = document.getElementById('likeCount');
+  const commentCountEl = document.getElementById('commentCount');
+  const viewsEl = document.getElementById('views');
+  const reactPopup = document.getElementById('reactPopup');
+  const sharePopover = document.getElementById('sharePopover');
+  const shareLinkPreview = document.getElementById('shareLinkPreview');
+  const copyAutroChatLinkBtn = document.getElementById('copyAutroChatLinkBtn');
+  const openAutroChatBtn = document.getElementById('openAutroChatBtn');
+  const commentsSheet = document.getElementById('commentsSheet');
+  const reactorsSheet = document.getElementById('reactorsSheet');
+  const reportSheet = document.getElementById('reportSheet');
+  const commentsList = document.getElementById('commentsList');
+  const reactorsList = document.getElementById('reactorsList');
+  const commentInput = document.getElementById('commentInput');
+  const mentionDropdown = document.getElementById('mentionDropdown');
+  const composerReactBtn = document.getElementById('composerReactBtn');
+  const composerReactEmoji = document.getElementById('composerReactEmoji');
+  const voiceRecordBtn = document.getElementById('voiceRecordBtn');
+  const voiceStatus = document.getElementById('voiceStatus');
+  const voiceStatusText = document.getElementById('voiceStatusText');
+  const commentPermissionSelect = document.getElementById('commentPermissionSelect');
+  const commentFooter = document.getElementById('commentFooter');
+  const commentDotsMenu = document.getElementById('commentDotsMenu');
+  const statusToast = document.getElementById('statusToast');
+
+  function isPostCreator() {
+    const loggedInMatches = Boolean(currentUserId && reelData.user_id && currentUserId === reelData.user_id);
+    const paramCreatorFlag = urlParams.get('is_owner') === '1' || urlParams.get('owner') === 'me';
+    return loggedInMatches || paramCreatorFlag;
+  }
+
+  function buildAutroChatShareUrl() {
+    const base = new URL('autrochat.html', window.location.href);
+    if (reelData.id) base.searchParams.set('reel_id', reelData.id);
+    if (reelData.user_id) base.searchParams.set('from_user', reelData.user_id);
+    if (reelData.caption) base.searchParams.set('text', reelData.caption);
+    return base.toString();
+  }
+
+  function persistLocalReelState() {
+    try {
+      const existing = JSON.parse(localStorage.getItem('autrobook_live_reels') || '[]');
+      const idx = existing.findIndex((x) => x.id === reelData.id);
+      const record = {
+        ...reelData,
+        updated_at: new Date().toISOString()
+      };
+      if (idx >= 0) existing[idx] = { ...existing[idx], ...record };
+      else existing.unshift(record);
+      localStorage.setItem('autrobook_live_reels', JSON.stringify(existing.slice(0, 100)));
+    } catch (e) {}
+  }
+
+  function notify(msg) {
+    statusToast.textContent = msg;
+    statusToast.classList.add('show');
+    clearTimeout(notify._t);
+    notify._t = setTimeout(() => statusToast.classList.remove('show'), 2300);
+  }
+
+  function formatCount(num) {
+    const n = Number(num || 0);
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return String(n);
+  }
+
+  function formatLiveTime(isoDate) {
+    const pastMs = new Date(isoDate || Date.now()).getTime();
+    const diffSec = Math.max(1, Math.floor((Date.now() - pastMs) / 1000));
+
+    if (diffSec < 60) return `${diffSec} sec${diffSec === 1 ? '' : 's'} ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 30) return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+    const diffMonth = Math.floor(diffDay / 30);
+    if (diffMonth < 12) return `${diffMonth} month${diffMonth === 1 ? '' : 's'} ago`;
+    const diffYear = Math.floor(diffMonth / 12);
+    return `${diffYear} year${diffYear === 1 ? '' : 's'} ago`;
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatCommentTextWithMentions(rawText) {
+    const escaped = escapeHtml(rawText);
+    return escaped.replace(/(^|\s)(@[A-Za-z0-9_.\u0980-\u09FF]+)/g, '$1<span class="mention-tag">$2</span>');
+  }
+
+  function playEffect(type) {
+    if (!soundOn || !reelData.sound_enabled) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'enhance') {
+        osc.type = 'triangle';
+        const freq = Math.min(200, Math.max(100, 125 + (reelData.likes_count % 75)));
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.16);
+        gain.gain.setValueAtTime(0.14, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.18);
+      } else {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(165, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(105, ctx.currentTime + 0.09);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+      }
+    } catch (e) {}
+  }
+
+  async function fetchProfileInfo(userId, fallbackName = 'User', fallbackAvatar = '') {
+    if (!userId) return { name: fallbackName, avatar: fallbackAvatar, hasIssue: false };
+    if (profileCache.has(userId)) return profileCache.get(userId);
+
+    let info = { name: fallbackName, avatar: fallbackAvatar, hasIssue: false };
+    if (supabaseClient) {
+      try {
+        const { data } = await supabaseClient
+          .from('profiles')
+          .select('id, full_name, username, avatar_url, has_issue, is_restricted')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (data) {
+          info = {
+            name: data.full_name || data.username || fallbackName,
+            avatar: data.avatar_url || fallbackAvatar,
+            hasIssue: Boolean(data.has_issue || data.is_restricted)
+          };
+        }
+      } catch (e) {}
+    }
+
+    profileCache.set(userId, info);
+    return info;
+  }
+
+  async function loadLiveFriendsAndUsers() {
+    if (!supabaseClient) return;
+    try {
+      const collected = new Map();
+
+      if (currentUserId) {
+        const { data: friendsRows } = await supabaseClient
+          .from('friends')
+          .select('friend_id, user_id')
+          .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`)
+          .limit(100);
+
+        const friendIds = (friendsRows || [])
+          .map((row) => (row.user_id === currentUserId ? row.friend_id : row.user_id))
+          .filter(Boolean);
+
+        if (friendIds.length) {
+          const { data: friendProfiles } = await supabaseClient
+            .from('profiles')
+            .select('id, full_name, username, avatar_url, has_issue, is_restricted')
+            .in('id', friendIds);
+
+          (friendProfiles || []).forEach((p) => {
+            const handle = p.username || (p.full_name || 'user').replace(/\s+/g, '_').toLowerCase();
+            collected.set(p.id, {
+              id: p.id,
+              name: p.full_name || p.username || 'Friend',
+              handle,
+              avatar_url: p.avatar_url || '',
+              has_issue: Boolean(p.has_issue || p.is_restricted)
+            });
+          });
+        }
+      }
+
+      const { data: allProfiles } = await supabaseClient
+        .from('profiles')
+        .select('id, full_name, username, avatar_url, has_issue, is_restricted')
+        .limit(100);
+
+      (allProfiles || []).forEach((p) => {
+        if (!collected.has(p.id) && p.id !== currentUserId) {
+          const handle = p.username || (p.full_name || 'user').replace(/\s+/g, '_').toLowerCase();
+          collected.set(p.id, {
+            id: p.id,
+            name: p.full_name || p.username || 'Member',
+            handle,
+            avatar_url: p.avatar_url || '',
+            has_issue: Boolean(p.has_issue || p.is_restricted)
+          });
+        }
+      });
+
+      mentionableUsers = Array.from(collected.values());
+    } catch (e) {}
+  }
+
+  async function syncLiveReelFromSupabase() {
+    if (!supabaseClient || !reelData.id) return;
+    try {
+      const { data: reelRow } = await supabaseClient
+        .from('reels')
+        .select('*')
+        .eq('id', reelData.id)
+        .maybeSingle();
+
+      if (reelRow) {
+        reelData.user_id = reelRow.user_id || reelData.user_id;
+        reelData.caption = reelRow.caption ?? reelData.caption;
+        reelData.audio_name = reelRow.audio_name ?? reelData.audio_name;
+        reelData.quality = reelRow.quality ?? reelData.quality;
+        reelData.media_url = reelRow.media_url ?? reelData.media_url;
+        reelData.media_type = reelRow.media_type ?? reelData.media_type;
+        reelData.comment_setting = reelRow.comment_setting || reelData.comment_setting;
+        reelData.views_count = Number(reelRow.views_count ?? reelData.views_count);
+        reelData.created_at = reelRow.created_at || reelData.created_at;
+      }
+
+      reelData.views_count = Number(reelData.views_count || 0) + 1;
+      updateCounters();
+      persistLocalReelState();
+
+      if (reelRow) {
+        await supabaseClient
+          .from('reels')
+          .update({ views_count: reelData.views_count })
+          .eq('id', reelData.id);
+      }
+
+      const { data: reactionsData } = await supabaseClient
+        .from('reel_reactions')
+        .select('*')
+        .eq('reel_id', reelData.id)
+        .order('created_at', { ascending: false });
+
+      if (Array.isArray(reactionsData)) {
+        reelReactors = reactionsData.map((r) => ({
+          user_id: r.user_id,
+          name: r.user_name || 'Member',
+          avatar: r.user_avatar || '',
+          emoji: r.emoji || '❤️',
+          reacted_at: r.created_at || new Date().toISOString()
+        }));
+        reelData.likes_count = reelReactors.length;
+        const mine = reelReactors.find((r) => currentUserId && r.user_id === currentUserId);
+        userReelReaction = mine ? mine.emoji : null;
+      }
+
+      const { data: commentsData } = await supabaseClient
+        .from('reel_comments')
+        .select('*')
+        .eq('reel_id', reelData.id)
+        .order('created_at', { ascending: false });
+
+      if (Array.isArray(commentsData)) {
+        comments = commentsData.map((c) => ({
+          id: c.id,
+          user_id: c.user_id,
+          author_name: c.author_name || 'Member',
+          author_avatar: c.author_avatar || '',
+          comment_text: c.comment_text || '',
+          voice_url: c.voice_url || '',
+          voice_duration: Number(c.voice_duration || 0),
+          likes_count: Number(c.likes_count || 0),
+          dislikes_count: Number(c.dislikes_count || 0),
+          userReaction: null,
+          userDisliked: false,
+          created_at: c.created_at || new Date().toISOString()
+        }));
+        reelData.comments_count = comments.length;
+      }
+
+      updateCounters();
+      persistLocalReelState();
+    } catch (e) {}
+  }
+
+  function subscribeRealtimeUpdates() {
+    if (!supabaseClient || !reelData.id) return;
+    try {
+      supabaseClient
+        .channel(`reel-live-${reelData.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reel_reactions', filter: `reel_id=eq.${reelData.id}` }, async () => {
+          const { data } = await supabaseClient
+            .from('reel_reactions')
+            .select('*')
+            .eq('reel_id', reelData.id)
+            .order('created_at', { ascending: false });
+          if (Array.isArray(data)) {
+            reelReactors = data.map((r) => ({
+              user_id: r.user_id,
+              name: r.user_name || 'Member',
+              avatar: r.user_avatar || '',
+              emoji: r.emoji || '❤️',
+              reacted_at: r.created_at || new Date().toISOString()
+            }));
+            reelData.likes_count = reelReactors.length;
+            const mine = reelReactors.find((r) => currentUserId && r.user_id === currentUserId);
+            userReelReaction = mine ? mine.emoji : null;
+            updateCounters();
+            persistLocalReelState();
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reel_comments', filter: `reel_id=eq.${reelData.id}` }, async () => {
+          const { data } = await supabaseClient
+            .from('reel_comments')
+            .select('*')
+            .eq('reel_id', reelData.id)
+            .order('created_at', { ascending: false });
+          if (Array.isArray(data)) {
+            comments = data.map((c) => ({
+              id: c.id,
+              user_id: c.user_id,
+              author_name: c.author_name || 'Member',
+              author_avatar: c.author_avatar || '',
+              comment_text: c.comment_text || '',
+              voice_url: c.voice_url || '',
+              voice_duration: Number(c.voice_duration || 0),
+              likes_count: Number(c.likes_count || 0),
+              dislikes_count: Number(c.dislikes_count || 0),
+              userReaction: null,
+              userDisliked: false,
+              created_at: c.created_at || new Date().toISOString()
+            }));
+            reelData.comments_count = comments.length;
+            updateCounters();
+            persistLocalReelState();
+            if (commentsSheet.classList.contains('open')) {
+              await renderComments();
+            }
+          }
+        })
+        .subscribe();
+    } catch (e) {}
+  }
+
+  async function renderReelInfo() {
+    const creatorInfo = await fetchProfileInfo(reelData.user_id, reelData.author_name, reelData.author_avatar);
+    reelData.author_name = creatorInfo.name;
+    reelData.author_avatar = creatorInfo.avatar;
+    reelData.has_issue = creatorInfo.hasIssue;
+
+    document.getElementById('quality').textContent = reelData.quality || 'HD';
+    document.getElementById('caption').textContent = reelData.caption || '';
+    document.getElementById('audio').textContent = `🎵 ${reelData.audio_name || 'Original Audio'}`;
+    document.getElementById('username').textContent = reelData.author_name;
+    document.getElementById('authorProfileLink').href = `profile.html?user=${encodeURIComponent(reelData.user_id)}`;
+
+    const issueBadge = document.getElementById('creatorIssueBadge');
+    issueBadge.style.display = reelData.has_issue ? 'inline-block' : 'none';
+
+    const avatarEl = document.getElementById('authorAvatar');
+    if (reelData.author_avatar) {
+      avatarEl.innerHTML = `<img src="${escapeHtml(reelData.author_avatar)}" alt="${escapeHtml(reelData.author_name)}">`;
+    } else {
+      avatarEl.innerHTML = `<i class="fa-regular fa-user"></i>`;
+    }
+
+    if (reelData.isPublic && reelData.user_id && !isPostCreator()) {
+      followBtn.style.display = 'inline-block';
+      followBtn.textContent = isFollowing ? 'Following' : 'Follow';
+      followBtn.classList.toggle('following', isFollowing);
+    } else {
+      followBtn.style.display = 'none';
+    }
+
+    const menuReportBtn = document.getElementById('menuReportBtn');
+    menuReportBtn.style.display = isPostCreator() ? 'none' : 'flex';
+
+    if (reelData.media_type === 'image' && reelData.media_url) {
+      videoEl.style.display = 'none';
+      imageEl.style.display = 'block';
+      imageEl.src = reelData.media_url;
+    } else {
+      imageEl.style.display = 'none';
+      videoEl.style.display = 'block';
+      if (reelData.media_url) {
+        videoEl.src = reelData.media_url;
+        videoEl.muted = !soundOn;
+        videoEl.play().catch(() => {});
+      }
+    }
+
+    updateCounters();
+  }
+
+  function updateCounters() {
+    likeCountEl.textContent = formatCount(reelData.likes_count);
+    commentCountEl.textContent = formatCount(reelData.comments_count);
+    viewsEl.textContent = `${formatCount(reelData.views_count)} views • ${formatLiveTime(reelData.created_at)}`;
+    document.getElementById('sheetTitle').textContent = `Comments (${formatCount(reelData.comments_count)})`;
+    document.getElementById('reactorsSheetTitle').textContent = `Reactions (${formatCount(reelData.likes_count)})`;
+    likeIcon.textContent = userReelReaction || '❤️';
+    likeBtn.classList.toggle('active', Boolean(userReelReaction));
+  }
+
+  async function applyReelReaction(emoji) {
+    const actorId = currentUserId || 'guest_user';
+    const actorName = currentUserProfile.name || 'You';
+    const actorAvatar = currentUserProfile.avatar || '';
+
+    if (userReelReaction === emoji) {
+      userReelReaction = null;
+      reelData.likes_count = Math.max(0, (reelData.likes_count || 0) - 1);
+      reelReactors = reelReactors.filter((r) => r.user_id !== actorId);
+      playEffect('pop');
+      notify('Reaction removed');
+
+      if (supabaseClient && reelData.id) {
+        try {
+          await supabaseClient
+            .from('reel_reactions')
+            .delete()
+            .eq('reel_id', reelData.id)
+            .eq('user_id', actorId);
+        } catch (e) {}
+      }
+    } else {
+      const hadReaction = Boolean(userReelReaction);
+      userReelReaction = emoji;
+      if (!hadReaction) {
+        reelData.likes_count = (reelData.likes_count || 0) + 1;
+      }
+      const nowIso = new Date().toISOString();
+      reelReactors = reelReactors.filter((r) => r.user_id !== actorId);
+      reelReactors.unshift({
+        user_id: actorId,
+        name: actorName,
+        avatar: actorAvatar,
+        emoji,
+        reacted_at: nowIso
+      });
+      playEffect('enhance');
+      notify(`Reacted with ${emoji}`);
+
+      if (supabaseClient && reelData.id) {
+        try {
+          await supabaseClient
+            .from('reel_reactions')
+            .upsert({
+              reel_id: reelData.id,
+              user_id: actorId,
+              user_name: actorName,
+              user_avatar: actorAvatar,
+              emoji,
+              created_at: nowIso
+            }, { onConflict: 'reel_id,user_id' });
+        } catch (e) {}
+      }
+    }
+    updateCounters();
+    persistLocalReelState();
+  }
+
+  async function openReactorsSheet() {
+    closeAllSheets();
+    const enriched = await Promise.all(
+      reelReactors.map(async (r) => {
+        const p = await fetchProfileInfo(r.user_id, r.name, r.avatar);
+        return { ...r, name: p.name, avatar: p.avatar, hasIssue: p.hasIssue };
+      })
+    );
+
+    if (!enriched.length) {
+      reactorsList.innerHTML = `<div style="text-align:center;color:var(--muted-color);padding:24px;font-size:13px;">No reactions yet.</div>`;
+    } else {
+      reactorsList.innerHTML = enriched.map((r) => {
+        const av = r.avatar
+          ? `<img src="${escapeHtml(r.avatar)}" alt="${escapeHtml(r.name)}">`
+          : `<i class="fa-regular fa-user"></i>`;
+        const issueTag = r.hasIssue ? `<span class="issue-pill" style="display:inline-block;">Issue</span>` : '';
+        return `
+          <a href="profile.html?user=${encodeURIComponent(r.user_id)}" class="reactor-row">
+            <div class="reactor-left">
+              <span class="author-avatar">${av}</span>
+              <div>
+                <div class="reactor-name">${escapeHtml(r.name)} ${issueTag}</div>
+                <div class="reactor-time">${escapeHtml(formatLiveTime(r.reacted_at))}</div>
+              </div>
+            </div>
+            <span style="font-size:20px;">${escapeHtml(r.emoji)}</span>
+          </a>
+        `;
+      }).join('');
+    }
+
+    reactorsSheet.classList.add('open');
+  }
+
+  likeCountEl.addEventListener('click', openReactorsSheet);
+
+  function showReactionPopupAt(anchorEl, targetType, commentId = null) {
+    activePopupTarget = targetType;
+    activePopupCommentId = commentId;
+    const rect = anchorEl.getBoundingClientRect();
+    reactPopup.style.right = '16px';
+    reactPopup.style.bottom = `${Math.max(84, Math.min(window.innerHeight - 120, window.innerHeight - rect.top + 8))}px`;
+    reactPopup.classList.add('show');
+  }
+
+  let reelPressTimer = null;
+  let reelLongPressed = false;
+
+  likeBtn.addEventListener('pointerdown', () => {
+    reelLongPressed = false;
+    reelPressTimer = setTimeout(() => {
+      reelLongPressed = true;
+      showReactionPopupAt(likeBtn, 'reel', null);
+    }, 450);
+  });
+
+  likeBtn.addEventListener('pointerup', () => {
+    clearTimeout(reelPressTimer);
+    if (!reelLongPressed) {
+      applyReelReaction(userReelReaction || '❤️');
+    }
+  });
+
+  likeBtn.addEventListener('pointerleave', () => clearTimeout(reelPressTimer));
+
+  let composerPressTimer = null;
+  let composerLongPressed = false;
+
+  composerReactBtn.addEventListener('pointerdown', () => {
+    composerLongPressed = false;
+    composerPressTimer = setTimeout(() => {
+      composerLongPressed = true;
+      showReactionPopupAt(composerReactBtn, 'composer', null);
+    }, 450);
+  });
+
+  composerReactBtn.addEventListener('pointerup', () => {
+    clearTimeout(composerPressTimer);
+    if (!composerLongPressed) {
+      if (composerDraftReaction === '❤️') {
+        composerDraftReaction = null;
+        composerReactEmoji.textContent = '❤️';
+        composerReactBtn.classList.remove('active');
+        playEffect('pop');
+        notify('Reaction cleared');
+      } else {
+        composerDraftReaction = '❤️';
+        composerReactEmoji.textContent = '❤️';
+        composerReactBtn.classList.add('active');
+        playEffect('enhance');
+        notify('Selected ❤️ for comment');
+      }
+    }
+  });
+
+  composerReactBtn.addEventListener('pointerleave', () => clearTimeout(composerPressTimer));
+
+  document.querySelectorAll('#reactPopup .emoji').forEach((item) => {
+    item.addEventListener('click', () => {
+      const chosen = item.textContent.trim();
+      reactPopup.classList.remove('show');
+      if (activePopupTarget === 'comment' && activePopupCommentId) {
+        toggleCommentReaction(activePopupCommentId, chosen);
+        activePopupCommentId = null;
+      } else if (activePopupTarget === 'composer') {
+        composerDraftReaction = chosen;
+        composerReactEmoji.textContent = chosen;
+        composerReactBtn.classList.add('active');
+        playEffect('enhance');
+        notify(`Selected ${chosen}`);
+      } else {
+        applyReelReaction(chosen);
+      }
+    });
+  });
+
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    videoEl.muted = !soundOn;
+    soundBtn.textContent = soundOn ? '🔊' : '🔇';
+    notify(soundOn ? 'Sound on' : 'Muted');
+  });
+
+  followBtn.addEventListener('click', () => {
+    if (!reelData.isPublic) return;
+    isFollowing = !isFollowing;
+    followBtn.textContent = isFollowing ? 'Following' : 'Follow';
+    followBtn.classList.toggle('following', isFollowing);
+    playEffect(isFollowing ? 'enhance' : 'pop');
+    notify(isFollowing ? `Following ${reelData.author_name}` : `Unfollowed ${reelData.author_name}`);
+  });
+
+  function closeAllSheets() {
+    commentsSheet.classList.remove('open');
+    reactorsSheet.classList.remove('open');
+    reportSheet.classList.remove('open');
+    reactPopup.classList.remove('show');
+    sharePopover.classList.remove('open');
+    commentDotsMenu.classList.remove('open');
+    mentionDropdown.classList.remove('open');
+  }
+
+  moreDotsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    moreMenu.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!moreMenu.contains(e.target) && e.target !== moreDotsBtn) {
+      moreMenu.classList.remove('open');
+    }
+    if (
+      !sharePopover.contains(e.target) &&
+      !e.target.closest('#shareBtn') &&
+      !e.target.closest('#shareLabelTrigger') &&
+      !e.target.closest('#menuShareBtn') &&
+      !e.target.closest('#cMenuShareBtn')
+    ) {
+      sharePopover.classList.remove('open');
+    }
+    if (!commentDotsMenu.contains(e.target) && !e.target.closest('.comment-dots-btn')) {
+      commentDotsMenu.classList.remove('open');
+    }
+    if (!mentionDropdown.contains(e.target) && e.target !== commentInput) {
+      mentionDropdown.classList.remove('open');
+    }
+  });
+
+  function saveCurrentReelToDrafts() {
+    try {
+      const existing = JSON.parse(localStorage.getItem('autrobook_drafts') || '[]');
+      existing.unshift({
+        id: 'draft_' + Date.now(),
+        caption: reelData.caption || 'Saved reel',
+        audio: reelData.audio_name || '',
+        items: reelData.media_url ? [{ src: reelData.media_url, type: reelData.media_type, title: reelData.caption || 'Reel' }] : [],
+        savedAt: new Date().toLocaleString()
+      });
+      localStorage.setItem('autrobook_drafts', JSON.stringify(existing));
+    } catch (e) {}
+    notify('Saved to drafts');
+  }
+
+  document.getElementById('menuSaveDraftBtn').addEventListener('click', () => {
+    moreMenu.classList.remove('open');
+    saveCurrentReelToDrafts();
+    setTimeout(() => { window.location.href = 'draft.html'; }, 350);
+  });
+
+  document.getElementById('menuNotifyBtn').addEventListener('click', () => {
+    moreMenu.classList.remove('open');
+    postNotifyEnabled = !postNotifyEnabled;
+    document.getElementById('notifyMenuLabel').textContent = postNotifyEnabled
+      ? 'Notification on for this post'
+      : 'Notification off for this post';
+    notify(postNotifyEnabled ? 'Post notifications ON' : 'Post notifications OFF');
+  });
+
+  // Functional Share Box + Native Web Share + AutroChat Link + Copy Link
+  async function openShareBox(anchorEl, customText = '') {
+    moreMenu.classList.remove('open');
+    activeShareExtraText = customText || '';
+    const shareUrl = buildAutroChatShareUrl();
+    const shareText = activeShareExtraText
+      ? `${activeShareExtraText} — ${reelData.author_name}`
+      : (reelData.caption || `Check out ${reelData.author_name}'s reel on Autrobook`);
+
+    shareLinkPreview.textContent = shareUrl;
+    openAutroChatBtn.href = shareUrl;
+
+    if (navigator.share && !customText) {
+      try {
+        await navigator.share({
+          title: `${reelData.author_name} • Autrobook`,
+          text: shareText,
+          url: shareUrl
+        });
+        notify('Shared successfully');
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+
+    if (anchorEl && anchorEl.getBoundingClientRect) {
+      const rect = anchorEl.getBoundingClientRect();
+      sharePopover.style.right = '16px';
+      sharePopover.style.bottom = `${Math.max(88, Math.min(window.innerHeight - 165, window.innerHeight - rect.top + 8))}px`;
+    } else {
+      sharePopover.style.right = '16px';
+      sharePopover.style.bottom = '114px';
+    }
+    sharePopover.classList.add('open');
+  }
+
+  copyAutroChatLinkBtn.addEventListener('click', async () => {
+    const shareUrl = buildAutroChatShareUrl();
+    const finalPayload = activeShareExtraText ? `${activeShareExtraText}\n${shareUrl}` : shareUrl;
+    try {
+      await navigator.clipboard.writeText(finalPayload);
+      notify('autrochat.html link copied');
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = finalPayload;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      notify('autrochat.html link copied');
+    }
+    sharePopover.classList.remove('open');
+  });
+
+  document.getElementById('menuShareBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openShareBox(moreDotsBtn);
+  });
+  document.getElementById('shareBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openShareBox(document.getElementById('shareBtn'));
+  });
+  document.getElementById('shareLabelTrigger').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openShareBox(document.getElementById('shareBtn'));
+  });
+
+  function openReportSheet(ctx) {
+    if (isPostCreator() || (currentUserId && ctx.targetOwnerId && ctx.targetOwnerId === currentUserId)) {
+      notify('Post creator cannot report');
+      return;
+    }
+    reportContext = ctx;
+    document.getElementById('reportSheetTitle').textContent = ctx.targetType === 'comment' ? 'Report Comment' : 'Report Reel';
+    closeAllSheets();
+    reportSheet.classList.add('open');
+  }
+
+  document.getElementById('menuReportBtn').addEventListener('click', () => {
+    moreMenu.classList.remove('open');
+    openReportSheet({
+      targetType: 'reel',
+      targetId: reelData.id,
+      targetOwnerId: reelData.user_id,
+      targetOwnerName: reelData.author_name
+    });
+  });
+
+  document.getElementById('closeReportBtn').addEventListener('click', () => reportSheet.classList.remove('open'));
+  document.getElementById('closeReactorsBtn').addEventListener('click', () => reactorsSheet.classList.remove('open'));
+  document.getElementById('closeCommentsBtn').addEventListener('click', () => commentsSheet.classList.remove('open'));
+
+  document.getElementById('submitReportBtn').addEventListener('click', async () => {
+    const selected = document.querySelector('input[name="reportReason"]:checked');
+    if (!selected) {
+      notify('Please select one of the 10 reasons');
+      return;
+    }
+
+    const details = document.getElementById('reportDetailsInput').value.trim();
+    const payload = {
+      target_type: reportContext.targetType,
+      target_id: reportContext.targetId,
+      reel_id: reelData.id,
+      reported_user_id: reportContext.targetOwnerId,
+      reported_user_name: reportContext.targetOwnerName,
+      reporter_user_id: currentUserId || 'guest',
+      reporter_name: currentUserProfile.name || 'Guest',
+      reason: selected.value,
+      details,
+      reel_url: window.location.href,
+      submitted_at: new Date().toISOString()
+    };
+
+    try {
+      const res = await fetch('/api/report-reel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        notify('Report sent to admin email');
+        reportSheet.classList.remove('open');
+        document.getElementById('reportDetailsInput').value = '';
+        return;
+      }
+    } catch (e) {}
+
+    if (supabaseClient) {
+      try {
+        await supabaseClient.from('reel_reports').insert(payload);
+      } catch (e) {}
+    }
+
+    notify('Report submitted');
+    reportSheet.classList.remove('open');
+    document.getElementById('reportDetailsInput').value = '';
+  });
+
+  function applyCommentPermissionUI() {
+    const setting = reelData.comment_setting;
+    commentPermissionSelect.value = setting;
+    if (setting === 'locked') {
+      commentFooter.style.display = 'none';
+    } else if (setting === 'followers' && !isFollowing && !isPostCreator()) {
+      commentFooter.style.display = 'none';
+    } else {
+      commentFooter.style.display = 'flex';
+    }
+  }
+
+  commentPermissionSelect.addEventListener('change', async () => {
+    reelData.comment_setting = commentPermissionSelect.value;
+    applyCommentPermissionUI();
+    persistLocalReelState();
+    notify(`Comments: ${reelData.comment_setting}`);
+    if (supabaseClient && reelData.id) {
+      try {
+        await supabaseClient.from('reels').update({ comment_setting: reelData.comment_setting }).eq('id', reelData.id);
+      } catch (e) {}
+    }
+  });
+
+  document.getElementById('commentOpenBtn').addEventListener('click', async () => {
+    closeAllSheets();
+    applyCommentPermissionUI();
+    commentsSheet.classList.add('open');
+    await loadLiveFriendsAndUsers();
+    await renderComments();
+  });
+
+  function updateMentionSuggestions() {
+    const val = commentInput.value;
+    const caret = commentInput.selectionStart ?? val.length;
+    const beforeCaret = val.slice(0, caret);
+    const match = beforeCaret.match(/(?:^|\s)@([^\s@]*)$/);
+
+    if (!match) {
+      mentionDropdown.classList.remove('open');
+      return;
+    }
+
+    const query = (match[1] || '').toLowerCase();
+    const pool = mentionableUsers.length
+      ? mentionableUsers
+      : [
+          { id: reelData.user_id, name: reelData.author_name, handle: reelData.author_name.replace(/\s+/g, '_').toLowerCase(), avatar_url: reelData.author_avatar }
+        ];
+
+    const filtered = pool.filter((u) => {
+      const n = (u.name || '').toLowerCase();
+      const h = (u.handle || '').toLowerCase();
+      return !query || n.includes(query) || h.includes(query);
+    }).slice(0, 12);
+
+    if (!filtered.length) {
+      mentionDropdown.classList.remove('open');
+      return;
+    }
+
+    mentionDropdown.innerHTML = filtered.map((u) => {
+      const av = u.avatar_url
+        ? `<img src="${escapeHtml(u.avatar_url)}" alt="${escapeHtml(u.name)}">`
+        : `<i class="fa-regular fa-user"></i>`;
+      return `
+        <button type="button" class="mention-item" data-handle="${escapeHtml(u.handle)}">
+          <span class="author-avatar" style="width:26px;height:26px;">${av}</span>
+          <div>
+            <div style="font-weight:700;">${escapeHtml(u.name)}</div>
+            <div style="font-size:11.5px;color:var(--muted-color);">@${escapeHtml(u.handle)}</div>
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    mentionDropdown.querySelectorAll('.mention-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const handle = item.getAttribute('data-handle');
+        const curVal = commentInput.value;
+        const pos = commentInput.selectionStart ?? curVal.length;
+        const left = curVal.slice(0, pos);
+        const right = curVal.slice(pos);
+        const replacedLeft = left.replace(/(?:^|\s)@([^\s@]*)$/, (full) => {
+          const leadingSpace = full.startsWith(' ') ? ' ' : '';
+          return `${leadingSpace}@${handle} `;
+        });
+        commentInput.value = replacedLeft + right;
+        mentionDropdown.classList.remove('open');
+        commentInput.focus();
+      });
+    });
+
+    mentionDropdown.classList.add('open');
+  }
+
+  commentInput.addEventListener('input', updateMentionSuggestions);
+  commentInput.addEventListener('click', updateMentionSuggestions);
+
+  voiceRecordBtn.addEventListener('click', async () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      notify('Microphone not supported');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      recordedVoiceUrl = '';
+      recordedVoiceDuration = 0;
+
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) audioChunks.push(ev.data);
+      };
+      mediaRecorder.onstop = () => {
+        clearInterval(recordTimer);
+        voiceRecordBtn.classList.remove('recording');
+        stream.getTracks().forEach((t) => t.stop());
+        if (audioChunks.length > 0) {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          recordedVoiceUrl = URL.createObjectURL(blob);
+          voiceStatus.classList.add('show');
+          voiceStatusText.textContent = `Voice recorded (${recordedVoiceDuration}s / ${MAX_VOICE_SECONDS}s max)`;
+        }
+      };
+
+      mediaRecorder.start();
+      voiceRecordBtn.classList.add('recording');
+      voiceStatus.classList.add('show');
+      voiceStatusText.textContent = `Recording... 0s / ${MAX_VOICE_SECONDS}s`;
+
+      recordTimer = setInterval(() => {
+        recordedVoiceDuration += 1;
+        voiceStatusText.textContent = `Recording... ${recordedVoiceDuration}s / ${MAX_VOICE_SECONDS}s`;
+        if (recordedVoiceDuration >= MAX_VOICE_SECONDS) {
+          mediaRecorder.stop();
+        }
+      }, 1000);
+    } catch (err) {
+      notify('Microphone access denied');
+    }
+  });
+
+  document.getElementById('clearVoiceBtn').addEventListener('click', () => {
+    recordedVoiceUrl = '';
+    recordedVoiceDuration = 0;
+    voiceStatus.classList.remove('show');
+  });
+
+  async function toggleCommentReaction(commentId, emoji) {
+    const c = comments.find((item) => item.id === commentId);
+    if (!c) return;
+    if (c.userReaction === emoji) {
+      c.userReaction = null;
+      c.likes_count = Math.max(0, c.likes_count - 1);
+      playEffect('pop');
+      notify('Comment reaction removed');
+    } else {
+      if (!c.userReaction) {
+        c.likes_count += 1;
+      }
+      c.userReaction = emoji;
+      playEffect('enhance');
+      notify(`Reacted ${emoji} on comment`);
+    }
+    renderComments();
+
+    if (supabaseClient) {
+      try {
+        await supabaseClient
+          .from('reel_comments')
+          .update({ likes_count: c.likes_count })
+          .eq('id', c.id);
+      } catch (e) {}
+    }
+  }
+
+  async function toggleCommentDislike(commentId) {
+    const c = comments.find((item) => item.id === commentId);
+    if (!c) return;
+    c.userDisliked = !c.userDisliked;
+    c.dislikes_count += c.userDisliked ? 1 : -1;
+    if (c.dislikes_count < 0) c.dislikes_count = 0;
+    playEffect(c.userDisliked ? 'enhance' : 'pop');
+    renderComments();
+
+    if (supabaseClient) {
+      try {
+        await supabaseClient
+          .from('reel_comments')
+          .update({ dislikes_count: c.dislikes_count })
+          .eq('id', c.id);
+      } catch (e) {}
+    }
+  }
+
+  async function copyCommentText(commentId) {
+    const c = comments.find((item) => item.id === commentId);
+    if (!c) return;
+    const textToCopy = c.comment_text || (c.voice_url ? `Voice comment (${c.voice_duration}s)` : '');
+    if (!textToCopy) return;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      notify('Comment copied');
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = textToCopy;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      notify('Comment copied');
+    }
+  }
+
+  function openCommentDotsMenu(btnEl, commentId, ownerId) {
+    activeCommentMenuId = commentId;
+    const hideReport = isPostCreator() || Boolean(currentUserId && ownerId === currentUserId);
+    document.getElementById('cMenuReportBtn').style.display = hideReport ? 'none' : 'flex';
+
+    const rect = btnEl.getBoundingClientRect();
+    commentDotsMenu.style.left = `${Math.max(12, rect.left - 135)}px`;
+    commentDotsMenu.style.top = `${Math.min(window.innerHeight - 165, rect.bottom + 4)}px`;
+    commentDotsMenu.classList.add('open');
+  }
+
+  document.getElementById('cMenuSaveBtn').addEventListener('click', () => {
+    commentDotsMenu.classList.remove('open');
+    saveCurrentReelToDrafts();
+  });
+
+  document.getElementById('cMenuShareBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    commentDotsMenu.classList.remove('open');
+    const c = comments.find((x) => x.id === activeCommentMenuId);
+    openShareBox(document.getElementById('shareBtn'), c ? c.comment_text : '');
+  });
+
+  document.getElementById('cMenuCommentBtn').addEventListener('click', () => {
+    commentDotsMenu.classList.remove('open');
+    const c = comments.find((x) => x.id === activeCommentMenuId);
+    if (c && c.author_name) {
+      const handle = c.author_name.replace(/\s+/g, '_').toLowerCase();
+      commentInput.value = `@${handle} `;
+    }
+    commentInput.focus();
+  });
+
+  document.getElementById('cMenuReportBtn').addEventListener('click', () => {
+    commentDotsMenu.classList.remove('open');
+    const c = comments.find((x) => x.id === activeCommentMenuId);
+    if (!c) return;
+    openReportSheet({
+      targetType: 'comment',
+      targetId: c.id,
+      targetOwnerId: c.user_id,
+      targetOwnerName: c.author_name
+    });
+  });
+
+  async function renderComments() {
+    if (reelData.comment_setting === 'locked') {
+      commentsList.innerHTML = `<div style="text-align:center;color:var(--muted-color);padding:24px;font-size:13px;">Comments are locked for this reel.</div>`;
+      return;
+    }
+
+    if (!comments.length) {
+      commentsList.innerHTML = `<div style="text-align:center;color:var(--muted-color);padding:24px;font-size:13px;">No comments yet.</div>`;
+      return;
+    }
+
+    const enrichedComments = await Promise.all(
+      comments.map(async (c) => {
+        const p = await fetchProfileInfo(c.user_id, c.author_name, c.author_avatar);
+        return { ...c, author_name: p.name, author_avatar: p.avatar, hasIssue: p.hasIssue };
+      })
+    );
+
+    commentsList.innerHTML = enrichedComments.map((c) => {
+      const voiceHtml = c.voice_url
+        ? `<audio controls src="${escapeHtml(c.voice_url)}" style="width:100%;height:34px;"></audio>`
+        : '';
+      const textHtml = c.comment_text
+        ? `<div class="comment-body">${formatCommentTextWithMentions(c.comment_text)}</div>`
+        : '';
+      const issueBadge = c.hasIssue ? `<span class="issue-pill" style="display:inline-block;">Issue</span>` : '';
+
+      return `
+        <div class="comment-card" data-cid="${escapeHtml(c.id)}">
+          <div class="comment-top">
+            <div class="comment-author-wrap">
+              <a href="profile.html?user=${encodeURIComponent(c.user_id)}" class="comment-author">${escapeHtml(c.author_name)}</a>
+              ${issueBadge}
+              <button type="button" class="comment-name-react-btn ${c.userReaction ? 'active' : ''}" data-cid="${escapeHtml(c.id)}" title="React to comment">${escapeHtml(c.userReaction || '❤️')}</button>
+            </div>
+            <span class="live-comment-time" data-created="${escapeHtml(c.created_at)}">${escapeHtml(formatLiveTime(c.created_at))}</span>
+          </div>
+          ${textHtml}
+          ${voiceHtml}
+          <div class="comment-actions-row">
+            <div class="comment-left-actions">
+              <button type="button" class="c-action-btn c-react-btn ${c.userReaction ? 'active' : ''}" data-cid="${escapeHtml(c.id)}">
+                <span>${escapeHtml(c.userReaction || '❤️')}</span>
+                <span>${formatCount(c.likes_count)}</span>
+              </button>
+              <button type="button" class="c-action-btn c-dislike-btn ${c.userDisliked ? 'active' : ''}" data-cid="${escapeHtml(c.id)}">
+                <i class="fa-regular fa-thumbs-down"></i>
+                <span>${formatCount(c.dislikes_count)}</span>
+              </button>
+            </div>
+            <div class="comment-more-wrap">
+              <button type="button" class="comment-dots-btn" data-cid="${escapeHtml(c.id)}" data-owner="${escapeHtml(c.user_id)}" title="Comment options">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    commentsList.querySelectorAll('.comment-card').forEach((card) => {
+      const cid = card.getAttribute('data-cid');
+      let copyTimer = null;
+      card.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button') || e.target.closest('a') || e.target.closest('audio')) return;
+        copyTimer = setTimeout(() => {
+          copyCommentText(cid);
+        }, 500);
+      });
+      card.addEventListener('pointerup', () => clearTimeout(copyTimer));
+      card.addEventListener('pointerleave', () => clearTimeout(copyTimer));
+    });
+
+    commentsList.querySelectorAll('.c-react-btn, .comment-name-react-btn').forEach((btn) => {
+      const cid = btn.getAttribute('data-cid');
+      let timer = null;
+      let longPress = false;
+
+      btn.addEventListener('pointerdown', () => {
+        longPress = false;
+        timer = setTimeout(() => {
+          longPress = true;
+          showReactionPopupAt(btn, 'comment', cid);
+        }, 450);
+      });
+
+      btn.addEventListener('pointerup', () => {
+        clearTimeout(timer);
+        if (!longPress) {
+          const item = comments.find((x) => x.id === cid);
+          toggleCommentReaction(cid, (item && item.userReaction) || '❤️');
+        }
+      });
+
+      btn.addEventListener('pointerleave', () => clearTimeout(timer));
+    });
+
+    commentsList.querySelectorAll('.c-dislike-btn').forEach((btn) => {
+      btn.addEventListener('click', () => toggleCommentDislike(btn.getAttribute('data-cid')));
+    });
+
+    commentsList.querySelectorAll('.comment-dots-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openCommentDotsMenu(btn, btn.getAttribute('data-cid'), btn.getAttribute('data-owner'));
+      });
+    });
+  }
+
+  document.getElementById('sendCommentBtn').addEventListener('click', async () => {
+    if (reelData.comment_setting === 'locked') {
+      notify('Comments are locked');
+      return;
+    }
+
+    const text = commentInput.value.trim();
+    if (!text && !recordedVoiceUrl) {
+      notify('Write a comment or record a voice note (max 30s)');
+      return;
+    }
+    if (recordedVoiceDuration > MAX_VOICE_SECONDS) {
+      notify('Voice comment cannot exceed 30 seconds');
+      return;
+    }
+
+    const actorId = currentUserId || 'guest_user';
+    const p = await fetchProfileInfo(actorId, currentUserProfile.name, currentUserProfile.avatar);
+
+    const newComment = {
+      id: 'c_' + Date.now(),
+      user_id: actorId,
+      author_name: p.name,
+      author_avatar: p.avatar,
+      comment_text: text,
+      voice_url: recordedVoiceUrl,
+      voice_duration: recordedVoiceDuration,
+      likes_count: composerDraftReaction ? 1 : 0,
+      dislikes_count: 0,
+      userReaction: composerDraftReaction || null,
+      userDisliked: false,
+      created_at: new Date().toISOString()
+    };
+
+    comments.unshift(newComment);
+    reelData.comments_count = comments.length;
+    commentInput.value = '';
+    mentionDropdown.classList.remove('open');
+    composerDraftReaction = null;
+    composerReactEmoji.textContent = '❤️';
+    composerReactBtn.classList.remove('active');
+    recordedVoiceUrl = '';
+    recordedVoiceDuration = 0;
+    voiceStatus.classList.remove('show');
+    updateCounters();
+    persistLocalReelState();
+    await renderComments();
+    playEffect('enhance');
+
+    if (supabaseClient && reelData.id) {
+      try {
+        await supabaseClient.from('reel_comments').insert({
+          reel_id: reelData.id,
+          user_id: newComment.user_id,
+          author_name: newComment.author_name,
+          author_avatar: newComment.author_avatar,
+          comment_text: newComment.comment_text,
+          voice_url: newComment.voice_url,
+          voice_duration: newComment.voice_duration,
+          likes_count: newComment.likes_count,
+          dislikes_count: newComment.dislikes_count,
+          created_at: newComment.created_at
+        });
+      } catch (e) {}
+    }
+  });
+
+  commentInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !mentionDropdown.classList.contains('open')) {
+      e.preventDefault();
+      document.getElementById('sendCommentBtn').click();
+    }
+  });
+
+  // Live relative clock ticker every 1s for reel + comments
+  setInterval(() => {
+    viewsEl.textContent = `${formatCount(reelData.views_count)} views • ${formatLiveTime(reelData.created_at)}`;
+    commentsList.querySelectorAll('.live-comment-time').forEach((el) => {
+      const iso = el.getAttribute('data-created');
+      if (iso) el.textContent = formatLiveTime(iso);
+    });
+  }, 1000);
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (supabaseClient) {
+      try {
+        const { data } = await supabaseClient.auth.getUser();
+        if (data && data.user) {
+          currentUserId = data.user.id;
+          const myProf = await fetchProfileInfo(
+            currentUserId,
+            data.user.user_metadata?.full_name || data.user.email || 'You',
+            data.user.user_metadata?.avatar_url || ''
+          );
+          currentUserProfile = { name: myProf.name, avatar: myProf.avatar };
+        }
+      } catch (e) {}
+    }
+
+    await loadLiveFriendsAndUsers();
+    await syncLiveReelFromSupabase();
+    subscribeRealtimeUpdates();
+    await renderReelInfo();
+    await renderComments();
+  });
+</script>
+</body>
+        </html>
