@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avatars Studio - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --bg-page: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-box: #F6F7F8;
+      --bg-hover: #ECEEF0;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --border-color: #D4D4D4;
+      --accent-bg: #0B3D20;
+      --accent-hover: #082C17;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(11, 61, 32, 0.10);
+      --shadow-card: 0 2px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #202124;
+      --bg-card: #202124;
+      --bg-box: #292A2D;
+      --bg-hover: #35373B;
+      --text-main: #F1F5F9;
+      --text-muted: #9AA0A6;
+      --border-color: #3C4043;
+      --accent-bg: #14532D;
+      --accent-hover: #0B3D20;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(20, 83, 45, 0.28);
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 52px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .av-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Layout */
+    .av-container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .av-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .av-heading {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .av-text {
+      font-size: 13.5px;
+      line-height: 1.58;
+      color: var(--text-muted);
+    }
+
+    /* Preview Stage */
+    .preview-stage {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .avatar-frame-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 0 auto;
+    }
+
+    .avatar-circle {
+      width: 176px;
+      height: 176px;
+      border-radius: 50%;
+      border: 4px solid var(--accent-bg);
+      overflow: hidden;
+      background-color: var(--bg-card);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-style 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .avatar-circle.ring-double {
+      border-style: double;
+      border-width: 6px;
+    }
+
+    .avatar-circle.ring-glow {
+      box-shadow: 0 0 0 4px var(--accent-soft), 0 8px 24px rgba(0, 0, 0, 0.18);
+    }
+
+    .avatar-circle svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .studio-panel {
+      flex: 1;
+      min-width: 240px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .studio-panel-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mini-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-bg);
+      overflow: hidden;
+      background-color: var(--bg-box);
+      flex-shrink: 0;
+    }
+
+    .mini-avatar svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .studio-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .studio-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .input-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .av-input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .av-input:focus {
+      border-color: var(--accent-bg);
+    }
+
+    /* Preset Strip */
+    .preset-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Controls Grid */
+    .custom-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .custom-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .control-box {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .option-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .opt-btn {
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .opt-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .opt-btn.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .swatch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .swatch-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      cursor: pointer;
+      transition: transform 0.14s ease, box-shadow 0.14s ease;
+    }
+
+    .swatch-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .swatch-btn.active {
+      outline: 2px solid var(--accent-bg);
+      outline-offset: 2px;
+      transform: scale(1.08);
+    }
+
+    /* Saved Avatars Gallery */
+    .saved-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+      gap: 10px;
+    }
+
+    .saved-avatar-card {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .saved-thumb {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-bg);
+      overflow: hidden;
+      background-color: var(--bg-card);
+    }
+
+    .saved-thumb svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .saved-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .saved-actions {
+      display: flex;
+      gap: 5px;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .mini-btn {
+      padding: 5px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .mini-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .mini-btn.apply {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Action Buttons */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-solid,
+    .btn-outline {
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: background-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .btn-solid:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .status-line {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      min-height: 18px;
+    }
+
+    /* Footer */
+    .av-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-logo-img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .footer-brand-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0B3D20;
+      letter-spacing: -0.01em;
+    }
+
+    html[data-theme="dark"] .footer-brand-label,
+    body.dark .footer-brand-label,
+    body.theme-dark .footer-brand-label {
+      color: #22C55E;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="av-topbar">
+    <div class="topbar-left">
+      <a href="settings.html" class="back-btn" aria-label="Back to Settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Avatars Studio</h1>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="top-action-btn" id="flipAvatarBtn" title="Mirror avatar" aria-label="Mirror avatar">
+        <i class="fa-solid fa-arrows-left-right"></i>
+      </button>
+      <button type="button" class="top-action-btn" id="randomizeAvatarBtn" title="Randomize avatar" aria-label="Randomize avatar">
+        <i class="fa-solid fa-shuffle"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="av-container">
+    <!-- Live Preview & Studio Actions -->
+    <section class="av-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </span>
+          <h2 class="av-heading">Avatar Studio</h2>
+        </div>
+        <button type="button" class="btn-outline" id="resetAvatarBtn">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>Reset</span>
+        </button>
+      </div>
+      <p class="av-text">
+        Customize your avatar below, save it to your local gallery, or export as SVG / PNG.
+      </p>
+
+      <div class="preset-strip" id="presetStrip"></div>
+
+      <div class="preview-stage">
+        <div class="avatar-frame-wrap">
+          <div class="avatar-circle" id="mainAvatarPreview"></div>
+          <span class="badge-tag" id="avatarStyleSummary">Wave • Tunic • Sunglasses</span>
+        </div>
+
+        <div class="studio-panel">
+          <div class="studio-panel-top">
+            <div class="mini-avatar" id="miniAvatarPreview"></div>
+            <div>
+              <div class="studio-name" id="previewDisplayName">Autrobook Member</div>
+              <div class="studio-sub" id="previewDisplayTag">Main Avatar</div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="avatarTitleInput" class="input-label">Avatar Name / Label</label>
+            <input type="text" id="avatarTitleInput" class="av-input" placeholder="e.g., Studio Avatar" maxlength="40" />
+          </div>
+
+          <div class="input-group">
+            <label for="displayNameInput" class="input-label">Display Name</label>
+            <input type="text" id="displayNameInput" class="av-input" placeholder="Your display name" maxlength="40" />
+          </div>
+
+          <div class="actions-row">
+            <button type="button" class="btn-outline" id="copySvgBtn">
+              <i class="fa-solid fa-code"></i>
+              <span>Copy SVG</span>
+            </button>
+            <button type="button" class="btn-outline" id="downloadSvgBtn">
+              <i class="fa-solid fa-file-code"></i>
+              <span>SVG</span>
+            </button>
+            <button type="button" class="btn-outline" id="downloadPngBtn">
+              <i class="fa-solid fa-download"></i>
+              <span>PNG</span>
+            </button>
+            <button type="button" class="btn-solid" id="saveAvatarBtn">
+              <i class="fa-solid fa-bookmark"></i>
+              <span>Save Avatar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-line" id="avatarStatusText">Saved locally in browser storage.</div>
+    </section>
+
+    <!-- Customization Controls -->
+    <section class="av-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-sliders"></i>
+          </span>
+          <h2 class="av-heading">Avatar Customization</h2>
+        </div>
+        <span class="badge-tag">Controls</span>
+      </div>
+
+      <div class="custom-grid">
+        <!-- Skin Tone -->
+        <div class="control-box">
+          <div class="control-title"><span>Skin Tone</span></div>
+          <div class="swatch-row" id="skinSwatches"></div>
+        </div>
+
+        <!-- Hair Color -->
+        <div class="control-box">
+          <div class="control-title"><span>Hair Color</span></div>
+          <div class="swatch-row" id="hairColorSwatches"></div>
+        </div>
+
+        <!-- Outfit / Tunic Color -->
+        <div class="control-box">
+          <div class="control-title"><span>Outfit Color</span></div>
+          <div class="swatch-row" id="outfitColorSwatches"></div>
+        </div>
+
+        <!-- Backdrop -->
+        <div class="control-box">
+          <div class="control-title"><span>Backdrop</span></div>
+          <div class="swatch-row" id="bgSwatches"></div>
+        </div>
+
+        <!-- Hair Style -->
+        <div class="control-box">
+          <div class="control-title"><span>Hair Style</span></div>
+          <div class="option-pills" id="hairStylePills"></div>
+        </div>
+
+        <!-- Expression -->
+        <div class="control-box">
+          <div class="control-title"><span>Expression</span></div>
+          <div class="option-pills" id="expressionPills"></div>
+        </div>
+
+        <!-- Outfit Cut -->
+        <div class="control-box">
+          <div class="control-title"><span>Outfit Style</span></div>
+          <div class="option-pills" id="outfitStylePills"></div>
+        </div>
+
+        <!-- Eyewear -->
+        <div class="control-box">
+          <div class="control-title"><span>Eyewear</span></div>
+          <div class="option-pills" id="eyewearPills"></div>
+        </div>
+
+        <!-- Frame Ring -->
+        <div class="control-box">
+          <div class="control-title"><span>Ring Style</span></div>
+          <div class="option-pills" id="ringStylePills"></div>
+        </div>
+
+        <!-- Mood Badge -->
+        <div class="control-box">
+          <div class="control-title"><span>Corner Tag</span></div>
+          <div class="option-pills" id="moodBadgePills"></div>
+        </div>
+
+        <!-- Sticker Stamp -->
+        <div class="control-box">
+          <div class="control-title"><span>Sticker Stamp</span></div>
+          <div class="option-pills" id="stickerStampPills"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Saved Avatars Gallery -->
+    <section class="av-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon" aria-hidden="true">
+            <i class="fa-solid fa-images"></i>
+          </span>
+          <h2 class="av-heading">Saved Avatars</h2>
+        </div>
+        <button type="button" class="btn-outline" id="clearAllSavedBtn">
+          <i class="fa-solid fa-trash"></i>
+          <span>Clear All</span>
+        </button>
+      </div>
+      <p class="av-text">
+        Pick any saved avatar to load into the studio or delete from your saved list.
+      </p>
+      <div class="saved-list" id="savedAvatarsList"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="av-footer">
+      <img src="logo.png" alt="Autrobook" class="footer-logo-img" />
+      <span class="footer-brand-label">Autrobook Avatars</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const ACTIVE_AVATAR_KEY = "autrobook_active_avatar_v1";
+      const SAVED_GALLERY_KEY = "autrobook_saved_avatars_v1";
+
+      const SKIN_TONES = [
+        { label: "Warm Tan", value: "#E0AC69" },
+        { label: "Fair", value: "#F8D5C2" },
+        { label: "Olive", value: "#C68642" },
+        { label: "Bronze", value: "#8D5524" },
+        { label: "Deep", value: "#5C3824" }
+      ];
+
+      const HAIR_COLORS = [
+        { label: "Jet Black", value: "#18181B" },
+        { label: "Dark Brown", value: "#3F2314" },
+        { label: "Chestnut", value: "#7C3F1D" },
+        { label: "Forest Green", value: "#14532D" },
+        { label: "Slate Silver", value: "#94A3B8" }
+      ];
+
+      const OUTFIT_COLORS = [
+        { label: "Dark Green", value: "#0B3D20" },
+        { label: "Emerald", value: "#14532D" },
+        { label: "Sky Blue", value: "#38BDF8" },
+        { label: "Off White", value: "#F8FAFC" },
+        { label: "Charcoal", value: "#27272A" }
+      ];
+
+      const BG_COLORS = [
+        { label: "Sage Mist", value: "#DCFCE7" },
+        { label: "Dark Pine", value: "#0B3D20" },
+        { label: "Soft Cloud", value: "#E2E8F0" },
+        { label: "Warm Sand", value: "#FEF3C7" },
+        { label: "Night Slate", value: "#1E293B" }
+      ];
+
+      const HAIR_STYLES = ["short", "wave", "buzz", "curls"];
+      const EXPRESSIONS = ["smile", "grin", "calm", "wink"];
+      const OUTFIT_STYLES = ["tunic", "crew", "collar"];
+      const EYEWEAR_OPTIONS = ["none", "sunglasses", "round"];
+      const RING_STYLES = ["solid", "double", "glow"];
+      const MOOD_BADGES = ["none", "18+", "LIVE", "ZEN"];
+      const STICKER_STAMPS = ["none", "star", "bolt", "spark"];
+
+      const PRESETS = [
+        {
+          name: "Emerald Pro",
+          skin: "#E0AC69",
+          hairColor: "#18181B",
+          outfitColor: "#0B3D20",
+          bgColor: "#DCFCE7",
+          hairStyle: "wave",
+          expression: "smile",
+          outfitStyle: "tunic",
+          eyewear: "sunglasses",
+          ringStyle: "solid",
+          moodBadge: "18+",
+          stickerStamp: "star",
+          flipped: false
+        },
+        {
+          name: "Sky Tunic",
+          skin: "#F8D5C2",
+          hairColor: "#3F2314",
+          outfitColor: "#38BDF8",
+          bgColor: "#E2E8F0",
+          hairStyle: "short",
+          expression: "grin",
+          outfitStyle: "tunic",
+          eyewear: "none",
+          ringStyle: "double",
+          moodBadge: "LIVE",
+          stickerStamp: "bolt",
+          flipped: false
+        },
+        {
+          name: "Night Calm",
+          skin: "#C68642",
+          hairColor: "#18181B",
+          outfitColor: "#14532D",
+          bgColor: "#1E293B",
+          hairStyle: "buzz",
+          expression: "calm",
+          outfitStyle: "crew",
+          eyewear: "round",
+          ringStyle: "glow",
+          moodBadge: "ZEN",
+          stickerStamp: "spark",
+          flipped: false
+        }
+      ];
+
+      const DEFAULT_CONFIG = {
+        id: "av-default",
+        title: "Main Avatar",
+        profileName: "Autrobook Member",
+        skin: "#E0AC69",
+        hairColor: "#18181B",
+        outfitColor: "#0B3D20",
+        bgColor: "#DCFCE7",
+        hairStyle: "wave",
+        expression: "smile",
+        outfitStyle: "tunic",
+        eyewear: "sunglasses",
+        ringStyle: "solid",
+        moodBadge: "18+",
+        stickerStamp: "none",
+        flipped: false,
+        updatedAt: new Date().toISOString()
+      };
+
+      let config = { ...DEFAULT_CONFIG };
+      let savedGallery = [];
+
+      function syncTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._avToastTimer);
+        window._avToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function buildAvatarSvg(cfg) {
+        const hairMarkup = (() => {
+          switch (cfg.hairStyle) {
+            case "buzz":
+              return `<path d="M54 66 C54 36, 126 36, 126 66 C126 52, 54 52, 54 66 Z" fill="${cfg.hairColor}" />`;
+            case "curls":
+              return `
+                <g fill="${cfg.hairColor}">
+                  <circle cx="56" cy="64" r="14" />
+                  <circle cx="72" cy="48" r="15" />
+                  <circle cx="90" cy="44" r="16" />
+                  <circle cx="108" cy="48" r="15" />
+                  <circle cx="124" cy="64" r="14" />
+                </g>
+              `;
+            case "short":
+              return `<path d="M52 74 C52 38, 128 38, 128 74 L124 62 C110 48, 70 48, 56 62 Z" fill="${cfg.hairColor}" />`;
+            case "wave":
+            default:
+              return `<path d="M50 82 C48 36, 132 36, 130 82 C122 60, 104 52, 90 52 C76 52, 58 60, 50 82 Z" fill="${cfg.hairColor}" />`;
+          }
+        })();
+
+        const outfitMarkup = (() => {
+          const strokeCol = cfg.outfitColor === "#F8FAFC" ? "#CBD5E1" : "rgba(0,0,0,0.18)";
+          if (cfg.outfitStyle === "collar") {
+            return `
+              <path d="M32 174 C36 134, 62 122, 90 122 C118 122, 144 134, 148 174 Z" fill="${cfg.outfitColor}" stroke="${strokeCol}" stroke-width="2" />
+              <polygon points="74,124 90,144 90,124" fill="#FFFFFF" opacity="0.9" />
+              <polygon points="106,124 90,144 90,124" fill="#FFFFFF" opacity="0.9" />
+            `;
+          }
+          if (cfg.outfitStyle === "crew") {
+            return `
+              <path d="M32 174 C36 134, 62 122, 90 122 C118 122, 144 134, 148 174 Z" fill="${cfg.outfitColor}" stroke="${strokeCol}" stroke-width="2" />
+              <path d="M72 124 Q90 138 108 124" fill="none" stroke="${strokeCol}" stroke-width="2.5" />
+            `;
+          }
+          return `
+            <path d="M28 174 C32 132, 60 120, 90 120 C120 120, 148 132, 152 174 Z" fill="${cfg.outfitColor}" stroke="${strokeCol}" stroke-width="2" />
+            <line x1="90" y1="124" x2="90" y2="168" stroke="${strokeCol}" stroke-width="2" />
+          `;
+        })();
+
+        const eyesAndGlasses = (() => {
+          if (cfg.eyewear === "sunglasses") {
+            return `
+              <line x1="56" y1="82" x2="124" y2="82" stroke="#111827" stroke-width="3" />
+              <rect x="57" y="74" width="28" height="18" rx="5" fill="#0F172A" />
+              <rect x="95" y="74" width="28" height="18" rx="5" fill="#0F172A" />
+              <line x1="85" y1="81" x2="95" y2="81" stroke="#0F172A" stroke-width="3" />
+            `;
+          }
+          if (cfg.eyewear === "round") {
+            return `
+              <circle cx="72" cy="83" r="11" fill="none" stroke="#1E293B" stroke-width="2.5" />
+              <circle cx="108" cy="83" r="11" fill="none" stroke="#1E293B" stroke-width="2.5" />
+              <line x1="83" y1="83" x2="97" y2="83" stroke="#1E293B" stroke-width="2.5" />
+              <circle cx="72" cy="83" r="3.5" fill="#0F172A" />
+              <circle cx="108" cy="83" r="3.5" fill="#0F172A" />
+            `;
+          }
+          if (cfg.expression === "wink") {
+            return `
+              <circle cx="72" cy="83" r="4" fill="#0F172A" />
+              <path d="M100 83 Q108 77 116 83" fill="none" stroke="#0F172A" stroke-width="2.8" stroke-linecap="round" />
+            `;
+          }
+          return `
+            <circle cx="72" cy="83" r="4" fill="#0F172A" />
+            <circle cx="108" cy="83" r="4" fill="#0F172A" />
+          `;
+        })();
+
+        const mouthMarkup = (() => {
+          switch (cfg.expression) {
+            case "grin":
+              return `<path d="M74 102 Q90 118 106 102 Z" fill="#FFFFFF" stroke="#0F172A" stroke-width="2" />`;
+            case "calm":
+              return `<line x1="78" y1="105" x2="102" y2="105" stroke="#0F172A" stroke-width="2.6" stroke-linecap="round" />`;
+            case "wink":
+            case "smile":
+            default:
+              return `<path d="M75 102 Q90 113 105 102" fill="none" stroke="#0F172A" stroke-width="2.8" stroke-linecap="round" />`;
+          }
+        })();
+
+        const stickerMarkup = (() => {
+          if (cfg.stickerStamp === "star") {
+            return `<polygon points="28,22 31,29 39,29 33,34 35,41 28,37 21,41 23,34 17,29 25,29" fill="#14532D" stroke="#FFFFFF" stroke-width="1.2" />`;
+          }
+          if (cfg.stickerStamp === "bolt") {
+            return `<polygon points="31,18 21,33 28,33 25,44 37,29 30,29" fill="#14532D" stroke="#FFFFFF" stroke-width="1.2" />`;
+          }
+          if (cfg.stickerStamp === "spark") {
+            return `<path d="M28 18 L31 28 L41 31 L31 34 L28 44 L25 34 L15 31 L25 28 Z" fill="#14532D" stroke="#FFFFFF" stroke-width="1.2" />`;
+          }
+          return "";
+        })();
+
+        const badgeMarkup =
+          cfg.moodBadge && cfg.moodBadge !== "none"
+            ? `
+              <rect x="116" y="142" width="52" height="22" rx="11" fill="#0B3D20" stroke="#FFFFFF" stroke-width="1.5" />
+              <text x="142" y="157" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700" font-family="sans-serif">${cfg.moodBadge}</text>
+            `
+            : "";
+
+        const flipTransform = cfg.flipped ? `transform="translate(180, 0) scale(-1, 1)"` : "";
+
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="${cfg.title || "Autrobook Avatar"}">
+            <rect width="180" height="180" fill="${cfg.bgColor}" />
+            <g ${flipTransform}>
+              ${outfitMarkup}
+              <rect x="78" y="106" width="24" height="20" rx="8" fill="${cfg.skin}" />
+              <ellipse cx="90" cy="84" rx="33" ry="37" fill="${cfg.skin}" />
+              <path d="M62 71 Q72 67 81 71" fill="none" stroke="${cfg.hairColor}" stroke-width="2.5" stroke-linecap="round" />
+              <path d="M99 71 Q108 67 118 71" fill="none" stroke="${cfg.hairColor}" stroke-width="2.5" stroke-linecap="round" />
+              ${eyesAndGlasses}
+              <path d="M90 83 L87 93 L93 93" fill="none" stroke="rgba(15,23,42,0.45)" stroke-width="2" stroke-linecap="round" />
+              ${mouthMarkup}
+              ${hairMarkup}
+            </g>
+            ${stickerMarkup}
+            ${badgeMarkup}
+          </svg>
+        `;
+      }
+
+      function renderPreviews() {
+        const svgStr = buildAvatarSvg(config);
+        const mainEl = document.getElementById("mainAvatarPreview");
+        const miniEl = document.getElementById("miniAvatarPreview");
+        const summaryEl = document.getElementById("avatarStyleSummary");
+        const nameEl = document.getElementById("previewDisplayName");
+        const tagEl = document.getElementById("previewDisplayTag");
+
+        if (mainEl) {
+          mainEl.innerHTML = svgStr;
+          mainEl.classList.toggle("ring-double", config.ringStyle === "double");
+          mainEl.classList.toggle("ring-glow", config.ringStyle === "glow");
+        }
+        if (miniEl) miniEl.innerHTML = svgStr;
+        if (summaryEl) {
+          summaryEl.textContent = `${config.hairStyle} • ${config.outfitStyle} • ${config.eyewear}${config.flipped ? " • flip" : ""}`;
+        }
+        if (nameEl) {
+          nameEl.textContent = config.profileName || "Autrobook Member";
+        }
+        if (tagEl) {
+          tagEl.textContent = config.title || "Main Avatar";
+        }
+      }
+
+      function renderPresets() {
+        const strip = document.getElementById("presetStrip");
+        if (!strip) return;
+        strip.innerHTML =
+          `<span class="badge-tag">Presets</span>` +
+          PRESETS.map(
+            (p) => `<button type="button" class="opt-btn preset-btn" data-preset="${p.name}">${p.name}</button>`
+          ).join("");
+
+        strip.querySelectorAll(".preset-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const found = PRESETS.find((x) => x.name === btn.getAttribute("data-preset"));
+            if (!found) return;
+            config = {
+              ...config,
+              ...found,
+              title: `${found.name} Avatar`,
+              updatedAt: new Date().toISOString()
+            };
+            syncInputsFromConfig();
+            renderControls();
+            renderPreviews();
+            showToast(`Applied ${found.name} preset`);
+          });
+        });
+      }
+
+      function renderSwatches(containerId, list, currentKey) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        el.innerHTML = list
+          .map(
+            (item) =>
+              `<button type="button" class="swatch-btn ${config[currentKey] === item.value ? "active" : ""}" style="background-color:${item.value}" title="${item.label}" data-val="${item.value}"></button>`
+          )
+          .join("");
+
+        el.querySelectorAll(".swatch-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            config[currentKey] = btn.getAttribute("data-val");
+            config.updatedAt = new Date().toISOString();
+            renderControls();
+            renderPreviews();
+          });
+        });
+      }
+
+      function renderPills(containerId, list, currentKey) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        el.innerHTML = list
+          .map(
+            (val) =>
+              `<button type="button" class="opt-btn ${config[currentKey] === val ? "active" : ""}" data-val="${val}">${val.charAt(0).toUpperCase() + val.slice(1)}</button>`
+          )
+          .join("");
+
+        el.querySelectorAll(".opt-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            config[currentKey] = btn.getAttribute("data-val");
+            config.updatedAt = new Date().toISOString();
+            renderControls();
+            renderPreviews();
+          });
+        });
+      }
+
+      function renderControls() {
+        renderSwatches("skinSwatches", SKIN_TONES, "skin");
+        renderSwatches("hairColorSwatches", HAIR_COLORS, "hairColor");
+        renderSwatches("outfitColorSwatches", OUTFIT_COLORS, "outfitColor");
+        renderSwatches("bgSwatches", BG_COLORS, "bgColor");
+        renderPills("hairStylePills", HAIR_STYLES, "hairStyle");
+        renderPills("expressionPills", EXPRESSIONS, "expression");
+        renderPills("outfitStylePills", OUTFIT_STYLES, "outfitStyle");
+        renderPills("eyewearPills", EYEWEAR_OPTIONS, "eyewear");
+        renderPills("ringStylePills", RING_STYLES, "ringStyle");
+        renderPills("moodBadgePills", MOOD_BADGES, "moodBadge");
+        renderPills("stickerStampPills", STICKER_STAMPS, "stickerStamp");
+      }
+
+      function renderSavedGallery() {
+        const listEl = document.getElementById("savedAvatarsList");
+        if (!listEl) return;
+
+        if (!savedGallery.length) {
+          listEl.innerHTML = `<div class="av-text">No saved avatars yet. Design one above and click Save Avatar.</div>`;
+          return;
+        }
+
+        listEl.innerHTML = savedGallery
+          .map(
+            (item, idx) => `
+          <div class="saved-avatar-card">
+            <div class="saved-thumb">${buildAvatarSvg(item)}</div>
+            <div class="saved-label">${item.title || "Avatar " + (idx + 1)}</div>
+            <div class="saved-actions">
+              <button type="button" class="mini-btn apply edit-saved" data-idx="${idx}">Load</button>
+              <button type="button" class="mini-btn delete-saved" data-idx="${idx}" title="Delete">Del</button>
+            </div>
+          </div>
+        `
+          )
+          .join("");
+
+        listEl.querySelectorAll(".edit-saved").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const idx = Number(btn.getAttribute("data-idx"));
+            if (!savedGallery[idx]) return;
+            config = { ...savedGallery[idx] };
+            syncInputsFromConfig();
+            renderControls();
+            renderPreviews();
+            saveActiveOnly(config);
+            showToast("Loaded avatar into studio");
+          });
+        });
+
+        listEl.querySelectorAll(".delete-saved").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const idx = Number(btn.getAttribute("data-idx"));
+            if (!savedGallery[idx]) return;
+            savedGallery.splice(idx, 1);
+            try {
+              localStorage.setItem(SAVED_GALLERY_KEY, JSON.stringify(savedGallery));
+            } catch (_) {}
+            renderSavedGallery();
+            showToast("Removed saved avatar");
+          });
+        });
+      }
+
+      function syncInputsFromConfig() {
+        const titleInput = document.getElementById("avatarTitleInput");
+        const handleInput = document.getElementById("displayNameInput");
+        if (titleInput) titleInput.value = config.title || "";
+        if (handleInput) handleInput.value = config.profileName || "";
+      }
+
+      function loadLocalData() {
+        try {
+          const activeRaw = localStorage.getItem(ACTIVE_AVATAR_KEY);
+          if (activeRaw) {
+            config = { ...DEFAULT_CONFIG, ...JSON.parse(activeRaw) };
+          }
+          const galleryRaw = localStorage.getItem(SAVED_GALLERY_KEY);
+          if (galleryRaw) {
+            const arr = JSON.parse(galleryRaw);
+            if (Array.isArray(arr)) savedGallery = arr;
+          }
+        } catch (_) {}
+      }
+
+      function saveActiveOnly(avatarObj) {
+        try {
+          localStorage.setItem(ACTIVE_AVATAR_KEY, JSON.stringify(avatarObj));
+        } catch (_) {}
+      }
+
+      function persistAvatarToGallery(avatarObj) {
+        const cleanObj = {
+          ...avatarObj,
+          id: avatarObj.id || `av-${Date.now()}`,
+          svg: buildAvatarSvg(avatarObj),
+          updatedAt: new Date().toISOString()
+        };
+
+        try {
+          localStorage.setItem(ACTIVE_AVATAR_KEY, JSON.stringify(cleanObj));
+          const existingIdx = savedGallery.findIndex((g) => g.id === cleanObj.id);
+          if (existingIdx >= 0) {
+            savedGallery[existingIdx] = cleanObj;
+          } else {
+            savedGallery = [cleanObj, ...savedGallery].slice(0, 12);
+          }
+          localStorage.setItem(SAVED_GALLERY_KEY, JSON.stringify(savedGallery));
+        } catch (_) {}
+
+        const statusEl = document.getElementById("avatarStatusText");
+        if (statusEl) {
+          statusEl.textContent = `Saved "${cleanObj.title}" locally.`;
+        }
+        renderSavedGallery();
+        showToast("Avatar saved");
+      }
+
+      function downloadAvatarSvg() {
+        try {
+          const svgStr = buildAvatarSvg(config);
+          const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `${(config.title || "autrobook-avatar").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.svg`;
+          link.click();
+          URL.revokeObjectURL(url);
+          showToast("Downloaded avatar SVG");
+        } catch (_) {
+          showToast("Could not export SVG");
+        }
+      }
+
+      function downloadAvatarPng() {
+        try {
+          const svgStr = buildAvatarSvg(config);
+          const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+          const url = URL.createObjectURL(svgBlob);
+          const img = new Image();
+          img.onload = function () {
+            const canvas = document.createElement("canvas");
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, 512, 512);
+            URL.revokeObjectURL(url);
+            const pngUrl = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = pngUrl;
+            link.download = `${(config.title || "autrobook-avatar").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+            link.click();
+            showToast("Downloaded avatar PNG");
+          };
+          img.src = url;
+        } catch (_) {
+          showToast("Could not export PNG");
+        }
+      }
+
+      document.getElementById("flipAvatarBtn")?.addEventListener("click", () => {
+        config.flipped = !config.flipped;
+        config.updatedAt = new Date().toISOString();
+        renderPreviews();
+        showToast(config.flipped ? "Mirrored avatar" : "Normal orientation");
+      });
+
+      document.getElementById("resetAvatarBtn")?.addEventListener("click", () => {
+        config = { ...DEFAULT_CONFIG, updatedAt: new Date().toISOString() };
+        syncInputsFromConfig();
+        renderControls();
+        renderPreviews();
+        showToast("Reset to default avatar");
+      });
+
+      document.getElementById("copySvgBtn")?.addEventListener("click", async () => {
+        try {
+          const svgMarkup = buildAvatarSvg(config);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(svgMarkup);
+          }
+          showToast("Copied avatar SVG");
+        } catch (_) {
+          showToast("Could not copy SVG");
+        }
+      });
+
+      document.getElementById("downloadSvgBtn")?.addEventListener("click", downloadAvatarSvg);
+      document.getElementById("downloadPngBtn")?.addEventListener("click", downloadAvatarPng);
+
+      document.getElementById("avatarTitleInput")?.addEventListener("input", (e) => {
+        config.title = e.target.value;
+        renderPreviews();
+      });
+
+      document.getElementById("displayNameInput")?.addEventListener("input", (e) => {
+        config.profileName = e.target.value;
+        renderPreviews();
+      });
+
+      document.getElementById("saveAvatarBtn")?.addEventListener("click", () => {
+        const titleVal = (document.getElementById("avatarTitleInput")?.value || "").trim();
+        const handleVal = (document.getElementById("displayNameInput")?.value || "").trim();
+        config.title = titleVal || "Main Avatar";
+        config.profileName = handleVal || "Autrobook Member";
+        config.id = `av-${Date.now()}`;
+        persistAvatarToGallery(config);
+      });
+
+      document.getElementById("clearAllSavedBtn")?.addEventListener("click", () => {
+        savedGallery = [];
+        try {
+          localStorage.removeItem(SAVED_GALLERY_KEY);
+        } catch (_) {}
+        renderSavedGallery();
+        showToast("Cleared saved avatars");
+      });
+
+      document.getElementById("randomizeAvatarBtn")?.addEventListener("click", () => {
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        config = {
+          ...config,
+          skin: pick(SKIN_TONES).value,
+          hairColor: pick(HAIR_COLORS).value,
+          outfitColor: pick(OUTFIT_COLORS).value,
+          bgColor: pick(BG_COLORS).value,
+          hairStyle: pick(HAIR_STYLES),
+          expression: pick(EXPRESSIONS),
+          outfitStyle: pick(OUTFIT_STYLES),
+          eyewear: pick(EYEWEAR_OPTIONS),
+          ringStyle: pick(RING_STYLES),
+          moodBadge: pick(MOOD_BADGES),
+          stickerStamp: pick(STICKER_STAMPS),
+          flipped: Math.random() > 0.7,
+          updatedAt: new Date().toISOString()
+        };
+        renderControls();
+        renderPreviews();
+        showToast("Randomized avatar");
+      });
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTheme);
+      }
+
+      syncTheme();
+      loadLocalData();
+      syncInputsFromConfig();
+      renderPresets();
+      renderControls();
+      renderPreviews();
+      renderSavedGallery();
+    })();
+  </script>
+</body>
+  </html>
