@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ghost Mode - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --bg-page: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-box: #F6F7F8;
+      --bg-hover: #ECEEF0;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --border-color: #D4D4D4;
+      --accent-bg: #0B3D20;
+      --accent-hover: #082C17;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(11, 61, 32, 0.12);
+      --ghost-surface: #FFFFFF;
+      --ghost-stroke: #CBD5E1;
+      --ghost-eye: #0F172A;
+      --ghost-glow: rgba(11, 61, 32, 0.16);
+      --shadow-card: 0 2px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #202124;
+      --bg-card: #202124;
+      --bg-box: #292A2D;
+      --bg-hover: #35373B;
+      --text-main: #F1F5F9;
+      --text-muted: #9AA0A6;
+      --border-color: #3C4043;
+      --accent-bg: #14532D;
+      --accent-hover: #0B3D20;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(20, 83, 45, 0.28);
+      --ghost-surface: #F8FAFC;
+      --ghost-stroke: #E2E8F0;
+      --ghost-eye: #0F172A;
+      --ghost-glow: rgba(74, 222, 128, 0.22);
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 56px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .gm-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(16px, 4.2vw, 20px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .badge-tag {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-toggle-pill {
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-bg);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .status-toggle-pill:hover {
+      transform: translateY(-1px);
+    }
+
+    .status-toggle-pill.inactive {
+      background-color: var(--bg-card);
+      color: var(--text-muted);
+      border-color: var(--border-color);
+    }
+
+    /* Main Container */
+    .gm-container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Hero */
+    .hero-card {
+      background: linear-gradient(135deg, var(--accent-soft), var(--bg-card));
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 22px 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .hero-title {
+      font-size: clamp(24px, 5.5vw, 34px);
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      color: var(--text-main);
+    }
+
+    .hero-subtitle {
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      max-width: 680px;
+    }
+
+    /* Card */
+    .gm-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background-color: var(--accent-soft);
+      border: 1px solid var(--border-color);
+      color: var(--accent-bg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    html[data-theme="dark"] .card-icon {
+      color: #4ADE80;
+    }
+
+    .gm-heading {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+    }
+
+    .gm-text {
+      font-size: 13.5px;
+      line-height: 1.58;
+      color: var(--text-muted);
+    }
+
+    /* Animated White Ghost Stage */
+    .ghost-stage {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 24px 20px;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      flex-wrap: wrap;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ghost-visual-wrap {
+      width: 132px;
+      height: 144px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .ghost-float-box {
+      width: 96px;
+      height: 112px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: var(--ghost-opacity, 0.92);
+      filter: drop-shadow(0 10px 18px var(--ghost-glow));
+      animation: ghostFloat 3.4s ease-in-out infinite;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .ghost-float-box.paused {
+      animation-play-state: paused;
+    }
+
+    .ghost-svg {
+      width: 92px;
+      height: 108px;
+      overflow: visible;
+    }
+
+    .ghost-body-shape {
+      fill: var(--ghost-surface);
+      stroke: var(--ghost-stroke);
+      stroke-width: 2.2;
+      animation: ghostWobble 4.2s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .ghost-float-box.paused .ghost-body-shape {
+      animation-play-state: paused;
+    }
+
+    .ghost-eye {
+      fill: var(--ghost-eye);
+      transform-origin: center;
+      animation: ghostBlink 4.6s infinite;
+    }
+
+    .ghost-float-box.paused .ghost-eye {
+      animation-play-state: paused;
+    }
+
+    .ghost-cheek {
+      fill: rgba(20, 83, 45, 0.16);
+    }
+
+    .ghost-shadow {
+      width: 62px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      margin-top: 6px;
+      animation: shadowScale 3.4s ease-in-out infinite;
+    }
+
+    .ghost-float-box.paused + .ghost-shadow {
+      animation-play-state: paused;
+    }
+
+    @keyframes ghostFloat {
+      0%, 100% {
+        transform: translateY(0px) rotate(-1.5deg);
+      }
+      50% {
+        transform: translateY(-10px) rotate(1.5deg);
+      }
+    }
+
+    @keyframes ghostWobble {
+      0%, 100% {
+        transform: scaleX(1) scaleY(1);
+      }
+      50% {
+        transform: scaleX(1.03) scaleY(0.97);
+      }
+    }
+
+    @keyframes ghostBlink {
+      0%, 92%, 100% {
+        transform: scaleY(1);
+      }
+      95%, 97% {
+        transform: scaleY(0.12);
+      }
+    }
+
+    @keyframes shadowScale {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.75;
+      }
+      50% {
+        transform: scale(0.78);
+        opacity: 0.42;
+      }
+    }
+
+    .ghost-details {
+      flex: 1;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ghost-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ghost-name {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--text-main);
+    }
+
+    .ghost-caption {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 620px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .field-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gm-input,
+    .gm-select {
+      width: 100%;
+      padding: 10px 13px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .gm-input:focus,
+    .gm-select:focus {
+      border-color: var(--accent-bg);
+    }
+
+    .gm-range {
+      width: 100%;
+      accent-color: var(--accent-bg);
+      cursor: pointer;
+    }
+
+    /* Filter Pills */
+    .filter-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-chip {
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Sessions List */
+    .sessions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .session-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 15px;
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .session-title {
+      font-size: 14.5px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .session-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Buttons */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-solid,
+    .btn-outline {
+      padding: 10px 15px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .btn-solid:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .mini-btn {
+      padding: 6px 10px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .mini-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .status-line {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      min-height: 18px;
+    }
+
+    /* Footer */
+    .gm-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+    }
+
+    .footer-brand {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #0B3D20;
+    }
+
+    html[data-theme="dark"] .footer-brand {
+      color: #22C55E;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="gm-topbar">
+    <div class="topbar-left">
+      <a href="profile.html" class="back-btn" aria-label="Back to Profile">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Ghost Mode</h1>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="top-action-btn" id="toggleSoundBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
+        <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+      </button>
+      <button type="button" class="top-action-btn" id="toggleMotionBtn" title="Toggle ghost animation" aria-label="Toggle ghost animation">
+        <i class="fa-solid fa-wand-magic-sparkles" id="motionIcon"></i>
+      </button>
+      <button type="button" class="top-action-btn" id="refreshGhostBtn" title="Refresh ghost sessions" aria-label="Refresh ghost sessions">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="gm-container">
+    <!-- Hero -->
+    <section class="hero-card">
+      <span class="hero-kicker">
+        <i class="fa-solid fa-ghost"></i>
+        <span>Autrobook White Ghost Stealth</span>
+      </span>
+      <h2 class="hero-title">Ghost Mode</h2>
+      <p class="hero-subtitle">
+        Browse and create quietly with an animated white ghost indicator, tune your stealth opacity, and log low-profile sessions.
+      </p>
+    </section>
+
+    <!-- White Ghost Stage & Controls -->
+    <section class="gm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-ghost"></i></span>
+          <h3 class="gm-heading">Animated White Ghost</h3>
+        </div>
+        <span class="badge-tag" id="ghostSessionCountBadge">0 Sessions</span>
+      </div>
+
+      <div class="ghost-stage">
+        <div class="ghost-visual-wrap">
+          <div class="ghost-float-box" id="ghostFloatBox">
+            <svg class="ghost-svg" viewBox="0 0 100 116" aria-label="Animated white ghost">
+              <path
+                class="ghost-body-shape"
+                d="M50 8C24.5 8 14 26.5 14 48V98L24.5 89L35 98L50 88L65 98L75.5 89L86 98V48C86 26.5 75.5 8 50 8Z"
+              />
+              <ellipse class="ghost-cheek" cx="30" cy="54" rx="5.5" ry="3.2" />
+              <ellipse class="ghost-cheek" cx="70" cy="54" rx="5.5" ry="3.2" />
+              <circle class="ghost-eye" cx="37.5" cy="44" r="4.6" />
+              <circle class="ghost-eye" cx="62.5" cy="44" r="4.6" />
+              <path
+                d="M45 53.5C47.5 56 52.5 56 55 53.5"
+                fill="none"
+                stroke="#0F172A"
+                stroke-width="2.4"
+                stroke-linecap="round"
+              />
+            </svg>
+          </div>
+          <div class="ghost-shadow"></div>
+        </div>
+
+        <div class="ghost-details">
+          <div class="ghost-status-row">
+            <span class="ghost-name" id="ghostModeTitle">Stealth Ghost • 90%</span>
+            <button type="button" class="status-toggle-pill" id="ghostStatePillBtn" title="Click to toggle Active / Inactive">
+              <i class="fa-solid fa-circle" id="ghostPillDot" style="font-size: 7px;"></i>
+              <span id="ghostStatePillText">Active</span>
+            </button>
+          </div>
+          <p class="ghost-caption" id="ghostModeCaption">
+            Floating quietly in the background while keeping your activity low-key and distraction-free.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="ghostPresetSelect" class="field-label">Ghost Profile</label>
+          <select id="ghostPresetSelect" class="gm-select">
+            <option value="Stealth Ghost" data-category="Stealth" data-caption="Floating quietly in the background while keeping your activity low-key and distraction-free.">Stealth Ghost</option>
+            <option value="Whispering Wisp" data-category="Quiet" data-caption="Soft, unhurried presence for calm reading and private drafting.">Whispering Wisp</option>
+            <option value="Vanishing Mist" data-category="Stealth" data-caption="Extra-light spectral fade for minimal visual footprint.">Vanishing Mist</option>
+            <option value="Night Specter" data-category="Night" data-caption="Late-hour quiet mode suited for dark spaces and deep focus.">Night Specter</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="ghostOpacityRange" class="field-label">
+            <span>Ghost Opacity</span>
+            <span id="ghostOpacityText">90%</span>
+          </label>
+          <input type="range" id="ghostOpacityRange" class="gm-range" min="35" max="100" value="90" />
+        </div>
+
+        <div class="field-group full">
+          <label for="ghostNoteInput" class="field-label">Session Intent / Note (Optional)</label>
+          <input type="text" id="ghostNoteInput" class="gm-input" placeholder="e.g., Reading quietly, sketching concepts..." maxlength="140" />
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-outline" id="toggleGhostStateBtn">
+          <i class="fa-solid fa-power-off"></i>
+          <span id="ghostStateBtnLabel">Set Inactive</span>
+        </button>
+        <button type="button" class="btn-solid" id="saveGhostSessionBtn">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>Log Ghost Session</span>
+        </button>
+      </div>
+
+      <div class="status-line" id="ghostStatusText">Ghost mode is Active. Click Active to switch to Inactive with sound.</div>
+    </section>
+
+    <!-- Logged Ghost Sessions -->
+    <section class="gm-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+          <h3 class="gm-heading">Logged Ghost Sessions</h3>
+        </div>
+      </div>
+
+      <input type="search" id="searchGhostInput" class="gm-input" placeholder="Search ghost sessions or notes..." />
+
+      <div class="filter-strip" id="ghostFilterStrip">
+        <button type="button" class="filter-chip active" data-cat="All">All</button>
+        <button type="button" class="filter-chip" data-cat="Stealth">Stealth</button>
+        <button type="button" class="filter-chip" data-cat="Quiet">Quiet</button>
+        <button type="button" class="filter-chip" data-cat="Night">Night</button>
+      </div>
+
+      <div class="sessions-list" id="ghostSessionsList"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="gm-footer">
+      <i class="fa-solid fa-ghost footer-brand"></i>
+      <span class="footer-brand">Autrobook Ghost Mode</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const DB_ENDPOINT = "https://gemyqaniztqrsilayblx.supabase.co";
+      const DB_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const LOCAL_GHOST_KEY = "autrobook_ghost_mode_sessions_v1";
+
+      let sessions = [];
+      let activeCategory = "All";
+      let searchQuery = "";
+      let isGhostActive = true;
+      let isMotionPlaying = true;
+      let isSoundEnabled = true;
+      let audioCtx = null;
+
+      let ghostConfig = {
+        modeName: "Stealth Ghost",
+        category: "Stealth",
+        caption: "Floating quietly in the background while keeping your activity low-key and distraction-free.",
+        opacity: 90,
+        note: ""
+      };
+
+      function playGhostTone(goingActive) {
+        if (!isSoundEnabled) return;
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          if (!audioCtx) {
+            audioCtx = new AudioContextClass();
+          }
+          if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
+
+          const now = audioCtx.currentTime;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          if (goingActive) {
+            // Soft rising chime when switching to Active
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(660, now + 0.18);
+          } else {
+            // Soft descending ghost fade when switching to Inactive
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.exponentialRampToValueAtTime(210, now + 0.24);
+          }
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.14, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.26);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.27);
+        } catch (_) {}
+      }
+
+      function syncTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._gmToastTimer);
+        window._gmToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function toggleGhostMode() {
+        isGhostActive = !isGhostActive;
+        playGhostTone(isGhostActive);
+        renderGhostStage();
+        const statusEl = document.getElementById("ghostStatusText");
+        if (statusEl) {
+          statusEl.textContent = isGhostActive
+            ? "Ghost mode is now Active."
+            : "Ghost mode is now Inactive.";
+        }
+        showToast(isGhostActive ? "Ghost mode Active" : "Ghost mode Inactive");
+      }
+
+      function renderGhostStage() {
+        const floatBox = document.getElementById("ghostFloatBox");
+        const titleEl = document.getElementById("ghostModeTitle");
+        const captionEl = document.getElementById("ghostModeCaption");
+        const opacityText = document.getElementById("ghostOpacityText");
+        const statePillBtn = document.getElementById("ghostStatePillBtn");
+        const statePillText = document.getElementById("ghostStatePillText");
+        const stateBtnLabel = document.getElementById("ghostStateBtnLabel");
+        const motionIcon = document.getElementById("motionIcon");
+        const soundIcon = document.getElementById("soundIcon");
+
+        const effectiveOpacity = isGhostActive ? ghostConfig.opacity / 100 : 0.22;
+        if (floatBox) {
+          floatBox.style.setProperty("--ghost-opacity", String(effectiveOpacity));
+          floatBox.classList.toggle("paused", !isMotionPlaying || !isGhostActive);
+        }
+        if (titleEl) {
+          titleEl.textContent = `${ghostConfig.modeName} • ${ghostConfig.opacity}%`;
+        }
+        if (captionEl) {
+          captionEl.textContent = ghostConfig.note
+            ? `${ghostConfig.caption} — "${ghostConfig.note}"`
+            : ghostConfig.caption;
+        }
+        if (opacityText) {
+          opacityText.textContent = `${ghostConfig.opacity}%`;
+        }
+        if (statePillBtn) {
+          statePillBtn.classList.toggle("inactive", !isGhostActive);
+        }
+        if (statePillText) {
+          statePillText.textContent = isGhostActive ? "Active" : "Inactive";
+        }
+        if (stateBtnLabel) {
+          stateBtnLabel.textContent = isGhostActive ? "Set Inactive" : "Set Active";
+        }
+        if (motionIcon) {
+          motionIcon.className = isMotionPlaying
+            ? "fa-solid fa-wand-magic-sparkles"
+            : "fa-solid fa-pause";
+        }
+        if (soundIcon) {
+          soundIcon.className = isSoundEnabled
+            ? "fa-solid fa-volume-high"
+            : "fa-solid fa-volume-xmark";
+        }
+      }
+
+      function loadLocalSessions() {
+        try {
+          const raw = localStorage.getItem(LOCAL_GHOST_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) sessions = parsed;
+          }
+        } catch (_) {}
+      }
+
+      function saveLocalSessions() {
+        try {
+          localStorage.setItem(LOCAL_GHOST_KEY, JSON.stringify(sessions.slice(0, 60)));
+        } catch (_) {}
+      }
+
+      async function syncSessionToCloud(item) {
+        const statusEl = document.getElementById("ghostStatusText");
+        try {
+          const res = await fetch(`${DB_ENDPOINT}/rest/v1/ghost_mode_sessions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": DB_KEY,
+              "Authorization": `Bearer ${DB_KEY}`,
+              "Prefer": "resolution=merge-duplicates,return=minimal"
+            },
+            body: JSON.stringify({
+              id: item.id,
+              mode_name: item.modeName,
+              category: item.category,
+              opacity: item.opacity,
+              note: item.note,
+              created_at: item.createdAt
+            })
+          });
+          if (res.ok) {
+            if (statusEl) statusEl.textContent = `Logged "${item.modeName}" (${item.opacity}%) and synced.`;
+            return true;
+          }
+          if (statusEl) statusEl.textContent = `Logged "${item.modeName}" (${item.opacity}%) on device.`;
+          return false;
+        } catch (_) {
+          if (statusEl) statusEl.textContent = `Logged "${item.modeName}" (${item.opacity}%) on device.`;
+          return false;
+        }
+      }
+
+      async function deleteSessionFromCloud(id) {
+        try {
+          await fetch(
+            `${DB_ENDPOINT}/rest/v1/ghost_mode_sessions?id=eq.${encodeURIComponent(id)}`,
+            {
+              method: "DELETE",
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`,
+                "Prefer": "return=minimal"
+              }
+            }
+          );
+        } catch (_) {}
+      }
+
+      async function fetchRemoteSessions() {
+        try {
+          const res = await fetch(
+            `${DB_ENDPOINT}/rest/v1/ghost_mode_sessions?select=*&order=created_at.desc&limit=40`,
+            {
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`
+              }
+            }
+          );
+          if (!res.ok) return;
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length) {
+            const map = new Map(sessions.map((s) => [s.id, s]));
+            rows.forEach((r) => {
+              map.set(r.id, {
+                id: r.id,
+                modeName: r.mode_name || "Stealth Ghost",
+                category: r.category || "Stealth",
+                opacity: Number(r.opacity) || 90,
+                note: r.note || "",
+                createdAt: r.created_at || new Date().toISOString()
+              });
+            });
+            sessions = Array.from(map.values());
+            saveLocalSessions();
+            renderSessions();
+          }
+        } catch (_) {}
+      }
+
+      function renderSessions() {
+        const listEl = document.getElementById("ghostSessionsList");
+        const badgeEl = document.getElementById("ghostSessionCountBadge");
+        if (badgeEl) {
+          badgeEl.textContent = `${sessions.length} ${sessions.length === 1 ? "Session" : "Sessions"}`;
+        }
+        if (!listEl) return;
+
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = sessions.filter((s) => {
+          const catMatch = activeCategory === "All" || s.category === activeCategory;
+          if (!catMatch) return false;
+          if (!q) return true;
+          const hay = `${s.modeName || ""} ${s.category || ""} ${s.note || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+        if (!filtered.length) {
+          listEl.innerHTML = `<div class="gm-text">No ghost sessions in this view.</div>`;
+          return;
+        }
+
+        listEl.innerHTML = filtered
+          .map((s) => {
+            const dt = s.createdAt ? new Date(s.createdAt) : new Date();
+            const timeStr = dt.toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit"
+            });
+
+            return `
+              <div class="session-item">
+                <div>
+                  <div class="session-title">${escapeHtml(s.modeName)} • ${Number(s.opacity) || 90}%</div>
+                  <div class="session-meta">${escapeHtml(s.category)} • ${escapeHtml(timeStr)}${
+                    s.note ? ` • ${escapeHtml(s.note)}` : ""
+                  }</div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                  <button type="button" class="mini-btn apply-ghost-btn" data-id="${escapeHtml(s.id)}">
+                    <i class="fa-solid fa-ghost"></i>
+                    <span>Apply</span>
+                  </button>
+                  <button type="button" class="mini-btn del-ghost-btn" data-id="${escapeHtml(s.id)}" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        listEl.querySelectorAll(".apply-ghost-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            const found = sessions.find((s) => s.id === id);
+            if (!found) return;
+            ghostConfig.modeName = found.modeName;
+            ghostConfig.category = found.category;
+            ghostConfig.opacity = Number(found.opacity) || 90;
+            ghostConfig.note = found.note || "";
+            isGhostActive = true;
+            document.getElementById("ghostOpacityRange").value = String(ghostConfig.opacity);
+            document.getElementById("ghostNoteInput").value = ghostConfig.note;
+            renderGhostStage();
+            showToast(`Applied "${found.modeName}"`);
+          });
+        });
+
+        listEl.querySelectorAll(".del-ghost-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            sessions = sessions.filter((s) => s.id !== id);
+            saveLocalSessions();
+            renderSessions();
+            await deleteSessionFromCloud(id);
+            showToast("Session removed");
+          });
+        });
+      }
+
+      document.getElementById("ghostPresetSelect")?.addEventListener("change", (e) => {
+        const opt = e.target.selectedOptions[0];
+        if (!opt) return;
+        ghostConfig.modeName = opt.value;
+        ghostConfig.category = opt.getAttribute("data-category") || "Stealth";
+        ghostConfig.caption = opt.getAttribute("data-caption") || "";
+        renderGhostStage();
+      });
+
+      document.getElementById("ghostOpacityRange")?.addEventListener("input", (e) => {
+        ghostConfig.opacity = Number(e.target.value) || 90;
+        renderGhostStage();
+      });
+
+      document.getElementById("ghostNoteInput")?.addEventListener("input", (e) => {
+        ghostConfig.note = e.target.value || "";
+        renderGhostStage();
+      });
+
+      document.getElementById("ghostStatePillBtn")?.addEventListener("click", toggleGhostMode);
+      document.getElementById("toggleGhostStateBtn")?.addEventListener("click", toggleGhostMode);
+
+      document.getElementById("toggleSoundBtn")?.addEventListener("click", () => {
+        isSoundEnabled = !isSoundEnabled;
+        renderGhostStage();
+        if (isSoundEnabled) playGhostTone(true);
+        showToast(isSoundEnabled ? "Sound enabled" : "Sound muted");
+      });
+
+      document.getElementById("toggleMotionBtn")?.addEventListener("click", () => {
+        isMotionPlaying = !isMotionPlaying;
+        renderGhostStage();
+        showToast(isMotionPlaying ? "Ghost animation playing" : "Ghost animation paused");
+      });
+
+      document.getElementById("saveGhostSessionBtn")?.addEventListener("click", async () => {
+        const item = {
+          id: `ghost-${Date.now()}`,
+          modeName: ghostConfig.modeName,
+          category: ghostConfig.category,
+          opacity: ghostConfig.opacity,
+          note: (ghostConfig.note || "").trim(),
+          createdAt: new Date().toISOString()
+        };
+
+        sessions = [item, ...sessions];
+        saveLocalSessions();
+        renderSessions();
+        await syncSessionToCloud(item);
+        showToast("Ghost session logged");
+      });
+
+      document.getElementById("searchGhostInput")?.addEventListener("input", (e) => {
+        searchQuery = e.target.value || "";
+        renderSessions();
+      });
+
+      document.querySelectorAll("#ghostFilterStrip .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll("#ghostFilterStrip .filter-chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          activeCategory = chip.getAttribute("data-cat") || "All";
+          renderSessions();
+        });
+      });
+
+      document.getElementById("refreshGhostBtn")?.addEventListener("click", async () => {
+        await fetchRemoteSessions();
+        showToast("Refreshed ghost sessions");
+      });
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTheme);
+      }
+
+      syncTheme();
+      renderGhostStage();
+      loadLocalSessions();
+      renderSessions();
+      fetchRemoteSessions();
+    })();
+  </script>
+</body>
+            </html>
