@@ -225,7 +225,7 @@
     cursor: pointer;
   }
 
-  /* Vertical Snap Feed Container (Screenshot 2 Card Style) */
+  /* Vertical Snap Feed Container */
   .reels-feed-scroller {
     flex: 1;
     overflow-y: scroll;
@@ -314,7 +314,7 @@
     font-size: 13.5px;
   }
 
-  /* Bottom Navigation (#FFFFFF / #202124) */
+  /* Bottom Navigation */
   .bottom-nav {
     height: 58px;
     background: var(--surface-color);
@@ -396,7 +396,7 @@
 <header class="reels-header">
   <div class="header-top-row">
     <div class="header-brand-left">
-      <a href="index.html" class="back-btn" id="backToIndexBtn" title="Back to Home">
+      <a href="/index.html" class="back-btn" id="backToIndexBtn" title="Back to Home">
         <i class="fa-solid fa-arrow-left"></i>
       </a>
       <span class="brand-title">Autrobook</span>
@@ -407,7 +407,7 @@
       <button type="button" class="circle-action-btn" id="toggleGlobalMuteBtn" title="Toggle Sound">
         <i class="fa-solid fa-volume-high" id="globalMuteIcon"></i>
       </button>
-      <a href="create-reels.html" class="circle-action-btn create-reel-plus-link" id="headerCreateReelBtn" title="Create Reel">
+      <a href="/create-reels.html" class="circle-action-btn create-reel-plus-link" id="headerCreateReelBtn" title="Create Reel">
         <i class="fa-solid fa-plus"></i>
       </a>
     </div>
@@ -438,32 +438,32 @@
   </div>
 </main>
 
-<a href="create-reels.html" class="floating-create-fab create-reel-plus-link" id="floatingCreateReelBtn" title="Create New Reel">
+<a href="/create-reels.html" class="floating-create-fab create-reel-plus-link" id="floatingCreateReelBtn" title="Create New Reel">
   <i class="fa-solid fa-plus"></i>
 </a>
 
 <nav class="bottom-nav" aria-label="Main Navigation">
-  <a href="index.html" class="nav-item" id="navHomeLink" title="Home">
+  <a href="/index.html" class="nav-item" id="navHomeLink" title="Home">
     <i class="fa-solid fa-house"></i>
     <span>Home</span>
   </a>
-  <a href="reels.html" class="nav-item active" id="navReelsLink" title="Reels">
+  <a href="/reels.html" class="nav-item active" id="navReelsLink" title="Reels">
     <i class="fa-solid fa-clapperboard"></i>
     <span>Reels</span>
   </a>
-  <a href="friend-request.html" class="nav-item" title="Friends">
+  <a href="/friend-request.html" class="nav-item" title="Friends">
     <i class="fa-solid fa-user-group"></i>
     <span>Friends</span>
   </a>
-  <a href="groups.html" class="nav-item" title="Groups">
+  <a href="/groups.html" class="nav-item" title="Groups">
     <i class="fa-solid fa-users"></i>
     <span>Groups</span>
   </a>
-  <a href="notifications.html" class="nav-item" title="Notifications">
+  <a href="/notifications.html" class="nav-item" title="Notifications">
     <i class="fa-solid fa-bell"></i>
     <span>Alerts</span>
   </a>
-  <a href="profile.html" class="nav-item" id="bottomProfileLink" title="Profile">
+  <a href="/profile.html" class="nav-item" id="bottomProfileLink" title="Profile">
     <span class="nav-profile-avatar-slot" id="bottomProfileAvatarSlot"></span>
     <span>Profile</span>
   </a>
@@ -479,6 +479,7 @@
 
   const urlParams = new URLSearchParams(window.location.search);
   let targetUserId = urlParams.get('user_id') || '';
+  const focusedReelId = urlParams.get('reel') || urlParams.get('id') || '';
   let activeFilter = 'all';
   let searchQuery = '';
   let globalSoundEnabled = true;
@@ -494,8 +495,8 @@
   const bottomProfileAvatarSlot = document.getElementById('bottomProfileAvatarSlot');
 
   function getCreateReelsUrl() {
-    const createUrl = new URL('create-reels.html', window.location.href);
-    createUrl.searchParams.set('return_to', 'reels.html');
+    const createUrl = new URL('/create-reels.html', window.location.origin);
+    createUrl.searchParams.set('return_to', '/reels.html');
     if (currentUserId) createUrl.searchParams.set('user_id', currentUserId);
     return createUrl.toString();
   }
@@ -533,8 +534,10 @@
     let localAvatar = '';
     try {
       const savedProfile = JSON.parse(localStorage.getItem('autrobook_profile') || '{}');
-      localAvatar = savedProfile.avatar_url || savedProfile.avatar || '';
-    } catch (e) {}
+      localAvatar = savedProfile.avatar_url || savedProfile.avatar || localStorage.getItem('autro_profile_avatar') || '';
+    } catch (e) {
+      localAvatar = localStorage.getItem('autro_profile_avatar') || '';
+    }
 
     if (localAvatar) {
       setBottomProfileAvatar(localAvatar);
@@ -546,7 +549,7 @@
       const { data } = await supabaseClient.auth.getUser();
       if (data?.user?.id) {
         currentUserId = data.user.id;
-        document.getElementById('bottomProfileLink').href = `profile.html?user=${encodeURIComponent(currentUserId)}`;
+        document.getElementById('bottomProfileLink').href = `/profile.html?user=${encodeURIComponent(currentUserId)}`;
         syncCreateReelLinks();
 
         const metaAvatar = data.user.user_metadata?.avatar_url || '';
@@ -563,8 +566,9 @@
   }
 
   function buildCardIframeSrc(reel) {
-    const u = new URL('reels-card.html', window.location.href);
+    const u = new URL('/reels-card.html', window.location.origin);
     u.searchParams.set('id', reel.id);
+    u.searchParams.set('reel', reel.id);
     if (reel.user_id) u.searchParams.set('user_id', reel.user_id);
     if (reel.author_name) u.searchParams.set('author', reel.author_name);
     if (reel.author_avatar) u.searchParams.set('avatar', reel.author_avatar);
@@ -574,13 +578,36 @@
     if (reel.audio_name) u.searchParams.set('audio', reel.audio_name);
     if (reel.quality) u.searchParams.set('quality', reel.quality);
     if (reel.audience) u.searchParams.set('audience', reel.audience);
-    u.searchParams.set('from', 'reels.html');
-    u.searchParams.set('home', 'index.html');
+    u.searchParams.set('from', '/reels.html');
+    u.searchParams.set('home', '/home/index.html');
     u.searchParams.set('embedded', '1');
     return u.toString();
   }
 
+  function normalizeReelRecord(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = String(raw.id || raw.reel_id || raw.created_at || '').trim();
+    const mediaUrl = String(raw.media_url || raw.video_url || raw.url || '').trim();
+    if (!id && !mediaUrl) return null;
+
+    return {
+      id: id || `reel-${Date.now()}`,
+      user_id: raw.user_id || raw.author_id || currentUserId || '',
+      author_name: raw.author_name || raw.username || raw.user_name || 'Autrobook User',
+      author_avatar: raw.author_avatar || raw.avatar_url || '',
+      media_url: mediaUrl,
+      media_type: raw.media_type || (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl) ? 'video/mp4' : 'video'),
+      caption: raw.caption || raw.title || raw.description || '',
+      audio_name: raw.audio_name || raw.music || 'Original Audio',
+      quality: raw.quality || 'HD',
+      audience: raw.audience || 'Public',
+      likes: Number(raw.likes ?? raw.reaction_count ?? 0),
+      created_at: raw.created_at || new Date().toISOString()
+    };
+  }
+
   function loadLocalLists() {
+    savedReelIds.clear();
     try {
       const drafts = JSON.parse(localStorage.getItem('autrobook_drafts') || '[]');
       drafts.forEach((d) => {
@@ -595,13 +622,46 @@
     } catch (e) {}
   }
 
-  async function fetchReelsFromSources() {
-    let localReels = [];
+  async function fetchApiReels() {
     try {
-      localReels = JSON.parse(localStorage.getItem('autrobook_live_reels') || '[]');
+      const res = await fetch('/api/reels', { cache: 'no-store' });
+      if (!res.ok) return [];
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return [];
+      const json = await res.json();
+      if (Array.isArray(json)) return json;
+      if (Array.isArray(json?.reels)) return json.reels;
+      if (Array.isArray(json?.data)) return json.data;
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function fetchReelsFromSources() {
+    const localKeys = [
+      'autrobook_live_reels',
+      'autro_reels',
+      'autrobook_reels',
+      'autro_instant_reels'
+    ];
+    const localReels = [];
+
+    localKeys.forEach((key) => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+        if (Array.isArray(parsed)) localReels.push(...parsed);
+      } catch (e) {}
+    });
+
+    try {
+      const singleNew = JSON.parse(localStorage.getItem('autro_new_reel_created') || 'null');
+      if (singleNew && typeof singleNew === 'object') localReels.unshift(singleNew);
     } catch (e) {}
 
+    const apiReels = await fetchApiReels();
     let remoteReels = [];
+
     if (supabaseClient) {
       try {
         const { data } = await supabaseClient
@@ -609,7 +669,17 @@
           .select('*')
           .order('created_at', { ascending: false })
           .limit(80);
-        if (Array.isArray(data)) remoteReels = data;
+        if (Array.isArray(data)) remoteReels.push(...data);
+      } catch (e) {}
+
+      try {
+        const { data: postReels } = await supabaseClient
+          .from('posts')
+          .select('*')
+          .eq('is_reel', true)
+          .order('created_at', { ascending: false })
+          .limit(40);
+        if (Array.isArray(postReels)) remoteReels.push(...postReels);
       } catch (e) {}
 
       if (currentUserId) {
@@ -627,9 +697,10 @@
     }
 
     const map = new Map();
-    [...remoteReels, ...localReels].forEach((r) => {
-      if (r && r.id) {
-        map.set(r.id, { ...map.get(r.id), ...r });
+    [...apiReels, ...remoteReels, ...localReels].forEach((raw) => {
+      const norm = normalizeReelRecord(raw);
+      if (norm && norm.id) {
+        map.set(norm.id, { ...map.get(norm.id), ...norm });
       }
     });
 
@@ -652,7 +723,7 @@
         if (!savedReelIds.has(r.id) && !savedReelIds.has(r.media_url)) return false;
       } else if (activeFilter === 'mine') {
         const mineId = currentUserId || 'creator_user';
-        if (r.user_id !== mineId) return false;
+        if (r.user_id !== mineId && r.user_id !== currentUserId) return false;
       }
 
       if (q) {
@@ -709,6 +780,13 @@
       `;
     }).join('');
 
+    if (focusedReelId) {
+      const targetSlide = scrollerEl.querySelector(`.reel-snap-slide[data-reel-id="${CSS.escape(focusedReelId)}"]`);
+      if (targetSlide) {
+        targetSlide.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }
+
     setupActiveSlideAutoplay();
   }
 
@@ -750,12 +828,22 @@
     }
   });
 
-  window.addEventListener('storage', (event) => {
-    if (event.key === 'autrobook_profile') {
-      try {
-        const parsed = JSON.parse(event.newValue || '{}');
-        setBottomProfileAvatar(parsed.avatar_url || parsed.avatar || '');
-      } catch (e) {}
+  window.addEventListener('storage', async (event) => {
+    if (event.key === 'autrobook_profile' || event.key === 'autro_profile_avatar') {
+      await syncProfileAvatarFromSupabase();
+    }
+    if (
+      event.key === 'autrobook_live_reels' ||
+      event.key === 'autro_reels' ||
+      event.key === 'autrobook_reels' ||
+      event.key === 'autro_instant_reels' ||
+      event.key === 'autro_new_reel_created' ||
+      event.key === 'autrobook_saved_reels' ||
+      event.key === 'autrobook_drafts'
+    ) {
+      loadLocalLists();
+      await fetchReelsFromSources();
+      renderVerticalReelsFeed();
     }
   });
 
@@ -801,7 +889,19 @@
     await syncProfileAvatarFromSupabase();
     await fetchReelsFromSources();
     renderVerticalReelsFeed();
+
+    if (supabaseClient && typeof supabaseClient.channel === 'function') {
+      try {
+        supabaseClient
+          .channel('autrobook-live-reels')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'reels' }, async () => {
+            await fetchReelsFromSources();
+            renderVerticalReelsFeed();
+          })
+          .subscribe();
+      } catch (e) {}
+    }
   });
 </script>
 </body>
-       </html>
+</html>
