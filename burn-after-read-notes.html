@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Burn After Read Notes - Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --bg-page: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-box: #F6F7F8;
+      --bg-hover: #ECEEF0;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --border-color: #D4D4D4;
+      --accent-bg: #0B3D20;
+      --accent-hover: #082C17;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(11, 61, 32, 0.12);
+      --danger-bg: #991B1B;
+      --danger-hover: #7F1D1D;
+      --shadow-card: 0 2px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    html[data-theme="dark"],
+    body.dark,
+    body.theme-dark {
+      --bg-page: #202124;
+      --bg-card: #202124;
+      --bg-box: #292A2D;
+      --bg-hover: #35373B;
+      --text-main: #F1F5F9;
+      --text-muted: #9AA0A6;
+      --border-color: #3C4043;
+      --accent-bg: #14532D;
+      --accent-hover: #0B3D20;
+      --accent-fg: #FFFFFF;
+      --accent-soft: rgba(20, 83, 45, 0.28);
+      --danger-bg: #B91C1C;
+      --danger-hover: #991B1C;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 56px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Topbar */
+    .bn-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn,
+    .top-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .back-btn:hover,
+    .top-action-btn:hover {
+      background-color: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+
+    .topbar-title {
+      font-size: clamp(16px, 4.2vw, 20px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .badge-tag {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    /* Main Container */
+    .bn-container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Hero */
+    .hero-card {
+      background: linear-gradient(135deg, var(--accent-soft), var(--bg-card));
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 22px 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+    }
+
+    .hero-title {
+      font-size: clamp(24px, 5.5vw, 34px);
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      color: var(--text-main);
+    }
+
+    .hero-subtitle {
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      max-width: 680px;
+    }
+
+    /* Card */
+    .bn-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background-color: var(--accent-soft);
+      border: 1px solid var(--border-color);
+      color: var(--accent-bg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    html[data-theme="dark"] .card-icon {
+      color: #4ADE80;
+    }
+
+    .bn-heading {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+    }
+
+    .bn-text {
+      font-size: 13.5px;
+      line-height: 1.58;
+      color: var(--text-muted);
+    }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 620px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .field-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .bn-input,
+    .bn-select,
+    .bn-textarea {
+      width: 100%;
+      padding: 10px 13px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .bn-input:focus,
+    .bn-select:focus,
+    .bn-textarea:focus {
+      border-color: var(--accent-bg);
+    }
+
+    .bn-textarea {
+      min-height: 84px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    /* Filter Pills */
+    .filter-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-chip {
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-box);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    /* Notes List */
+    .notes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .note-item {
+      background-color: var(--bg-box);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .note-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .note-title {
+      font-size: 15.5px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .note-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .secret-box {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background-color: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .secret-masked {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .note-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Buttons */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-solid,
+    .btn-outline,
+    .btn-danger {
+      padding: 10px 15px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      transition: background-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .btn-solid {
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border-color: var(--accent-bg);
+    }
+
+    .btn-solid:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-danger {
+      background-color: var(--danger-bg);
+      color: #FFFFFF;
+      border-color: var(--danger-bg);
+    }
+
+    .btn-danger:hover {
+      background-color: var(--danger-hover);
+    }
+
+    .mini-btn {
+      padding: 6px 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .mini-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .mini-btn.burn {
+      background-color: var(--danger-bg);
+      color: #FFFFFF;
+      border-color: var(--danger-bg);
+    }
+
+    .mini-btn.burn:hover {
+      background-color: var(--danger-hover);
+    }
+
+    .status-line {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      min-height: 18px;
+    }
+
+    /* Footer */
+    .bn-footer {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+    }
+
+    .footer-brand {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #0B3D20;
+    }
+
+    html[data-theme="dark"] .footer-brand {
+      color: #22C55E;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-bg);
+      color: var(--accent-fg);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="bn-topbar">
+    <div class="topbar-left">
+      <a href="profile.html" class="back-btn" aria-label="Back to Profile">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Burn After Read Notes</h1>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="top-action-btn" id="refreshNotesBtn" title="Refresh notes" aria-label="Refresh notes">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="bn-container">
+    <!-- Hero -->
+    <section class="hero-card">
+      <span class="hero-kicker">
+        <i class="fa-solid fa-fire-flame-curved"></i>
+        <span>Autrobook Ephemeral Notes</span>
+      </span>
+      <h2 class="hero-title">Burn After Read Notes</h2>
+      <p class="hero-subtitle">
+        Write temporary notes, reveal them only when needed, and burn them permanently once read so sensitive reminders never linger.
+      </p>
+    </section>
+
+    <!-- Create Note -->
+    <section class="bn-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-lock"></i></span>
+          <h3 class="bn-heading">Create Ephemeral Note</h3>
+        </div>
+        <span class="badge-tag" id="noteCountBadge">0 Notes</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="noteTitleInput" class="field-label">Note Title</label>
+          <input type="text" id="noteTitleInput" class="bn-input" placeholder="e.g., Session Code, One-Time Reminder" maxlength="90" />
+        </div>
+
+        <div class="field-group">
+          <label for="noteCategorySelect" class="field-label">Category</label>
+          <select id="noteCategorySelect" class="bn-select">
+            <option value="Quick Memo">Quick Memo</option>
+            <option value="Access Key">Access Key</option>
+            <option value="Draft Thought">Draft Thought</option>
+            <option value="Personal">Personal</option>
+          </select>
+        </div>
+
+        <div class="field-group full">
+          <label for="noteBodyInput" class="field-label">Secret / Temporary Content</label>
+          <textarea id="noteBodyInput" class="bn-textarea" placeholder="Write the note you plan to burn after reading..." maxlength="1500"></textarea>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-solid" id="saveNoteBtn">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Save Sealed Note</span>
+        </button>
+      </div>
+
+      <div class="status-line" id="noteStatusText">Notes stay sealed until revealed and permanently burn on delete.</div>
+    </section>
+
+    <!-- Active Sealed Notes -->
+    <section class="bn-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-fire"></i></span>
+          <h3 class="bn-heading">Sealed Notes Queue</h3>
+        </div>
+      </div>
+
+      <input type="search" id="searchNotesInput" class="bn-input" placeholder="Search notes by title or category..." />
+
+      <div class="filter-strip" id="noteFilterStrip">
+        <button type="button" class="filter-chip active" data-cat="All">All</button>
+        <button type="button" class="filter-chip" data-cat="Quick Memo">Quick Memo</button>
+        <button type="button" class="filter-chip" data-cat="Access Key">Access Key</button>
+        <button type="button" class="filter-chip" data-cat="Draft Thought">Draft Thought</button>
+        <button type="button" class="filter-chip" data-cat="Personal">Personal</button>
+      </div>
+
+      <div class="notes-list" id="notesList"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bn-footer">
+      <i class="fa-solid fa-fire-flame-curved footer-brand"></i>
+      <span class="footer-brand">Autrobook Burn After Read Notes</span>
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const DB_ENDPOINT = "https://gemyqaniztqrsilayblx.supabase.co";
+      const DB_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+      const LOCAL_NOTES_KEY = "autrobook_burn_after_read_notes_v1";
+
+      let notes = [];
+      const revealedIds = new Set();
+      let activeCategory = "All";
+      let searchQuery = "";
+
+      function syncTheme() {
+        const prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const mode = prefersDark ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", mode);
+        document.body.classList.toggle("theme-dark", prefersDark);
+        document.body.classList.toggle("dark", prefersDark);
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(window._bnToastTimer);
+        window._bnToastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function loadLocalNotes() {
+        try {
+          const raw = localStorage.getItem(LOCAL_NOTES_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) notes = parsed;
+          }
+        } catch (_) {}
+      }
+
+      function saveLocalNotes() {
+        try {
+          localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(notes.slice(0, 60)));
+        } catch (_) {}
+      }
+
+      async function syncNoteToCloud(item) {
+        const statusEl = document.getElementById("noteStatusText");
+        try {
+          const res = await fetch(`${DB_ENDPOINT}/rest/v1/burn_after_read_notes`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": DB_KEY,
+              "Authorization": `Bearer ${DB_KEY}`,
+              "Prefer": "resolution=merge-duplicates,return=minimal"
+            },
+            body: JSON.stringify({
+              id: item.id,
+              title: item.title,
+              category: item.category,
+              content: item.content,
+              created_at: item.createdAt
+            })
+          });
+          if (res.ok) {
+            if (statusEl) statusEl.textContent = `Sealed "${item.title}" and synced.`;
+            return true;
+          }
+          if (statusEl) statusEl.textContent = `Sealed "${item.title}" on device.`;
+          return false;
+        } catch (_) {
+          if (statusEl) statusEl.textContent = `Sealed "${item.title}" on device.`;
+          return false;
+        }
+      }
+
+      async function deleteNoteFromCloud(id) {
+        try {
+          await fetch(
+            `${DB_ENDPOINT}/rest/v1/burn_after_read_notes?id=eq.${encodeURIComponent(id)}`,
+            {
+              method: "DELETE",
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`,
+                "Prefer": "return=minimal"
+              }
+            }
+          );
+        } catch (_) {}
+      }
+
+      async function fetchRemoteNotes() {
+        try {
+          const res = await fetch(
+            `${DB_ENDPOINT}/rest/v1/burn_after_read_notes?select=*&order=created_at.desc&limit=40`,
+            {
+              headers: {
+                "apikey": DB_KEY,
+                "Authorization": `Bearer ${DB_KEY}`
+              }
+            }
+          );
+          if (!res.ok) return;
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length) {
+            const map = new Map(notes.map((n) => [n.id, n]));
+            rows.forEach((r) => {
+              map.set(r.id, {
+                id: r.id,
+                title: r.title || "Untitled Note",
+                category: r.category || "Quick Memo",
+                content: r.content || "",
+                createdAt: r.created_at || new Date().toISOString()
+              });
+            });
+            notes = Array.from(map.values());
+            saveLocalNotes();
+            renderNotes();
+          }
+        } catch (_) {}
+      }
+
+      function renderNotes() {
+        const listEl = document.getElementById("notesList");
+        const countBadge = document.getElementById("noteCountBadge");
+        const q = searchQuery.trim().toLowerCase();
+
+        const filtered = notes.filter((n) => {
+          const catMatch = activeCategory === "All" || n.category === activeCategory;
+          if (!catMatch) return false;
+          if (!q) return true;
+          const hay = `${n.title || ""} ${n.category || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+        if (countBadge) {
+          countBadge.textContent = `${filtered.length} ${filtered.length === 1 ? "Note" : "Notes"}`;
+        }
+        if (!listEl) return;
+
+        if (!filtered.length) {
+          listEl.innerHTML = `<div class="bn-text">No sealed notes in this view.</div>`;
+          return;
+        }
+
+        listEl.innerHTML = filtered
+          .map((item) => {
+            const isRevealed = revealedIds.has(item.id);
+            const dt = item.createdAt ? new Date(item.createdAt) : new Date();
+            const timeStr = dt.toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit"
+            });
+
+            return `
+              <article class="note-item">
+                <div class="note-top">
+                  <div>
+                    <div class="note-title">${escapeHtml(item.title)}</div>
+                    <div class="note-meta">${escapeHtml(item.category)} • ${escapeHtml(timeStr)}</div>
+                  </div>
+                  <span class="badge-tag">${isRevealed ? "Revealed" : "Sealed"}</span>
+                </div>
+
+                <div class="secret-box ${isRevealed ? "" : "secret-masked"}">
+                  ${
+                    isRevealed
+                      ? escapeHtml(item.content)
+                      : "Content is hidden. Click Reveal to read, then Burn to destroy permanently."
+                  }
+                </div>
+
+                <div class="note-footer">
+                  <button type="button" class="mini-btn toggle-reveal-btn" data-id="${escapeHtml(item.id)}">
+                    <i class="fa-solid ${isRevealed ? "fa-eye-slash" : "fa-eye"}"></i>
+                    <span>${isRevealed ? "Hide" : "Reveal"}</span>
+                  </button>
+                  <button type="button" class="mini-btn burn burn-note-btn" data-id="${escapeHtml(item.id)}">
+                    <i class="fa-solid fa-fire"></i>
+                    <span>Burn Note</span>
+                  </button>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+
+        listEl.querySelectorAll(".toggle-reveal-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            if (revealedIds.has(id)) {
+              revealedIds.delete(id);
+            } else {
+              revealedIds.add(id);
+            }
+            renderNotes();
+          });
+        });
+
+        listEl.querySelectorAll(".burn-note-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            notes = notes.filter((n) => n.id !== id);
+            revealedIds.delete(id);
+            saveLocalNotes();
+            renderNotes();
+            await deleteNoteFromCloud(id);
+            showToast("Note burned permanently");
+          });
+        });
+      }
+
+      document.getElementById("saveNoteBtn")?.addEventListener("click", async () => {
+        const titleVal = (document.getElementById("noteTitleInput")?.value || "").trim();
+        const catVal = document.getElementById("noteCategorySelect")?.value || "Quick Memo";
+        const bodyVal = (document.getElementById("noteBodyInput")?.value || "").trim();
+
+        if (!titleVal || !bodyVal) {
+          showToast("Please enter both title and note content");
+          return;
+        }
+
+        const item = {
+          id: `burn-${Date.now()}`,
+          title: titleVal,
+          category: catVal,
+          content: bodyVal,
+          createdAt: new Date().toISOString()
+        };
+
+        notes = [item, ...notes];
+        saveLocalNotes();
+        renderNotes();
+
+        document.getElementById("noteTitleInput").value = "";
+        document.getElementById("noteBodyInput").value = "";
+
+        await syncNoteToCloud(item);
+        showToast("Sealed note saved");
+      });
+
+      document.getElementById("searchNotesInput")?.addEventListener("input", (e) => {
+        searchQuery = e.target.value || "";
+        renderNotes();
+      });
+
+      document.querySelectorAll("#noteFilterStrip .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll("#noteFilterStrip .filter-chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          activeCategory = chip.getAttribute("data-cat") || "All";
+          renderNotes();
+        });
+      });
+
+      document.getElementById("refreshNotesBtn")?.addEventListener("click", async () => {
+        await fetchRemoteNotes();
+        showToast("Refreshed notes");
+      });
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTheme);
+      }
+
+      syncTheme();
+      loadLocalNotes();
+      renderNotes();
+      fetchRemoteNotes();
+    })();
+  </script>
+</body>
+  </html>
