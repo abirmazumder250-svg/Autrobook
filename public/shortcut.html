@@ -9,7 +9,7 @@
 <style>
   :root {
     --bg-color: #FFFFFF;
-    --card-color: #ffffff;
+    --card-color: #FFFFFF;
     --soft-btn-bg: #e4e6eb;
     --soft-btn-hover: #d8dadf;
     --text-color: #050505;
@@ -24,7 +24,7 @@
 
   html[data-theme="dark"] {
     --bg-color: #202124;
-    --card-color: #242526;
+    --card-color: #202124;
     --soft-btn-bg: #3a3b3c;
     --soft-btn-hover: #4e4f50;
     --text-color: #ffffff;
@@ -38,7 +38,7 @@
 
   html[data-theme="light"] {
     --bg-color: #FFFFFF;
-    --card-color: #ffffff;
+    --card-color: #FFFFFF;
     --soft-btn-bg: #e4e6eb;
     --soft-btn-hover: #d8dadf;
     --text-color: #050505;
@@ -552,19 +552,39 @@
 
   <!-- Expandable Extra Features (See more / See less) -->
   <div id="moreMenu">
-    <a class="menu-row" href="/ad-center.html">
-      <span class="feature-logo logo-amber"><i class="fa-solid fa-bullhorn"></i></span>
-      <span data-i18n="ad_center">Ad Center</span>
+    <a class="menu-row" href="/zen-mode.html">
+      <span class="feature-logo logo-emerald"><i class="fa-solid fa-leaf"></i></span>
+      <span data-i18n="zen_mode">Zen Mode</span>
+    </a>
+
+    <a class="menu-row" href="/anti-doomscroll.html">
+      <span class="feature-logo logo-amber"><i class="fa-solid fa-hourglass-half"></i></span>
+      <span data-i18n="anti_doomscroll">Anti-Doomscroll</span>
+    </a>
+
+    <a class="menu-row" href="/voice-moments.html">
+      <span class="feature-logo logo-rose"><i class="fa-solid fa-microphone-lines"></i></span>
+      <span data-i18n="voice_moments">Voice Moments</span>
+    </a>
+
+    <a class="menu-row" href="/focus-analytics.html">
+      <span class="feature-logo logo-cyan"><i class="fa-solid fa-chart-column"></i></span>
+      <span data-i18n="focus_analytics">Focus Analytics</span>
+    </a>
+
+    <a class="menu-row" href="/quiet-hours.html">
+      <span class="feature-logo logo-slate"><i class="fa-solid fa-moon"></i></span>
+      <span data-i18n="quiet_hours">Quiet Hours</span>
+    </a>
+
+    <a class="menu-row" href="/smart-translator.html">
+      <span class="feature-logo logo-blue"><i class="fa-solid fa-language"></i></span>
+      <span data-i18n="smart_translator">Smart Translator</span>
     </a>
 
     <a class="menu-row" href="/avartars.html">
       <span class="feature-logo logo-purple"><i class="fa-solid fa-face-smile"></i></span>
       <span data-i18n="avatars">Avatars</span>
-    </a>
-
-    <a class="menu-row" href="/events.html">
-      <span class="feature-logo logo-rose"><i class="fa-solid fa-calendar-days"></i></span>
-      <span data-i18n="events">Events</span>
     </a>
 
     <a class="menu-row" href="/friend-request.html">
@@ -724,10 +744,12 @@
 
   let themeBroadcastChannel = null;
   let langBroadcastChannel = null;
+  let profileBroadcastChannel = null;
   try {
     if ('BroadcastChannel' in window) {
       themeBroadcastChannel = new BroadcastChannel('autrobook_theme_sync');
       langBroadcastChannel = new BroadcastChannel('autrobook_lang_sync');
+      profileBroadcastChannel = new BroadcastChannel('autrobook_profile_sync');
     }
   } catch (_) {}
 
@@ -829,9 +851,13 @@
       feed: 'Feed',
       autro_ai: 'Autro AI Assistant',
       saved: 'Saved',
-      ad_center: 'Ad Center',
+      zen_mode: 'Zen Mode',
+      anti_doomscroll: 'Anti-Doomscroll',
+      voice_moments: 'Voice Moments',
+      focus_analytics: 'Focus Analytics',
+      quiet_hours: 'Quiet Hours',
+      smart_translator: 'Smart Translator',
       avatars: 'Avatars',
-      events: 'Events',
       find_friends: 'Find Friends',
       games: 'Games',
       groups: 'Groups',
@@ -866,9 +892,13 @@
       feed: 'ফিড',
       autro_ai: 'অট্রো এআই অ্যাসিস্ট্যান্ট',
       saved: 'সংরক্ষিত',
-      ad_center: 'অ্যাড সেন্টার',
+      zen_mode: 'জেন মোড',
+      anti_doomscroll: 'অ্যান্টি-ডুমস্ক্রল',
+      voice_moments: 'ভয়েস মোমেন্টস',
+      focus_analytics: 'ফোকাস অ্যানালিটিক্স',
+      quiet_hours: 'কোয়াইট আওয়ার্স',
+      smart_translator: 'স্মার্ট ট্রান্সলেটর',
       avatars: 'অ্যাভাটার',
-      events: 'ইভেন্টস',
       find_friends: 'বন্ধু খুঁজুন',
       games: 'গেমস',
       groups: 'গ্রুপস',
@@ -912,6 +942,12 @@
   function safeStorageSet(key, val) {
     try {
       window.localStorage.setItem(key, val);
+    } catch (_) {}
+  }
+
+  function safeStorageRemove(key) {
+    try {
+      window.localStorage.removeItem(key);
     } catch (_) {}
   }
 
@@ -1264,8 +1300,8 @@
     const nameEl = document.getElementById('drawerName');
     const avatarEl = document.getElementById('userAvatar');
 
-    const cleanName = (fullName || '').trim();
-    const cleanAvatar = (avatarUrl || '').trim();
+    const cleanName = typeof fullName === 'string' ? fullName.trim() : '';
+    const cleanAvatar = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
 
     if (nameEl) {
       if (cleanName) {
@@ -1305,32 +1341,35 @@
         name = parsed.full_name || parsed.name || '';
         avatar = parsed.avatar_url || parsed.avatar || parsed.profile_pic || '';
       }
-      if (!name) {
-        name = safeStorageGet('autro_profile_name') || '';
+      const directName = safeStorageGet('autro_profile_name');
+      if (directName !== null) {
+        name = directName;
       }
-      if (!avatar) {
-        avatar = safeStorageGet('autro_shared_profile_avatar') || safeStorageGet('autro_profile_pic') || '';
+      const directAvatar = safeStorageGet('autro_shared_profile_avatar') ?? safeStorageGet('autro_profile_pic');
+      if (directAvatar !== null) {
+        avatar = directAvatar;
       }
     } catch (_) {}
 
-    return { name, avatar };
+    return { name: name || '', avatar: avatar || '' };
   }
 
   function cacheSupabaseProfile(fullName, avatarUrl) {
-    if (fullName) {
-      safeStorageSet('autro_profile_name', fullName);
+    const cleanName = typeof fullName === 'string' ? fullName.trim() : '';
+    const cleanAvatar = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
+
+    if (cleanName) {
+      safeStorageSet('autro_profile_name', cleanName);
     } else {
-      try { window.localStorage.removeItem('autro_profile_name'); } catch (_) {}
+      safeStorageRemove('autro_profile_name');
     }
 
-    if (avatarUrl) {
-      safeStorageSet('autro_shared_profile_avatar', avatarUrl);
-      safeStorageSet('autro_profile_pic', avatarUrl);
+    if (cleanAvatar) {
+      safeStorageSet('autro_shared_profile_avatar', cleanAvatar);
+      safeStorageSet('autro_profile_pic', cleanAvatar);
     } else {
-      try {
-        window.localStorage.removeItem('autro_shared_profile_avatar');
-        window.localStorage.removeItem('autro_profile_pic');
-      } catch (_) {}
+      safeStorageRemove('autro_shared_profile_avatar');
+      safeStorageRemove('autro_profile_pic');
     }
 
     try {
@@ -1338,10 +1377,10 @@
       const existingObj = existingRaw ? JSON.parse(existingRaw) : {};
       const merged = {
         ...existingObj,
-        full_name: fullName || '',
-        name: fullName || '',
-        avatar_url: avatarUrl || '',
-        avatar: avatarUrl || ''
+        full_name: cleanName,
+        name: cleanName,
+        avatar_url: cleanAvatar,
+        avatar: cleanAvatar
       };
       safeStorageSet('autro_account_profile', JSON.stringify(merged));
     } catch (_) {}
@@ -1354,7 +1393,7 @@
     if (!supabaseClient) return;
 
     try {
-      let userId = null;
+      let userId = activeProfileUserId;
       let fullName = '';
       let avatarUrl = '';
       let cloudTheme = null;
@@ -1394,8 +1433,8 @@
           .maybeSingle();
 
         if (!profErr && profileRow) {
-          fullName = profileRow.full_name || profileRow.name || profileRow.username || fullName;
-          avatarUrl = profileRow.avatar_url || profileRow.avatar || profileRow.photo_url || avatarUrl;
+          fullName = profileRow.full_name || profileRow.name || '';
+          avatarUrl = profileRow.avatar_url || profileRow.avatar || profileRow.photo_url || '';
         }
       }
 
@@ -1446,14 +1485,14 @@
         if (Array.isArray(fallbackProfiles) && fallbackProfiles.length > 0) {
           const p = fallbackProfiles[0];
           if (!activeProfileUserId && p.id) activeProfileUserId = p.id;
-          fullName = p.full_name || p.name || p.username || fullName;
-          avatarUrl = p.avatar_url || p.avatar || p.photo_url || avatarUrl;
+          fullName = p.full_name || p.name || '';
+          avatarUrl = p.avatar_url || p.avatar || p.photo_url || '';
         }
       }
 
       if (settingsRow) {
-        fullName = settingsRow.full_name || fullName;
-        avatarUrl = settingsRow.avatar_url || avatarUrl;
+        if (settingsRow.full_name) fullName = settingsRow.full_name;
+        if (settingsRow.avatar_url) avatarUrl = settingsRow.avatar_url;
         cloudTheme = settingsRow.theme || null;
         cloudLang = settingsRow.language || null;
       }
@@ -1513,6 +1552,20 @@
       }
     });
 
+    window.addEventListener('focus', () => {
+      loadUserProfile();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        loadUserProfile();
+      }
+    });
+
+    window.addEventListener('pageshow', () => {
+      loadUserProfile();
+    });
+
     window.addEventListener('autro:theme-updated', (ev) => {
       const next = normalizeTheme(ev?.detail?.theme);
       if (next && next !== currentTheme) {
@@ -1560,14 +1613,15 @@
     } catch (_) {}
 
     try {
-      if ('BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('autrobook_profile_sync');
-        bc.onmessage = (ev) => {
+      if (profileBroadcastChannel) {
+        profileBroadcastChannel.onmessage = (ev) => {
           if (ev?.data?.type === 'PROFILE_SYNC' && ev?.data?.payload) {
             const nextName = ev.data.payload.full_name ?? '';
             const nextAvatar = ev.data.payload.avatar_url ?? '';
             renderProfileCard(nextName, nextAvatar);
             cacheSupabaseProfile(nextName, nextAvatar);
+          } else if (ev?.data?.type === 'PROFILE_REFRESH') {
+            loadUserProfile();
           }
         };
       }
@@ -1705,4 +1759,4 @@
   }
 </script>
 </body>
-        </html>
+  </html>
