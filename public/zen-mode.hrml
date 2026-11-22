@@ -80,20 +80,26 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     color: var(--text-color);
     text-decoration: none;
     font-size: 17px;
-    border: none;
+    border: 1px solid transparent;
     background: transparent;
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    position: relative;
+    z-index: 5;
+    transition: background-color 0.15s ease, transform 0.12s ease;
   }
 
   .icon-link-btn:hover {
     background-color: var(--hover-color);
+  }
+
+  .icon-link-btn:active {
+    transform: scale(0.93);
   }
 
   .zen-title-wrap {
@@ -307,22 +313,22 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
-  .preset-btn {
+  .preset-btn, .tag-chip {
     border: 1px solid var(--border-color);
     background-color: var(--soft-pill);
     color: var(--text-color);
     padding: 8px 14px;
     border-radius: 999px;
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
   }
 
-  .preset-btn.active {
+  .preset-btn.active, .tag-chip.active {
     background-color: var(--accent-green);
     color: #FFFFFF;
     border-color: var(--accent-green);
@@ -333,11 +339,21 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 22px 16px;
+    padding: 20px 16px;
     border-radius: 16px;
     background-color: var(--soft-pill);
     border: 1px solid var(--border-color);
     margin-bottom: 14px;
+    gap: 10px;
+  }
+
+  .timer-mode-tag {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background-color: var(--accent-soft-bg);
+    color: var(--accent-green);
   }
 
   .timer-clock {
@@ -345,7 +361,6 @@
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     letter-spacing: 1px;
-    margin-bottom: 8px;
   }
 
   .timer-intention-input {
@@ -606,9 +621,15 @@
   /* Stats & History */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     margin-top: 8px;
+  }
+
+  @media (max-width: 520px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .stat-box {
@@ -745,16 +766,26 @@
     <!-- Focus Session Timer -->
     <section class="card">
       <h2 class="section-title">Focus Session Timer</h2>
-      <p class="section-sub">Choose a session length and set a clear intention for your time.</p>
+      <p class="section-sub">Choose a focus preset or quick micro-break and set your intention.</p>
 
       <div class="preset-row" id="durationPresets">
-        <button type="button" class="preset-btn active" data-minutes="15">15 min</button>
-        <button type="button" class="preset-btn" data-minutes="25">25 min</button>
-        <button type="button" class="preset-btn" data-minutes="45">45 min</button>
-        <button type="button" class="preset-btn" data-minutes="60">60 min</button>
+        <button type="button" class="preset-btn active" data-minutes="15" data-mode="focus">15 min</button>
+        <button type="button" class="preset-btn" data-minutes="25" data-mode="focus">25 min</button>
+        <button type="button" class="preset-btn" data-minutes="45" data-mode="focus">45 min</button>
+        <button type="button" class="preset-btn" data-minutes="60" data-mode="focus">60 min</button>
+        <button type="button" class="preset-btn" data-minutes="2" data-mode="break">2m Break</button>
+        <button type="button" class="preset-btn" data-minutes="5" data-mode="break">5m Break</button>
+      </div>
+
+      <div class="preset-row" id="focusTagsRow">
+        <button type="button" class="tag-chip active" data-tag="Deep Reading">Deep Reading</button>
+        <button type="button" class="tag-chip" data-tag="Creative Work">Creative Work</button>
+        <button type="button" class="tag-chip" data-tag="Mindful Reset">Mindful Reset</button>
+        <button type="button" class="tag-chip" data-tag="Screen Break">Screen Break</button>
       </div>
 
       <div class="timer-display-box">
+        <span class="timer-mode-tag" id="timerModeBadge">FOCUS SESSION</span>
         <div class="timer-clock" id="timerDisplay">15:00</div>
         <input
           type="text"
@@ -947,6 +978,10 @@
           <div class="stat-value" id="totalFocusMinutes">0 min</div>
           <div class="stat-label">Total Focus Time</div>
         </div>
+        <div class="stat-box">
+          <div class="stat-value" id="focusStreakCount">0 days</div>
+          <div class="stat-label">Calm Streak</div>
+        </div>
       </div>
 
       <div class="history-list" id="sessionHistoryList"></div>
@@ -955,6 +990,10 @@
         <button type="button" class="btn-secondary" id="syncSupabaseBtn">
           <i class="fa-solid fa-cloud-arrow-up"></i>
           <span>Sync State to Cloud</span>
+        </button>
+        <button type="button" class="btn-secondary" id="clearHistoryBtn">
+          <i class="fa-solid fa-trash-can"></i>
+          <span>Clear History</span>
         </button>
       </div>
       <div class="status-banner" id="syncStatusText">Synced locally.</div>
@@ -1009,83 +1048,10 @@
       return match ? decodeURIComponent(match[1]) : 'en';
     }
 
-    async function applyGlobalLang(code) {
+    function applyGlobalLang(code) {
       const lang = code || 'en';
       document.documentElement.setAttribute('lang', lang);
       document.documentElement.setAttribute('dir', ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr');
-
-      const dictMap = {
-        en: {
-          'Settings & privacy': 'Settings & privacy',
-          'Search settings': 'Search settings',
-          'Autrobook Account': 'Autrobook Account',
-          'Personal details': 'Personal details',
-          'Password and security': 'Password and security',
-          'Ad preferences': 'Ad preferences',
-          'Verification': 'Verification',
-          'See more in Autrobook Account': 'See more in Autrobook Account',
-          'Subscriptions': 'Subscriptions',
-          'Autro Premium': 'Autro Premium',
-          'Tools and resources': 'Tools and resources',
-          'Privacy checkup': 'Privacy checkup'
-        },
-        bn: {
-          'Settings & privacy': 'সেটিংস ও প্রাইভেসি',
-          'Search settings': 'সেটিংস খুঁজুন',
-          'Autrobook Account': 'অট্রোবুক অ্যাকাউন্ট',
-          'Personal details': 'ব্যক্তিগত তথ্য',
-          'Password and security': 'পাসওয়ার্ড ও নিরাপত্তা',
-          'Ad preferences': 'বিজ্ঞাপন পছন্দ',
-          'Verification': 'ভেরিফিকেশন',
-          'See more in Autrobook Account': 'অট্রোবুক অ্যাকাউন্টে আরও দেখুন',
-          'Subscriptions': 'সাবস্ক্রিপশন',
-          'Autro Premium': 'অট্রো প্রিমিয়াম',
-          'Tools and resources': 'টুলস ও রিসোর্স',
-          'Privacy checkup': 'প্রাইভেসি চেকআপ'
-        }
-      };
-
-      const nodes = document.querySelectorAll('h1, h2, h3, h4, p, span, a, button, label, div');
-      for (const el of nodes) {
-        if (el.children.length > 0) continue;
-        if (!el.dataset.origText) {
-          el.dataset.origText = (el.textContent || '').trim();
-        }
-        const baseText = el.dataset.origText;
-        if (!baseText) continue;
-
-        if (lang === 'en') {
-          el.textContent = baseText;
-        } else if (dictMap[lang] && dictMap[lang][baseText]) {
-          el.textContent = dictMap[lang][baseText];
-        } else {
-          try {
-            const res = await fetch(
-              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(baseText)}`
-            );
-            if (res.ok) {
-              const data = await res.json();
-              const translated = Array.isArray(data?.[0]) ? data[0].map((p) => p[0]).join('') : '';
-              if (translated && readLang() === lang) {
-                el.textContent = translated;
-              }
-            }
-          } catch (_) {}
-        }
-      }
-
-      const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
-      if (searchInput) {
-        if (!searchInput.dataset.origPlaceholder) {
-          searchInput.dataset.origPlaceholder = searchInput.placeholder || '';
-        }
-        const ph = searchInput.dataset.origPlaceholder;
-        if (lang === 'en') {
-          searchInput.placeholder = ph;
-        } else if (dictMap[lang] && dictMap[lang][ph]) {
-          searchInput.placeholder = dictMap[lang][ph];
-        }
-      }
     }
 
     function syncAll() {
@@ -1122,13 +1088,19 @@
   (function () {
     const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
-    const STORAGE_KEY = 'autrobook_zen_mode_state_v3';
+    const STORAGE_KEY = 'autrobook_zen_mode_state_v4';
     const DAILY_GOAL_MIN = 30;
+
+    function todayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
 
     const defaultState = {
       enabled: false,
       presetMinutes: 15,
+      timerMode: 'focus',
       remainingSeconds: 15 * 60,
+      focusTag: 'Deep Reading',
       intention: '',
       muteAlerts: true,
       pauseMedia: true,
@@ -1141,6 +1113,8 @@
       groundedSteps: [],
       completedSessions: 0,
       totalFocusMinutes: 0,
+      streakDays: 0,
+      lastActiveDate: '',
       history: []
     };
 
@@ -1168,6 +1142,8 @@
     const dailyGoalFill = document.getElementById('dailyGoalFill');
 
     const presetButtons = Array.from(document.querySelectorAll('.preset-btn'));
+    const tagChips = Array.from(document.querySelectorAll('.tag-chip'));
+    const timerModeBadge = document.getElementById('timerModeBadge');
     const timerDisplay = document.getElementById('timerDisplay');
     const zenIntentionInput = document.getElementById('zenIntentionInput');
     const startPauseTimerBtn = document.getElementById('startPauseTimerBtn');
@@ -1199,14 +1175,16 @@
 
     const completedSessionsCount = document.getElementById('completedSessionsCount');
     const totalFocusMinutes = document.getElementById('totalFocusMinutes');
+    const focusStreakCount = document.getElementById('focusStreakCount');
     const sessionHistoryList = document.getElementById('sessionHistoryList');
     const syncSupabaseBtn = document.getElementById('syncSupabaseBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const syncStatusText = document.getElementById('syncStatusText');
     const resetZenBtn = document.getElementById('resetZenBtn');
 
     function loadState() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('autrobook_zen_mode_state_v3');
         if (!raw) return { ...defaultState };
         const parsed = JSON.parse(raw);
         return {
@@ -1329,21 +1307,46 @@
       } catch (_) {}
     }
 
+    function updateStreakOnSession() {
+      const today = todayKey();
+      if (state.lastActiveDate === today) return;
+
+      if (state.lastActiveDate) {
+        const prev = new Date(state.lastActiveDate + 'T00:00:00');
+        const curr = new Date(today + 'T00:00:00');
+        const diffDays = Math.round((curr - prev) / 86400000);
+        state.streakDays = diffDays === 1 ? (Number(state.streakDays) || 0) + 1 : 1;
+      } else {
+        state.streakDays = 1;
+      }
+      state.lastActiveDate = today;
+    }
+
     function recordCompletedSession(minutesDone) {
       const mins = Math.max(1, Number(minutesDone) || state.presetMinutes || 15);
+      const isBreak = state.timerMode === 'break';
       state.completedSessions += 1;
-      state.totalFocusMinutes += mins;
+      if (!isBreak) {
+        state.totalFocusMinutes += mins;
+      }
+      updateStreakOnSession();
+
+      const label = (state.intention || '').trim() || (isBreak ? 'Micro Break' : 'Mindful Focus Session');
       const entry = {
-        title: (state.intention || '').trim() || 'Mindful Focus Session',
+        title: label,
+        tag: state.focusTag || 'Deep Reading',
         minutes: mins,
+        mode: isBreak ? 'Break' : 'Focus',
         mood: state.mood || 'Calm',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      state.history = [entry, ...(state.history || [])].slice(0, 5);
+      state.history = [entry, ...(state.history || [])].slice(0, 6);
       saveState();
       renderUI();
       playGentleChime();
-      timerStatusText.textContent = `Completed a ${mins}-minute Zen session.`;
+      timerStatusText.textContent = isBreak
+        ? `Completed a ${mins}-minute calm break.`
+        : `Completed a ${mins}-minute Zen focus session.`;
     }
 
     function pauseTimer() {
@@ -1373,7 +1376,7 @@
       renderTimerControls();
       timerStatusText.textContent = state.intention
         ? `Focusing on: ${state.intention}`
-        : 'Zen session in progress...';
+        : (state.timerMode === 'break' ? 'Taking a calm break...' : 'Zen session in progress...');
 
       timerInterval = setInterval(() => {
         state.remainingSeconds -= 1;
@@ -1479,7 +1482,7 @@
         <div class="history-item">
           <div>
             <strong>${escapeHtml(item.title)}</strong>
-            <div class="history-meta">${escapeHtml(item.mood)} • ${escapeHtml(item.time)}</div>
+            <div class="history-meta">${escapeHtml(item.tag || 'Focus')} • ${escapeHtml(item.mood)} • ${escapeHtml(item.time)}</div>
           </div>
           <span><strong>${item.minutes} min</strong></span>
         </div>
@@ -1508,9 +1511,19 @@
       mindfulNoteInput.value = state.mindfulNote || '';
       timerDisplay.textContent = formatTime(state.remainingSeconds);
 
+      if (timerModeBadge) {
+        timerModeBadge.textContent = state.timerMode === 'break' ? 'CALM BREAK' : 'FOCUS SESSION';
+      }
+
       presetButtons.forEach((btn) => {
         const m = Number(btn.getAttribute('data-minutes'));
-        btn.classList.toggle('active', m === Number(state.presetMinutes));
+        const md = btn.getAttribute('data-mode') || 'focus';
+        btn.classList.toggle('active', m === Number(state.presetMinutes) && md === (state.timerMode || 'focus'));
+      });
+
+      tagChips.forEach((chip) => {
+        const tg = chip.getAttribute('data-tag');
+        chip.classList.toggle('active', tg === state.focusTag);
       });
 
       soundChips.forEach((chip) => {
@@ -1525,6 +1538,11 @@
 
       completedSessionsCount.textContent = String(state.completedSessions);
       totalFocusMinutes.textContent = `${state.totalFocusMinutes} min`;
+      if (focusStreakCount) {
+        const d = Number(state.streakDays) || 0;
+        focusStreakCount.textContent = `${d} ${d === 1 ? 'day' : 'days'}`;
+      }
+
       renderGoalProgress();
       renderGrounding();
       updateQuietWindowStatus();
@@ -1538,6 +1556,8 @@
         const payload = {
           zen_enabled: state.enabled,
           preset_minutes: state.presetMinutes,
+          timer_mode: state.timerMode,
+          focus_tag: state.focusTag,
           intention: state.intention || null,
           mute_alerts: state.muteAlerts,
           pause_media: state.pauseMedia,
@@ -1550,6 +1570,7 @@
           grounded_steps_count: (state.groundedSteps || []).length,
           completed_sessions: state.completedSessions,
           total_focus_minutes: state.totalFocusMinutes,
+          streak_days: state.streakDays,
           updated_at: new Date().toISOString()
         };
 
@@ -1574,6 +1595,26 @@
       }
     }
 
+    function performFullReset() {
+      pauseTimer();
+      stopBreathing();
+      stopAmbientSound();
+      state = {
+        ...defaultState,
+        remainingSeconds: defaultState.presetMinutes * 60,
+        groundedSteps: [],
+        history: []
+      };
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('autrobook_zen_mode_state_v3');
+        localStorage.setItem('autrobook_zen_mode_enabled', '0');
+      } catch (_) {}
+      renderUI();
+      timerStatusText.textContent = 'Zen settings reset to defaults.';
+      syncStatusText.textContent = 'Reset locally.';
+    }
+
     // Event Listeners
     zenMasterToggle.addEventListener('change', () => {
       state.enabled = zenMasterToggle.checked;
@@ -1590,12 +1631,28 @@
     presetButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
         const mins = Number(btn.getAttribute('data-minutes')) || 15;
+        const mode = btn.getAttribute('data-mode') || 'focus';
         pauseTimer();
         state.presetMinutes = mins;
+        state.timerMode = mode;
         state.remainingSeconds = mins * 60;
         saveState();
         renderUI();
-        timerStatusText.textContent = `Timer set to ${mins} minutes.`;
+        timerStatusText.textContent = mode === 'break'
+          ? `Break timer set to ${mins} minutes.`
+          : `Focus timer set to ${mins} minutes.`;
+      });
+    });
+
+    tagChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const tag = chip.getAttribute('data-tag') || 'Deep Reading';
+        state.focusTag = tag;
+        if (!state.intention) {
+          state.intention = tag;
+        }
+        saveState();
+        renderUI();
       });
     });
 
@@ -1716,17 +1773,26 @@
       noteSavedText.textContent = 'Mindful note saved automatically.';
     });
 
-    syncSupabaseBtn.addEventListener('click', syncToSupabase);
-
-    resetZenBtn.addEventListener('click', () => {
-      pauseTimer();
-      stopBreathing();
-      state = { ...defaultState };
+    clearHistoryBtn.addEventListener('click', () => {
+      state.history = [];
+      state.completedSessions = 0;
+      state.totalFocusMinutes = 0;
+      state.streakDays = 0;
+      state.lastActiveDate = '';
       saveState();
       renderUI();
-      timerStatusText.textContent = 'Zen settings reset to defaults.';
-      syncStatusText.textContent = 'Reset locally.';
+      syncStatusText.textContent = 'Session history cleared.';
     });
+
+    syncSupabaseBtn.addEventListener('click', syncToSupabase);
+
+    if (resetZenBtn) {
+      resetZenBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        performFullReset();
+      });
+    }
 
     renderUI();
   })();
