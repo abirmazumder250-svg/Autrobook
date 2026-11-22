@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Create Story</title>
+  <title>Create Story — Autrobook</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
@@ -18,9 +18,9 @@
       --btn-sec: #f1f3f4;
       --btn-sec-hover: #e8eaed;
       --btn-sec-border: #dadce0;
-      --btn-pri: #202124;
+      --btn-pri: #1b5e20;
       --btn-pri-text: #FFFFFF;
-      --btn-pri-hover: #3c4043;
+      --btn-pri-hover: #144718;
       --shadow-sm: 0 2px 10px rgba(32, 33, 36, 0.08);
       --shadow-md: 0 18px 42px rgba(32, 33, 36, 0.22);
     }
@@ -31,14 +31,14 @@
         --surface: #292a2d;
         --card: #202124;
         --text: #FFFFFF;
-        --muted: #e8eaed;
+        --muted: #b0b3b8;
         --border: #3c4043;
         --btn-sec: #292a2d;
         --btn-sec-hover: #3c4043;
         --btn-sec-border: #3c4043;
-        --btn-pri: #FFFFFF;
-        --btn-pri-text: #202124;
-        --btn-pri-hover: #e8eaed;
+        --btn-pri: #1e6b24;
+        --btn-pri-text: #FFFFFF;
+        --btn-pri-hover: #26802d;
         --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.45);
         --shadow-md: 0 22px 48px rgba(0, 0, 0, 0.75);
       }
@@ -117,7 +117,6 @@
       gap: 12px;
     }
 
-    /* Compact Single-Line Feature Strip */
     .studio-deck {
       background: var(--card);
       border: 1px solid var(--border);
@@ -157,7 +156,6 @@
     .quick-tool-pill:hover { background: var(--btn-sec-hover); }
     .quick-tool-pill:active { transform: scale(0.96); }
 
-    /* Gallery Panel */
     .gallery-panel {
       background: var(--card);
       border: 1px solid var(--border);
@@ -215,12 +213,11 @@
     .upload-tile i { font-size: 20px; }
     .upload-tile span { font-size: 12.5px; font-weight: 700; }
 
-    /* Editor Modal */
     .editor-backdrop {
       position: fixed;
       inset: 0;
       z-index: 100;
-      background: rgba(32, 33, 36, 0.65);
+      background: rgba(32, 33, 36, 0.72);
       display: none;
       align-items: center;
       justify-content: center;
@@ -417,7 +414,7 @@
     .chip-btn.active {
       background: var(--btn-pri);
       color: var(--btn-pri-text);
-      border-color: transparent;
+      border-color: var(--btn-pri);
     }
 
     .editor-input,
@@ -462,7 +459,7 @@
       height: 40px;
       padding: 0 18px;
       border-radius: 11px;
-      border: 1px solid transparent;
+      border: none;
       background: var(--btn-pri);
       color: var(--btn-pri-text);
       font-size: 13.5px;
@@ -471,7 +468,12 @@
       align-items: center;
       gap: 7px;
       cursor: pointer;
+      text-decoration: none;
+      transition: background 0.16s ease, transform 0.14s ease;
     }
+
+    .pri-btn:hover { background: var(--btn-pri-hover); }
+    .pri-btn:active { transform: scale(0.96); }
 
     .saved-stories-card {
       background: var(--card);
@@ -561,7 +563,6 @@
   </header>
 
   <div class="shell">
-    <!-- Compact Single-Line Features -->
     <section class="studio-deck" aria-label="Story creation tools">
       <div class="quick-tools-row">
         <button type="button" class="quick-tool-pill" onclick="openEditor('text')">
@@ -582,7 +583,6 @@
       </div>
     </section>
 
-    <!-- Gallery Panel -->
     <section class="gallery-panel" aria-label="Gallery media selector">
       <input type="file" id="galleryFileInput" accept="image/*,video/*" multiple style="display:none;">
       <input type="file" id="musicFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style="display:none;">
@@ -596,7 +596,6 @@
     </section>
   </div>
 
-  <!-- Story Editor Modal -->
   <div id="editorBackdrop" class="editor-backdrop" onclick="handleBackdropClick(event)">
     <div class="editor-modal" role="dialog" aria-modal="true" aria-label="Story Editor">
       <div class="editor-top">
@@ -677,18 +676,19 @@
 
           <div class="control-box">
             <span class="control-label">Audience</span>
-            <select id="audienceSelect" class="editor-select">
-              <option value="Public">Public</option>
-              <option value="Friends">Friends</option>
-              <option value="Close friends">Close friends</option>
+            <select id="audienceSelect" class="editor-select" onchange="onAudienceSelectChange()">
+              <option value="public">Public</option>
+              <option value="friends">Friends</option>
+              <option value="specific">Specific Friends</option>
             </select>
+            <input id="specificFriendsInput" type="text" class="editor-input" placeholder="Specific friend IDs (comma separated)" style="display:none;margin-top:6px;">
           </div>
         </div>
       </div>
 
       <div class="editor-footer">
         <button type="button" class="sec-btn" onclick="closeEditor()">Cancel</button>
-        <a href="/index.html" id="shareToIndexBtn" class="pri-btn" onclick="return handleShareClick(event)">
+        <a href="story-card.html" id="shareToIndexBtn" class="pri-btn" onclick="return handleShareClick(event)">
           <i class="fas fa-paper-plane"></i>
           <span>Share</span>
         </a>
@@ -752,31 +752,68 @@
       });
     }
 
+    function onAudienceSelectChange() {
+      const sel = document.getElementById('audienceSelect');
+      const specificInput = document.getElementById('specificFriendsInput');
+      if (!sel || !specificInput) return;
+      specificInput.style.display = sel.value === 'specific' ? 'block' : 'none';
+    }
+
     function buildStoryPayload(storyId = null, itemOverride = null) {
       const chosen = itemOverride
         ? [itemOverride]
         : selectedIds.map(id => galleryItems.find(m => m.id === id)).filter(Boolean);
       const first = chosen[0] || galleryItems[0] || null;
       const caption = (document.getElementById('storyTextInput')?.value || '').trim();
-      const audience = document.getElementById('audienceSelect')?.value || 'Public';
+      const privacy = document.getElementById('audienceSelect')?.value || 'public';
+      const specificRaw = (document.getElementById('specificFriendsInput')?.value || '').trim();
+      const allowedFriendIds = specificRaw
+        ? specificRaw.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+
       const selectVal = document.getElementById('musicSelect')?.value || '';
       const musicTitle = selectedMusicName || selectVal || '';
       const nowIso = new Date().toISOString();
       const expiresIso = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-      const authorName = localStorage.getItem('autro_profile_name') || 'Autrobook User';
-      const authorAvatar = localStorage.getItem('autro_profile_avatar') || '';
-      const userId = localStorage.getItem('autro_user_id') || '';
+
+      let currentUser = {};
+      try {
+        currentUser = JSON.parse(localStorage.getItem('autrobook_current_user') || '{}') || {};
+      } catch (e) {}
+
+      const ownerId = currentUser.id || localStorage.getItem('autro_user_id') || 'user_self';
+      const authorName = currentUser.name || localStorage.getItem('autro_profile_name') || 'User';
+      const authorAvatar = currentUser.avatar || localStorage.getItem('autro_profile_avatar') || '';
+      const ownerFriends = Array.isArray(currentUser.friends) ? currentUser.friends : [];
+
+      const resolvedMedia = first
+        ? (String(first.url || '').startsWith('blob:') && first.dataUrl ? first.dataUrl : (first.url || ''))
+        : '';
 
       return {
         id: storyId || ('story_' + Date.now()),
-        user_id: userId,
+        ownerId,
+        isOwner: true,
+        user_id: ownerId,
+        authorName,
         author_name: authorName,
+        authorAvatar,
         author_avatar: authorAvatar,
-        media_url: first ? first.url : '',
-        image_url: first ? first.url : '',
+        privacy,
+        audience: privacy,
+        ownerFriends,
+        allowedFriendIds,
+        mediaType: first ? first.type : 'image',
         media_type: first ? first.type : 'image',
-        items: chosen.map(m => ({ url: m.url, media_url: m.url, type: m.type, label: m.label || 'Media' })),
+        mediaUrl: resolvedMedia,
+        media_url: resolvedMedia,
+        image_url: resolvedMedia,
+        items: chosen.map(m => {
+          const u = String(m.url || '').startsWith('blob:') && m.dataUrl ? m.dataUrl : (m.url || '');
+          return { url: u, media_url: u, type: m.type, label: m.label || 'Media' };
+        }),
         title: caption || currentSticker || (first && first.label) || 'Story',
+        text: caption,
         caption,
         text_position: currentTextPos,
         filter: currentFilter,
@@ -785,35 +822,25 @@
         music: musicTitle,
         music_name: musicTitle,
         music_url: selectedMusicUrl || '',
-        audience,
-        card_route: STORY_CARD_PAGE,
-        home_route: HOME_INDEX_PAGE,
+        createdAt: nowIso,
         created_at: nowIso,
-        expires_at: expiresIso
+        expires_at: expiresIso,
+        viewers: []
       };
     }
 
     function storeStoryInAllKeys(payload) {
-      const portable = {
-        ...payload,
-        media_url: String(payload.media_url || '').startsWith('blob:') && payload.dataUrl ? payload.dataUrl : (payload.media_url || ''),
-        image_url: String(payload.image_url || '').startsWith('blob:') && payload.dataUrl ? payload.dataUrl : (payload.image_url || payload.media_url || ''),
-        music_url: String(payload.music_url || '').startsWith('blob:') && payload.musicDataUrl ? payload.musicDataUrl : (payload.music_url || '')
-      };
-      delete portable.dataUrl;
-      delete portable.musicDataUrl;
-
       try {
-        sessionStorage.setItem('autrobook_active_story_card', JSON.stringify(portable));
-        localStorage.setItem('autrobook_active_story_card', JSON.stringify(portable));
-        localStorage.setItem('autro_new_story_created', JSON.stringify(portable));
+        sessionStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
+        localStorage.setItem('autrobook_active_story_id', payload.id);
+        localStorage.setItem('autro_new_story_created', JSON.stringify(payload));
       } catch (e) {}
 
-      ['autrobook_stories', 'autro_stories'].forEach((key) => {
+      ['autrobook_stories_v1', 'autrobook_stories', 'autro_stories'].forEach((key) => {
         try {
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
-          const arr = Array.isArray(existing) ? existing.filter(s => s && String(s.id) !== String(portable.id)) : [];
-          arr.unshift(portable);
+          const arr = Array.isArray(existing) ? existing.filter(s => s && String(s.id) !== String(payload.id)) : [];
+          arr.unshift(payload);
           localStorage.setItem(key, JSON.stringify(arr.slice(0, 25)));
         } catch (e) {}
       });
@@ -821,12 +848,12 @@
 
     function openStoryCardPage(storyObj) {
       const payload = storyObj || buildStoryPayload();
-      if (!payload.media_url) {
+      if (!payload.media_url && !payload.text) {
         triggerGalleryInput();
         return;
       }
       storeStoryInAllKeys(payload);
-      window.location.href = `${STORY_CARD_PAGE}?id=${encodeURIComponent(payload.id)}&from=${encodeURIComponent(HOME_INDEX_PAGE)}`;
+      window.location.href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(payload.id)}`;
     }
 
     function handleCanvasCenterClick(e) {
@@ -1134,7 +1161,7 @@
           media_url: storyObj.media_url,
           media_type: storyObj.media_type,
           caption: storyObj.title,
-          audience: storyObj.audience,
+          audience: storyObj.privacy,
           created_at: storyObj.created_at
         });
       } catch (e) {
@@ -1145,7 +1172,7 @@
     async function handleShareClick(e) {
       if (e) e.preventDefault();
       const payload = buildStoryPayload();
-      if (!payload.media_url) {
+      if (!payload.media_url && !payload.text) {
         window.location.href = HOME_INDEX_PAGE;
         return false;
       }
@@ -1156,7 +1183,7 @@
       await persistStoryToSupabase(payload);
       renderSavedStories();
       closeEditor();
-      window.location.href = `${HOME_INDEX_PAGE}?story=${encodeURIComponent(payload.id)}`;
+      window.location.href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(payload.id)}`;
       return false;
     }
 
@@ -1166,13 +1193,13 @@
       if (!section || !list || !publishedStories.length) return;
       section.style.display = 'flex';
       list.innerHTML = publishedStories.map(st => {
-        const href = `${STORY_CARD_PAGE}?id=${encodeURIComponent(st.id)}&from=${encodeURIComponent(HOME_INDEX_PAGE)}`;
+        const href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(st.id)}`;
         return `
           <a href="${href}" class="saved-story-item" onclick="event.preventDefault();openStoryCardPage(${escapeHtml(JSON.stringify(st))})">
             ${st.media_type === 'video'
               ? `<video src="${st.media_url}" muted playsinline></video>`
-              : `<img src="${st.media_url}" alt="${escapeHtml(st.title)}">`}
-            <div class="saved-story-meta">${escapeHtml(st.title)} · ${escapeHtml(st.audience)}</div>
+              : (st.media_url ? `<img src="${st.media_url}" alt="${escapeHtml(st.title)}">` : `<div style="height:140px;display:flex;align-items:center;justify-content:center;padding:8px;text-align:center;font-weight:700;">${escapeHtml(st.title)}</div>`)}
+            <div class="saved-story-meta">${escapeHtml(st.title)} · ${escapeHtml(st.privacy || 'public')}</div>
           </a>
         `;
       }).join('');
@@ -1180,7 +1207,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       try {
-        const stored = JSON.parse(localStorage.getItem('autrobook_stories') || '[]') || [];
+        const stored = JSON.parse(localStorage.getItem('autrobook_stories_v1') || '[]') || [];
         if (Array.isArray(stored) && stored.length) {
           publishedStories = stored;
           renderSavedStories();
@@ -1192,4 +1219,4 @@
     });
   </script>
 </body>
-  </html>
+        </html>
