@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --bg-color: #f0f2f5;
+    --bg-color: #FFFFFF;
     --card-color: #ffffff;
     --soft-btn-bg: #e4e6eb;
     --soft-btn-hover: #d8dadf;
@@ -23,7 +23,7 @@
   }
 
   html[data-theme="dark"] {
-    --bg-color: #18191a;
+    --bg-color: #202124;
     --card-color: #242526;
     --soft-btn-bg: #3a3b3c;
     --soft-btn-hover: #4e4f50;
@@ -37,7 +37,7 @@
   }
 
   html[data-theme="light"] {
-    --bg-color: #f0f2f5;
+    --bg-color: #FFFFFF;
     --card-color: #ffffff;
     --soft-btn-bg: #e4e6eb;
     --soft-btn-hover: #d8dadf;
@@ -128,7 +128,7 @@
     height: 50px;
     border-radius: 50%;
     overflow: hidden;
-    background-color: var(--soft-btn-bg);
+    background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -247,17 +247,8 @@
     display: block;
   }
 
-  .au-fallback {
-    display: none;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.3px;
-    color: #ffffff;
-  }
-
   .logo-au {
-    background: linear-gradient(135deg, #059669, #065f46);
-    color: #ffffff;
+    background: transparent;
   }
   .logo-blue {
     background: rgba(37, 99, 235, 0.14);
@@ -520,7 +511,7 @@
   <!-- Profile Card linked to profile.html -->
   <a class="profile-card" href="/profile.html" id="profileLink">
     <div class="profile-avatar-box">
-      <img id="userAvatar" alt="Profile avatar">
+      <img id="userAvatar" alt="">
     </div>
     <div class="profile-meta">
       <b id="drawerName"></b>
@@ -549,8 +540,7 @@
 
   <a class="menu-row" href="/autro-ai-assistant.html">
     <span class="feature-logo logo-au">
-      <img src="/au.png" alt="Autro AI" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-      <span class="au-fallback">AU</span>
+      <img src="/au.png" alt="Autro AI">
     </span>
     <span data-i18n="autro_ai">Autro AI Assistant</span>
   </a>
@@ -909,6 +899,7 @@
   let currentTheme = 'light';
   let currentLangCode = 'en';
   let currentLangName = 'English';
+  let activeProfileUserId = null;
 
   function safeStorageGet(key) {
     try {
@@ -998,9 +989,9 @@
     if (!supabaseClient) return;
     try {
       const clientKey = safeStorageGet('autro_account_client_id');
-      let userId = null;
+      let userId = activeProfileUserId;
 
-      if (supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
+      if (!userId && supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
         const { data } = await supabaseClient.auth.getSession();
         userId = data?.session?.user?.id || null;
       }
@@ -1120,9 +1111,9 @@
     if (!supabaseClient) return;
     try {
       const clientKey = safeStorageGet('autro_account_client_id');
-      let userId = null;
+      let userId = activeProfileUserId;
 
-      if (supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
+      if (!userId && supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
         const { data } = await supabaseClient.auth.getSession();
         userId = data?.session?.user?.id || null;
       }
@@ -1288,9 +1279,12 @@
 
     if (avatarEl) {
       if (cleanAvatar) {
-        avatarEl.src = cleanAvatar;
+        if (avatarEl.getAttribute('src') !== cleanAvatar) {
+          avatarEl.src = cleanAvatar;
+        }
         avatarEl.style.display = 'block';
         avatarEl.onerror = () => {
+          avatarEl.removeAttribute('src');
           avatarEl.style.display = 'none';
         };
       } else {
@@ -1322,36 +1316,86 @@
     return { name, avatar };
   }
 
+  function cacheSupabaseProfile(fullName, avatarUrl) {
+    if (fullName) {
+      safeStorageSet('autro_profile_name', fullName);
+    } else {
+      try { window.localStorage.removeItem('autro_profile_name'); } catch (_) {}
+    }
+
+    if (avatarUrl) {
+      safeStorageSet('autro_shared_profile_avatar', avatarUrl);
+      safeStorageSet('autro_profile_pic', avatarUrl);
+    } else {
+      try {
+        window.localStorage.removeItem('autro_shared_profile_avatar');
+        window.localStorage.removeItem('autro_profile_pic');
+      } catch (_) {}
+    }
+
+    try {
+      const existingRaw = safeStorageGet('autro_account_profile') || safeStorageGet('autrobook_user');
+      const existingObj = existingRaw ? JSON.parse(existingRaw) : {};
+      const merged = {
+        ...existingObj,
+        full_name: fullName || '',
+        name: fullName || '',
+        avatar_url: avatarUrl || '',
+        avatar: avatarUrl || ''
+      };
+      safeStorageSet('autro_account_profile', JSON.stringify(merged));
+    } catch (_) {}
+  }
+
   async function loadUserProfile() {
     const cached = readCachedProfile();
-    if (cached.name || cached.avatar) {
-      renderProfileCard(cached.name, cached.avatar);
-    }
+    renderProfileCard(cached.name, cached.avatar);
 
     if (!supabaseClient) return;
 
     try {
       let userId = null;
-      let fullName = cached.name || '';
-      let avatarUrl = cached.avatar || '';
+      let fullName = '';
+      let avatarUrl = '';
+      let cloudTheme = null;
+      let cloudLang = null;
 
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session && session.user) {
-        userId = session.user.id;
-        fullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || fullName;
-        avatarUrl = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || avatarUrl;
+      if (supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        let authUser = sessionData?.session?.user || null;
+
+        if (!authUser && typeof supabaseClient.auth.getUser === 'function') {
+          const { data: userData } = await supabaseClient.auth.getUser();
+          authUser = userData?.user || null;
+        }
+
+        if (authUser) {
+          userId = authUser.id;
+          activeProfileUserId = authUser.id;
+          const metaName =
+            authUser.user_metadata?.full_name ||
+            authUser.user_metadata?.name ||
+            authUser.user_metadata?.display_name ||
+            '';
+          const metaAvatar =
+            authUser.user_metadata?.avatar_url ||
+            authUser.user_metadata?.picture ||
+            '';
+          if (metaName) fullName = metaName;
+          if (metaAvatar) avatarUrl = metaAvatar;
+        }
       }
 
       if (userId) {
-        const { data: profileRow } = await supabaseClient
+        const { data: profileRow, error: profErr } = await supabaseClient
           .from('profiles')
-          .select('full_name, username, avatar_url')
+          .select('*')
           .eq('id', userId)
           .maybeSingle();
 
-        if (profileRow) {
-          fullName = profileRow.full_name || fullName;
-          avatarUrl = profileRow.avatar_url || avatarUrl;
+        if (!profErr && profileRow) {
+          fullName = profileRow.full_name || profileRow.name || profileRow.username || fullName;
+          avatarUrl = profileRow.avatar_url || profileRow.avatar || profileRow.photo_url || avatarUrl;
         }
       }
 
@@ -1361,7 +1405,7 @@
       if (userId) {
         const { data } = await supabaseClient
           .from('account_settings')
-          .select('full_name, avatar_url')
+          .select('*')
           .eq('user_id', userId)
           .order('updated_at', { ascending: false })
           .limit(1)
@@ -1372,7 +1416,7 @@
       if (!settingsRow && clientKey) {
         const { data } = await supabaseClient
           .from('account_settings')
-          .select('full_name, avatar_url')
+          .select('*')
           .eq('account_key', clientKey)
           .order('updated_at', { ascending: false })
           .limit(1)
@@ -1383,22 +1427,57 @@
       if (!settingsRow && !userId) {
         const { data: latestRows } = await supabaseClient
           .from('account_settings')
-          .select('full_name, avatar_url')
+          .select('*')
           .order('updated_at', { ascending: false })
           .limit(1);
         if (Array.isArray(latestRows) && latestRows.length > 0) {
           settingsRow = latestRows[0];
+          if (!activeProfileUserId && latestRows[0].user_id) {
+            activeProfileUserId = latestRows[0].user_id;
+          }
+        }
+      }
+
+      if (!fullName && !avatarUrl && !userId) {
+        const { data: fallbackProfiles } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .limit(1);
+        if (Array.isArray(fallbackProfiles) && fallbackProfiles.length > 0) {
+          const p = fallbackProfiles[0];
+          if (!activeProfileUserId && p.id) activeProfileUserId = p.id;
+          fullName = p.full_name || p.name || p.username || fullName;
+          avatarUrl = p.avatar_url || p.avatar || p.photo_url || avatarUrl;
         }
       }
 
       if (settingsRow) {
         fullName = settingsRow.full_name || fullName;
         avatarUrl = settingsRow.avatar_url || avatarUrl;
+        cloudTheme = settingsRow.theme || null;
+        cloudLang = settingsRow.language || null;
       }
 
       renderProfileCard(fullName, avatarUrl);
+      cacheSupabaseProfile(fullName, avatarUrl);
+
+      const normalizedCloudTheme = normalizeTheme(cloudTheme);
+      if (normalizedCloudTheme && normalizedCloudTheme !== currentTheme) {
+        applyTheme(normalizedCloudTheme, { persist: true, syncCloud: false });
+      }
+
+      if (cloudLang && String(cloudLang).trim() && String(cloudLang).trim() !== currentLangCode) {
+        const cleanCode = String(cloudLang).trim();
+        const meta = findLanguageMeta(cleanCode);
+        applyLanguage(
+          cleanCode,
+          meta ? meta.name : cleanCode.toUpperCase(),
+          Boolean(meta && meta.rtl),
+          { persist: true, syncCloud: false }
+        );
+      }
     } catch (err) {
-      console.warn('Profile load error:', err);
+      console.warn('Supabase profile load error:', err);
     }
   }
 
@@ -1450,7 +1529,10 @@
 
     window.addEventListener('autro:profile-updated', (ev) => {
       if (ev && ev.detail) {
-        renderProfileCard(ev.detail.full_name || ev.detail.name || '', ev.detail.avatar_url || ev.detail.avatar || '');
+        const nextName = ev.detail.full_name ?? ev.detail.name ?? '';
+        const nextAvatar = ev.detail.avatar_url ?? ev.detail.avatar ?? '';
+        renderProfileCard(nextName, nextAvatar);
+        cacheSupabaseProfile(nextName, nextAvatar);
       }
     });
 
@@ -1482,24 +1564,38 @@
         const bc = new BroadcastChannel('autrobook_profile_sync');
         bc.onmessage = (ev) => {
           if (ev?.data?.type === 'PROFILE_SYNC' && ev?.data?.payload) {
-            renderProfileCard(ev.data.payload.full_name || '', ev.data.payload.avatar_url || '');
+            const nextName = ev.data.payload.full_name ?? '';
+            const nextAvatar = ev.data.payload.avatar_url ?? '';
+            renderProfileCard(nextName, nextAvatar);
+            cacheSupabaseProfile(nextName, nextAvatar);
           }
         };
       }
     } catch (_) {}
 
-    if (supabaseClient && typeof supabaseClient.channel === 'function') {
-      try {
-        supabaseClient
-          .channel('autro-shortcut-profile-live')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'account_settings' }, () => {
+    if (supabaseClient) {
+      if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === 'function') {
+        try {
+          supabaseClient.auth.onAuthStateChange((_event, session) => {
+            activeProfileUserId = session?.user?.id || null;
             loadUserProfile();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-            loadUserProfile();
-          })
-          .subscribe();
-      } catch (_) {}
+          });
+        } catch (_) {}
+      }
+
+      if (typeof supabaseClient.channel === 'function') {
+        try {
+          supabaseClient
+            .channel('autro-shortcut-profile-live')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'account_settings' }, () => {
+              loadUserProfile();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+              loadUserProfile();
+            })
+            .subscribe();
+        } catch (_) {}
+      }
     }
   }
 
@@ -1609,4 +1705,4 @@
   }
 </script>
 </body>
-  </html>
+        </html>
