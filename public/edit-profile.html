@@ -1184,6 +1184,60 @@
       font-size: 13px;
     }
 
+    /* Autocomplete Suggestion Dropdown */
+    .suggest-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    .suggest-list {
+      margin-top: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      max-height: 165px;
+      overflow-y: auto;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .suggest-item {
+      width: 100%;
+      padding: 9px 12px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 600;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.14s ease, color 0.14s ease;
+    }
+
+    .suggest-item:last-child {
+      border-bottom: none;
+    }
+
+    .suggest-item:hover {
+      background: rgba(10, 125, 59, 0.12);
+      color: var(--accent-mint);
+    }
+
+    .suggest-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
     /* Relationship Choice List & Remove Button */
     .rel-picker-list {
       display: flex;
@@ -1763,6 +1817,42 @@
       'Exploring life, tech, and meaningful conversations'
     ];
 
+    const DIRECTORY_SUGGESTIONS = {
+      office: [
+        'Google', 'Microsoft', 'Meta', 'Apple', 'Amazon', 'Vercel', 'Supabase',
+        'GitHub', 'OpenAI', 'Stripe', 'bKash Limited', 'Pathao', 'Brain Station 23',
+        'TigerIT Bangladesh', 'BJIT Group', 'Grameenphone', 'Robi Axiata', 'Banglalink',
+        'Square Pharmaceuticals', 'BRAC', 'Apex Footwear', 'Walton Hi-Tech Industries'
+      ],
+      university: [
+        'University of Dhaka (DU)', 'Bangladesh University of Engineering and Technology (BUET)',
+        'Jahangirnagar University (JU)', 'Rajshahi University (RU)', 'Chittagong University (CU)',
+        'Khulna University (KU)', 'Shahjalal University of Science and Technology (SUST)',
+        'Islamic University of Technology (IUT)', 'North South University (NSU)',
+        'BRAC University', 'Independent University, Bangladesh (IUB)', 'AIUB',
+        'Daffodil International University (DIU)', 'East West University (EWU)',
+        'Harvard University', 'MIT', 'Stanford University', 'University of Oxford'
+      ],
+      college: [
+        'Notre Dame College, Dhaka', 'Dhaka College', 'Viqarunnisa Noon School and College',
+        'Rajuk Uttara Model College', 'Holy Cross College', 'Residential Model College',
+        'Adamjee Cantonment College', 'St. Joseph Higher Secondary School & College',
+        'Chittagong College', 'Rajshahi College', 'Brahmanbaria Govt. College',
+        'Tongi Govt. College', 'Uttara High School and College'
+      ],
+      school: [
+        'Motijheel Government Boys High School', 'Monipur High School and College',
+        'Ideal School and College, Motijheel', 'Udayan Higher Secondary School',
+        'Birshreshtha Noor Mohammad Public College', 'Savar Cantonment Public School & College',
+        'Tongi Pilot School and Girls College', 'Gazipur High School'
+      ],
+      city: [
+        'Dhaka', 'Tongi', 'Gazipur', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna',
+        'Barishal', 'Rangpur', 'Mymensingh', 'Narayanganj', 'Cumilla', 'Cox’s Bazar',
+        'New York', 'London', 'Toronto', 'Singapore', 'Dubai', 'Tokyo'
+      ]
+    };
+
     let sb = null;
     if (window.supabase && typeof window.supabase.createClient === 'function') {
       try {
@@ -1786,7 +1876,7 @@
     let isSupabaseConnected = false;
     let modalMode = null; // 'field' | 'photo_review' | 'identity'
     let activeFieldKey = null;
-    let pendingPhoto = null; // { kind, dataUrl, fileName, zoom, filter, rotate, flipX }
+    let pendingPhoto = null;
     let draftFamilyMembers = [];
     let currentSearchQuery = '';
 
@@ -2005,19 +2095,21 @@
           {
             key: 'location',
             label: 'Current city',
-            placeholder: 'Add current city',
+            placeholder: 'Search or enter current city',
             icon: 'fa-location-dot',
             privacyKey: 'location_privacy',
-            type: 'text',
+            type: 'suggest_text',
+            category: 'city',
             getValue: s => s.location
           },
           {
             key: 'hometown',
             label: 'Hometown',
-            placeholder: 'Add hometown',
+            placeholder: 'Search or enter hometown',
             icon: 'fa-house-chimney',
             privacyKey: 'hometown_privacy',
-            type: 'text',
+            type: 'suggest_text',
+            category: 'city',
             getValue: s => s.hometown
           },
           {
@@ -2074,7 +2166,7 @@
           {
             key: 'work',
             label: 'Work experience',
-            placeholder: 'Add workplace, role & duration',
+            placeholder: 'Search office/company, role & duration',
             icon: 'fa-briefcase',
             privacyKey: 'work_privacy',
             type: 'work_group',
@@ -2089,7 +2181,7 @@
           {
             key: 'education',
             label: 'High school, college or university',
-            placeholder: 'Add school, college or university',
+            placeholder: 'Search school, college or university',
             icon: 'fa-graduation-cap',
             privacyKey: 'education_privacy',
             type: 'edu_group',
@@ -2258,6 +2350,59 @@
       if (!el) return;
       el.classList.remove('collapsed');
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderSuggestionBox(inputId, listId, category, query) {
+      const box = document.getElementById(listId);
+      const inputEl = document.getElementById(inputId);
+      if (!box || !inputEl) return;
+
+      const q = String(query || '').trim().toLowerCase();
+      const pool = DIRECTORY_SUGGESTIONS[category] || [];
+      const matches = pool.filter(name => !q || name.toLowerCase().includes(q)).slice(0, 6);
+
+      if (!q && matches.length === 0) {
+        box.innerHTML = '';
+        return;
+      }
+
+      const itemsHtml = matches.map(name => `
+        <button
+          type="button"
+          class="suggest-item"
+          onclick="pickSuggestion('${inputId}', '${listId}', '${escapeHtml(name).replace(/'/g, "\\'")}')"
+        >
+          <span>${escapeHtml(name)}</span>
+          <span class="suggest-tag">${escapeHtml(category.toUpperCase())}</span>
+        </button>
+      `).join('');
+
+      const customOption = q && !pool.some(n => n.toLowerCase() === q)
+        ? `
+          <button
+            type="button"
+            class="suggest-item"
+            onclick="pickSuggestion('${inputId}', '${listId}', '${escapeHtml(inputEl.value.trim()).replace(/'/g, "\\'")}')"
+          >
+            <span>Use custom: "<strong>${escapeHtml(inputEl.value.trim())}</strong>"</span>
+            <span class="suggest-tag">CUSTOM</span>
+          </button>
+        `
+        : '';
+
+      box.innerHTML = (itemsHtml + customOption) || `<div style="padding:8px 12px;font-size:12.5px;color:var(--muted);">Type any name to set custom value</div>`;
+    }
+
+    function pickSuggestion(inputId, listId, value) {
+      const inputEl = document.getElementById(inputId);
+      const listEl = document.getElementById(listId);
+      if (inputEl) {
+        inputEl.value = value;
+        inputEl.focus();
+      }
+      if (listEl) {
+        listEl.innerHTML = '';
+      }
     }
 
     function applyGuardRuntimeProtections() {
@@ -2844,6 +2989,26 @@
           <div class="preset-row">${presetButtons}</div>
           ${removeBtnHtml}
         `;
+      } else if (item.type === 'suggest_text') {
+        const currentVal = key === 'hometown' ? (state.hometown || '') : (state.location || '');
+        const cat = item.category || 'city';
+        fieldsBox.innerHTML = `
+          <div class="suggest-wrap">
+            <label class="sheet-label" for="inputSingle">${escapeHtml(item.label)}</label>
+            <input
+              id="inputSingle"
+              type="text"
+              class="sheet-input"
+              value="${escapeHtml(currentVal)}"
+              placeholder="${escapeHtml(item.placeholder)}"
+              oninput="renderSuggestionBox('inputSingle', 'suggestListSingle', '${cat}', this.value)"
+              onfocus="renderSuggestionBox('inputSingle', 'suggestListSingle', '${cat}', this.value)"
+            >
+            <div id="suggestListSingle" class="suggest-list"></div>
+          </div>
+          ${removeBtnHtml}
+        `;
+        renderSuggestionBox('inputSingle', 'suggestListSingle', cat, currentVal);
       } else if (item.type === 'family_group') {
         draftFamilyMembers = Array.isArray(state.family_members) ? state.family_members.slice() : [];
         const roleOptions = FAMILY_ROLES.map(r => `<option value="${r}">${r}</option>`).join('');
@@ -2862,24 +3027,71 @@
         renderFamilyChips();
       } else if (item.type === 'work_group') {
         fieldsBox.innerHTML = `
-          <label class="sheet-label" for="workCompany">Organization / Workplace</label>
-          <input id="workCompany" class="sheet-input" value="${escapeHtml(state.work_company || '')}" placeholder="Organization or company name" style="margin-bottom:10px;">
+          <div class="suggest-wrap">
+            <label class="sheet-label" for="workCompany">Organization / Office / Company</label>
+            <input
+              id="workCompany"
+              class="sheet-input"
+              value="${escapeHtml(state.work_company || '')}"
+              placeholder="Search office or company name..."
+              oninput="renderSuggestionBox('workCompany', 'suggestListOffice', 'office', this.value)"
+              onfocus="renderSuggestionBox('workCompany', 'suggestListOffice', 'office', this.value)"
+            >
+            <div id="suggestListOffice" class="suggest-list"></div>
+          </div>
           <label class="sheet-label" for="workRole">Role / Title</label>
           <input id="workRole" class="sheet-input" value="${escapeHtml(state.work_role || '')}" placeholder="Role or position" style="margin-bottom:10px;">
           <label class="sheet-label" for="workPeriod">Period</label>
           <input id="workPeriod" class="sheet-input" value="${escapeHtml(state.work_period || '')}" placeholder="e.g. Jan 2024 - Present" style="margin-bottom:8px;">
           ${removeBtnHtml}
         `;
+        renderSuggestionBox('workCompany', 'suggestListOffice', 'office', state.work_company || '');
       } else if (item.type === 'edu_group') {
         fieldsBox.innerHTML = `
-          <label class="sheet-label" for="eduUni">University</label>
-          <input id="eduUni" class="sheet-input" value="${escapeHtml(state.education_university || '')}" placeholder="University name" style="margin-bottom:10px;">
-          <label class="sheet-label" for="eduCol">College</label>
-          <input id="eduCol" class="sheet-input" value="${escapeHtml(state.education_college || '')}" placeholder="College name" style="margin-bottom:10px;">
-          <label class="sheet-label" for="eduSch">High school</label>
-          <input id="eduSch" class="sheet-input" value="${escapeHtml(state.education_school || '')}" placeholder="School name" style="margin-bottom:8px;">
+          <div class="suggest-wrap">
+            <label class="sheet-label" for="eduUni">University</label>
+            <input
+              id="eduUni"
+              class="sheet-input"
+              value="${escapeHtml(state.education_university || '')}"
+              placeholder="Search university name..."
+              oninput="renderSuggestionBox('eduUni', 'suggestListUni', 'university', this.value)"
+              onfocus="renderSuggestionBox('eduUni', 'suggestListUni', 'university', this.value)"
+            >
+            <div id="suggestListUni" class="suggest-list"></div>
+          </div>
+
+          <div class="suggest-wrap">
+            <label class="sheet-label" for="eduCol">College</label>
+            <input
+              id="eduCol"
+              class="sheet-input"
+              value="${escapeHtml(state.education_college || '')}"
+              placeholder="Search college name..."
+              oninput="renderSuggestionBox('eduCol', 'suggestListCol', 'college', this.value)"
+              onfocus="renderSuggestionBox('eduCol', 'suggestListCol', 'college', this.value)"
+            >
+            <div id="suggestListCol" class="suggest-list"></div>
+          </div>
+
+          <div class="suggest-wrap">
+            <label class="sheet-label" for="eduSch">High school</label>
+            <input
+              id="eduSch"
+              class="sheet-input"
+              value="${escapeHtml(state.education_school || '')}"
+              placeholder="Search school name..."
+              oninput="renderSuggestionBox('eduSch', 'suggestListSch', 'school', this.value)"
+              onfocus="renderSuggestionBox('eduSch', 'suggestListSch', 'school', this.value)"
+            >
+            <div id="suggestListSch" class="suggest-list"></div>
+          </div>
+
           ${removeBtnHtml}
         `;
+        renderSuggestionBox('eduUni', 'suggestListUni', 'university', state.education_university || '');
+        renderSuggestionBox('eduCol', 'suggestListCol', 'college', state.education_college || '');
+        renderSuggestionBox('eduSch', 'suggestListSch', 'school', state.education_school || '');
       } else {
         const mapVal = {
           pinned: state.pinned_details,
@@ -3693,4 +3905,4 @@
     document.addEventListener('DOMContentLoaded', initEditProfile);
   </script>
 </body>
-                                       </html>
+  </html>
