@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "StoryGuardApp"
+rootProject.name = "Autrobook"
 include(":app")
