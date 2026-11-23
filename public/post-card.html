@@ -127,7 +127,7 @@
 
     .feed-stream {
       width: 100%;
-      max-width: 600px;
+      max-width: 620px;
       margin: 0 auto;
     }
 
@@ -141,7 +141,7 @@
     .fb-post {
       background: var(--bg-surface);
       border-bottom: 8px solid var(--bg-soft);
-      padding-bottom: 6px;
+      padding-bottom: 8px;
     }
 
     .fb-post-head {
@@ -269,6 +269,7 @@
       border-bottom: 1px solid var(--border-line);
     }
 
+    /* Reaction & Comment summary links row */
     .fb-counts-row {
       display: flex;
       align-items: center;
@@ -277,21 +278,44 @@
       font-size: 13px;
       color: var(--text-muted);
       border-bottom: 1px solid var(--border-line);
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    .fb-reaction-summary {
+    .fb-reaction-summary-link {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-main);
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border-line);
+      transition: background-color 0.15s ease;
+    }
+
+    .fb-reaction-summary-link:hover {
+      background: var(--bg-hover);
     }
 
     .fb-counts-right {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       font-variant-numeric: tabular-nums;
+    }
+
+    .fb-comment-count-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .fb-comment-count-link:hover {
+      color: var(--text-main);
+      text-decoration: underline;
     }
 
     .fb-action-bar {
@@ -299,7 +323,8 @@
       grid-template-columns: repeat(3, 1fr);
       border-top: 1px solid var(--border-line);
       margin: 0 8px;
-      padding: 3px 0;
+      padding: 4px 0;
+      gap: 4px;
     }
 
     .fb-action-btn {
@@ -309,14 +334,15 @@
       padding: 9px 6px;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 600;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
+      gap: 6px;
       user-select: none;
       touch-action: manipulation;
+      text-decoration: none;
     }
 
     .fb-action-btn:hover {
@@ -422,6 +448,28 @@
       display: flex;
     }
 
+    .comments-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .comments-page-link {
+      color: var(--accent-mint);
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .comments-page-link:hover {
+      text-decoration: underline;
+    }
+
     .composer-line {
       display: flex;
       gap: 8px;
@@ -454,6 +502,10 @@
       cursor: pointer;
       user-select: none;
       touch-action: manipulation;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
 
     .pill-btn:hover {
@@ -808,6 +860,14 @@
     let recordingPostId = null;
     let isRecording = false;
     let voiceTimer = null;
+
+    function buildCommentPageUrl(postId) {
+      return `comment.html?type=post&postId=${encodeURIComponent(postId)}&from=post-card`;
+    }
+
+    function buildReactionsPageUrl(postId) {
+      return `reactions.html?type=post&postId=${encodeURIComponent(postId)}&from=post-card`;
+    }
 
     function normalizeTheme(val) {
       if (!val) return null;
@@ -1632,6 +1692,9 @@
           ''
         );
 
+        const reactionsHref = buildReactionsPageUrl(post.id);
+        const commentsHref = buildCommentPageUrl(post.id);
+
         const article = document.createElement('article');
         article.className = 'fb-post';
         article.dataset.postId = post.id;
@@ -1723,15 +1786,24 @@
           }
         }
 
+        /* Reaction & Comment summary links */
         const totalComments = Math.max(Number(post.comment_count || 0), comments.length);
         const countsRow = document.createElement('div');
         countsRow.className = 'fb-counts-row';
         countsRow.innerHTML = `
-          <span class="fb-reaction-summary"><span>${post.userReaction || '👍'}</span><span>${Number(post.reaction_count || 0)}</span></span>
-          <span class="fb-counts-right"><span>${totalComments} comments</span><span>·</span><span>${Number(post.share_count || 0)} shares</span></span>
+          <a href="${reactionsHref}" class="fb-reaction-summary-link" title="View all reactions">
+            <span>${post.userReaction || '👍'}</span>
+            <span>${Number(post.reaction_count || 0)} reactions</span>
+          </a>
+          <div class="fb-counts-right">
+            <a href="${commentsHref}" class="fb-comment-count-link" title="Open comment page">${totalComments} comments</a>
+            <span>·</span>
+            <span>${Number(post.share_count || 0)} shares</span>
+          </div>
         `;
         article.appendChild(countsRow);
 
+        /* Action Bar: Like + Reactions link, Comment link, Share */
         const actionBar = document.createElement('div');
         actionBar.className = 'fb-action-bar';
 
@@ -1743,10 +1815,10 @@
           : `<i class="far fa-thumbs-up"></i><span>Like</span>`;
         bindReactionButton(likeBtn, { type: 'post', postId: post.id }, '👍');
 
-        const commentBtn = document.createElement('button');
-        commentBtn.type = 'button';
-        commentBtn.className = 'fb-action-btn';
-        commentBtn.innerHTML = `<i class="far fa-comment"></i><span>Comment</span>`;
+        const commentLinkBtn = document.createElement('a');
+        commentLinkBtn.href = commentsHref;
+        commentLinkBtn.className = 'fb-action-btn';
+        commentLinkBtn.innerHTML = `<i class="far fa-comment"></i><span>Comment</span>`;
 
         const shareBtn = document.createElement('button');
         shareBtn.type = 'button';
@@ -1755,17 +1827,30 @@
         bindShareLongPress(shareBtn, post);
 
         actionBar.appendChild(likeBtn);
-        actionBar.appendChild(commentBtn);
+        actionBar.appendChild(commentLinkBtn);
         actionBar.appendChild(shareBtn);
         article.appendChild(actionBar);
 
+        /* Comments Panel with quick access to comment.html and reactions.html */
         const commentsPanel = document.createElement('div');
         commentsPanel.className = `comments-panel ${post._commentsOpen ? 'open' : ''}`;
 
-        commentBtn.onclick = () => {
-          post._commentsOpen = !post._commentsOpen;
-          renderPostsStream();
-        };
+        const panelHeader = document.createElement('div');
+        panelHeader.className = 'comments-panel-header';
+        panelHeader.innerHTML = `
+          <span>Comments &amp; Reactions</span>
+          <div style="display:inline-flex;align-items:center;gap:12px;">
+            <a href="${reactionsHref}" class="comments-page-link">
+              <i class="far fa-heart"></i>
+              <span>Reactions</span>
+            </a>
+            <a href="${commentsHref}" class="comments-page-link">
+              <i class="far fa-comment"></i>
+              <span>Full Comments</span>
+            </a>
+          </div>
+        `;
+        commentsPanel.appendChild(panelHeader);
 
         const composerBox = document.createElement('div');
         composerBox.style.display = 'flex';
@@ -1802,6 +1887,16 @@
         clearVoiceBtn.className = 'pill-btn';
         clearVoiceBtn.textContent = 'Clear';
         clearVoiceBtn.style.display = 'none';
+
+        const openCommentPageBtn = document.createElement('a');
+        openCommentPageBtn.href = commentsHref;
+        openCommentPageBtn.className = 'pill-btn';
+        openCommentPageBtn.textContent = 'Open Comment Page';
+
+        const openReactionsPageBtn = document.createElement('a');
+        openReactionsPageBtn.href = reactionsHref;
+        openReactionsPageBtn.className = 'pill-btn';
+        openReactionsPageBtn.textContent = 'Reactions';
 
         voiceBtn.onclick = () => toggleVoiceRecord(post.id, voiceBtn, voiceStatus, clearVoiceBtn);
         clearVoiceBtn.onclick = () => {
@@ -1877,6 +1972,8 @@
         line2.appendChild(voiceBtn);
         line2.appendChild(voiceStatus);
         line2.appendChild(clearVoiceBtn);
+        line2.appendChild(openCommentPageBtn);
+        line2.appendChild(openReactionsPageBtn);
         composerBox.appendChild(line1);
         composerBox.appendChild(line2);
         commentsPanel.appendChild(composerBox);
