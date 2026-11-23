@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>New post</title>
+  <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
     :root {
@@ -714,9 +715,11 @@
     ];
 
     const CACHE_KEYS = [
+      'posts',
       'autro_instant_feed_posts',
       'autro_post_cards',
       'autro_profile_posts',
+      'autrobook_profile_posts',
       'autro_post_html_cards'
     ];
 
@@ -743,10 +746,7 @@
 
     function pruneHeavyLocalKeys() {
       const heavyCandidates = [
-        'autro_instant_feed_posts',
-        'autro_post_cards',
-        'autro_profile_posts',
-        'autro_post_html_cards',
+        ...CACHE_KEYS,
         'autro_comments_store',
         'autro_saved_items',
         'autro_reports_log'
@@ -832,13 +832,13 @@
         : '';
 
       return `
-        <article class="fb-post post-card" data-card-type="post-card" data-post-id="${escapeHtml(postObj.id || '')}" data-post-url="${postPageUrl}">
+        <article class="fb-post post-card" data-card-type="post-card" data-as-page="post.html" data-post-id="${escapeHtml(postObj.id || '')}" data-post-url="${postPageUrl}" data-created-at="${escapeHtml(postObj.created_at || '')}">
           <div class="fb-post-head">
             <div class="fb-author-left">
               <a href="/profile.html" class="fb-post-avatar-link" title="${authorName}">${avatarHtml}</a>
               <div class="fb-author-col">
                 <a href="/profile.html" class="fb-author-name">${authorName}</a>
-                <a href="${postPageUrl}" class="fb-live-time" style="text-decoration:none;"><span>Just now</span></a>
+                <a href="${postPageUrl}" class="fb-live-time" data-created-at="${escapeHtml(postObj.created_at || '')}" style="text-decoration:none;"><span>0s</span></a>
               </div>
             </div>
           </div>
@@ -852,7 +852,7 @@
       `.trim();
     }
 
-    function appendPostToLocalCache(storageKey, newPost, maxItems = 12) {
+    function appendPostToLocalCache(storageKey, newPost, maxItems = 15) {
       try {
         let list = [];
         try {
@@ -869,21 +869,32 @@
     }
 
     function broadcastNewPost(postObj, targetRoute) {
+      const targets = ['/profile.html', '/public/profile.html', '/index.html', '/public/index.html', '/post.html', '/public/post.html'];
       try {
         sessionStorage.setItem('autro_latest_created_post', JSON.stringify(postObj));
         sessionStorage.setItem('autro_active_post_html', JSON.stringify({
           id: postObj.id,
+          as_page: 'post.html',
           post_url: postObj.post_url,
-          post_card_html: postObj.post_card_html
+          post_card_html: postObj.post_card_html,
+          created_at: postObj.created_at
         }));
       } catch (_) {}
 
       try {
         if (postSyncChannel) {
           postSyncChannel.postMessage({
-            type: 'NEW_POST_CARD',
+            type: 'CREATE_POST_TO_CARD',
+            asPage: 'post.html',
             target: targetRoute,
-            targets: ['/profile.html', '/index.html', '/post.html'],
+            targets,
+            post: postObj
+          });
+          postSyncChannel.postMessage({
+            type: 'NEW_POST_CARD',
+            asPage: 'post.html',
+            target: targetRoute,
+            targets,
             post: postObj
           });
         }
@@ -893,8 +904,9 @@
         window.dispatchEvent(new CustomEvent('autro:post-created', {
           detail: {
             post: postObj,
+            asPage: 'post.html',
             target: targetRoute,
-            targets: ['/profile.html', '/index.html', '/post.html']
+            targets
           }
         }));
       } catch (_) {}
@@ -1402,7 +1414,7 @@
         const createdAt = new Date().toISOString();
 
         let savedRow = null;
-        if (sb) {
+        if (sb && authorId) {
           setProgress(85, 'Saving to Supabase...');
           const insertPayload = {
             user_id: authorId,
@@ -1434,12 +1446,13 @@
         }
 
         const resolvedMedia = mediaUrl || galleryDataUrl || '';
-        const postId = savedRow?.id || `post-${Date.now()}`;
+        const postId = savedRow?.id || `local-${Date.now()}`;
         const postUrl = `/post.html?id=${encodeURIComponent(postId)}`;
 
         const postPayload = {
           id: postId,
           card_type: 'post-card',
+          as_page: 'post.html',
           post_url: postUrl,
           user_id: authorId,
           author_name: authorName,
@@ -1458,22 +1471,29 @@
           text: caption,
           audience,
           reactions: 0,
+          reaction_count: 0,
           likes: 0,
           views: 0,
+          view_count: 0,
           comments: 0,
-          shares: 0
+          comment_count: 0,
+          shares: 0,
+          share_count: 0
         };
         postPayload.post_card_html = buildPostCardHtml(postPayload);
 
-        appendPostToLocalCache('autro_instant_feed_posts', postPayload, 12);
-        appendPostToLocalCache('autro_profile_posts', postPayload, 12);
-        appendPostToLocalCache('autro_post_cards', postPayload, 12);
+        appendPostToLocalCache('posts', postPayload, 15);
+        appendPostToLocalCache('autro_instant_feed_posts', postPayload, 15);
+        appendPostToLocalCache('autro_profile_posts', postPayload, 15);
+        appendPostToLocalCache('autrobook_profile_posts', postPayload, 15);
+        appendPostToLocalCache('autro_post_cards', postPayload, 15);
         appendPostToLocalCache('autro_post_html_cards', {
           id: postPayload.id,
+          as_page: 'post.html',
           post_url: postPayload.post_url,
           post_card_html: postPayload.post_card_html,
           created_at: postPayload.created_at
-        }, 12);
+        }, 15);
 
         const destination = resolveReturnUrl();
         broadcastNewPost(postPayload, destination);
