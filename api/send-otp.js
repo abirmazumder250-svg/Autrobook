@@ -77,7 +77,6 @@ export default async function handler(req, res) {
     const expiresAt = Date.now() + 5 * 60 * 1000;
 
     const transporter = createGmailTransporter(gmailUser, gmailAppPassword);
-    await transporter.verify();
 
     const headingText = isReset ? 'Reset Your Password' : 'Complete Your Sign Up';
     const actionText = isReset ? 'reset your password' : 'complete your sign up';
@@ -120,4 +119,4 @@ export default async function handler(req, res) {
       error: e && e.message ? e.message : 'Failed to send email via Gmail App Password.'
     });
   }
-}
+  }
