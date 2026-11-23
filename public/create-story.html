@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Create Story — Autrobook</title>
+  <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="/auth.js"></script>
@@ -711,10 +712,18 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
     const STORY_CARD_PAGE = '/story-card.html';
     const HOME_INDEX_PAGE = '/index.html';
+    const PROFILE_PAGE = '/profile.html';
 
     const sb = (window.AutroAuth && window.AutroAuth.supabase)
       ? window.AutroAuth.supabase
       : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
+    let storySyncChannel = null;
+    try {
+      if ('BroadcastChannel' in window) {
+        storySyncChannel = new BroadcastChannel('autrobook_stories_sync');
+      }
+    } catch (_) {}
 
     let currentUser = null;
     let currentProfile = null;
@@ -862,7 +871,8 @@
         created_at: nowIso,
         expires_at: expiresIso,
         viewed: [],
-        viewers: []
+        viewers: [],
+        visible_on: [STORY_CARD_PAGE, HOME_INDEX_PAGE, PROFILE_PAGE]
       };
     }
 
@@ -873,14 +883,47 @@
         localStorage.setItem('autro_new_story_created', JSON.stringify(payload));
       } catch (e) {}
 
-      ['stories', 'autrobook_stories_v1', 'autrobook_stories', 'autro_stories'].forEach((key) => {
+      const storyKeys = [
+        'stories',
+        'autrobook_stories_v1',
+        'autrobook_stories',
+        'autro_stories',
+        'autrobook_profile_stories'
+      ];
+      if (payload.user_id) {
+        storyKeys.push(`autrobook_profile_stories_${payload.user_id}`);
+      }
+
+      storyKeys.forEach((key) => {
         try {
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
           const arr = Array.isArray(existing) ? existing.filter(s => s && String(s.id) !== String(payload.id)) : [];
           arr.unshift(payload);
-          localStorage.setItem(key, JSON.stringify(arr.slice(0, 25)));
+          localStorage.setItem(key, JSON.stringify(arr.slice(0, 30)));
         } catch (e) {}
       });
+
+      try {
+        if (storySyncChannel) {
+          storySyncChannel.postMessage({
+            type: 'NEW_STORY_CREATED',
+            story: payload,
+            storyId: payload.id,
+            targets: [STORY_CARD_PAGE, HOME_INDEX_PAGE, PROFILE_PAGE]
+          });
+        }
+      } catch (_) {}
+    }
+
+    function buildStoryCardUrl(storyObj) {
+      const u = new URL(STORY_CARD_PAGE, window.location.origin);
+      u.searchParams.set('storyId', storyObj.id);
+      u.searchParams.set('id', storyObj.id);
+      if (storyObj.user_id) u.searchParams.set('user_id', storyObj.user_id);
+      u.searchParams.set('from', '/create-story.html');
+      u.searchParams.set('home', HOME_INDEX_PAGE);
+      u.searchParams.set('profile', `${PROFILE_PAGE}?tab=stories${storyObj.user_id ? `&user=${encodeURIComponent(storyObj.user_id)}` : ''}`);
+      return u.toString();
     }
 
     function openStoryCardPage(storyObj) {
@@ -890,7 +933,7 @@
         return;
       }
       storeStoryInAllKeys(payload);
-      window.location.href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(payload.id)}`;
+      window.location.href = buildStoryCardUrl(payload);
     }
 
     function handleCanvasCenterClick(e) {
@@ -1264,12 +1307,12 @@
 
       await persistStoryToSupabase(payload);
 
-      publishedStories = [payload, ...publishedStories.filter(s => s && String(s.id) !== String(payload.id))].slice(0, 25);
+      publishedStories = [payload, ...publishedStories.filter(s => s && String(s.id) !== String(payload.id))].slice(0, 30);
       storeStoryInAllKeys(payload);
 
       renderSavedStories();
       closeEditor();
-      window.location.href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(payload.id)}`;
+      window.location.href = buildStoryCardUrl(payload);
       return false;
     }
 
@@ -1279,7 +1322,7 @@
       if (!section || !list || !publishedStories.length) return;
       section.style.display = 'flex';
       list.innerHTML = publishedStories.map(st => {
-        const href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(st.id)}`;
+        const href = buildStoryCardUrl(st);
         return `
           <a href="${href}" class="saved-story-item" onclick="event.preventDefault();openStoryCardPage(${escapeHtml(JSON.stringify(st))})">
             ${st.media_type === 'video'
