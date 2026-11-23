@@ -51,6 +51,11 @@
     overflow: hidden;
   }
 
+  /* Auth checking overlay so content doesn't flash before redirect */
+  body.auth-checking .reel-container {
+    visibility: hidden;
+  }
+
   .reel-container {
     height: 100vh;
     width: 100vw;
@@ -59,6 +64,8 @@
     position: relative;
     overflow: hidden;
     background: #000000;
+    touch-action: pan-y;
+    transition: transform 0.22s ease, opacity 0.22s ease;
   }
 
   video,
@@ -122,7 +129,7 @@
     position: absolute;
     top: 56px;
     right: 14px;
-    width: 225px;
+    width: 235px;
     background: #292a2d;
     border: 1px solid #3c4043;
     border-radius: 14px;
@@ -152,6 +159,7 @@
     gap: 10px;
     text-align: left;
     cursor: pointer;
+    text-decoration: none;
   }
 
   .more-menu-item:hover {
@@ -171,7 +179,7 @@
     flex-direction: column;
     gap: 14px;
     align-items: center;
-    z-index: 12;
+    z-index: 20;
   }
 
   .action-group {
@@ -191,6 +199,17 @@
     background: transparent;
     border: none;
     color: #ffffff;
+    touch-action: manipulation;
+  }
+
+  .action-btn .icon,
+  .action-btn i,
+  .c-action-btn span,
+  .c-action-btn i,
+  .round-tool-btn span,
+  .round-tool-btn i,
+  .comment-dots-btn i {
+    pointer-events: none;
   }
 
   .action-btn .icon {
@@ -252,16 +271,17 @@
   }
 
   .author-avatar {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     object-fit: cover;
     background: #303134;
-    border: 1px solid rgba(255, 255, 255, 0.45);
+    border: 1.5px solid rgba(255, 255, 255, 0.65);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 13px;
+    font-weight: 700;
     overflow: hidden;
     flex-shrink: 0;
   }
@@ -274,7 +294,8 @@
 
   .username {
     font-weight: 700;
-    font-size: 14px;
+    font-size: 14.5px;
+    letter-spacing: 0.1px;
   }
 
   .issue-pill {
@@ -287,7 +308,8 @@
     display: none;
   }
 
-  .small-follow-btn {
+  .small-follow-btn,
+  .small-dm-link {
     padding: 3px 10px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.75);
@@ -296,6 +318,13 @@
     font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .small-follow-btn {
     display: none;
   }
 
@@ -307,15 +336,46 @@
 
   .caption {
     font-size: 13.5px;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
     line-height: 1.35;
     word-break: break-word;
   }
 
-  .audio-small {
-    font-size: 11px;
-    opacity: 0.82;
-    margin-bottom: 3px;
+  /* Live Audio Pill (Singer + Song) */
+  .audio-live-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 100%;
+    background: rgba(32, 33, 36, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #f8fafc;
+    margin-bottom: 5px;
+  }
+
+  .audio-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px #22c55e;
+    animation: pulseAudioDot 1.6s infinite ease-in-out;
+  }
+
+  @keyframes pulseAudioDot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.35); opacity: 0.65; }
+  }
+
+  .audio-live-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .views-line {
@@ -336,7 +396,7 @@
     display: none;
     align-items: center;
     gap: 10px;
-    z-index: 50;
+    z-index: 60;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
 
@@ -348,6 +408,7 @@
     font-size: 23px;
     cursor: pointer;
     transition: transform 0.14s ease;
+    user-select: none;
   }
 
   .react-popup .emoji:hover {
@@ -782,6 +843,7 @@
     font-size: 11px;
     cursor: pointer;
     line-height: 1.2;
+    touch-action: manipulation;
   }
 
   .comment-name-react-btn.active {
@@ -833,6 +895,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    touch-action: manipulation;
   }
 
   .c-action-btn.active {
@@ -983,6 +1046,7 @@
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
+    touch-action: manipulation;
   }
 
   .round-tool-btn.active {
@@ -1088,7 +1152,7 @@
   }
 </style>
 </head>
-<body>
+<body class="auth-checking">
 
 <div class="reel-container" id="reelCard">
   <video id="reelVideo" loop playsinline></video>
@@ -1101,7 +1165,7 @@
     <button type="button" class="top-pill-btn" id="moreDotsBtn" title="More options" aria-label="More options">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
-    <a href="index.html" class="top-pill-btn" title="Back to Feed"><i class="fa-solid fa-xmark"></i></a>
+    <a href="index.html" class="top-pill-btn" id="backToFeedBtn" title="Back to Feed"><i class="fa-solid fa-xmark"></i></a>
   </div>
 
   <!-- Top-Right Three Dots Menu -->
@@ -1110,6 +1174,14 @@
       <i class="fa-regular fa-bookmark"></i>
       <span>Save drafts</span>
     </button>
+    <a href="profile.html" class="more-menu-item" id="menuProfileReelsBtn">
+      <i class="fa-solid fa-clapperboard"></i>
+      <span>Profile Reels</span>
+    </a>
+    <a href="message.html" class="more-menu-item" id="menuDirectMessageBtn">
+      <i class="fa-regular fa-paper-plane"></i>
+      <span>Direct Message (DM)</span>
+    </a>
     <button type="button" class="more-menu-item" id="menuNotifyBtn">
       <i class="fa-regular fa-bell"></i>
       <span id="notifyMenuLabel">Notification on for this post</span>
@@ -1121,6 +1193,10 @@
     <button type="button" class="more-menu-item danger" id="menuReportBtn">
       <i class="fa-regular fa-flag"></i>
       <span>Report</span>
+    </button>
+    <button type="button" class="more-menu-item danger" id="menuLogoutBtn">
+      <i class="fa-solid fa-right-from-bracket"></i>
+      <span>Log out</span>
     </button>
   </div>
 
@@ -1166,16 +1242,27 @@
 
   <div class="bottom-info">
     <div class="profile-header-row">
-      <a href="profile.html?user=creator_user" class="author-link" id="authorProfileLink">
+      <a href="profile.html?tab=reels" class="author-link" id="authorProfileLink">
         <span class="author-avatar" id="authorAvatar"><i class="fa-regular fa-user"></i></span>
-        <span class="username" id="username">Creator</span>
+        <span class="username" id="username"></span>
       </a>
       <span class="issue-pill" id="creatorIssueBadge">Issue</span>
       <button type="button" class="small-follow-btn" id="followBtn">Follow</button>
+      <a href="message.html" class="small-dm-link" id="dmCreatorLink" title="Send Direct Message">
+        <i class="fa-regular fa-comment-dots"></i>
+        <span>DM</span>
+      </a>
     </div>
 
     <div class="caption" id="caption"></div>
-    <div class="audio-small" id="audio">🎵 Original Audio</div>
+
+    <!-- Live Audio Badge with Singer Name & Song Title -->
+    <div class="audio-live-bar" id="audioLiveBar">
+      <span class="audio-live-dot" title="Live Audio"></span>
+      <i class="fa-solid fa-music"></i>
+      <span class="audio-live-text" id="audio">Original Audio</span>
+    </div>
+
     <div class="views-line" id="views">0 views • Just now</div>
   </div>
 </div>
@@ -1200,7 +1287,7 @@
     </a>
 
     <div>
-      <div class="share-section-label">Send in AutroChat</div>
+      <div class="share-section-label">Send in AutroChat / DM</div>
       <div class="share-contacts-row" id="shareContactsRow"></div>
     </div>
 
@@ -1220,14 +1307,14 @@
         <span class="share-dest-label">Groups</span>
       </button>
 
-      <a href="select-page.html" class="share-dest-btn" id="sharePageLink">
-        <span class="share-dest-circle"><i class="fa-solid fa-flag"></i></span>
-        <span class="share-dest-label">Page</span>
+      <a href="message.html" class="share-dest-btn" id="shareDmLink">
+        <span class="share-dest-circle"><i class="fa-regular fa-paper-plane"></i></span>
+        <span class="share-dest-label">DM</span>
       </a>
 
-      <a href="more.html" class="share-dest-btn" id="shareMoreLink">
-        <span class="share-dest-circle"><i class="fa-solid fa-ellipsis"></i></span>
-        <span class="share-dest-label">More</span>
+      <a href="profile.html?tab=reels" class="share-dest-btn" id="shareProfileReelsLink">
+        <span class="share-dest-circle"><i class="fa-solid fa-clapperboard"></i></span>
+        <span class="share-dest-label">Reels</span>
       </a>
     </div>
   </div>
@@ -1347,25 +1434,210 @@
 
 <div class="status-toast" id="statusToast"></div>
 
+<!-- auth.js - Authentication and onboarding guard for Autrobook -->
 <script>
+(function () {
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+  const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-  const supabaseClient = window.supabase
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
+  const LOGIN_PAGE = 'login.html';
+  const SIGNUP_NAME_PAGE = 'signup-name.html';
+  const SIGNUP_CONTACT_PAGE = 'signup-contact.html';
+
+  let client = null;
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+
+  function resolveTargetUrl(pageName) {
+    try {
+      return new URL(pageName, window.location.href).href;
+    } catch (_) {
+      return pageName;
+    }
+  }
+
+  function getCurrentFileName() {
+    const path = window.location.pathname || '';
+    const parts = path.split('/');
+    return (parts[parts.length - 1] || '').toLowerCase();
+  }
+
+  function redirectIfNeeded(targetPage) {
+    const currentFile = getCurrentFileName();
+    if (currentFile !== targetPage.toLowerCase()) {
+      window.location.replace(resolveTargetUrl(targetPage));
+    }
+  }
+
+  async function checkSessionAndProfile(options = {}) {
+    const {
+      requireCompleteProfile = true,
+      redirectUnauthenticated = true
+    } = options;
+
+    if (!client) {
+      if (redirectUnauthenticated) redirectIfNeeded(LOGIN_PAGE);
+      return null;
+    }
+
+    let session = null;
+    try {
+      const { data, error } = await client.auth.getSession();
+      if (!error && data && data.session && data.session.user) {
+        session = data.session;
+      }
+    } catch (_) {
+      session = null;
+    }
+
+    if (!session || !session.user) {
+      localStorage.removeItem('autrobook_auth_user');
+      if (redirectUnauthenticated) redirectIfNeeded(LOGIN_PAGE);
+      return null;
+    }
+
+    const user = session.user;
+    let profile = null;
+    try {
+      const { data } = await client
+        .from('profiles')
+        .select('id, full_name, name, username, phone, contact, avatar_url, has_issue, is_restricted')
+        .eq('id', user.id)
+        .maybeSingle();
+      profile = data || null;
+    } catch (_) {
+      profile = null;
+    }
+
+    if (!requireCompleteProfile) {
+      return { session, user, profile };
+    }
+
+    const meta = user.user_metadata || {};
+    const fullName = String(
+      profile?.full_name || profile?.name || profile?.username || meta.full_name || meta.name || ''
+    ).trim();
+    const contact = String(
+      profile?.phone || profile?.contact || user.phone || user.email || ''
+    ).trim();
+
+    if (!fullName) {
+      redirectIfNeeded(SIGNUP_NAME_PAGE);
+      return null;
+    }
+
+    if (!contact) {
+      redirectIfNeeded(SIGNUP_CONTACT_PAGE);
+      return null;
+    }
+
+    return { session, user, profile };
+  }
+
+  window.AutroAuth = {
+    supabase: client,
+    checkSessionAndProfile,
+    signOut: async function () {
+      if (client) {
+        try {
+          await client.auth.signOut();
+        } catch (_) {}
+      }
+      localStorage.removeItem('autrobook_auth_user');
+      redirectIfNeeded(LOGIN_PAGE);
+    }
+  };
+})();
+</script>
+
+<script>
+  const supabaseClient = window.AutroAuth ? window.AutroAuth.supabase : null;
 
   const MAX_VOICE_SECONDS = 30;
   const MAX_GROUP_SHARE = 10;
   const urlParams = new URLSearchParams(window.location.search);
 
-  function loadStoredReelById(reelId) {
+  function isValidUUID(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+  }
+
+  function readStoredList(key) {
     try {
-      const stored = JSON.parse(localStorage.getItem('autrobook_live_reels') || '[]');
-      return stored.find((item) => item.id === reelId) || null;
+      const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
-      return null;
+      return [];
     }
+  }
+
+  function formatLiveAudioLabel(item) {
+    const singer = String(item.singer_name || item.artist_name || item.singer || '').trim();
+    const song = String(item.song_title || item.song_name || item.track_title || '').trim();
+    const rawAudio = String(item.audio_name || item.audio || '').trim();
+    const author = String(item.author_name || '').trim();
+
+    if (singer && song) {
+      return `${singer} — ${song}`;
+    }
+    if (song && author && song.toLowerCase() !== 'original audio') {
+      return `${author} — ${song}`;
+    }
+    if (singer) {
+      return rawAudio && rawAudio.toLowerCase() !== 'original audio'
+        ? `${singer} — ${rawAudio}`
+        : `${singer} — Original Audio`;
+    }
+    if (rawAudio && rawAudio.toLowerCase() !== 'original audio') {
+      return rawAudio;
+    }
+    return author ? `Original Audio • ${author}` : 'Original Audio';
+  }
+
+  function loadReelPlaylist() {
+    const merged = [];
+    const seenIds = new Set();
+
+    const addItems = (items) => {
+      items.forEach((item, idx) => {
+        if (!item || typeof item !== 'object') return;
+        const id = String(item.id || item.reel_id || `reel_${idx}`);
+        if (seenIds.has(id)) return;
+        seenIds.add(id);
+        merged.push({
+          ...item,
+          id,
+          user_id: item.user_id || item.author_id || '',
+          author_name: item.author_name || item.author || item.username || '',
+          author_avatar: item.author_avatar || item.avatar || '',
+          media_url: item.media_url || item.media || item.video_url || item.src || '',
+          media_type: item.media_type || item.type || 'video',
+          caption: item.caption || '',
+          singer_name: item.singer_name || item.artist_name || '',
+          song_title: item.song_title || item.song_name || '',
+          audio_name: item.audio_name || item.audio || '',
+          quality: item.quality || 'HD',
+          views_count: Number(item.views_count || 0),
+          likes_count: Number(item.likes_count || 0),
+          dislikes_count: Number(item.dislikes_count || 0),
+          comments_count: Number(item.comments_count || 0),
+          audience: item.audience || 'public',
+          comment_setting: item.comment_setting || 'all',
+          created_at: item.created_at || new Date().toISOString()
+        });
+      });
+    };
+
+    addItems(readStoredList('autrobook_live_reels'));
+    addItems(readStoredList('autrobook_reels_queue'));
+
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('autrobook_profile_reels_')) {
+        addItems(readStoredList(key));
+      }
+    });
+
+    return merged;
   }
 
   function getDeviceVisitorId() {
@@ -1381,33 +1653,53 @@
     }
   }
 
-  const targetReelId = urlParams.get('id') || 'default_reel';
-  const cachedReel = loadStoredReelById(targetReelId);
+  let reelPlaylist = loadReelPlaylist();
+  const initialReelId = urlParams.get('id') || urlParams.get('reel_id') || 'default_reel';
+  let currentIndex = reelPlaylist.findIndex((item) => item.id === initialReelId);
 
-  const reelData = {
-    id: targetReelId,
-    user_id: urlParams.get('user_id') || cachedReel?.user_id || 'creator_user',
-    author_name: urlParams.get('author') || cachedReel?.author_name || 'Creator',
-    author_avatar: urlParams.get('avatar') || cachedReel?.author_avatar || '',
-    media_url: urlParams.get('media') || cachedReel?.media_url || '',
-    media_type: urlParams.get('type') || cachedReel?.media_type || 'video',
-    caption: urlParams.get('caption') || cachedReel?.caption || '',
-    audio_name: urlParams.get('audio') || cachedReel?.audio_name || 'Original Audio',
-    quality: urlParams.get('quality') || cachedReel?.quality || 'HD',
+  const initialFromParams = {
+    id: initialReelId,
+    user_id: urlParams.get('user_id') || '',
+    author_name: urlParams.get('author') || '',
+    author_avatar: urlParams.get('avatar') || '',
+    media_url: urlParams.get('media') || '',
+    media_type: urlParams.get('type') || 'video',
+    caption: urlParams.get('caption') || '',
+    singer_name: urlParams.get('singer') || '',
+    song_title: urlParams.get('song') || '',
+    audio_name: urlParams.get('audio') || '',
+    quality: urlParams.get('quality') || 'HD',
     views_count: 0,
     likes_count: 0,
     dislikes_count: 0,
     comments_count: 0,
-    audience: urlParams.get('audience') || cachedReel?.audience || 'public',
-    comment_setting: cachedReel?.comment_setting || 'all',
+    audience: urlParams.get('audience') || 'public',
+    comment_setting: 'all',
     sound_enabled: true,
-    isPublic: (urlParams.get('audience') || cachedReel?.audience || 'public') === 'public',
+    isPublic: (urlParams.get('audience') || 'public') === 'public',
     has_issue: false,
-    created_at: cachedReel?.created_at || new Date().toISOString()
+    created_at: new Date().toISOString()
+  };
+
+  if (currentIndex === -1) {
+    if (urlParams.get('media') || !reelPlaylist.length) {
+      reelPlaylist.unshift(initialFromParams);
+      currentIndex = 0;
+    } else {
+      currentIndex = 0;
+    }
+  }
+
+  const reelData = {
+    ...initialFromParams,
+    ...(reelPlaylist[currentIndex] || {}),
+    isPublic: ((reelPlaylist[currentIndex]?.audience || initialFromParams.audience || 'public') === 'public'),
+    sound_enabled: true,
+    has_issue: false
   };
 
   let currentUserId = null;
-  let currentUserProfile = { name: 'Member', avatar: '' };
+  let currentUserProfile = { name: '', avatar: '' };
   let isFollowing = false;
   let userReelReaction = null;
   let userReelDisliked = false;
@@ -1425,6 +1717,7 @@
   let mediaRecorder = null;
   let audioChunks = [];
   let recordedVoiceUrl = '';
+  let recordedVoiceDataUrl = '';
   let recordedVoiceDuration = 0;
   let recordTimer = null;
 
@@ -1433,19 +1726,23 @@
   let activeCommentMenuId = null;
   let activeShareExtraText = '';
   let reportContext = { targetType: 'reel', targetId: '', targetOwnerId: '', targetOwnerName: '' };
+  let activeChannel = null;
 
+  const reelCardEl = document.getElementById('reelCard');
   const videoEl = document.getElementById('reelVideo');
   const imageEl = document.getElementById('reelImage');
   const soundBtn = document.getElementById('soundBtn');
   const moreDotsBtn = document.getElementById('moreDotsBtn');
   const moreMenu = document.getElementById('moreMenu');
   const followBtn = document.getElementById('followBtn');
+  const dmCreatorLink = document.getElementById('dmCreatorLink');
   const likeBtn = document.getElementById('likeBtn');
   const likeIcon = document.getElementById('likeIcon');
   const likeCountEl = document.getElementById('likeCount');
   const dislikeBtn = document.getElementById('dislikeBtn');
   const dislikeIcon = document.getElementById('dislikeIcon');
   const dislikeCountEl = document.getElementById('dislikeCount');
+  const commentOpenBtn = document.getElementById('commentOpenBtn');
   const commentCountEl = document.getElementById('commentCount');
   const viewsEl = document.getElementById('views');
   const reactPopup = document.getElementById('reactPopup');
@@ -1504,15 +1801,64 @@
 
   function persistLocalReelState() {
     try {
-      const existing = JSON.parse(localStorage.getItem('autrobook_live_reels') || '[]');
+      const existing = readStoredList('autrobook_live_reels');
       const idx = existing.findIndex((x) => x.id === reelData.id);
       const record = {
         ...reelData,
+        comments,
         updated_at: new Date().toISOString()
       };
       if (idx >= 0) existing[idx] = { ...existing[idx], ...record };
       else existing.unshift(record);
       localStorage.setItem('autrobook_live_reels', JSON.stringify(existing.slice(0, 100)));
+
+      if (reelData.user_id) {
+        const profileKey = `autrobook_profile_reels_${reelData.user_id}`;
+        const profList = readStoredList(profileKey);
+        const pIdx = profList.findIndex((x) => x.id === reelData.id);
+        if (pIdx >= 0) profList[pIdx] = { ...profList[pIdx], ...record };
+        else profList.unshift(record);
+        localStorage.setItem(profileKey, JSON.stringify(profList.slice(0, 100)));
+      }
+    } catch (e) {}
+  }
+
+  function loadLocalEngagementForReel() {
+    try {
+      const savedMap = JSON.parse(localStorage.getItem('autrobook_reel_engagement') || '{}');
+      const entry = savedMap[reelData.id];
+      if (entry) {
+        if (typeof entry.likes_count === 'number') reelData.likes_count = entry.likes_count;
+        if (typeof entry.dislikes_count === 'number') reelData.dislikes_count = entry.dislikes_count;
+        if (typeof entry.comments_count === 'number') reelData.comments_count = entry.comments_count;
+        if (typeof entry.views_count === 'number') reelData.views_count = entry.views_count;
+        if (typeof entry.isFollowing === 'boolean') isFollowing = entry.isFollowing;
+        if (entry.userReelReaction !== undefined) userReelReaction = entry.userReelReaction;
+        if (typeof entry.userReelDisliked === 'boolean') userReelDisliked = entry.userReelDisliked;
+        if (Array.isArray(entry.comments)) comments = entry.comments;
+        if (Array.isArray(entry.reelReactors)) reelReactors = entry.reelReactors;
+        if (Array.isArray(entry.reelDislikers)) reelDislikers = entry.reelDislikers;
+      }
+    } catch (e) {}
+  }
+
+  function saveLocalEngagementForReel() {
+    try {
+      const savedMap = JSON.parse(localStorage.getItem('autrobook_reel_engagement') || '{}');
+      savedMap[reelData.id] = {
+        likes_count: reelData.likes_count,
+        dislikes_count: reelData.dislikes_count,
+        comments_count: reelData.comments_count,
+        views_count: reelData.views_count,
+        isFollowing,
+        userReelReaction,
+        userReelDisliked,
+        comments: comments.slice(0, 100),
+        reelReactors: reelReactors.slice(0, 100),
+        reelDislikers: reelDislikers.slice(0, 100),
+        updated_at: new Date().toISOString()
+      };
+      localStorage.setItem('autrobook_reel_engagement', JSON.stringify(savedMap));
     } catch (e) {}
   }
 
@@ -1592,22 +1938,106 @@
     } catch (e) {}
   }
 
-  async function fetchProfileInfo(userId, fallbackName = 'User', fallbackAvatar = '') {
+  async function initAuthSession() {
+    if (!window.AutroAuth) {
+      document.body.classList.remove('auth-checking');
+      return false;
+    }
+
+    const allowGuest = urlParams.get('guest') === '1';
+    const authResult = await window.AutroAuth.checkSessionAndProfile({
+      requireCompleteProfile: !allowGuest,
+      redirectUnauthenticated: !allowGuest
+    });
+
+    if (!authResult && !allowGuest) {
+      return false;
+    }
+
+    document.body.classList.remove('auth-checking');
+
+    if (authResult && authResult.user) {
+      currentUserId = authResult.user.id;
+      const meta = authResult.user.user_metadata || {};
+      const prof = authResult.profile || {};
+      const resolvedName = String(
+        prof.full_name || prof.name || prof.username || meta.full_name || meta.name || authResult.user.email || ''
+      ).trim();
+      const resolvedAvatar = String(prof.avatar_url || meta.avatar_url || '').trim();
+
+      currentUserProfile = {
+        name: resolvedName,
+        avatar: resolvedAvatar
+      };
+
+      profileCache.set(currentUserId, {
+        name: resolvedName,
+        avatar: resolvedAvatar,
+        hasIssue: Boolean(prof.has_issue || prof.is_restricted)
+      });
+
+      localStorage.setItem('autrobook_auth_user', JSON.stringify({
+        id: currentUserId,
+        name: resolvedName,
+        avatar: resolvedAvatar,
+        email: authResult.user.email || ''
+      }));
+
+      if (!reelData.user_id) {
+        reelData.user_id = currentUserId;
+      }
+    }
+
+    if (supabaseClient) {
+      supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+        if (session && session.user) {
+          currentUserId = session.user.id;
+          const prof = await fetchProfileInfo(
+            currentUserId,
+            session.user.user_metadata?.full_name || session.user.email || '',
+            session.user.user_metadata?.avatar_url || ''
+          );
+          currentUserProfile = { name: prof.name, avatar: prof.avatar };
+          localStorage.setItem('autrobook_auth_user', JSON.stringify({
+            id: currentUserId,
+            name: currentUserProfile.name,
+            avatar: currentUserProfile.avatar,
+            email: session.user.email || ''
+          }));
+          renderReelInfo();
+        } else {
+          currentUserId = null;
+          currentUserProfile = { name: '', avatar: '' };
+          localStorage.removeItem('autrobook_auth_user');
+          if (!allowGuest && window.AutroAuth) {
+            await window.AutroAuth.checkSessionAndProfile({
+              requireCompleteProfile: true,
+              redirectUnauthenticated: true
+            });
+          }
+        }
+      });
+    }
+
+    return true;
+  }
+
+  async function fetchProfileInfo(userId, fallbackName = '', fallbackAvatar = '') {
     if (!userId) return { name: fallbackName, avatar: fallbackAvatar, hasIssue: false };
     if (profileCache.has(userId)) return profileCache.get(userId);
 
     let info = { name: fallbackName, avatar: fallbackAvatar, hasIssue: false };
-    if (supabaseClient) {
+    if (supabaseClient && isValidUUID(userId)) {
       try {
         const { data } = await supabaseClient
           .from('profiles')
-          .select('id, full_name, username, avatar_url, has_issue, is_restricted')
+          .select('id, full_name, name, username, avatar_url, has_issue, is_restricted')
           .eq('id', userId)
           .maybeSingle();
 
         if (data) {
           info = {
-            name: data.full_name || data.username || fallbackName,
+            name: String(data.full_name || data.name || data.username || fallbackName).trim(),
             avatar: data.avatar_url || fallbackAvatar,
             hasIssue: Boolean(data.has_issue || data.is_restricted)
           };
@@ -1619,12 +2049,45 @@
     return info;
   }
 
+  async function resolveReelOwnerProfile() {
+    if (!reelData.user_id && currentUserId) {
+      reelData.user_id = currentUserId;
+    }
+
+    if (!reelData.user_id && supabaseClient) {
+      try {
+        const { data: firstProf } = await supabaseClient
+          .from('profiles')
+          .select('id, full_name, name, username, avatar_url, has_issue, is_restricted')
+          .limit(1)
+          .maybeSingle();
+
+        if (firstProf && firstProf.id) {
+          reelData.user_id = firstProf.id;
+          const resolved = {
+            name: String(firstProf.full_name || firstProf.name || firstProf.username || '').trim(),
+            avatar: firstProf.avatar_url || '',
+            hasIssue: Boolean(firstProf.has_issue || firstProf.is_restricted)
+          };
+          profileCache.set(firstProf.id, resolved);
+          return resolved;
+        }
+      } catch (e) {}
+    }
+
+    const fallback = reelData.user_id === currentUserId
+      ? currentUserProfile.name
+      : reelData.author_name;
+
+    return await fetchProfileInfo(reelData.user_id, fallback, reelData.author_avatar);
+  }
+
   async function loadLiveFriendsAndUsers() {
     if (!supabaseClient) return;
     try {
       const collected = new Map();
 
-      if (currentUserId) {
+      if (currentUserId && isValidUUID(currentUserId)) {
         const { data: friendsRows } = await supabaseClient
           .from('friends')
           .select('friend_id, user_id')
@@ -1638,14 +2101,15 @@
         if (friendIds.length) {
           const { data: friendProfiles } = await supabaseClient
             .from('profiles')
-            .select('id, full_name, username, avatar_url, has_issue, is_restricted')
+            .select('id, full_name, name, username, avatar_url, has_issue, is_restricted')
             .in('id', friendIds);
 
           (friendProfiles || []).forEach((p) => {
-            const handle = p.username || (p.full_name || 'user').replace(/\s+/g, '_').toLowerCase();
+            const displayName = p.full_name || p.name || p.username || 'Friend';
+            const handle = p.username || displayName.replace(/\s+/g, '_').toLowerCase();
             collected.set(p.id, {
               id: p.id,
-              name: p.full_name || p.username || 'Friend',
+              name: displayName,
               handle,
               avatar_url: p.avatar_url || '',
               has_issue: Boolean(p.has_issue || p.is_restricted)
@@ -1656,15 +2120,16 @@
 
       const { data: allProfiles } = await supabaseClient
         .from('profiles')
-        .select('id, full_name, username, avatar_url, has_issue, is_restricted')
+        .select('id, full_name, name, username, avatar_url, has_issue, is_restricted')
         .limit(100);
 
       (allProfiles || []).forEach((p) => {
         if (!collected.has(p.id) && p.id !== currentUserId) {
-          const handle = p.username || (p.full_name || 'user').replace(/\s+/g, '_').toLowerCase();
+          const displayName = p.full_name || p.name || p.username || 'Member';
+          const handle = p.username || displayName.replace(/\s+/g, '_').toLowerCase();
           collected.set(p.id, {
             id: p.id,
-            name: p.full_name || p.username || 'Member',
+            name: displayName,
             handle,
             avatar_url: p.avatar_url || '',
             has_issue: Boolean(p.has_issue || p.is_restricted)
@@ -1697,25 +2162,26 @@
   function renderShareContacts() {
     const list = mentionableUsers.slice(0, 15);
     if (!list.length) {
+      const label = reelData.author_name ? `DM ${reelData.author_name}` : 'Send DM';
       shareContactsRow.innerHTML = `
-        <a href="${escapeHtml(buildDestinationUrl('autrochat.html'))}" class="share-contact-item">
+        <a href="${escapeHtml(buildDestinationUrl('message.html', { to: reelData.user_id }))}" class="share-contact-item">
           <span class="share-contact-avatar"><i class="fa-regular fa-paper-plane"></i></span>
-          <span class="share-contact-name">AutroChat</span>
+          <span class="share-contact-name">${escapeHtml(label)}</span>
         </a>
       `;
       return;
     }
 
     shareContactsRow.innerHTML = list.map((u) => {
-      const chatUrl = buildDestinationUrl('autrochat.html', {
-        to_user: u.id,
-        text: activeShareExtraText || reelData.caption || ''
+      const dmUrl = buildDestinationUrl('message.html', {
+        to: u.id,
+        text: activeShareExtraText || reelData.caption || buildShareableReelUrl()
       });
       const av = u.avatar_url
         ? `<img src="${escapeHtml(u.avatar_url)}" alt="${escapeHtml(u.name)}">`
         : `<i class="fa-regular fa-user"></i>`;
       return `
-        <a href="${escapeHtml(chatUrl)}" class="share-contact-item">
+        <a href="${escapeHtml(dmUrl)}" class="share-contact-item">
           <span class="share-contact-avatar">${av}</span>
           <span class="share-contact-name">${escapeHtml(u.name)}</span>
         </a>
@@ -1768,9 +2234,19 @@
   }
 
   async function recordRealUniqueView() {
-    if (!supabaseClient || !reelData.id) return;
+    if (!reelData.id) return;
     const viewerId = getActorId();
     const viewSessionKey = `autrobook_viewed_${reelData.id}_${viewerId}`;
+
+    if (!localStorage.getItem(viewSessionKey)) {
+      reelData.views_count = Number(reelData.views_count || 0) + 1;
+      localStorage.setItem(viewSessionKey, '1');
+      updateCounters();
+      saveLocalEngagementForReel();
+      persistLocalReelState();
+    }
+
+    if (!supabaseClient || !isValidUUID(reelData.id) || !isValidUUID(viewerId)) return;
 
     try {
       const { data: reelRow } = await supabaseClient
@@ -1779,47 +2255,43 @@
         .eq('id', reelData.id)
         .maybeSingle();
 
-      if (!reelRow) {
-        reelData.views_count = 0;
-        updateCounters();
-        return;
-      }
+      if (!reelRow) return;
 
       let realViews = Number(reelRow.views_count || 0);
+      const { error: viewInsertErr } = await supabaseClient
+        .from('reel_views')
+        .upsert(
+          { reel_id: reelData.id, user_id: viewerId, viewed_at: new Date().toISOString() },
+          { onConflict: 'reel_id,user_id', ignoreDuplicates: true }
+        );
 
-      if (!localStorage.getItem(viewSessionKey)) {
-        const { error: viewInsertErr } = await supabaseClient
+      if (!viewInsertErr) {
+        const { count } = await supabaseClient
           .from('reel_views')
-          .upsert(
-            { reel_id: reelData.id, user_id: viewerId, viewed_at: new Date().toISOString() },
-            { onConflict: 'reel_id,user_id', ignoreDuplicates: true }
-          );
+          .select('*', { count: 'exact', head: true })
+          .eq('reel_id', reelData.id);
 
-        if (!viewInsertErr) {
-          const { count } = await supabaseClient
-            .from('reel_views')
-            .select('*', { count: 'exact', head: true })
-            .eq('reel_id', reelData.id);
-
-          if (typeof count === 'number') {
-            realViews = count;
-            await supabaseClient
-              .from('reels')
-              .update({ views_count: realViews })
-              .eq('id', reelData.id);
-          }
+        if (typeof count === 'number') {
+          realViews = count;
+          await supabaseClient
+            .from('reels')
+            .update({ views_count: realViews })
+            .eq('id', reelData.id);
         }
-        localStorage.setItem(viewSessionKey, '1');
       }
 
       reelData.views_count = realViews;
       updateCounters();
+      saveLocalEngagementForReel();
       persistLocalReelState();
     } catch (e) {}
   }
 
   async function syncLiveReelFromSupabase() {
-    if (!supabaseClient || !reelData.id) return;
+    loadLocalEngagementForReel();
+    updateCounters();
+
+    if (!supabaseClient || !isValidUUID(reelData.id)) return;
     const actorId = getActorId();
 
     try {
@@ -1832,15 +2304,15 @@
       if (reelRow) {
         reelData.user_id = reelRow.user_id || reelData.user_id;
         reelData.caption = reelRow.caption ?? reelData.caption;
+        reelData.singer_name = reelRow.singer_name || reelRow.artist_name || reelData.singer_name;
+        reelData.song_title = reelRow.song_title || reelRow.song_name || reelData.song_title;
         reelData.audio_name = reelRow.audio_name ?? reelData.audio_name;
         reelData.quality = reelRow.quality ?? reelData.quality;
         reelData.media_url = reelRow.media_url ?? reelData.media_url;
         reelData.media_type = reelRow.media_type ?? reelData.media_type;
         reelData.comment_setting = reelRow.comment_setting || reelData.comment_setting;
-        reelData.views_count = Number(reelRow.views_count || 0);
+        reelData.views_count = Number(reelRow.views_count ?? reelData.views_count ?? 0);
         reelData.created_at = reelRow.created_at || reelData.created_at;
-      } else {
-        reelData.views_count = 0;
       }
 
       await recordRealUniqueView();
@@ -1894,35 +2366,64 @@
         .order('created_at', { ascending: false });
 
       if (Array.isArray(commentsData)) {
-        comments = commentsData.map((c) => ({
-          id: c.id,
-          user_id: c.user_id,
-          author_name: c.author_name || 'Member',
-          author_avatar: c.author_avatar || '',
-          comment_text: c.comment_text || '',
-          voice_url: c.voice_url || '',
-          voice_duration: Number(c.voice_duration || 0),
-          likes_count: Number(c.likes_count || 0),
-          dislikes_count: Number(c.dislikes_count || 0),
-          userReaction: null,
-          userDisliked: false,
-          created_at: c.created_at || new Date().toISOString()
-        }));
+        const existingMap = new Map(comments.map((item) => [String(item.id), item]));
+        comments = commentsData.map((c) => {
+          const prev = existingMap.get(String(c.id));
+          return {
+            id: String(c.id),
+            user_id: c.user_id,
+            author_name: c.author_name || 'Member',
+            author_avatar: c.author_avatar || '',
+            comment_text: c.comment_text || '',
+            voice_url: c.voice_url || '',
+            voice_duration: Number(c.voice_duration || 0),
+            likes_count: Number(c.likes_count || 0),
+            dislikes_count: Number(c.dislikes_count || 0),
+            userReaction: prev ? prev.userReaction : null,
+            userDisliked: prev ? prev.userDisliked : false,
+            created_at: c.created_at || new Date().toISOString()
+          };
+        });
         reelData.comments_count = comments.length;
       }
 
       updateCounters();
+      saveLocalEngagementForReel();
       persistLocalReelState();
     } catch (e) {}
   }
 
   function subscribeRealtimeUpdates() {
-    if (!supabaseClient || !reelData.id) return;
+    if (activeChannel && supabaseClient) {
+      try { supabaseClient.removeChannel(activeChannel); } catch (e) {}
+      activeChannel = null;
+    }
+
+    if (!supabaseClient || !isValidUUID(reelData.id)) return;
     const actorId = getActorId();
 
     try {
-      supabaseClient
+      activeChannel = supabaseClient
         .channel(`reel-live-${reelData.id}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'reels', filter: `id=eq.${reelData.id}` }, async (payload) => {
+          const updated = payload.new || {};
+          if (updated.singer_name !== undefined || updated.artist_name !== undefined) {
+            reelData.singer_name = updated.singer_name || updated.artist_name || '';
+          }
+          if (updated.song_title !== undefined || updated.song_name !== undefined) {
+            reelData.song_title = updated.song_title || updated.song_name || '';
+          }
+          if (updated.audio_name !== undefined) {
+            reelData.audio_name = updated.audio_name || '';
+          }
+          if (updated.caption !== undefined) {
+            reelData.caption = updated.caption || '';
+          }
+          if (updated.views_count !== undefined) {
+            reelData.views_count = Number(updated.views_count || 0);
+          }
+          await renderReelInfo();
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'reel_reactions', filter: `reel_id=eq.${reelData.id}` }, async () => {
           const { data } = await supabaseClient
             .from('reel_reactions')
@@ -1965,6 +2466,7 @@
             userReelReaction = mineLike ? mineLike.emoji : null;
             userReelDisliked = Boolean(mineDislike);
             updateCounters();
+            saveLocalEngagementForReel();
             persistLocalReelState();
           }
         })
@@ -1975,22 +2477,27 @@
             .eq('reel_id', reelData.id)
             .order('created_at', { ascending: false });
           if (Array.isArray(data)) {
-            comments = data.map((c) => ({
-              id: c.id,
-              user_id: c.user_id,
-              author_name: c.author_name || 'Member',
-              author_avatar: c.author_avatar || '',
-              comment_text: c.comment_text || '',
-              voice_url: c.voice_url || '',
-              voice_duration: Number(c.voice_duration || 0),
-              likes_count: Number(c.likes_count || 0),
-              dislikes_count: Number(c.dislikes_count || 0),
-              userReaction: null,
-              userDisliked: false,
-              created_at: c.created_at || new Date().toISOString()
-            }));
+            const existingMap = new Map(comments.map((item) => [String(item.id), item]));
+            comments = data.map((c) => {
+              const prev = existingMap.get(String(c.id));
+              return {
+                id: String(c.id),
+                user_id: c.user_id,
+                author_name: c.author_name || 'Member',
+                author_avatar: c.author_avatar || '',
+                comment_text: c.comment_text || '',
+                voice_url: c.voice_url || '',
+                voice_duration: Number(c.voice_duration || 0),
+                likes_count: Number(c.likes_count || 0),
+                dislikes_count: Number(c.dislikes_count || 0),
+                userReaction: prev ? prev.userReaction : null,
+                userDisliked: prev ? prev.userDisliked : false,
+                created_at: c.created_at || new Date().toISOString()
+              };
+            });
             reelData.comments_count = comments.length;
             updateCounters();
+            saveLocalEngagementForReel();
             persistLocalReelState();
             if (commentsSheet.classList.contains('open')) {
               await renderComments();
@@ -2002,16 +2509,36 @@
   }
 
   async function renderReelInfo() {
-    const creatorInfo = await fetchProfileInfo(reelData.user_id, reelData.author_name, reelData.author_avatar);
-    reelData.author_name = creatorInfo.name;
-    reelData.author_avatar = creatorInfo.avatar;
-    reelData.has_issue = creatorInfo.hasIssue;
+    const ownerInfo = await resolveReelOwnerProfile();
+    reelData.author_name = ownerInfo.name || currentUserProfile.name || '';
+    reelData.author_avatar = ownerInfo.avatar || currentUserProfile.avatar || '';
+    reelData.has_issue = ownerInfo.hasIssue;
 
     document.getElementById('quality').textContent = reelData.quality || 'HD';
     document.getElementById('caption').textContent = reelData.caption || '';
-    document.getElementById('audio').textContent = `🎵 ${reelData.audio_name || 'Original Audio'}`;
-    document.getElementById('username').textContent = reelData.author_name;
-    document.getElementById('authorProfileLink').href = `profile.html?user=${encodeURIComponent(reelData.user_id)}`;
+
+    // Live audio display with Singer Name + Song Title
+    document.getElementById('audio').textContent = formatLiveAudioLabel(reelData);
+
+    // Saved Supabase Profile Header Name
+    const usernameEl = document.getElementById('username');
+    usernameEl.textContent = reelData.author_name;
+    usernameEl.style.display = reelData.author_name ? 'inline' : 'none';
+
+    const profileReelsHref = reelData.user_id
+      ? `profile.html?user=${encodeURIComponent(reelData.user_id)}&tab=reels`
+      : 'profile.html?tab=reels';
+    document.getElementById('authorProfileLink').href = profileReelsHref;
+    document.getElementById('menuProfileReelsBtn').href = profileReelsHref;
+    document.getElementById('shareProfileReelsLink').href = profileReelsHref;
+
+    const dmHref = buildDestinationUrl('message.html', {
+      to: reelData.user_id,
+      name: reelData.author_name
+    });
+    dmCreatorLink.href = dmHref;
+    document.getElementById('menuDirectMessageBtn').href = dmHref;
+    document.getElementById('shareDmLink').href = dmHref;
 
     const issueBadge = document.getElementById('creatorIssueBadge');
     issueBadge.style.display = reelData.has_issue ? 'inline-block' : 'none';
@@ -2019,6 +2546,8 @@
     const avatarEl = document.getElementById('authorAvatar');
     if (reelData.author_avatar) {
       avatarEl.innerHTML = `<img src="${escapeHtml(reelData.author_avatar)}" alt="${escapeHtml(reelData.author_name)}">`;
+    } else if (reelData.author_name) {
+      avatarEl.textContent = reelData.author_name.charAt(0).toUpperCase();
     } else {
       avatarEl.innerHTML = `<i class="fa-regular fa-user"></i>`;
     }
@@ -2035,13 +2564,14 @@
     menuReportBtn.style.display = isPostCreator() ? 'none' : 'flex';
 
     if (reelData.media_type === 'image' && reelData.media_url) {
+      videoEl.pause();
       videoEl.style.display = 'none';
       imageEl.style.display = 'block';
       imageEl.src = reelData.media_url;
     } else {
       imageEl.style.display = 'none';
       videoEl.style.display = 'block';
-      if (reelData.media_url) {
+      if (reelData.media_url && videoEl.src !== reelData.media_url) {
         videoEl.src = reelData.media_url;
         videoEl.muted = !soundOn;
         videoEl.play().catch(() => {});
@@ -2065,6 +2595,54 @@
     dislikeBtn.classList.toggle('active', Boolean(userReelDisliked));
   }
 
+  async function syncReactionToSupabase(actorId, actorName, actorAvatar, emoji) {
+    if (!supabaseClient || !isValidUUID(reelData.id) || !isValidUUID(actorId)) return;
+    try {
+      if (!emoji) {
+        await supabaseClient
+          .from('reel_reactions')
+          .delete()
+          .eq('reel_id', reelData.id)
+          .eq('user_id', actorId);
+        return;
+      }
+
+      const nowIso = new Date().toISOString();
+      const { error: upsertErr } = await supabaseClient
+        .from('reel_reactions')
+        .upsert({
+          reel_id: reelData.id,
+          user_id: actorId,
+          user_name: actorName,
+          user_avatar: actorAvatar,
+          emoji,
+          created_at: nowIso
+        }, { onConflict: 'reel_id,user_id' });
+
+      if (upsertErr) {
+        await supabaseClient
+          .from('reel_reactions')
+          .delete()
+          .eq('reel_id', reelData.id)
+          .eq('user_id', actorId);
+
+        const { error: fallbackInsertErr } = await supabaseClient
+          .from('reel_reactions')
+          .insert({
+            reel_id: reelData.id,
+            user_id: actorId,
+            emoji
+          });
+
+        if (fallbackInsertErr) {
+          console.error('Reaction sync failed:', fallbackInsertErr.message);
+        }
+      }
+    } catch (e) {
+      console.error('Reaction sync error:', e);
+    }
+  }
+
   async function applyReelReaction(emoji) {
     const actorId = getActorId();
     const actorName = currentUserProfile.name || 'You';
@@ -2081,17 +2659,11 @@
       reelReactors = reelReactors.filter((r) => r.user_id !== actorId);
       reelData.likes_count = reelReactors.length;
       playEffect('pop');
-      notify('Reaction undone');
-
-      if (supabaseClient && reelData.id) {
-        try {
-          await supabaseClient
-            .from('reel_reactions')
-            .delete()
-            .eq('reel_id', reelData.id)
-            .eq('user_id', actorId);
-        } catch (e) {}
-      }
+      notify('Reaction removed');
+      updateCounters();
+      saveLocalEngagementForReel();
+      persistLocalReelState();
+      await syncReactionToSupabase(actorId, actorName, actorAvatar, null);
     } else {
       userReelReaction = emoji;
       const nowIso = new Date().toISOString();
@@ -2106,24 +2678,11 @@
       reelData.likes_count = reelReactors.length;
       playEffect('enhance');
       notify(`Reacted with ${emoji}`);
-
-      if (supabaseClient && reelData.id) {
-        try {
-          await supabaseClient
-            .from('reel_reactions')
-            .upsert({
-              reel_id: reelData.id,
-              user_id: actorId,
-              user_name: actorName,
-              user_avatar: actorAvatar,
-              emoji,
-              created_at: nowIso
-            }, { onConflict: 'reel_id,user_id' });
-        } catch (e) {}
-      }
+      updateCounters();
+      saveLocalEngagementForReel();
+      persistLocalReelState();
+      await syncReactionToSupabase(actorId, actorName, actorAvatar, emoji);
     }
-    updateCounters();
-    persistLocalReelState();
   }
 
   async function toggleReelDislike() {
@@ -2142,17 +2701,11 @@
       reelDislikers = reelDislikers.filter((d) => d.user_id !== actorId);
       reelData.dislikes_count = reelDislikers.length;
       playEffect('pop');
-      notify('Dislike undone');
-
-      if (supabaseClient && reelData.id) {
-        try {
-          await supabaseClient
-            .from('reel_reactions')
-            .delete()
-            .eq('reel_id', reelData.id)
-            .eq('user_id', actorId);
-        } catch (e) {}
-      }
+      notify('Dislike removed');
+      updateCounters();
+      saveLocalEngagementForReel();
+      persistLocalReelState();
+      await syncReactionToSupabase(actorId, actorName, actorAvatar, null);
     } else {
       userReelDisliked = true;
       const nowIso = new Date().toISOString();
@@ -2167,28 +2720,17 @@
       reelData.dislikes_count = reelDislikers.length;
       playEffect('enhance');
       notify('Disliked');
-
-      if (supabaseClient && reelData.id) {
-        try {
-          await supabaseClient
-            .from('reel_reactions')
-            .upsert({
-              reel_id: reelData.id,
-              user_id: actorId,
-              user_name: actorName,
-              user_avatar: actorAvatar,
-              emoji: '👎',
-              created_at: nowIso
-            }, { onConflict: 'reel_id,user_id' });
-        } catch (e) {}
-      }
+      updateCounters();
+      saveLocalEngagementForReel();
+      persistLocalReelState();
+      await syncReactionToSupabase(actorId, actorName, actorAvatar, '👎');
     }
-
-    updateCounters();
-    persistLocalReelState();
   }
 
-  dislikeBtn.addEventListener('click', toggleReelDislike);
+  dislikeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleReelDislike();
+  });
 
   async function openReactorsSheet(mode = 'likes') {
     closeAllSheets();
@@ -2200,8 +2742,8 @@
 
     const enriched = await Promise.all(
       sourceList.map(async (r) => {
-        const p = await fetchProfileInfo(r.user_id, r.name, r.avatar);
-        return { ...r, name: p.name, avatar: p.avatar, hasIssue: p.hasIssue };
+        const p = await fetchProfileInfo(r.user_id, r.name || 'Member', r.avatar);
+        return { ...r, name: p.name || 'Member', avatar: p.avatar, hasIssue: p.hasIssue };
       })
     );
 
@@ -2214,7 +2756,7 @@
           : `<i class="fa-regular fa-user"></i>`;
         const issueTag = r.hasIssue ? `<span class="issue-pill" style="display:inline-block;">Issue</span>` : '';
         return `
-          <a href="profile.html?user=${encodeURIComponent(r.user_id)}" class="reactor-row">
+          <a href="profile.html?user=${encodeURIComponent(r.user_id)}&tab=reels" class="reactor-row">
             <div class="reactor-left">
               <span class="author-avatar">${av}</span>
               <div>
@@ -2231,8 +2773,15 @@
     reactorsSheet.classList.add('open');
   }
 
-  likeCountEl.addEventListener('click', () => openReactorsSheet('likes'));
-  dislikeCountEl.addEventListener('click', () => openReactorsSheet('dislikes'));
+  likeCountEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openReactorsSheet('likes');
+  });
+
+  dislikeCountEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openReactorsSheet('dislikes');
+  });
 
   function showReactionPopupAt(anchorEl, targetType, commentId = null) {
     activePopupTarget = targetType;
@@ -2243,40 +2792,64 @@
     reactPopup.classList.add('show');
   }
 
-  let reelPressTimer = null;
-  let reelLongPressed = false;
+  function bindTapAndLongPress(el, { onTap, onLongPress }) {
+    let pressTimer = null;
+    let longPressed = false;
+    let startX = 0;
+    let startY = 0;
 
-  likeBtn.addEventListener('pointerdown', () => {
-    reelLongPressed = false;
-    reelPressTimer = setTimeout(() => {
-      reelLongPressed = true;
-      showReactionPopupAt(likeBtn, 'reel', null);
-    }, 450);
+    el.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      longPressed = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      clearTimeout(pressTimer);
+      pressTimer = setTimeout(() => {
+        longPressed = true;
+        onLongPress();
+      }, 450);
+    });
+
+    el.addEventListener('pointermove', (e) => {
+      if (Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12) {
+        clearTimeout(pressTimer);
+      }
+    });
+
+    el.addEventListener('pointercancel', () => {
+      clearTimeout(pressTimer);
+    });
+
+    el.addEventListener('pointerleave', () => {
+      clearTimeout(pressTimer);
+    });
+
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearTimeout(pressTimer);
+      longPressed = true;
+      onLongPress();
+    });
+
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearTimeout(pressTimer);
+      if (longPressed) {
+        longPressed = false;
+        return;
+      }
+      onTap();
+    });
+  }
+
+  bindTapAndLongPress(likeBtn, {
+    onTap: () => applyReelReaction(userReelReaction || '❤️'),
+    onLongPress: () => showReactionPopupAt(likeBtn, 'reel', null)
   });
 
-  likeBtn.addEventListener('pointerup', () => {
-    clearTimeout(reelPressTimer);
-    if (!reelLongPressed) {
-      applyReelReaction(userReelReaction || '❤️');
-    }
-  });
-
-  likeBtn.addEventListener('pointerleave', () => clearTimeout(reelPressTimer));
-
-  let composerPressTimer = null;
-  let composerLongPressed = false;
-
-  composerReactBtn.addEventListener('pointerdown', () => {
-    composerLongPressed = false;
-    composerPressTimer = setTimeout(() => {
-      composerLongPressed = true;
-      showReactionPopupAt(composerReactBtn, 'composer', null);
-    }, 450);
-  });
-
-  composerReactBtn.addEventListener('pointerup', () => {
-    clearTimeout(composerPressTimer);
-    if (!composerLongPressed) {
+  bindTapAndLongPress(composerReactBtn, {
+    onTap: () => {
       if (composerDraftReaction === '❤️') {
         composerDraftReaction = null;
         composerReactEmoji.textContent = '❤️';
@@ -2290,13 +2863,13 @@
         playEffect('enhance');
         notify('Selected ❤️ for comment');
       }
-    }
+    },
+    onLongPress: () => showReactionPopupAt(composerReactBtn, 'composer', null)
   });
 
-  composerReactBtn.addEventListener('pointerleave', () => clearTimeout(composerPressTimer));
-
   document.querySelectorAll('#reactPopup .emoji').forEach((item) => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
       const chosen = item.textContent.trim();
       reactPopup.classList.remove('show');
       if (activePopupTarget === 'comment' && activePopupCommentId) {
@@ -2327,7 +2900,9 @@
     followBtn.textContent = isFollowing ? 'Following' : 'Follow';
     followBtn.classList.toggle('following', isFollowing);
     playEffect(isFollowing ? 'enhance' : 'pop');
-    notify(isFollowing ? `Following ${reelData.author_name}` : `Unfollowed ${reelData.author_name}`);
+    saveLocalEngagementForReel();
+    const targetLabel = reelData.author_name ? ` ${reelData.author_name}` : '';
+    notify(isFollowing ? `Following${targetLabel}` : `Unfollowed${targetLabel}`);
   });
 
   function closeAllSheets() {
@@ -2340,6 +2915,122 @@
     commentDotsMenu.classList.remove('open');
     mentionDropdown.classList.remove('open');
   }
+
+  function hasAnySheetOpen() {
+    return (
+      shareSheet.classList.contains('open') ||
+      groupsShareSheet.classList.contains('open') ||
+      commentsSheet.classList.contains('open') ||
+      reactorsSheet.classList.contains('open') ||
+      reportSheet.classList.contains('open') ||
+      moreMenu.classList.contains('open')
+    );
+  }
+
+  async function switchToReelAtIndex(nextIndex, direction = 'down') {
+    if (!reelPlaylist.length || nextIndex < 0 || nextIndex >= reelPlaylist.length) {
+      notify(direction === 'down' ? 'No more reels below' : 'No previous reels');
+      return;
+    }
+
+    saveLocalEngagementForReel();
+    persistLocalReelState();
+
+    currentIndex = nextIndex;
+    const nextItem = reelPlaylist[currentIndex];
+
+    reelCardEl.style.transform = direction === 'down' ? 'translateY(-18px)' : 'translateY(18px)';
+    reelCardEl.style.opacity = '0.45';
+
+    Object.assign(reelData, {
+      id: nextItem.id,
+      user_id: nextItem.user_id || '',
+      author_name: nextItem.author_name || '',
+      author_avatar: nextItem.author_avatar || '',
+      media_url: nextItem.media_url || '',
+      media_type: nextItem.media_type || 'video',
+      caption: nextItem.caption || '',
+      singer_name: nextItem.singer_name || nextItem.artist_name || '',
+      song_title: nextItem.song_title || nextItem.song_name || '',
+      audio_name: nextItem.audio_name || '',
+      quality: nextItem.quality || 'HD',
+      views_count: Number(nextItem.views_count || 0),
+      likes_count: Number(nextItem.likes_count || 0),
+      dislikes_count: Number(nextItem.dislikes_count || 0),
+      comments_count: Number(nextItem.comments_count || 0),
+      audience: nextItem.audience || 'public',
+      comment_setting: nextItem.comment_setting || 'all',
+      isPublic: (nextItem.audience || 'public') === 'public',
+      created_at: nextItem.created_at || new Date().toISOString()
+    });
+
+    comments = Array.isArray(nextItem.comments) ? [...nextItem.comments] : [];
+    reelReactors = [];
+    reelDislikers = [];
+    userReelReaction = null;
+    userReelDisliked = false;
+
+    try {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set('id', reelData.id);
+      if (reelData.user_id) nextUrl.searchParams.set('user_id', reelData.user_id);
+      window.history.replaceState({}, '', nextUrl.toString());
+    } catch (e) {}
+
+    await syncLiveReelFromSupabase();
+    subscribeRealtimeUpdates();
+    await renderReelInfo();
+    if (commentsSheet.classList.contains('open')) {
+      await renderComments();
+    }
+
+    setTimeout(() => {
+      reelCardEl.style.transform = 'translateY(0)';
+      reelCardEl.style.opacity = '1';
+    }, 60);
+  }
+
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let touchStartedOnInteractive = false;
+
+  reelCardEl.addEventListener('touchstart', (e) => {
+    if (hasAnySheetOpen()) return;
+    touchStartedOnInteractive = Boolean(e.target.closest('button, a, input, select, .actions, .bottom-info, .top-right-controls, .react-popup'));
+    if (touchStartedOnInteractive) return;
+    if (e.touches && e.touches.length === 1) {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+    }
+  }, { passive: true });
+
+  reelCardEl.addEventListener('touchend', (e) => {
+    if (hasAnySheetOpen() || touchStartedOnInteractive) return;
+    if (!e.changedTouches || !e.changedTouches.length) return;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+    const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
+
+    if (Math.abs(deltaY) > 65 && Math.abs(deltaY) > deltaX) {
+      if (deltaY > 0) {
+        switchToReelAtIndex(currentIndex + 1, 'down');
+      } else {
+        switchToReelAtIndex(currentIndex - 1, 'up');
+      }
+    }
+  }, { passive: true });
+
+  document.addEventListener('keydown', (e) => {
+    if (hasAnySheetOpen() || document.activeElement === commentInput || document.activeElement === groupSearchInput) {
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      switchToReelAtIndex(currentIndex + 1, 'down');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      switchToReelAtIndex(currentIndex - 1, 'up');
+    }
+  });
 
   moreDotsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -2356,20 +3047,26 @@
     if (!mentionDropdown.contains(e.target) && e.target !== commentInput) {
       mentionDropdown.classList.remove('open');
     }
+    if (!reactPopup.contains(e.target) && !e.target.closest('#likeBtn') && !e.target.closest('#composerReactBtn') && !e.target.closest('.c-react-btn') && !e.target.closest('.comment-name-react-btn')) {
+      reactPopup.classList.remove('show');
+    }
   });
 
   function saveCurrentReelToDrafts() {
     try {
-      const existing = JSON.parse(localStorage.getItem('autrobook_drafts') || '[]');
+      const existing = readStoredList('autrobook_drafts');
       existing.unshift({
         id: 'draft_' + Date.now(),
+        reelId: reelData.id,
         caption: reelData.caption || 'Saved reel',
-        audio: reelData.audio_name || '',
+        audio: formatLiveAudioLabel(reelData),
         items: reelData.media_url ? [{ src: reelData.media_url, type: reelData.media_type, title: reelData.caption || 'Reel' }] : [],
         savedAt: new Date().toLocaleString()
       });
-      localStorage.setItem('autrobook_drafts', JSON.stringify(existing));
+      localStorage.setItem('autrobook_drafts', JSON.stringify(existing.slice(0, 100)));
     } catch (e) {}
+    saveLocalEngagementForReel();
+    persistLocalReelState();
     notify('Saved to drafts');
   }
 
@@ -2388,6 +3085,13 @@
     notify(postNotifyEnabled ? 'Post notifications ON' : 'Post notifications OFF');
   });
 
+  document.getElementById('menuLogoutBtn').addEventListener('click', async () => {
+    moreMenu.classList.remove('open');
+    if (window.AutroAuth) {
+      await window.AutroAuth.signOut();
+    }
+  });
+
   function openShareBottomSheet(customText = '') {
     moreMenu.classList.remove('open');
     closeAllSheets();
@@ -2397,8 +3101,6 @@
       shared_text: activeShareExtraText
     });
     document.getElementById('shareYourStoriesLink').href = buildDestinationUrl('create-story.html');
-    document.getElementById('sharePageLink').href = buildDestinationUrl('select-page.html');
-    document.getElementById('shareMoreLink').href = buildDestinationUrl('more.html');
 
     renderShareContacts();
     shareSheet.classList.add('open');
@@ -2469,7 +3171,7 @@
 
   function openReportSheet(ctx) {
     if (isPostCreator() || (currentUserId && ctx.targetOwnerId && ctx.targetOwnerId === currentUserId)) {
-      notify('Post creator cannot report');
+      notify('Post owner cannot report');
       return;
     }
     reportContext = ctx;
@@ -2540,7 +3242,7 @@
   });
 
   function applyCommentPermissionUI() {
-    const setting = reelData.comment_setting;
+    const setting = reelData.comment_setting || 'all';
     commentPermissionSelect.value = setting;
     if (setting === 'locked') {
       commentFooter.style.display = 'none';
@@ -2556,20 +3258,24 @@
     applyCommentPermissionUI();
     persistLocalReelState();
     notify(`Comments: ${reelData.comment_setting}`);
-    if (supabaseClient && reelData.id) {
+    if (supabaseClient && isValidUUID(reelData.id)) {
       try {
         await supabaseClient.from('reels').update({ comment_setting: reelData.comment_setting }).eq('id', reelData.id);
       } catch (e) {}
     }
   });
 
-  document.getElementById('commentOpenBtn').addEventListener('click', async () => {
+  async function openCommentsSheetHandler(e) {
+    if (e) e.stopPropagation();
     closeAllSheets();
     applyCommentPermissionUI();
     commentsSheet.classList.add('open');
-    await loadLiveFriendsAndUsers();
     await renderComments();
-  });
+    loadLiveFriendsAndUsers().catch(() => {});
+  }
+
+  commentOpenBtn.addEventListener('click', openCommentsSheetHandler);
+  commentCountEl.addEventListener('click', openCommentsSheetHandler);
 
   function updateMentionSuggestions() {
     const val = commentInput.value;
@@ -2583,11 +3289,10 @@
     }
 
     const query = (match[1] || '').toLowerCase();
-    const pool = mentionableUsers.length
-      ? mentionableUsers
-      : [
-          { id: reelData.user_id, name: reelData.author_name, handle: reelData.author_name.replace(/\s+/g, '_').toLowerCase(), avatar_url: reelData.author_avatar }
-        ];
+    const fallbackOwner = reelData.author_name
+      ? [{ id: reelData.user_id, name: reelData.author_name, handle: reelData.author_name.replace(/\s+/g, '_').toLowerCase(), avatar_url: reelData.author_avatar }]
+      : [];
+    const pool = mentionableUsers.length ? mentionableUsers : fallbackOwner;
 
     const filtered = pool.filter((u) => {
       const n = (u.name || '').toLowerCase();
@@ -2638,6 +3343,15 @@
   commentInput.addEventListener('input', updateMentionSuggestions);
   commentInput.addEventListener('click', updateMentionSuggestions);
 
+  function blobToDataURL(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  }
+
   voiceRecordBtn.addEventListener('click', async () => {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
@@ -2652,19 +3366,21 @@
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
       recordedVoiceUrl = '';
+      recordedVoiceDataUrl = '';
       recordedVoiceDuration = 0;
 
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = (ev) => {
         if (ev.data && ev.data.size > 0) audioChunks.push(ev.data);
       };
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         clearInterval(recordTimer);
         voiceRecordBtn.classList.remove('recording');
         stream.getTracks().forEach((t) => t.stop());
         if (audioChunks.length > 0) {
           const blob = new Blob(audioChunks, { type: 'audio/webm' });
           recordedVoiceUrl = URL.createObjectURL(blob);
+          recordedVoiceDataUrl = await blobToDataURL(blob);
           voiceStatus.classList.add('show');
           voiceStatusText.textContent = `Voice recorded (${recordedVoiceDuration}s / ${MAX_VOICE_SECONDS}s max)`;
         }
@@ -2689,12 +3405,13 @@
 
   document.getElementById('clearVoiceBtn').addEventListener('click', () => {
     recordedVoiceUrl = '';
+    recordedVoiceDataUrl = '';
     recordedVoiceDuration = 0;
     voiceStatus.classList.remove('show');
   });
 
   async function toggleCommentReaction(commentId, emoji) {
-    const c = comments.find((item) => item.id === commentId);
+    const c = comments.find((item) => String(item.id) === String(commentId));
     if (!c) return;
     if (c.userReaction === emoji) {
       c.userReaction = null;
@@ -2709,9 +3426,11 @@
       playEffect('enhance');
       notify(`Reacted ${emoji} on comment`);
     }
-    renderComments();
+    saveLocalEngagementForReel();
+    persistLocalReelState();
+    await renderComments();
 
-    if (supabaseClient) {
+    if (supabaseClient && isValidUUID(c.id)) {
       try {
         await supabaseClient
           .from('reel_comments')
@@ -2722,15 +3441,17 @@
   }
 
   async function toggleCommentDislike(commentId) {
-    const c = comments.find((item) => item.id === commentId);
+    const c = comments.find((item) => String(item.id) === String(commentId));
     if (!c) return;
     c.userDisliked = !c.userDisliked;
     c.dislikes_count += c.userDisliked ? 1 : -1;
     if (c.dislikes_count < 0) c.dislikes_count = 0;
     playEffect(c.userDisliked ? 'enhance' : 'pop');
-    renderComments();
+    saveLocalEngagementForReel();
+    persistLocalReelState();
+    await renderComments();
 
-    if (supabaseClient) {
+    if (supabaseClient && isValidUUID(c.id)) {
       try {
         await supabaseClient
           .from('reel_comments')
@@ -2741,7 +3462,7 @@
   }
 
   async function copyCommentText(commentId) {
-    const c = comments.find((item) => item.id === commentId);
+    const c = comments.find((item) => String(item.id) === String(commentId));
     if (!c) return;
     const textToCopy = c.comment_text || (c.voice_url ? `Voice comment (${c.voice_duration}s)` : '');
     if (!textToCopy) return;
@@ -2778,13 +3499,13 @@
   document.getElementById('cMenuShareBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     commentDotsMenu.classList.remove('open');
-    const c = comments.find((x) => x.id === activeCommentMenuId);
+    const c = comments.find((x) => String(x.id) === String(activeCommentMenuId));
     openShareBottomSheet(c ? c.comment_text : '');
   });
 
   document.getElementById('cMenuCommentBtn').addEventListener('click', () => {
     commentDotsMenu.classList.remove('open');
-    const c = comments.find((x) => x.id === activeCommentMenuId);
+    const c = comments.find((x) => String(x.id) === String(activeCommentMenuId));
     if (c && c.author_name) {
       const handle = c.author_name.replace(/\s+/g, '_').toLowerCase();
       commentInput.value = `@${handle} `;
@@ -2794,7 +3515,7 @@
 
   document.getElementById('cMenuReportBtn').addEventListener('click', () => {
     commentDotsMenu.classList.remove('open');
-    const c = comments.find((x) => x.id === activeCommentMenuId);
+    const c = comments.find((x) => String(x.id) === String(activeCommentMenuId));
     if (!c) return;
     openReportSheet({
       targetType: 'comment',
@@ -2817,14 +3538,15 @@
 
     const enrichedComments = await Promise.all(
       comments.map(async (c) => {
-        const p = await fetchProfileInfo(c.user_id, c.author_name, c.author_avatar);
-        return { ...c, author_name: p.name, author_avatar: p.avatar, hasIssue: p.hasIssue };
+        const p = await fetchProfileInfo(c.user_id, c.author_name || 'Member', c.author_avatar);
+        return { ...c, author_name: p.name || 'Member', author_avatar: p.avatar, hasIssue: p.hasIssue };
       })
     );
 
     commentsList.innerHTML = enrichedComments.map((c) => {
-      const voiceHtml = c.voice_url
-        ? `<audio controls src="${escapeHtml(c.voice_url)}" style="width:100%;height:34px;"></audio>`
+      const audioSrc = c.voice_data_url || c.voice_url || '';
+      const voiceHtml = audioSrc
+        ? `<audio controls src="${escapeHtml(audioSrc)}" style="width:100%;height:34px;"></audio>`
         : '';
       const textHtml = c.comment_text
         ? `<div class="comment-body">${formatCommentTextWithMentions(c.comment_text)}</div>`
@@ -2835,7 +3557,7 @@
         <div class="comment-card" data-cid="${escapeHtml(c.id)}">
           <div class="comment-top">
             <div class="comment-author-wrap">
-              <a href="profile.html?user=${encodeURIComponent(c.user_id)}" class="comment-author">${escapeHtml(c.author_name)}</a>
+              <a href="profile.html?user=${encodeURIComponent(c.user_id)}&tab=reels" class="comment-author">${escapeHtml(c.author_name)}</a>
               ${issueBadge}
               <button type="button" class="comment-name-react-btn ${c.userReaction ? 'active' : ''}" data-cid="${escapeHtml(c.id)}" title="React to comment">${escapeHtml(c.userReaction || '❤️')}</button>
             </div>
@@ -2874,35 +3596,26 @@
         }, 500);
       });
       card.addEventListener('pointerup', () => clearTimeout(copyTimer));
+      card.addEventListener('pointercancel', () => clearTimeout(copyTimer));
       card.addEventListener('pointerleave', () => clearTimeout(copyTimer));
     });
 
     commentsList.querySelectorAll('.c-react-btn, .comment-name-react-btn').forEach((btn) => {
       const cid = btn.getAttribute('data-cid');
-      let timer = null;
-      let longPress = false;
-
-      btn.addEventListener('pointerdown', () => {
-        longPress = false;
-        timer = setTimeout(() => {
-          longPress = true;
-          showReactionPopupAt(btn, 'comment', cid);
-        }, 450);
-      });
-
-      btn.addEventListener('pointerup', () => {
-        clearTimeout(timer);
-        if (!longPress) {
-          const item = comments.find((x) => x.id === cid);
+      bindTapAndLongPress(btn, {
+        onTap: () => {
+          const item = comments.find((x) => String(x.id) === String(cid));
           toggleCommentReaction(cid, (item && item.userReaction) || '❤️');
-        }
+        },
+        onLongPress: () => showReactionPopupAt(btn, 'comment', cid)
       });
-
-      btn.addEventListener('pointerleave', () => clearTimeout(timer));
     });
 
     commentsList.querySelectorAll('.c-dislike-btn').forEach((btn) => {
-      btn.addEventListener('click', () => toggleCommentDislike(btn.getAttribute('data-cid')));
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCommentDislike(btn.getAttribute('data-cid'));
+      });
     });
 
     commentsList.querySelectorAll('.comment-dots-btn').forEach((btn) => {
@@ -2930,15 +3643,17 @@
     }
 
     const actorId = getActorId();
-    const p = await fetchProfileInfo(actorId, currentUserProfile.name, currentUserProfile.avatar);
+    const p = await fetchProfileInfo(actorId, currentUserProfile.name || 'Member', currentUserProfile.avatar);
 
+    const tempCommentId = 'c_' + Date.now();
     const newComment = {
-      id: 'c_' + Date.now(),
+      id: tempCommentId,
       user_id: actorId,
-      author_name: p.name,
+      author_name: p.name || 'Member',
       author_avatar: p.avatar,
       comment_text: text,
       voice_url: recordedVoiceUrl,
+      voice_data_url: recordedVoiceDataUrl,
       voice_duration: recordedVoiceDuration,
       likes_count: composerDraftReaction ? 1 : 0,
       dislikes_count: 0,
@@ -2955,28 +3670,61 @@
     composerReactEmoji.textContent = '❤️';
     composerReactBtn.classList.remove('active');
     recordedVoiceUrl = '';
+    recordedVoiceDataUrl = '';
     recordedVoiceDuration = 0;
     voiceStatus.classList.remove('show');
     updateCounters();
+    saveLocalEngagementForReel();
     persistLocalReelState();
     await renderComments();
     playEffect('enhance');
+    notify('Comment posted');
 
-    if (supabaseClient && reelData.id) {
+    if (supabaseClient && isValidUUID(reelData.id) && isValidUUID(actorId)) {
       try {
-        await supabaseClient.from('reel_comments').insert({
-          reel_id: reelData.id,
-          user_id: newComment.user_id,
-          author_name: newComment.author_name,
-          author_avatar: newComment.author_avatar,
-          comment_text: newComment.comment_text,
-          voice_url: newComment.voice_url,
-          voice_duration: newComment.voice_duration,
-          likes_count: newComment.likes_count,
-          dislikes_count: newComment.dislikes_count,
-          created_at: newComment.created_at
-        });
-      } catch (e) {}
+        const { data: insertedRow, error: insertErr } = await supabaseClient
+          .from('reel_comments')
+          .insert({
+            reel_id: reelData.id,
+            user_id: newComment.user_id,
+            author_name: newComment.author_name,
+            author_avatar: newComment.author_avatar,
+            comment_text: newComment.comment_text,
+            voice_url: newComment.voice_data_url || newComment.voice_url,
+            voice_duration: newComment.voice_duration,
+            likes_count: newComment.likes_count,
+            dislikes_count: newComment.dislikes_count,
+            created_at: newComment.created_at
+          })
+          .select('id')
+          .maybeSingle();
+
+        if (!insertErr && insertedRow && insertedRow.id) {
+          newComment.id = String(insertedRow.id);
+          saveLocalEngagementForReel();
+          persistLocalReelState();
+        } else if (insertErr) {
+          const { data: minimalRow, error: minimalErr } = await supabaseClient
+            .from('reel_comments')
+            .insert({
+              reel_id: reelData.id,
+              user_id: newComment.user_id,
+              comment_text: newComment.comment_text
+            })
+            .select('id')
+            .maybeSingle();
+
+          if (!minimalErr && minimalRow && minimalRow.id) {
+            newComment.id = String(minimalRow.id);
+            saveLocalEngagementForReel();
+            persistLocalReelState();
+          } else if (minimalErr) {
+            console.error('Comment insert failed:', minimalErr.message);
+          }
+        }
+      } catch (e) {
+        console.error('Comment insert error:', e);
+      }
     }
   });
 
@@ -2985,6 +3733,11 @@
       e.preventDefault();
       document.getElementById('sendCommentBtn').click();
     }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    saveLocalEngagementForReel();
+    persistLocalReelState();
   });
 
   setInterval(() => {
@@ -2996,20 +3749,11 @@
   }, 1000);
 
   document.addEventListener('DOMContentLoaded', async () => {
-    if (supabaseClient) {
-      try {
-        const { data } = await supabaseClient.auth.getUser();
-        if (data && data.user) {
-          currentUserId = data.user.id;
-          const myProf = await fetchProfileInfo(
-            currentUserId,
-            data.user.user_metadata?.full_name || data.user.email || 'You',
-            data.user.user_metadata?.avatar_url || ''
-          );
-          currentUserProfile = { name: myProf.name, avatar: myProf.avatar };
-        }
-      } catch (e) {}
-    }
+    const canProceed = await initAuthSession();
+    if (!canProceed) return;
+
+    loadLocalEngagementForReel();
+    updateCounters();
 
     await loadLiveFriendsAndUsers();
     await syncLiveReelFromSupabase();
