@@ -6,6 +6,7 @@
 <title>Create reel - Autrobook</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
   :root {
     --bg-color: #ffffff;
@@ -63,7 +64,7 @@
     background-color: var(--surface-color);
     display: flex;
     flex-direction: column;
-    padding-bottom: 28px;
+    padding-bottom: 32px;
   }
 
   /* Top Bar */
@@ -150,11 +151,14 @@
     cursor: not-allowed;
   }
 
-  /* Caption Box */
+  /* Caption & Factory Meta Box */
   .caption-box {
     padding: 12px 14px;
     border-bottom: 1px solid var(--border-color);
     background-color: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .caption-input {
@@ -174,11 +178,46 @@
     border-color: var(--accent-color);
   }
 
+  .factory-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: var(--muted-color);
+  }
+
+  .meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    font-weight: 600;
+  }
+
+  .cover-preview-thumb {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--accent-color);
+    display: none;
+  }
+
+  .cover-preview-thumb.visible {
+    display: inline-block;
+  }
+
   /* Horizontal Quick Tools Strip */
   .quick-tools-strip {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
+    gap: 12px;
     padding: 14px 14px 12px;
     overflow-x: auto;
     scrollbar-width: none;
@@ -443,35 +482,53 @@
   <!-- Top Header -->
   <header class="top-bar">
     <div class="top-left">
-      <a href="/reels.html" id="closeToReelsBtn" class="icon-btn" title="Cancel / Back to Reels" aria-label="Close">
+      <a href="/index.html" id="closeToReelsBtn" class="icon-btn" title="Cancel / Back" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </a>
       <h1 class="page-title">Create reel</h1>
     </div>
 
     <div class="top-right">
-      <button type="button" class="share-pill-btn" id="uploadBtn" title="Upload Reel">
+      <button type="button" class="share-pill-btn" id="uploadBtn" title="Share / Upload Reel">
         <i class="fa-solid fa-cloud-arrow-up"></i>
-        <span>Upload</span>
+        <span>Share</span>
       </button>
     </div>
   </header>
 
-  <!-- Caption Input -->
+  <!-- Caption & Factory Summary -->
   <div class="caption-box">
     <textarea id="reelCaptionInput" class="caption-input" placeholder="Write a caption for your reel..."></textarea>
+    <div class="factory-meta-row">
+      <span class="meta-badge" id="musicStatusBadge">
+        <i class="fa-solid fa-music"></i>
+        <span>No music selected</span>
+      </span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <img id="coverPreviewThumb" class="cover-preview-thumb" alt="Cover">
+        <span class="meta-badge" id="coverStatusBadge">
+          <i class="fa-regular fa-image"></i>
+          <span>Auto cover</span>
+        </span>
+      </div>
+    </div>
   </div>
 
-  <!-- Horizontal Quick Tools -->
+  <!-- Horizontal Quick Tools (Reel Factory) -->
   <nav class="quick-tools-strip" aria-label="Reel creation tools">
     <button type="button" class="quick-tool-item" id="cameraToolBtn">
-      <span class="quick-circle"><i class="fa-solid fa-camera"></i></span>
-      <span class="quick-label">Camera</span>
+      <span class="quick-circle"><i class="fa-solid fa-video"></i></span>
+      <span class="quick-label">Video Rec</span>
     </button>
 
     <button type="button" class="quick-tool-item" id="musicToolBtn">
       <span class="quick-circle"><i class="fa-solid fa-music"></i></span>
-      <span class="quick-label">Music</span>
+      <span class="quick-label">Music Add</span>
+    </button>
+
+    <button type="button" class="quick-tool-item" id="coverToolBtn">
+      <span class="quick-circle"><i class="fa-regular fa-image"></i></span>
+      <span class="quick-label">Cover Img</span>
     </button>
 
     <a href="/templates.html" class="quick-tool-item" id="templatesToolLink">
@@ -481,7 +538,7 @@
 
     <a href="/filters.html" class="quick-tool-item" id="filtersToolLink">
       <span class="quick-circle"><i class="fa-solid fa-sliders"></i></span>
-      <span class="quick-label">Add Filters</span>
+      <span class="quick-label">Filters</span>
     </a>
 
     <a href="/draft.html" class="quick-tool-item" id="draftsToolLink">
@@ -490,9 +547,10 @@
     </a>
   </nav>
 
-  <!-- Hidden inputs for Camera, Music, and Gallery uploads -->
+  <!-- Hidden inputs for Camera, Music, Cover, and Gallery uploads -->
   <input type="file" id="cameraCaptureInput" accept="video/*,image/*" capture="environment" hidden>
   <input type="file" id="musicFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac" hidden>
+  <input type="file" id="coverImageInput" accept="image/*" hidden>
   <input type="file" id="galleryUploadInput" accept="video/*,image/*" multiple hidden>
 
   <!-- Gallery & Select Multiple Row -->
@@ -513,7 +571,7 @@
     <div class="empty-gallery-box" id="emptyGalleryBox">
       <span class="empty-gallery-icon"><i class="fa-regular fa-images"></i></span>
       <h2 class="empty-gallery-title">No media selected yet</h2>
-      <p class="empty-gallery-sub">Tap Gallery or Camera to add videos or photos.</p>
+      <p class="empty-gallery-sub">Tap Gallery or Video Rec to add videos or photos.</p>
     </div>
   </section>
 
@@ -524,35 +582,85 @@
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-  const supabaseClient = window.supabase
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
+  const supabaseClient = (window.AutroAuth && window.AutroAuth.supabase)
+    ? window.AutroAuth.supabase
+    : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function generateUuid() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : ((r & 0x3) | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
     const closeToReelsBtn = document.getElementById('closeToReelsBtn');
     const cameraToolBtn = document.getElementById('cameraToolBtn');
     const musicToolBtn = document.getElementById('musicToolBtn');
+    const coverToolBtn = document.getElementById('coverToolBtn');
     const draftsToolLink = document.getElementById('draftsToolLink');
     const uploadBtn = document.getElementById('uploadBtn');
     const reelCaptionInput = document.getElementById('reelCaptionInput');
 
+    const musicStatusBadge = document.getElementById('musicStatusBadge');
+    const coverStatusBadge = document.getElementById('coverStatusBadge');
+    const coverPreviewThumb = document.getElementById('coverPreviewThumb');
+
     const cameraCaptureInput = document.getElementById('cameraCaptureInput');
     const musicFileInput = document.getElementById('musicFileInput');
+    const coverImageInput = document.getElementById('coverImageInput');
     const galleryUploadInput = document.getElementById('galleryUploadInput');
     const galleryPickerBtn = document.getElementById('galleryPickerBtn');
     const selectMultipleBtn = document.getElementById('selectMultipleBtn');
     const mediaGrid = document.getElementById('mediaGrid');
     const statusToast = document.getElementById('statusToast');
 
+    let currentUser = null;
+    let currentProfile = null;
     let isMultiSelect = false;
     let selectedAudioName = '';
+    let selectedCoverDataUrl = '';
+    let selectedCoverFile = null;
     let activeTile = null;
     const filesByUrl = new Map();
+
+    // Enforce authentication & onboarding (/login.html, /signup-name.html, /signup-contact.html)
+    if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
+      const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+      if (!authResult || !authResult.user) {
+        return;
+      }
+      currentUser = authResult.user;
+      currentProfile = authResult.profile || null;
+      try {
+        localStorage.setItem('autro_user_id', currentUser.id);
+        const resolvedName = String(
+          currentProfile?.full_name ||
+          currentProfile?.name ||
+          currentUser.user_metadata?.full_name ||
+          currentUser.user_metadata?.name ||
+          ''
+        ).trim();
+        if (resolvedName) {
+          localStorage.setItem('autro_profile_name', resolvedName);
+        }
+        if (currentProfile?.avatar_url) {
+          localStorage.setItem('autro_profile_avatar', currentProfile.avatar_url);
+        }
+      } catch (e) {}
+    } else {
+      window.location.replace('/login.html');
+      return;
+    }
 
     if (closeToReelsBtn) {
       closeToReelsBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        window.location.href = '/reels.html';
+        window.location.href = '/index.html';
       });
     }
 
@@ -565,70 +673,30 @@
       }, 2600);
     }
 
+    function updateMetaBadges() {
+      if (musicStatusBadge) {
+        musicStatusBadge.innerHTML = `<i class="fa-solid fa-music"></i><span>${selectedAudioName || 'No music selected'}</span>`;
+      }
+      if (coverStatusBadge) {
+        coverStatusBadge.innerHTML = `<i class="fa-regular fa-image"></i><span>${selectedCoverDataUrl ? 'Custom cover' : 'Auto cover'}</span>`;
+      }
+      if (coverPreviewThumb) {
+        if (selectedCoverDataUrl) {
+          coverPreviewThumb.src = selectedCoverDataUrl;
+          coverPreviewThumb.classList.add('visible');
+        } else {
+          coverPreviewThumb.removeAttribute('src');
+          coverPreviewThumb.classList.remove('visible');
+        }
+      }
+    }
+
     function syncEmptyState() {
       const hasTiles = mediaGrid.querySelectorAll('.media-tile').length > 0;
       const emptyBox = document.getElementById('emptyGalleryBox');
       if (emptyBox) {
         emptyBox.style.display = hasTiles ? 'none' : 'flex';
       }
-    }
-
-    function buildReelCardUrl(reelObj) {
-      const params = new URLSearchParams({
-        id: reelObj.id || '',
-        reel: reelObj.id || '',
-        media: reelObj.media_url || '',
-        type: reelObj.media_type || 'video',
-        title: reelObj.caption || reelObj.title || 'Autrobook Reel',
-        caption: reelObj.caption || '',
-        audio: reelObj.audio_name || '',
-        author: reelObj.author_name || '',
-        user_id: reelObj.user_id || '',
-        from: '/create-reels.html',
-        home: '/index.html',
-        profile: '/profile.html',
-        reels: '/reels.html',
-        card: '/reels-card.html'
-      });
-      return `/reels-card.html?${params.toString()}`;
-    }
-
-    function buildReelsFeedUrl(reelObj) {
-      const params = new URLSearchParams({
-        reel: reelObj.id || '',
-        id: reelObj.id || '',
-        from: '/create-reels.html',
-        home: '/index.html',
-        profile: '/profile.html',
-        card: '/reels-card.html'
-      });
-      return `/reels.html?${params.toString()}`;
-    }
-
-    function openReelsCardFromTile(tile) {
-      if (!tile) {
-        window.location.href = '/reels-card.html';
-        return;
-      }
-      const reelObj = {
-        id: tile.getAttribute('data-id') || `reel_${Date.now()}`,
-        media_url: tile.getAttribute('data-src') || '',
-        video_url: tile.getAttribute('data-src') || '',
-        media_type: tile.getAttribute('data-type') || 'video',
-        is_video: (tile.getAttribute('data-type') || 'video') === 'video',
-        is_reel: true,
-        caption: reelCaptionInput.value.trim() || tile.getAttribute('data-title') || 'Autrobook Reel',
-        audio_name: selectedAudioName || 'Original Audio',
-        author_name: localStorage.getItem('autro_profile_name') || 'Autrobook User',
-        author_avatar: localStorage.getItem('autro_profile_avatar') || '',
-        user_id: localStorage.getItem('autro_user_id') || '',
-        created_at: new Date().toISOString()
-      };
-      try {
-        localStorage.setItem('autrobook_active_reel_card', JSON.stringify(reelObj));
-        sessionStorage.setItem('autrobook_active_reel_card', JSON.stringify(reelObj));
-      } catch (e) {}
-      window.location.href = buildReelCardUrl(reelObj);
     }
 
     function setActiveTile(tile) {
@@ -645,35 +713,35 @@
         if (isMultiSelect) {
           tile.classList.toggle('selected');
         } else {
-          openReelsCardFromTile(tile);
+          notify(`Selected: ${tile.getAttribute('data-title') || 'Media'}`);
         }
       });
     }
 
     function addMediaTile(file, badgeText) {
-      const url = URL.createObjectURL(file);
-      filesByUrl.set(url, file);
+      const blobUrl = URL.createObjectURL(file);
+      filesByUrl.set(blobUrl, file);
       const isVideo = file.type.startsWith('video/');
-      const tileId = `reel_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const tileId = generateUuid();
       const tile = document.createElement('div');
       tile.className = 'media-tile';
       tile.setAttribute('data-id', tileId);
-      tile.setAttribute('data-src', url);
+      tile.setAttribute('data-src', blobUrl);
       tile.setAttribute('data-type', isVideo ? 'video' : 'image');
       tile.setAttribute('data-title', file.name);
       tile.innerHTML = isVideo
-        ? `<video src="${url}" muted playsinline preload="metadata"></video><span class="media-badge"><i class="fa-solid fa-video"></i> ${badgeText}</span><span class="select-check"><i class="fa-solid fa-check"></i></span>`
-        : `<img src="${url}" alt="${file.name}"><span class="media-badge"><i class="fa-regular fa-image"></i> ${badgeText}</span><span class="select-check"><i class="fa-solid fa-check"></i></span>`;
+        ? `<video src="${blobUrl}" muted playsinline preload="metadata"></video><span class="media-badge"><i class="fa-solid fa-video"></i> ${badgeText}</span><span class="select-check"><i class="fa-solid fa-check"></i></span>`
+        : `<img src="${blobUrl}" alt="${file.name}"><span class="media-badge"><i class="fa-regular fa-image"></i> ${badgeText}</span><span class="select-check"><i class="fa-solid fa-check"></i></span>`;
       bindTileClick(tile);
       mediaGrid.prepend(tile);
       setActiveTile(tile);
       syncEmptyState();
     }
 
-    function fileToDataUrl(file) {
+    function fileToDataUrl(file, maxBytes = 8 * 1024 * 1024) {
       return new Promise((resolve) => {
         if (!file) return resolve('');
-        if (file.size > 6 * 1024 * 1024) return resolve('');
+        if (file.size > maxBytes) return resolve('');
         const reader = new FileReader();
         reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
         reader.onerror = () => resolve('');
@@ -682,17 +750,24 @@
     }
 
     function saveReelEverywhere(reelRecord, fallbackDataUrl = '') {
+      const resolvedMedia = (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
+        ? reelRecord.media_url
+        : (fallbackDataUrl || reelRecord.media_url || '');
+
       const portableRecord = {
         ...reelRecord,
-        media_url: (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
-          ? reelRecord.media_url
-          : (fallbackDataUrl || reelRecord.media_url || ''),
-        video_url: (reelRecord.video_url && !String(reelRecord.video_url).startsWith('blob:'))
-          ? reelRecord.video_url
-          : (fallbackDataUrl || reelRecord.video_url || reelRecord.media_url || '')
+        media_url: resolvedMedia,
+        video_url: resolvedMedia,
+        video: resolvedMedia,
+        cover_url: selectedCoverDataUrl || reelRecord.cover_url || '',
+        music: reelRecord.audio_name || 'Original Audio',
+        name: reelRecord.author_name || 'Autrobook User',
+        likes: Number(reelRecord.likes ?? reelRecord.reaction_count ?? 0),
+        time: 'Just now'
       };
 
       const feedAndCardKeys = [
+        'reels',
         'autrobook_live_reels',
         'autro_reels',
         'autrobook_reels',
@@ -718,7 +793,9 @@
       const writeList = (key, maxLen = 40) => {
         try {
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
-          const arr = Array.isArray(existing) ? existing.filter((x) => x && String(x.id) !== String(portableRecord.id)) : [];
+          const arr = Array.isArray(existing)
+            ? existing.filter((x) => x && String(x.id) !== String(portableRecord.id))
+            : [];
           arr.unshift(portableRecord);
           localStorage.setItem(key, JSON.stringify(arr.slice(0, maxLen)));
         } catch (e) {
@@ -727,6 +804,7 @@
               id: portableRecord.id,
               user_id: portableRecord.user_id || '',
               author_name: portableRecord.author_name || 'Autrobook User',
+              name: portableRecord.author_name || 'Autrobook User',
               author_avatar: portableRecord.author_avatar || '',
               caption: portableRecord.caption || '',
               is_reel: true,
@@ -734,11 +812,15 @@
               media_type: portableRecord.media_type || 'video',
               media_url: String(portableRecord.media_url || '').startsWith('data:') ? '' : (portableRecord.media_url || ''),
               video_url: String(portableRecord.video_url || '').startsWith('data:') ? '' : (portableRecord.video_url || ''),
+              video: String(portableRecord.video || '').startsWith('data:') ? '' : (portableRecord.video || ''),
               audio_name: portableRecord.audio_name || 'Original Audio',
+              music: portableRecord.audio_name || 'Original Audio',
+              likes: 0,
               reaction_count: 0,
               comment_count: 0,
               share_count: 0,
               view_count: 0,
+              time: 'Just now',
               created_at: portableRecord.created_at
             };
             localStorage.setItem(key, JSON.stringify([slim]));
@@ -758,45 +840,30 @@
     }
 
     async function persistReelToBackend(reelRecord, rawFile) {
-      let userId = localStorage.getItem('autro_user_id') || '';
-      let authorName = localStorage.getItem('autro_profile_name') || 'Autrobook User';
-      let authorAvatar = localStorage.getItem('autro_profile_avatar') || '';
+      const userId = currentUser?.id || localStorage.getItem('autro_user_id') || '';
+      const authorName = String(
+        currentProfile?.full_name ||
+        currentProfile?.name ||
+        currentUser?.user_metadata?.full_name ||
+        localStorage.getItem('autro_profile_name') ||
+        'Autrobook User'
+      ).trim();
+      const authorAvatar = String(
+        currentProfile?.avatar_url ||
+        localStorage.getItem('autro_profile_avatar') ||
+        ''
+      ).trim();
 
-      if (supabaseClient) {
-        try {
-          const { data: authData } = await supabaseClient.auth.getUser();
-          if (authData?.user?.id) {
-            userId = authData.user.id;
-            localStorage.setItem('autro_user_id', userId);
-          }
-          if (userId) {
-            const { data: prof } = await supabaseClient
-              .from('profiles')
-              .select('full_name, avatar_url')
-              .eq('id', userId)
-              .maybeSingle();
-            if (prof?.full_name) {
-              authorName = prof.full_name;
-              localStorage.setItem('autro_profile_name', authorName);
-            }
-            if (prof?.avatar_url) {
-              authorAvatar = prof.avatar_url;
-              localStorage.setItem('autro_profile_avatar', authorAvatar);
-            }
-          }
-        } catch (e) {}
-      }
-
-      reelRecord.user_id = userId || reelRecord.user_id || '';
+      reelRecord.user_id = userId;
       reelRecord.author_name = authorName;
       reelRecord.author_avatar = authorAvatar;
 
-      const dataUrlBackup = rawFile ? await fileToDataUrl(rawFile) : '';
+      const dataUrlBackup = rawFile ? await fileToDataUrl(rawFile, 8 * 1024 * 1024) : '';
 
-      if (supabaseClient && rawFile && !String(reelRecord.media_url).startsWith('http')) {
+      if (supabaseClient && rawFile) {
         try {
-          const ext = (rawFile.name && rawFile.name.split('.').pop()) || 'mp4';
-          const filePath = `${userId || 'anon'}/${reelRecord.id}.${ext}`;
+          const ext = (rawFile.name && rawFile.name.split('.').pop()) || (reelRecord.is_video ? 'mp4' : 'jpg');
+          const filePath = `${userId}/${reelRecord.id}.${ext}`;
           const { error: upErr } = await supabaseClient.storage
             .from('reels')
             .upload(filePath, rawFile, { upsert: true });
@@ -810,49 +877,42 @@
         } catch (e) {}
       }
 
-      if (supabaseClient) {
+      if (supabaseClient && selectedCoverFile) {
         try {
-          await supabaseClient.from('reels').insert({
+          const cExt = (selectedCoverFile.name && selectedCoverFile.name.split('.').pop()) || 'jpg';
+          const coverPath = `${userId}/covers/${reelRecord.id}.${cExt}`;
+          const { error: cErr } = await supabaseClient.storage
+            .from('reels')
+            .upload(coverPath, selectedCoverFile, { upsert: true });
+          if (!cErr) {
+            const { data: cPub } = supabaseClient.storage.from('reels').getPublicUrl(coverPath);
+            if (cPub?.publicUrl) {
+              reelRecord.cover_url = cPub.publicUrl;
+            }
+          }
+        } catch (e) {}
+      }
+
+      const finalMediaForDb = (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
+        ? reelRecord.media_url
+        : dataUrlBackup;
+
+      if (supabaseClient && userId) {
+        try {
+          await supabaseClient.from('posts').insert({
             id: reelRecord.id,
-            user_id: reelRecord.user_id || null,
-            author_name: reelRecord.author_name,
-            author_avatar: reelRecord.author_avatar,
-            media_url: reelRecord.media_url,
-            video_url: reelRecord.media_url,
-            media_type: reelRecord.media_type,
+            user_id: userId,
+            author_name: authorName,
+            author_avatar: authorAvatar,
             caption: reelRecord.caption,
-            audio_name: reelRecord.audio_name,
             is_reel: true,
+            media_url: finalMediaForDb,
+            media_type: reelRecord.media_type,
+            audience: 'public',
             created_at: reelRecord.created_at
           });
         } catch (e) {}
       }
-
-      try {
-        const formData = new FormData();
-        if (rawFile) formData.append('video', rawFile);
-        formData.append('id', reelRecord.id);
-        formData.append('caption', reelRecord.caption);
-        formData.append('author_name', reelRecord.author_name);
-        formData.append('user_id', reelRecord.user_id);
-        formData.append('media_url', reelRecord.media_url);
-
-        const res = await fetch('/api/reels', {
-          method: 'POST',
-          body: formData
-        });
-        if (res.ok) {
-          const ct = res.headers.get('content-type') || '';
-          if (ct.includes('application/json')) {
-            const json = await res.json();
-            const returnedUrl = json?.video_url || json?.media_url || json?.reel?.video_url || json?.reel?.media_url;
-            if (returnedUrl) {
-              reelRecord.media_url = returnedUrl;
-              reelRecord.video_url = returnedUrl;
-            }
-          }
-        }
-      } catch (e) {}
 
       saveReelEverywhere(reelRecord, dataUrlBackup);
       return reelRecord;
@@ -868,16 +928,17 @@
       }
 
       uploadBtn.disabled = true;
-      notify('Uploading reel...');
+      notify('Sharing reel...');
 
-      const mediaUrl = chosenTile ? (chosenTile.getAttribute('data-src') || '') : '';
+      const blobSrc = chosenTile ? (chosenTile.getAttribute('data-src') || '') : '';
       const mediaType = chosenTile ? (chosenTile.getAttribute('data-type') || 'video') : 'video';
-      const rawFile = mediaUrl ? filesByUrl.get(mediaUrl) : null;
+      const rawFile = blobSrc ? filesByUrl.get(blobSrc) : null;
 
       const reelRecord = {
-        id: (chosenTile && chosenTile.getAttribute('data-id')) || `reel_${Date.now()}`,
-        media_url: mediaUrl,
-        video_url: mediaUrl,
+        id: generateUuid(),
+        media_url: blobSrc,
+        video_url: blobSrc,
+        cover_url: selectedCoverDataUrl || '',
         media_type: mediaType,
         is_video: mediaType === 'video',
         caption: captionText || (chosenTile && chosenTile.getAttribute('data-title')) || 'New Reel',
@@ -893,11 +954,10 @@
       };
 
       const savedRecord = await persistReelToBackend(reelRecord, rawFile);
-      saveReelEverywhere(savedRecord);
 
-      notify('Reel Uploaded! Opening Reels...');
+      notify('Reel shared! Redirecting...');
       setTimeout(() => {
-        window.location.href = buildReelsFeedUrl(savedRecord);
+        window.location.href = '/index.html';
       }, 300);
     });
 
@@ -915,8 +975,8 @@
     cameraCaptureInput.addEventListener('change', () => {
       const file = cameraCaptureInput.files && cameraCaptureInput.files[0];
       if (!file) return;
-      addMediaTile(file, 'Camera');
-      notify(`Captured: ${file.name}`);
+      addMediaTile(file, 'Rec');
+      notify(`Recorded: ${file.name}`);
     });
 
     musicToolBtn.addEventListener('click', () => {
@@ -927,7 +987,21 @@
       const file = musicFileInput.files && musicFileInput.files[0];
       if (!file) return;
       selectedAudioName = file.name;
-      notify(`Audio selected: ${file.name}`);
+      updateMetaBadges();
+      notify(`Music added: ${file.name}`);
+    });
+
+    coverToolBtn.addEventListener('click', () => {
+      coverImageInput.click();
+    });
+
+    coverImageInput.addEventListener('change', async () => {
+      const file = coverImageInput.files && coverImageInput.files[0];
+      if (!file) return;
+      selectedCoverFile = file;
+      selectedCoverDataUrl = await fileToDataUrl(file, 4 * 1024 * 1024);
+      updateMetaBadges();
+      notify(`Cover selected: ${file.name}`);
     });
 
     galleryPickerBtn.addEventListener('click', () => {
@@ -962,12 +1036,13 @@
           title: el.getAttribute('data-title')
         }));
 
-        const hasDraftData = selectedItems.length > 0 || Boolean(selectedAudioName) || Boolean(reelCaptionInput.value.trim());
+        const hasDraftData = selectedItems.length > 0 || Boolean(selectedAudioName) || Boolean(reelCaptionInput.value.trim()) || Boolean(selectedCoverDataUrl);
         if (hasDraftData) {
           const newDraft = {
             id: 'draft_' + Date.now(),
             caption: reelCaptionInput.value.trim(),
             audio: selectedAudioName,
+            cover: selectedCoverDataUrl,
             selectedCount: selectedItems.length,
             items: selectedItems,
             savedAt: new Date().toLocaleString()
@@ -986,7 +1061,9 @@
         }
       });
     }
+
+    updateMetaBadges();
   });
 </script>
 </body>
-</html>
+  </html>
