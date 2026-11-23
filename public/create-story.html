@@ -6,6 +6,7 @@
   <title>Create Story — Autrobook</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="/auth.js"></script>
   <style>
     :root {
       color-scheme: light dark;
@@ -556,7 +557,7 @@
         <i class="fas fa-times"></i>
       </a>
       <h1 class="header-title">Create story</h1>
-      <a href="story-privacy.html" id="storyPrivacyLink" class="icon-btn" title="Story privacy settings" aria-label="Story privacy settings">
+      <a href="/story-privacy.html" id="storyPrivacyLink" class="icon-btn" title="Story privacy settings" aria-label="Story privacy settings">
         <i class="fas fa-gear"></i>
       </a>
     </div>
@@ -565,8 +566,14 @@
   <div class="shell">
     <section class="studio-deck" aria-label="Story creation tools">
       <div class="quick-tools-row">
+        <button type="button" class="quick-tool-pill" onclick="triggerCameraInput()">
+          <i class="fas fa-camera"></i><span>Camera</span>
+        </button>
+        <button type="button" class="quick-tool-pill" onclick="triggerGalleryInput()">
+          <i class="fas fa-images"></i><span>Gallery</span>
+        </button>
         <button type="button" class="quick-tool-pill" onclick="openEditor('text')">
-          <b>Aa</b><span>Text</span>
+          <b>Aa</b><span>Text/Add</span>
         </button>
         <button type="button" class="quick-tool-pill" onclick="triggerMusicFileInput()">
           <i class="fas fa-music"></i><span>Music</span>
@@ -584,6 +591,7 @@
     </section>
 
     <section class="gallery-panel" aria-label="Gallery media selector">
+      <input type="file" id="cameraCaptureInput" accept="image/*,video/*" capture="environment" style="display:none;">
       <input type="file" id="galleryFileInput" accept="image/*,video/*" multiple style="display:none;">
       <input type="file" id="musicFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style="display:none;">
 
@@ -688,7 +696,7 @@
 
       <div class="editor-footer">
         <button type="button" class="sec-btn" onclick="closeEditor()">Cancel</button>
-        <a href="story-card.html" id="shareToIndexBtn" class="pri-btn" onclick="return handleShareClick(event)">
+        <a href="/story-card.html" id="shareToIndexBtn" class="pri-btn" onclick="return handleShareClick(event)">
           <i class="fas fa-paper-plane"></i>
           <span>Share</span>
         </a>
@@ -701,18 +709,15 @@
   <script>
     const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
-    const STORY_CARD_PAGE = 'story-card.html';
+    const STORY_CARD_PAGE = '/story-card.html';
     const HOME_INDEX_PAGE = '/index.html';
 
-    let sb = null;
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-      try {
-        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      } catch (e) {
-        sb = null;
-      }
-    }
+    const sb = (window.AutroAuth && window.AutroAuth.supabase)
+      ? window.AutroAuth.supabase
+      : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
+    let currentUser = null;
+    let currentProfile = null;
     let galleryItems = [];
     let selectedIds = [];
     let currentFilter = 'none';
@@ -722,6 +727,17 @@
     let selectedMusicUrl = '';
     let selectedMusicName = '';
     let publishedStories = [];
+
+    function generateUuid() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : ((r & 0x3) | 0x8);
+        return v.toString(16);
+      });
+    }
 
     function showToast(msg) {
       const el = document.getElementById('toast');
@@ -765,7 +781,8 @@
         : selectedIds.map(id => galleryItems.find(m => m.id === id)).filter(Boolean);
       const first = chosen[0] || galleryItems[0] || null;
       const caption = (document.getElementById('storyTextInput')?.value || '').trim();
-      const privacy = document.getElementById('audienceSelect')?.value || 'public';
+      const rawPrivacy = document.getElementById('audienceSelect')?.value || 'public';
+      const privacy = rawPrivacy === 'specific' ? 'specific_friend' : rawPrivacy;
       const specificRaw = (document.getElementById('specificFriendsInput')?.value || '').trim();
       const allowedFriendIds = specificRaw
         ? specificRaw.split(',').map(s => s.trim()).filter(Boolean)
@@ -773,28 +790,44 @@
 
       const selectVal = document.getElementById('musicSelect')?.value || '';
       const musicTitle = selectedMusicName || selectVal || '';
-      const nowIso = new Date().toISOString();
-      const expiresIso = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      const expiresIso = new Date(nowMs + 48 * 60 * 60 * 1000).toISOString();
 
-      let currentUser = {};
+      let cachedUser = {};
       try {
-        currentUser = JSON.parse(localStorage.getItem('autrobook_current_user') || '{}') || {};
+        cachedUser = JSON.parse(localStorage.getItem('autrobook_current_user') || '{}') || {};
       } catch (e) {}
 
-      const ownerId = currentUser.id || localStorage.getItem('autro_user_id') || 'user_self';
-      const authorName = currentUser.name || localStorage.getItem('autro_profile_name') || 'User';
-      const authorAvatar = currentUser.avatar || localStorage.getItem('autro_profile_avatar') || '';
-      const ownerFriends = Array.isArray(currentUser.friends) ? currentUser.friends : [];
+      const ownerId = currentUser?.id || cachedUser.id || localStorage.getItem('autro_user_id') || '';
+      const authorName = String(
+        currentProfile?.full_name ||
+        currentProfile?.name ||
+        currentUser?.user_metadata?.full_name ||
+        cachedUser.name ||
+        localStorage.getItem('autro_profile_name') ||
+        'Autrobook User'
+      ).trim();
+      const authorAvatar = String(
+        currentProfile?.avatar_url ||
+        cachedUser.avatar ||
+        localStorage.getItem('autro_profile_avatar') ||
+        ''
+      ).trim();
+      const ownerFriends = Array.isArray(cachedUser.friends) ? cachedUser.friends : [];
 
       const resolvedMedia = first
         ? (String(first.url || '').startsWith('blob:') && first.dataUrl ? first.dataUrl : (first.url || ''))
         : '';
 
+      const resolvedId = storyId || generateUuid();
+
       return {
-        id: storyId || ('story_' + Date.now()),
+        id: resolvedId,
         ownerId,
         isOwner: true,
         user_id: ownerId,
+        name: authorName,
         authorName,
         author_name: authorName,
         authorAvatar,
@@ -803,8 +836,10 @@
         audience: privacy,
         ownerFriends,
         allowedFriendIds,
+        specific_friends: allowedFriendIds,
         mediaType: first ? first.type : 'image',
         media_type: first ? first.type : 'image',
+        image: resolvedMedia,
         mediaUrl: resolvedMedia,
         media_url: resolvedMedia,
         image_url: resolvedMedia,
@@ -822,9 +857,11 @@
         music: musicTitle,
         music_name: musicTitle,
         music_url: selectedMusicUrl || '',
+        time: nowMs,
         createdAt: nowIso,
         created_at: nowIso,
         expires_at: expiresIso,
+        viewed: [],
         viewers: []
       };
     }
@@ -836,7 +873,7 @@
         localStorage.setItem('autro_new_story_created', JSON.stringify(payload));
       } catch (e) {}
 
-      ['autrobook_stories_v1', 'autrobook_stories', 'autro_stories'].forEach((key) => {
+      ['stories', 'autrobook_stories_v1', 'autrobook_stories', 'autro_stories'].forEach((key) => {
         try {
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
           const arr = Array.isArray(existing) ? existing.filter(s => s && String(s.id) !== String(payload.id)) : [];
@@ -866,6 +903,14 @@
       );
       if (!isMediaEl) return;
       openStoryCardPage(buildStoryPayload());
+    }
+
+    function triggerCameraInput() {
+      const input = document.getElementById('cameraCaptureInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
     }
 
     function triggerGalleryInput() {
@@ -966,38 +1011,51 @@
       grid.innerHTML = pickTileHtml + itemsHtml;
     }
 
-    function bindGalleryUpload() {
-      const input = document.getElementById('galleryFileInput');
-      if (!input) return;
-      input.addEventListener('change', async () => {
-        const files = Array.from(input.files || []);
-        if (!files.length) return;
+    async function ingestFiles(files, sourceLabel = 'gallery') {
+      if (!files.length) return;
+      const addedIds = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const blobUrl = URL.createObjectURL(file);
+        const dataUrl = await fileToDataUrl(file, 3.5 * 1024 * 1024);
+        const id = generateUuid();
+        const isVideo = file.type && file.type.startsWith('video/');
+        galleryItems.unshift({
+          id,
+          type: isVideo ? 'video' : 'image',
+          url: blobUrl,
+          dataUrl,
+          file,
+          label: file.name || `${sourceLabel} item`
+        });
+        addedIds.push(id);
+      }
 
-        const addedIds = [];
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const blobUrl = URL.createObjectURL(file);
-          const dataUrl = await fileToDataUrl(file, 3.5 * 1024 * 1024);
-          const id = 'gallery_' + Date.now() + '_' + i;
-          const isVideo = file.type && file.type.startsWith('video/');
-          galleryItems.unshift({
-            id,
-            type: isVideo ? 'video' : 'image',
-            url: blobUrl,
-            dataUrl,
-            label: file.name || 'Gallery item'
-          });
-          addedIds.push(id);
-        }
+      selectedIds = addedIds.length > 1 ? addedIds : [addedIds[0]];
+      if (addedIds.length > 1 && currentLayout === 'single') {
+        currentLayout = 'collage';
+      }
+      renderGallery();
+      openEditor('media');
+      showToast(`${files.length} selected from ${sourceLabel}`);
+    }
 
-        selectedIds = addedIds.length > 1 ? addedIds : [addedIds[0]];
-        if (addedIds.length > 1 && currentLayout === 'single') {
-          currentLayout = 'collage';
-        }
-        renderGallery();
-        openEditor('media');
-        showToast(`${files.length} selected from gallery`);
-      });
+    function bindMediaUploads() {
+      const galleryInput = document.getElementById('galleryFileInput');
+      if (galleryInput) {
+        galleryInput.addEventListener('change', async () => {
+          const files = Array.from(galleryInput.files || []);
+          await ingestFiles(files, 'gallery');
+        });
+      }
+
+      const cameraInput = document.getElementById('cameraCaptureInput');
+      if (cameraInput) {
+        cameraInput.addEventListener('change', async () => {
+          const files = Array.from(cameraInput.files || []);
+          await ingestFiles(files, 'camera');
+        });
+      }
     }
 
     function openEditor(mode) {
@@ -1148,21 +1206,48 @@
     }
 
     async function persistStoryToSupabase(storyObj) {
-      if (!sb) return;
+      if (!sb || !currentUser?.id) return;
       try {
-        let userId = null;
-        if (sb.auth?.getUser) {
-          const { data } = await sb.auth.getUser();
-          userId = data?.user?.id || null;
+        const chosen = selectedIds.map(id => galleryItems.find(m => m.id === id)).filter(Boolean);
+        const first = chosen[0] || galleryItems[0] || null;
+        let finalMediaUrl = storyObj.media_url;
+
+        if (first?.file) {
+          const ext = (first.file.name && first.file.name.split('.').pop()) || (first.type === 'video' ? 'mp4' : 'jpg');
+          const filePath = `${currentUser.id}/${storyObj.id}.${ext}`;
+          const { error: upErr } = await sb.storage
+            .from('stories')
+            .upload(filePath, first.file, { upsert: true });
+          if (!upErr) {
+            const { data: pub } = sb.storage.from('stories').getPublicUrl(filePath);
+            if (pub?.publicUrl) {
+              finalMediaUrl = pub.publicUrl;
+              storyObj.media_url = pub.publicUrl;
+              storyObj.mediaUrl = pub.publicUrl;
+              storyObj.image = pub.publicUrl;
+              storyObj.image_url = pub.publicUrl;
+            }
+          }
         }
+
         await sb.from('stories').insert({
           id: storyObj.id,
-          user_id: userId,
-          media_url: storyObj.media_url,
+          user_id: currentUser.id,
+          author_name: storyObj.author_name,
+          author_avatar: storyObj.author_avatar,
+          title: storyObj.title,
+          caption: storyObj.caption,
+          media_url: finalMediaUrl,
           media_type: storyObj.media_type,
-          caption: storyObj.title,
-          audience: storyObj.privacy,
-          created_at: storyObj.created_at
+          sticker: storyObj.sticker,
+          music: storyObj.music,
+          music_url: storyObj.music_url,
+          text_position: storyObj.text_position,
+          filter: storyObj.filter,
+          audience: storyObj.audience,
+          specific_friends: storyObj.specific_friends,
+          created_at: storyObj.created_at,
+          expires_at: storyObj.expires_at
         });
       } catch (e) {
         console.warn('Supabase story insert skipped:', e);
@@ -1177,10 +1262,11 @@
         return false;
       }
 
+      await persistStoryToSupabase(payload);
+
       publishedStories = [payload, ...publishedStories.filter(s => s && String(s.id) !== String(payload.id))].slice(0, 25);
       storeStoryInAllKeys(payload);
 
-      await persistStoryToSupabase(payload);
       renderSavedStories();
       closeEditor();
       window.location.href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(payload.id)}`;
@@ -1205,18 +1291,47 @@
       }).join('');
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
+        const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+        if (!authResult || !authResult.user) {
+          return;
+        }
+        currentUser = authResult.user;
+        currentProfile = authResult.profile || null;
+        try {
+          localStorage.setItem('autro_user_id', currentUser.id);
+          const resolvedName = String(
+            currentProfile?.full_name ||
+            currentProfile?.name ||
+            currentUser.user_metadata?.full_name ||
+            currentUser.user_metadata?.name ||
+            ''
+          ).trim();
+          if (resolvedName) {
+            localStorage.setItem('autro_profile_name', resolvedName);
+          }
+          if (currentProfile?.avatar_url) {
+            localStorage.setItem('autro_profile_avatar', currentProfile.avatar_url);
+          }
+        } catch (e) {}
+      } else {
+        window.location.replace('/login.html');
+        return;
+      }
+
       try {
-        const stored = JSON.parse(localStorage.getItem('autrobook_stories_v1') || '[]') || [];
+        const stored = JSON.parse(localStorage.getItem('stories') || localStorage.getItem('autrobook_stories_v1') || '[]') || [];
         if (Array.isArray(stored) && stored.length) {
           publishedStories = stored;
           renderSavedStories();
         }
       } catch (e) {}
-      bindGalleryUpload();
+
+      bindMediaUploads();
       bindMusicUpload();
       renderGallery();
     });
   </script>
 </body>
-        </html>
+  </html>
