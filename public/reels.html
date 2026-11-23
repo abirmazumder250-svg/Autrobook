@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reels - Autrobook</title>
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth.js"></script>
@@ -649,7 +650,7 @@
   <div class="confirm-modal-card">
     <div class="confirm-modal-title" id="deleteModalTitle">Delete Reel?</div>
     <div class="confirm-modal-desc" id="deleteModalDesc">
-      This will permanently remove the reel from Supabase and your local feed. This action cannot be undone.
+      This will permanently remove the reel from Supabase, Home Feed, Profile Reels, and local storage. This action cannot be undone.
     </div>
     <div class="confirm-modal-actions">
       <button type="button" class="modal-cancel-btn" id="cancelDeleteReelBtn">Cancel</button>
@@ -695,6 +696,13 @@
     ? window.AutroAuth.supabase
     : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
+  let reelSyncChannel = null;
+  try {
+    if ('BroadcastChannel' in window) {
+      reelSyncChannel = new BroadcastChannel('autrobook_reels_sync');
+    }
+  } catch (_) {}
+
   const urlParams = new URLSearchParams(window.location.search);
   let targetUserId = urlParams.get('user_id') || '';
   const focusedReelId = urlParams.get('reel') || urlParams.get('id') || '';
@@ -730,9 +738,43 @@
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(val || '').trim());
   }
 
+  function getDeletedReelIdsSet() {
+    const set = new Set();
+    const keys = ['autro_deleted_reel_ids', 'deleted_reel_ids', 'autrobook_deleted_reels'];
+    keys.forEach((k) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(arr)) {
+          arr.forEach((v) => {
+            if (typeof v === 'string' || typeof v === 'number') {
+              const clean = String(v).trim();
+              if (clean) set.add(clean);
+            } else if (v && typeof v === 'object') {
+              const clean = String(v.id || v.reel_id || '').trim();
+              if (clean) set.add(clean);
+            }
+          });
+        }
+      } catch (_) {}
+    });
+    return set;
+  }
+
+  function recordDeletedReelId(reelId) {
+    const cleanId = String(reelId || '').trim();
+    if (!cleanId) return;
+    try {
+      const arr = JSON.parse(localStorage.getItem('autro_deleted_reel_ids') || '[]');
+      const set = new Set(Array.isArray(arr) ? arr.map(String) : []);
+      set.add(cleanId);
+      localStorage.setItem('autro_deleted_reel_ids', JSON.stringify(Array.from(set).slice(-150)));
+    } catch (_) {}
+  }
+
   function getCreateReelsUrl() {
     const createUrl = new URL('/create-reels.html', window.location.origin);
     createUrl.searchParams.set('return_to', '/reels.html');
+    createUrl.searchParams.set('card_page', '/reels-card.html');
     if (currentUserId) createUrl.searchParams.set('user_id', currentUserId);
     return createUrl.toString();
   }
@@ -871,6 +913,8 @@
     if (reel.media_url) u.searchParams.set('media', reel.media_url);
     if (reel.media_type) u.searchParams.set('type', reel.media_type);
     if (reel.caption) u.searchParams.set('caption', reel.caption);
+    if (reel.singer_name) u.searchParams.set('singer', reel.singer_name);
+    if (reel.song_title) u.searchParams.set('song', reel.song_title);
     if (reel.audio_name) u.searchParams.set('audio', reel.audio_name);
     if (reel.quality) u.searchParams.set('quality', reel.quality);
     if (reel.audience) u.searchParams.set('audience', reel.audience);
@@ -886,9 +930,11 @@
   function normalizeReelRecord(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const id = String(raw.id || raw.reel_id || raw.created_at || raw.time || '').trim();
-    const mediaUrl = String(raw.media_url || raw.video_url || raw.video || raw.url || '').trim();
+    if (!id || getDeletedReelIdsSet().has(id)) return null;
+
+    const mediaUrl = String(raw.media_url || raw.video_url || raw.video || raw.url || raw.src || '').trim();
     const caption = String(raw.caption || raw.title || raw.description || '').trim();
-    if (!id && !mediaUrl && !caption) return null;
+    if (!mediaUrl && !caption) return null;
 
     const rawTime = raw.created_at || raw.time || Date.now();
     const isoTime = typeof rawTime === 'number'
@@ -896,19 +942,30 @@
       : String(rawTime || new Date().toISOString());
 
     return {
-      id: id || `reel-${Date.now()}`,
+      id,
       user_id: raw.user_id || raw.author_id || currentUserId || '',
       author_name: raw.author_name || raw.name || raw.username || raw.user_name || 'Autrobook User',
-      author_avatar: raw.author_avatar || raw.avatar_url || '',
+      author_avatar: raw.author_avatar || raw.avatar_url || raw.avatar || '',
       media_url: mediaUrl,
-      media_type: raw.media_type || (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl) ? 'video/mp4' : 'video'),
+      media_type: raw.media_type || raw.type || (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl) ? 'video/mp4' : 'video'),
       caption,
-      audio_name: raw.audio_name || raw.music || 'Original Audio',
+      singer_name: raw.singer_name || raw.artist_name || '',
+      song_title: raw.song_title || raw.song_name || '',
+      audio_name: raw.audio_name || raw.music || raw.audio || 'Original Audio',
       quality: raw.quality || 'HD',
       audience: raw.audience || 'Public',
-      likes: Number(raw.likes ?? raw.reaction_count ?? 0),
+      likes: Number(raw.likes ?? raw.likes_count ?? raw.reaction_count ?? 0),
       created_at: isoTime
     };
+  }
+
+  function syncReelsToSharedStores(reelsList) {
+    const deletedSet = getDeletedReelIdsSet();
+    const cleanList = (reelsList || []).filter((r) => r && r.id && !deletedSet.has(String(r.id)));
+    try {
+      localStorage.setItem('autrobook_live_reels', JSON.stringify(cleanList.slice(0, 100)));
+      localStorage.setItem('reels', JSON.stringify(cleanList.slice(0, 100)));
+    } catch (_) {}
   }
 
   function loadLocalLists() {
@@ -944,9 +1001,11 @@
   }
 
   async function fetchReelsFromSources() {
+    const deletedSet = getDeletedReelIdsSet();
     const localKeys = [
       'reels',
       'autrobook_live_reels',
+      'autrobook_reels_queue',
       'autro_reels',
       'autrobook_reels',
       'autro_instant_reels'
@@ -958,6 +1017,15 @@
         const parsed = JSON.parse(localStorage.getItem(key) || '[]');
         if (Array.isArray(parsed)) localReels.push(...parsed);
       } catch (e) {}
+    });
+
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('autrobook_profile_reels_')) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+          if (Array.isArray(parsed)) localReels.push(...parsed);
+        } catch (e) {}
+      }
     });
 
     try {
@@ -1006,7 +1074,7 @@
     const map = new Map();
     [...apiReels, ...remoteReels, ...localReels].forEach((raw) => {
       const norm = normalizeReelRecord(raw);
-      if (norm && norm.id) {
+      if (norm && norm.id && !deletedSet.has(String(norm.id))) {
         map.set(norm.id, { ...map.get(norm.id), ...norm });
       }
     });
@@ -1014,12 +1082,28 @@
     allReels = Array.from(map.values()).sort(
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     );
+
+    syncReelsToSharedStores(allReels);
+  }
+
+  function extractStoragePathFromPublicUrl(url, bucketName = 'reels') {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    const marker = `/storage/v1/object/public/${bucketName}/`;
+    const idx = raw.indexOf(marker);
+    if (idx === -1) return '';
+    return decodeURIComponent(raw.slice(idx + marker.length).split('?')[0]);
   }
 
   function removeReelFromLocalStores(reelId) {
+    const cleanId = String(reelId || '').trim();
+    if (!cleanId) return;
+    recordDeletedReelId(cleanId);
+
     const localKeys = [
       'reels',
       'autrobook_live_reels',
+      'autrobook_reels_queue',
       'autro_reels',
       'autrobook_reels',
       'autro_instant_reels'
@@ -1031,7 +1115,7 @@
         if (Array.isArray(parsed)) {
           const filtered = parsed.filter((item) => {
             const id = String(item?.id || item?.reel_id || '');
-            return id !== String(reelId);
+            return id !== cleanId;
           });
           localStorage.setItem(key, JSON.stringify(filtered));
         }
@@ -1043,7 +1127,7 @@
         try {
           const parsed = JSON.parse(localStorage.getItem(key) || '[]');
           if (Array.isArray(parsed)) {
-            const filtered = parsed.filter((item) => String(item?.id || item?.reel_id || '') !== String(reelId));
+            const filtered = parsed.filter((item) => String(item?.id || item?.reel_id || '') !== cleanId);
             localStorage.setItem(key, JSON.stringify(filtered));
           }
         } catch (e) {}
@@ -1052,69 +1136,90 @@
 
     try {
       const singleNew = JSON.parse(localStorage.getItem('autro_new_reel_created') || 'null');
-      if (singleNew && String(singleNew.id || singleNew.reel_id || '') === String(reelId)) {
+      if (singleNew && String(singleNew.id || singleNew.reel_id || '') === cleanId) {
         localStorage.removeItem('autro_new_reel_created');
       }
     } catch (e) {}
 
     try {
       const engMap = JSON.parse(localStorage.getItem('autrobook_reel_engagement') || '{}');
-      if (engMap && typeof engMap === 'object' && engMap[reelId]) {
-        delete engMap[reelId];
+      if (engMap && typeof engMap === 'object' && engMap[cleanId]) {
+        delete engMap[cleanId];
         localStorage.setItem('autrobook_reel_engagement', JSON.stringify(engMap));
       }
     } catch (e) {}
   }
 
+  function broadcastDeletionEverywhere(reelId) {
+    const cleanId = String(reelId || '').trim();
+    if (!cleanId) return;
+
+    try {
+      if (reelSyncChannel) {
+        reelSyncChannel.postMessage({
+          type: 'DELETE_REEL_CARD',
+          reelId: cleanId,
+          id: cleanId,
+          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+        });
+        reelSyncChannel.postMessage({
+          type: 'REEL_DELETED',
+          reelId: cleanId,
+          id: cleanId,
+          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+        });
+      }
+    } catch (_) {}
+
+    try {
+      window.parent?.postMessage({ type: 'DELETE_REEL', reel_id: cleanId, reelId: cleanId }, '*');
+    } catch (_) {}
+  }
+
   async function deleteReelFromSupabaseAndState(reel) {
     if (!reel || !reel.id) return false;
-    const reelId = String(reel.id);
+    const reelId = String(reel.id).trim();
+    const targetObj = allReels.find((item) => String(item.id) === reelId) || reel;
 
     if (supabaseClient) {
-      if (isValidUUID(reelId)) {
-        try {
-          await supabaseClient
-            .from('posts')
-            .delete()
-            .eq('id', reelId);
-        } catch (e) {}
+      try {
+        let qReels = supabaseClient.from('reels').delete().eq('id', reelId);
+        if (currentUserId && isValidUUID(currentUserId) && targetObj.user_id === currentUserId) {
+          qReels = qReels.eq('user_id', currentUserId);
+        }
+        await qReels;
+      } catch (e) {}
 
-        try {
-          await supabaseClient
-            .from('reels')
-            .delete()
-            .eq('id', reelId);
-        } catch (e) {}
-      } else {
-        try {
-          await supabaseClient
-            .from('posts')
-            .delete()
-            .eq('id', reelId);
-        } catch (e) {}
+      try {
+        let qPosts = supabaseClient.from('posts').delete().eq('id', reelId);
+        if (currentUserId && isValidUUID(currentUserId) && targetObj.user_id === currentUserId) {
+          qPosts = qPosts.eq('user_id', currentUserId);
+        }
+        await qPosts;
+      } catch (e) {}
 
+      const storagePath = extractStoragePathFromPublicUrl(targetObj.media_url, 'reels');
+      if (storagePath) {
         try {
-          await supabaseClient
-            .from('reels')
-            .delete()
-            .eq('id', reelId);
-        } catch (e) {}
+          await supabaseClient.storage.from('reels').remove([storagePath]);
+        } catch (_) {}
       }
     }
 
     removeReelFromLocalStores(reelId);
     allReels = allReels.filter((item) => String(item.id) !== reelId);
+    broadcastDeletionEverywhere(reelId);
     renderVerticalReelsFeed();
     syncNavigationLinks();
-    showToast('Reel deleted from Supabase');
+    showToast('Reel deleted from Supabase & all pages');
     return true;
   }
 
   function openDeleteReelModal(reel) {
     pendingDeleteReel = reel;
     document.getElementById('deleteModalDesc').textContent = reel?.caption
-      ? `Delete "${reel.caption}" from Supabase and your feed? This action cannot be undone.`
-      : 'This will permanently remove the reel from Supabase and your feed. This action cannot be undone.';
+      ? `Delete "${reel.caption}" from Supabase, Home Feed, Profile Reels, and all views? This action cannot be undone.`
+      : 'This will permanently remove the reel from Supabase, Home Feed, Profile Reels, and all views. This action cannot be undone.';
     deleteConfirmModal.classList.add('open');
   }
 
@@ -1147,8 +1252,10 @@
   function getFilteredReels() {
     const q = searchQuery.trim().toLowerCase();
     const storedUserId = currentUserId || localStorage.getItem('autro_user_id') || '';
+    const deletedSet = getDeletedReelIdsSet();
 
     return allReels.filter((r) => {
+      if (deletedSet.has(String(r.id))) return false;
       if (targetUserId && r.user_id !== targetUserId) {
         return false;
       }
@@ -1162,7 +1269,7 @@
       }
 
       if (q) {
-        const hay = `${r.caption || ''} ${r.author_name || ''} ${r.audio_name || ''}`.toLowerCase();
+        const hay = `${r.caption || ''} ${r.author_name || ''} ${r.audio_name || ''} ${r.singer_name || ''} ${r.song_title || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
 
@@ -1306,11 +1413,31 @@
       setBottomProfileAvatar(data.avatar_url || '');
     } else if (data.type === 'NAVIGATE' && data.url) {
       window.location.href = data.url;
-    } else if (data.type === 'DELETE_REEL' && data.reel_id) {
-      const found = allReels.find((item) => String(item.id) === String(data.reel_id)) || { id: data.reel_id };
-      await deleteReelFromSupabaseAndState(found);
+    } else if ((data.type === 'DELETE_REEL' || data.type === 'DELETE_REEL_CARD' || data.type === 'REEL_DELETED') && (data.reel_id || data.reelId || data.id)) {
+      const delId = String(data.reel_id || data.reelId || data.id);
+      removeReelFromLocalStores(delId);
+      allReels = allReels.filter((item) => String(item.id) !== delId);
+      renderVerticalReelsFeed();
+      syncNavigationLinks();
     }
   });
+
+  if (reelSyncChannel) {
+    reelSyncChannel.onmessage = (ev) => {
+      const msg = ev?.data;
+      if (!msg || typeof msg !== 'object') return;
+      if ((msg.type === 'DELETE_REEL_CARD' || msg.type === 'REEL_DELETED') && (msg.reelId || msg.id)) {
+        const delId = String(msg.reelId || msg.id);
+        removeReelFromLocalStores(delId);
+        allReels = allReels.filter((item) => String(item.id) !== delId);
+        renderVerticalReelsFeed();
+        syncNavigationLinks();
+      } else if (msg.type === 'NEW_REEL_CREATED' || msg.type === 'REEL_UPDATED') {
+        loadLocalLists();
+        fetchReelsFromSources().then(() => renderVerticalReelsFeed());
+      }
+    };
+  }
 
   window.addEventListener('storage', async (event) => {
     if (event.key === 'autrobook_profile' || event.key === 'autro_profile_avatar') {
@@ -1319,10 +1446,12 @@
     if (
       event.key === 'reels' ||
       event.key === 'autrobook_live_reels' ||
+      event.key === 'autrobook_reels_queue' ||
       event.key === 'autro_reels' ||
       event.key === 'autrobook_reels' ||
       event.key === 'autro_instant_reels' ||
       event.key === 'autro_new_reel_created' ||
+      event.key === 'autro_deleted_reel_ids' ||
       event.key === 'autrobook_saved_reels' ||
       event.key === 'autrobook_drafts'
     ) {
@@ -1418,4 +1547,4 @@
   });
 </script>
 </body>
-</html>
+      </html>
