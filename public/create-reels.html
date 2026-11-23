@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Create reel - Autrobook</title>
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth.js"></script>
@@ -482,7 +483,7 @@
   <!-- Top Header -->
   <header class="top-bar">
     <div class="top-left">
-      <a href="/index.html" id="closeToReelsBtn" class="icon-btn" title="Cancel / Back" aria-label="Close">
+      <a href="/reels.html" id="closeToReelsBtn" class="icon-btn" title="Back to Reels" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </a>
       <h1 class="page-title">Create reel</h1>
@@ -586,6 +587,13 @@
     ? window.AutroAuth.supabase
     : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
+  let reelSyncChannel = null;
+  try {
+    if ('BroadcastChannel' in window) {
+      reelSyncChannel = new BroadcastChannel('autrobook_reels_sync');
+    }
+  } catch (_) {}
+
   function generateUuid() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
       return window.crypto.randomUUID();
@@ -594,6 +602,41 @@
       const r = (Math.random() * 16) | 0;
       const v = c === 'x' ? r : ((r & 0x3) | 0x8);
       return v.toString(16);
+    });
+  }
+
+  function getDeletedReelIdsSet() {
+    const set = new Set();
+    const keys = ['autro_deleted_reel_ids', 'deleted_reel_ids', 'autrobook_deleted_reels'];
+    keys.forEach((k) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(arr)) {
+          arr.forEach((v) => {
+            const id = typeof v === 'string' || typeof v === 'number' ? String(v) : String(v?.id || v?.reel_id || '');
+            if (id.trim()) set.add(id.trim());
+          });
+        }
+      } catch (_) {}
+    });
+    return set;
+  }
+
+  function clearDeletedFlagForReel(reelId) {
+    const cleanId = String(reelId || '').trim();
+    if (!cleanId) return;
+    const keys = ['autro_deleted_reel_ids', 'deleted_reel_ids', 'autrobook_deleted_reels'];
+    keys.forEach((k) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(arr)) {
+          const next = arr.filter((v) => {
+            const id = typeof v === 'string' || typeof v === 'number' ? String(v) : String(v?.id || v?.reel_id || '');
+            return id.trim() !== cleanId;
+          });
+          localStorage.setItem(k, JSON.stringify(next));
+        }
+      } catch (_) {}
     });
   }
 
@@ -618,6 +661,9 @@
     const selectMultipleBtn = document.getElementById('selectMultipleBtn');
     const mediaGrid = document.getElementById('mediaGrid');
     const statusToast = document.getElementById('statusToast');
+
+    const params = new URLSearchParams(window.location.search);
+    const returnToParam = params.get('return_to') || '/reels.html';
 
     let currentUser = null;
     let currentProfile = null;
@@ -658,9 +704,10 @@
     }
 
     if (closeToReelsBtn) {
+      closeToReelsBtn.href = returnToParam;
       closeToReelsBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        window.location.href = '/index.html';
+        window.location.href = returnToParam;
       });
     }
 
@@ -749,10 +796,32 @@
       });
     }
 
+    function buildReelsCardUrl(reelRecord) {
+      const cardUrl = new URL('/reels-card.html', window.location.origin);
+      cardUrl.searchParams.set('id', reelRecord.id);
+      cardUrl.searchParams.set('reel', reelRecord.id);
+      if (reelRecord.user_id) cardUrl.searchParams.set('user_id', reelRecord.user_id);
+      if (reelRecord.author_name) cardUrl.searchParams.set('author', reelRecord.author_name);
+      if (reelRecord.author_avatar) cardUrl.searchParams.set('avatar', reelRecord.author_avatar);
+      if (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:')) {
+        cardUrl.searchParams.set('media', reelRecord.media_url);
+      }
+      if (reelRecord.media_type) cardUrl.searchParams.set('type', reelRecord.media_type);
+      if (reelRecord.caption) cardUrl.searchParams.set('caption', reelRecord.caption);
+      if (reelRecord.audio_name) cardUrl.searchParams.set('audio', reelRecord.audio_name);
+      cardUrl.searchParams.set('from', '/create-reels.html');
+      cardUrl.searchParams.set('reels_page', '/reels.html');
+      cardUrl.searchParams.set('profile_page', `/profile.html?tab=reels${reelRecord.user_id ? `&user=${encodeURIComponent(reelRecord.user_id)}` : ''}`);
+      cardUrl.searchParams.set('home_page', '/index.html?tab=reels');
+      return cardUrl.toString();
+    }
+
     function saveReelEverywhere(reelRecord, fallbackDataUrl = '') {
+      clearDeletedFlagForReel(reelRecord.id);
+
       const resolvedMedia = (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
         ? reelRecord.media_url
-        : (fallbackDataUrl || reelRecord.media_url || '');
+        : (fallbackDataUrl || '');
 
       const portableRecord = {
         ...reelRecord,
@@ -763,12 +832,14 @@
         music: reelRecord.audio_name || 'Original Audio',
         name: reelRecord.author_name || 'Autrobook User',
         likes: Number(reelRecord.likes ?? reelRecord.reaction_count ?? 0),
-        time: 'Just now'
+        time: 'Just now',
+        destinations: ['/reels-card.html', '/reels.html', '/profile.html', '/index.html']
       };
 
       const feedAndCardKeys = [
         'reels',
         'autrobook_live_reels',
+        'autrobook_reels_queue',
         'autro_reels',
         'autrobook_reels',
         'autro_instant_reels',
@@ -837,6 +908,17 @@
         sessionStorage.setItem('autrobook_active_reel_card', JSON.stringify(portableRecord));
         window.dispatchEvent(new CustomEvent('autrobook:reel-created', { detail: portableRecord }));
       } catch (e) {}
+
+      try {
+        if (reelSyncChannel) {
+          reelSyncChannel.postMessage({
+            type: 'NEW_REEL_CREATED',
+            reel: portableRecord,
+            reelId: portableRecord.id,
+            targets: ['/reels-card.html', '/reels.html', '/profile.html', '/index.html']
+          });
+        }
+      } catch (_) {}
     }
 
     async function persistReelToBackend(reelRecord, rawFile) {
@@ -860,7 +942,7 @@
 
       const dataUrlBackup = rawFile ? await fileToDataUrl(rawFile, 8 * 1024 * 1024) : '';
 
-      if (supabaseClient && rawFile) {
+      if (supabaseClient && rawFile && userId) {
         try {
           const ext = (rawFile.name && rawFile.name.split('.').pop()) || (reelRecord.is_video ? 'mp4' : 'jpg');
           const filePath = `${userId}/${reelRecord.id}.${ext}`;
@@ -877,7 +959,7 @@
         } catch (e) {}
       }
 
-      if (supabaseClient && selectedCoverFile) {
+      if (supabaseClient && selectedCoverFile && userId) {
         try {
           const cExt = (selectedCoverFile.name && selectedCoverFile.name.split('.').pop()) || 'jpg';
           const coverPath = `${userId}/covers/${reelRecord.id}.${cExt}`;
@@ -898,6 +980,21 @@
         : dataUrlBackup;
 
       if (supabaseClient && userId) {
+        try {
+          await supabaseClient.from('reels').insert({
+            id: reelRecord.id,
+            user_id: userId,
+            author_name: authorName,
+            author_avatar: authorAvatar,
+            caption: reelRecord.caption,
+            media_url: finalMediaForDb,
+            media_type: reelRecord.media_type,
+            audio_name: reelRecord.audio_name || 'Original Audio',
+            audience: 'public',
+            created_at: reelRecord.created_at
+          });
+        } catch (e) {}
+
         try {
           await supabaseClient.from('posts').insert({
             id: reelRecord.id,
@@ -928,7 +1025,7 @@
       }
 
       uploadBtn.disabled = true;
-      notify('Sharing reel...');
+      notify('Sharing reel to reels-card.html...');
 
       const blobSrc = chosenTile ? (chosenTile.getAttribute('data-src') || '') : '';
       const mediaType = chosenTile ? (chosenTile.getAttribute('data-type') || 'video') : 'video';
@@ -954,11 +1051,12 @@
       };
 
       const savedRecord = await persistReelToBackend(reelRecord, rawFile);
+      const cardRedirectUrl = buildReelsCardUrl(savedRecord);
 
-      notify('Reel shared! Redirecting...');
+      notify('Reel ready! Opening reel card...');
       setTimeout(() => {
-        window.location.href = '/index.html';
-      }, 300);
+        window.location.href = cardRedirectUrl;
+      }, 280);
     });
 
     const emptyGalleryBox = document.getElementById('emptyGalleryBox');
