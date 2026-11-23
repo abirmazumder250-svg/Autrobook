@@ -600,6 +600,72 @@
     return `${Math.floor(diffSec / 86400)}d ago`;
   }
 
+  function getDeletedPostIdSet() {
+    const deletedSet = new Set();
+    const listKeys = [
+      'autro_deleted_post_ids',
+      'deleted_post_ids',
+      'autro_trashed_post_ids',
+      'autro_removed_post_ids'
+    ];
+
+    listKeys.forEach((key) => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+        if (Array.isArray(parsed)) {
+          parsed.forEach((entry) => {
+            if (typeof entry === 'string' || typeof entry === 'number') {
+              const clean = String(entry).trim();
+              if (clean) deletedSet.add(clean);
+            } else if (entry && typeof entry === 'object') {
+              const clean = String(entry.id || entry.post_id || '').trim();
+              if (clean) deletedSet.add(clean);
+            }
+          });
+        }
+      } catch (e) {}
+    });
+
+    return deletedSet;
+  }
+
+  function pruneDeletedPostFromLocalCaches(postId) {
+    const cleanId = String(postId || '').trim();
+    if (!cleanId) return;
+
+    const arrayKeys = [
+      'posts',
+      'autro_instant_feed_posts',
+      'autro_post_cards',
+      'autrobook_profile_posts',
+      'autro_profile_posts'
+    ];
+
+    arrayKeys.forEach((key) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        if (Array.isArray(arr)) {
+          const filtered = arr.filter((item) => {
+            if (!item || typeof item !== 'object') return true;
+            const itemId = String(item.id || item.post_id || '').trim();
+            return itemId !== cleanId;
+          });
+          localStorage.setItem(key, JSON.stringify(filtered));
+        }
+      } catch (e) {}
+    });
+
+    try {
+      const singleNew = JSON.parse(localStorage.getItem('autro_new_post_created') || 'null');
+      if (singleNew && typeof singleNew === 'object') {
+        const singleId = String(singleNew.id || singleNew.post_id || '').trim();
+        if (singleId === cleanId) {
+          localStorage.removeItem('autro_new_post_created');
+        }
+      }
+    } catch (e) {}
+  }
+
   function renderCurrentUserAvatar() {
     const avatarUrl = String(
       currentProfile?.avatar_url ||
@@ -621,15 +687,18 @@
     }
   }
 
-  function normalizePost(raw) {
+  function normalizePost(raw, deletedSet = new Set()) {
     if (!raw || typeof raw !== 'object') return null;
     if (raw.is_reel === true) return null;
     if (raw.archived === true || raw.trashed === true || raw.deleted === true) return null;
 
-    const id = String(raw.id || raw.post_id || raw.created_at || raw.time || '').trim();
+    const id = String(raw.id || raw.post_id || '').trim();
+    if (!id) return null;
+    if (deletedSet.has(id)) return null;
+
     const caption = String(raw.caption || raw.text || raw.content || '').trim();
     const mediaUrl = String(raw.media_url || raw.image_url || raw.image || raw.video_url || raw.url || '').trim();
-    if (!id && !caption && !mediaUrl) return null;
+    if (!caption && !mediaUrl) return null;
 
     const mediaTypeRaw = String(raw.media_type || '').toLowerCase();
     const isVideo =
@@ -642,7 +711,7 @@
       : String(rawTime || new Date().toISOString());
 
     return {
-      id: id || `post_${Date.now()}`,
+      id,
       user_id: raw.user_id || '',
       author_name: String(raw.author_name || raw.name || raw.username || 'Autrobook User').trim(),
       author_avatar: String(raw.author_avatar || raw.avatar_url || '').trim(),
@@ -658,26 +727,11 @@
   }
 
   async function loadPosts() {
-    const collected = [];
-    const localKeys = [
-      'posts',
-      'autro_instant_feed_posts',
-      'autro_post_cards',
-      'autrobook_profile_posts',
-      'autro_profile_posts'
-    ];
+    const deletedSet = getDeletedPostIdSet();
+    deletedSet.forEach((deletedId) => pruneDeletedPostFromLocalCaches(deletedId));
 
-    localKeys.forEach((key) => {
-      try {
-        const arr = JSON.parse(localStorage.getItem(key) || '[]');
-        if (Array.isArray(arr)) collected.push(...arr);
-      } catch (e) {}
-    });
-
-    try {
-      const singleNew = JSON.parse(localStorage.getItem('autro_new_post_created') || 'null');
-      if (singleNew && typeof singleNew === 'object') collected.unshift(singleNew);
-    } catch (e) {}
+    const supabasePosts = [];
+    let supabaseLoadedSuccessfully = false;
 
     if (supabaseClient) {
       try {
@@ -691,7 +745,8 @@
           .order('created_at', { ascending: false })
           .limit(60);
         if (!error && Array.isArray(data)) {
-          collected.push(...data);
+          supabaseLoadedSuccessfully = true;
+          supabasePosts.push(...data);
         }
       } catch (e) {}
 
@@ -701,6 +756,7 @@
             .from('post_reactions')
             .select('post_id')
             .eq('user_id', currentUser.id);
+          likedPostIds = new Set();
           (reactions || []).forEach((r) => {
             if (r.post_id) likedPostIds.add(String(r.post_id));
           });
@@ -708,9 +764,53 @@
       }
     }
 
+    const collected = [...supabasePosts];
+    const supabaseIdSet = new Set(
+      supabasePosts
+        .map((p) => String(p?.id || p?.post_id || '').trim())
+        .filter(Boolean)
+    );
+
+    const localKeys = [
+      'posts',
+      'autro_instant_feed_posts',
+      'autro_post_cards',
+      'autrobook_profile_posts',
+      'autro_profile_posts'
+    ];
+
+    localKeys.forEach((key) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        if (Array.isArray(arr)) {
+          arr.forEach((item) => {
+            if (!item || typeof item !== 'object') return;
+            const itemId = String(item.id || item.post_id || '').trim();
+            if (!itemId || deletedSet.has(itemId)) return;
+            // Supabase থেকে সফলভাবে লোড হলে যে পোস্ট Supabase-এ নেই তা স্থানীয় ক্যাশে অবশিষ্ট থাকা ডিলিট হওয়া পোস্ট হতে পারে
+            if (supabaseLoadedSuccessfully && !supabaseIdSet.has(itemId) && item.user_id && currentUser?.id && String(item.user_id) === String(currentUser.id)) {
+              pruneDeletedPostFromLocalCaches(itemId);
+              return;
+            }
+            collected.push(item);
+          });
+        }
+      } catch (e) {}
+    });
+
+    try {
+      const singleNew = JSON.parse(localStorage.getItem('autro_new_post_created') || 'null');
+      if (singleNew && typeof singleNew === 'object') {
+        const singleId = String(singleNew.id || singleNew.post_id || '').trim();
+        if (singleId && !deletedSet.has(singleId)) {
+          collected.unshift(singleNew);
+        }
+      }
+    } catch (e) {}
+
     const map = new Map();
     collected.forEach((item) => {
-      const norm = normalizePost(item);
+      const norm = normalizePost(item, deletedSet);
       if (norm && norm.id) {
         map.set(norm.id, { ...map.get(norm.id), ...norm });
       }
@@ -964,7 +1064,9 @@
       e.key === 'posts' ||
       e.key === 'autro_instant_feed_posts' ||
       e.key === 'autro_new_post_created' ||
-      e.key === 'autrobook_profile_posts'
+      e.key === 'autrobook_profile_posts' ||
+      e.key === 'autro_deleted_post_ids' ||
+      e.key === 'deleted_post_ids'
     ) {
       await loadPosts();
       renderPosts();
@@ -998,7 +1100,10 @@
       try {
         supabaseClient
           .channel('autrobook-posts-feed')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, async () => {
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, async (payload) => {
+            if (payload?.eventType === 'DELETE' && payload?.old?.id) {
+              pruneDeletedPostFromLocalCaches(payload.old.id);
+            }
             await loadPosts();
             renderPosts();
           })
