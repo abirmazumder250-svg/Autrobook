@@ -6,6 +6,7 @@
 <title>Reels - Autrobook</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
   :root {
     color-scheme: light dark;
@@ -486,9 +487,9 @@
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-  const supabaseClient = window.supabase
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
+  const supabaseClient = (window.AutroAuth && window.AutroAuth.supabase)
+    ? window.AutroAuth.supabase
+    : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
   const urlParams = new URLSearchParams(window.location.search);
   let targetUserId = urlParams.get('user_id') || '';
@@ -562,18 +563,26 @@
       const { data } = await supabaseClient.auth.getUser();
       if (data?.user?.id) {
         currentUserId = data.user.id;
+        localStorage.setItem('autro_user_id', currentUserId);
         document.getElementById('bottomProfileLink').href = `/profile.html?user=${encodeURIComponent(currentUserId)}`;
         syncCreateReelLinks();
 
         const metaAvatar = data.user.user_metadata?.avatar_url || '';
         const { data: prof } = await supabaseClient
           .from('profiles')
-          .select('avatar_url')
+          .select('avatar_url, full_name, name')
           .eq('id', currentUserId)
           .maybeSingle();
 
         const resolvedAvatar = prof?.avatar_url || metaAvatar || localAvatar || '';
         setBottomProfileAvatar(resolvedAvatar);
+        if (resolvedAvatar) {
+          localStorage.setItem('autro_profile_avatar', resolvedAvatar);
+        }
+        const resolvedName = prof?.full_name || prof?.name || data.user.user_metadata?.full_name || data.user.user_metadata?.name || '';
+        if (resolvedName) {
+          localStorage.setItem('autro_profile_name', resolvedName);
+        }
       }
     } catch (e) {}
   }
@@ -599,23 +608,29 @@
 
   function normalizeReelRecord(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const id = String(raw.id || raw.reel_id || raw.created_at || '').trim();
-    const mediaUrl = String(raw.media_url || raw.video_url || raw.url || '').trim();
-    if (!id && !mediaUrl) return null;
+    const id = String(raw.id || raw.reel_id || raw.created_at || raw.time || '').trim();
+    const mediaUrl = String(raw.media_url || raw.video_url || raw.video || raw.url || '').trim();
+    const caption = String(raw.caption || raw.title || raw.description || '').trim();
+    if (!id && !mediaUrl && !caption) return null;
+
+    const rawTime = raw.created_at || raw.time || Date.now();
+    const isoTime = typeof rawTime === 'number'
+      ? new Date(rawTime).toISOString()
+      : String(rawTime || new Date().toISOString());
 
     return {
       id: id || `reel-${Date.now()}`,
       user_id: raw.user_id || raw.author_id || currentUserId || '',
-      author_name: raw.author_name || raw.username || raw.user_name || 'Autrobook User',
+      author_name: raw.author_name || raw.name || raw.username || raw.user_name || 'Autrobook User',
       author_avatar: raw.author_avatar || raw.avatar_url || '',
       media_url: mediaUrl,
       media_type: raw.media_type || (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl) ? 'video/mp4' : 'video'),
-      caption: raw.caption || raw.title || raw.description || '',
+      caption,
       audio_name: raw.audio_name || raw.music || 'Original Audio',
       quality: raw.quality || 'HD',
       audience: raw.audience || 'Public',
       likes: Number(raw.likes ?? raw.reaction_count ?? 0),
-      created_at: raw.created_at || new Date().toISOString()
+      created_at: isoTime
     };
   }
 
@@ -653,6 +668,7 @@
 
   async function fetchReelsFromSources() {
     const localKeys = [
+      'reels',
       'autrobook_live_reels',
       'autro_reels',
       'autrobook_reels',
@@ -677,21 +693,12 @@
 
     if (supabaseClient) {
       try {
-        const { data } = await supabaseClient
-          .from('reels')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(80);
-        if (Array.isArray(data)) remoteReels.push(...data);
-      } catch (e) {}
-
-      try {
         const { data: postReels } = await supabaseClient
           .from('posts')
           .select('*')
           .eq('is_reel', true)
           .order('created_at', { ascending: false })
-          .limit(40);
+          .limit(60);
         if (Array.isArray(postReels)) remoteReels.push(...postReels);
       } catch (e) {}
 
@@ -699,7 +706,8 @@
         try {
           const { data: friendsData } = await supabaseClient
             .from('friends')
-            .select('user_id, friend_id')
+            .select('user_id, friend_id, status')
+            .eq('status', 'accepted')
             .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`);
           (friendsData || []).forEach((row) => {
             const otherId = row.user_id === currentUserId ? row.friend_id : row.user_id;
@@ -846,6 +854,7 @@
       await syncProfileAvatarFromSupabase();
     }
     if (
+      event.key === 'reels' ||
       event.key === 'autrobook_live_reels' ||
       event.key === 'autro_reels' ||
       event.key === 'autrobook_reels' ||
@@ -858,6 +867,12 @@
       await fetchReelsFromSources();
       renderVerticalReelsFeed();
     }
+  });
+
+  window.addEventListener('autrobook:reel-created', async () => {
+    loadLocalLists();
+    await fetchReelsFromSources();
+    renderVerticalReelsFeed();
   });
 
   window.addEventListener('pageshow', async () => {
@@ -904,6 +919,18 @@
   });
 
   document.addEventListener('DOMContentLoaded', async () => {
+    if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
+      const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+      if (!authResult || !authResult.user) {
+        return;
+      }
+      currentUserId = authResult.user.id;
+      localStorage.setItem('autro_user_id', currentUserId);
+    } else {
+      window.location.replace('/login.html');
+      return;
+    }
+
     syncCreateReelLinks();
     loadLocalLists();
     await syncProfileAvatarFromSupabase();
@@ -914,7 +941,7 @@
       try {
         supabaseClient
           .channel('autrobook-live-reels')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'reels' }, async () => {
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: 'is_reel=eq.true' }, async () => {
             await fetchReelsFromSources();
             renderVerticalReelsFeed();
           })
@@ -924,4 +951,4 @@
   });
 </script>
 </body>
-  </html>
+</html>
