@@ -569,7 +569,7 @@
   <!-- TOP HEADER -->
   <header class="composer-header">
     <div class="header-nav-group">
-      <a href="/public/index.html" class="header-close-btn" title="Close" aria-label="Close">
+      <a href="/profile.html" class="header-close-btn" title="Close to Profile" aria-label="Close to Profile">
         <i class="fas fa-xmark"></i>
       </a>
     </div>
@@ -716,7 +716,8 @@
     const CACHE_KEYS = [
       'autro_instant_feed_posts',
       'autro_post_cards',
-      'autro_profile_posts'
+      'autro_profile_posts',
+      'autro_post_html_cards'
     ];
 
     let currentUser = null;
@@ -731,11 +732,21 @@
     let selectedFeeling = null;
     let isBoldText = false;
 
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function pruneHeavyLocalKeys() {
       const heavyCandidates = [
         'autro_instant_feed_posts',
         'autro_post_cards',
         'autro_profile_posts',
+        'autro_post_html_cards',
         'autro_comments_store',
         'autro_saved_items',
         'autro_reports_log'
@@ -781,13 +792,64 @@
         return u;
       };
       item.media_url = stripVolatileUrl(item.media_url);
+      item.image = stripVolatileUrl(item.image);
       item.music_url = stripVolatileUrl(item.music_url);
       item.poster_url = stripVolatileUrl(item.poster_url);
       item.avatar = stripVolatileUrl(item.avatar);
+      if (typeof item.post_card_html === 'string' && item.post_card_html.length > 25000) {
+        item.post_card_html = '';
+      }
       if (typeof item.caption === 'string' && item.caption.length > 1000) {
         item.caption = item.caption.slice(0, 1000);
       }
       return item;
+    }
+
+    function buildPostCardHtml(postObj) {
+      const postId = encodeURIComponent(String(postObj.id || ''));
+      const postPageUrl = `/post.html?id=${postId}`;
+      const authorName = escapeHtml(postObj.author_name || '');
+      const caption = escapeHtml(postObj.caption || '');
+      const boldCls = postObj.is_bold ? ' bold-text' : '';
+      const safeAvatar = postObj.avatar && !String(postObj.avatar).startsWith('blob:') ? escapeHtml(postObj.avatar) : '';
+      const safeMedia = postObj.media_url && !String(postObj.media_url).startsWith('blob:') ? escapeHtml(postObj.media_url) : '';
+
+      const avatarHtml = safeAvatar
+        ? `<img src="${safeAvatar}" alt="${authorName}">`
+        : '';
+
+      let mediaHtml = '';
+      if (safeMedia) {
+        if (postObj.is_video) {
+          mediaHtml = `<a href="${postPageUrl}" class="post-card-media-link"><video class="fb-media" src="${safeMedia}" controls playsinline preload="metadata"></video></a>`;
+        } else {
+          mediaHtml = `<a href="${postPageUrl}" class="post-card-media-link"><img class="fb-media" src="${safeMedia}" alt=""></a>`;
+        }
+      }
+
+      const captionHtml = caption
+        ? `<a href="${postPageUrl}" class="fb-caption${boldCls}" style="display:block;text-decoration:none;">${caption}</a>`
+        : '';
+
+      return `
+        <article class="fb-post post-card" data-card-type="post-card" data-post-id="${escapeHtml(postObj.id || '')}" data-post-url="${postPageUrl}">
+          <div class="fb-post-head">
+            <div class="fb-author-left">
+              <a href="/profile.html" class="fb-post-avatar-link" title="${authorName}">${avatarHtml}</a>
+              <div class="fb-author-col">
+                <a href="/profile.html" class="fb-author-name">${authorName}</a>
+                <a href="${postPageUrl}" class="fb-live-time" style="text-decoration:none;"><span>Just now</span></a>
+              </div>
+            </div>
+          </div>
+          ${captionHtml}
+          ${mediaHtml}
+          <div class="fb-counts-row">
+            <span class="fb-reaction-summary"><span>👍</span><span>0</span></span>
+            <span class="fb-counts-right"><a href="${postPageUrl}" style="color:inherit;text-decoration:none;">Open post</a></span>
+          </div>
+        </article>
+      `.trim();
     }
 
     function appendPostToLocalCache(storageKey, newPost, maxItems = 12) {
@@ -806,16 +868,22 @@
       } catch (_) {}
     }
 
-    function broadcastNewPost(postObj) {
+    function broadcastNewPost(postObj, targetRoute) {
       try {
         sessionStorage.setItem('autro_latest_created_post', JSON.stringify(postObj));
+        sessionStorage.setItem('autro_active_post_html', JSON.stringify({
+          id: postObj.id,
+          post_url: postObj.post_url,
+          post_card_html: postObj.post_card_html
+        }));
       } catch (_) {}
 
       try {
         if (postSyncChannel) {
           postSyncChannel.postMessage({
             type: 'NEW_POST_CARD',
-            targets: ['/public/index.html', '/public/profile.html'],
+            target: targetRoute,
+            targets: ['/profile.html', '/index.html', '/post.html'],
             post: postObj
           });
         }
@@ -825,7 +893,8 @@
         window.dispatchEvent(new CustomEvent('autro:post-created', {
           detail: {
             post: postObj,
-            targets: ['/public/index.html', '/public/profile.html']
+            target: targetRoute,
+            targets: ['/profile.html', '/index.html', '/post.html']
           }
         }));
       } catch (_) {}
@@ -840,22 +909,22 @@
         sessionStorage.removeItem('autro_post_return_target');
       } catch (_) {}
 
-      if (fromParam === 'profile' || storedTarget.includes('profile.html')) {
-        return '/public/profile.html';
+      if (fromParam === 'index' || fromParam === 'feed' || storedTarget.includes('index.html')) {
+        return '/index.html';
       }
-      if (storedTarget.startsWith('/')) {
-        return storedTarget;
+      if (storedTarget.startsWith('/') && !storedTarget.includes('profile.html')) {
+        return storedTarget.replace(/^\/public\//, '/');
       }
-      return '/public/index.html';
+      return '/profile.html';
     }
 
     function captureOriginFromUrl() {
       const params = new URLSearchParams(window.location.search);
       const fromParam = (params.get('from') || '').toLowerCase().trim();
-      if (fromParam === 'profile') {
-        try { sessionStorage.setItem('autro_post_return_target', '/public/profile.html'); } catch (_) {}
-      } else if (fromParam === 'feed' || fromParam === 'index') {
-        try { sessionStorage.setItem('autro_post_return_target', '/public/index.html'); } catch (_) {}
+      if (fromParam === 'index' || fromParam === 'feed') {
+        try { sessionStorage.setItem('autro_post_return_target', '/index.html'); } catch (_) {}
+      } else {
+        try { sessionStorage.setItem('autro_post_return_target', '/profile.html'); } catch (_) {}
       }
     }
 
@@ -1365,8 +1434,13 @@
         }
 
         const resolvedMedia = mediaUrl || galleryDataUrl || '';
+        const postId = savedRow?.id || `post-${Date.now()}`;
+        const postUrl = `/post.html?id=${encodeURIComponent(postId)}`;
+
         const postPayload = {
-          id: savedRow?.id || `post-${Date.now()}`,
+          id: postId,
+          card_type: 'post-card',
+          post_url: postUrl,
           user_id: authorId,
           author_name: authorName,
           avatar: authorAvatar,
@@ -1389,16 +1463,24 @@
           comments: 0,
           shares: 0
         };
+        postPayload.post_card_html = buildPostCardHtml(postPayload);
 
         appendPostToLocalCache('autro_instant_feed_posts', postPayload, 12);
         appendPostToLocalCache('autro_profile_posts', postPayload, 12);
         appendPostToLocalCache('autro_post_cards', postPayload, 12);
-        broadcastNewPost(postPayload);
+        appendPostToLocalCache('autro_post_html_cards', {
+          id: postPayload.id,
+          post_url: postPayload.post_url,
+          post_card_html: postPayload.post_card_html,
+          created_at: postPayload.created_at
+        }, 12);
+
+        const destination = resolveReturnUrl();
+        broadcastNewPost(postPayload, destination);
 
         setProgress(100, 'Posted!');
         showToast('Post published!');
 
-        const destination = resolveReturnUrl();
         setTimeout(() => {
           window.location.href = destination;
         }, 300);
