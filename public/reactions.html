@@ -158,11 +158,11 @@
   }
 
   .info {
-    padding: 12px 16px;
-    font-size: 13px;
-    line-height: 1.45;
+    padding: 18px 16px;
+    font-size: 14px;
+    line-height: 1.5;
     color: var(--text-secondary);
-    text-align: center;
+    text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
@@ -357,8 +357,8 @@
     </button>
   </div>
 
-  <p class="info" id="viewInfo">
-    Select any reactor to view their profile.
+  <p class="info" id="viewInfo" style="display:none;">
+    You can see the total number of people who reacted to this post, but only the names of friends who have reacted will be shown.
   </p>
 
   <main id="reactionList">
@@ -382,7 +382,9 @@ const postId = params.get("postId");
 let currentType = "all";
 let currentPost = null;
 let currentUser = null;
+let isPostOwnerView = false;
 let reactorItems = [];
+let lastSnapshot = "";
 
 document.getElementById("searchToggle").addEventListener("click", () => {
   const bar = document.getElementById("searchBar");
@@ -481,7 +483,7 @@ function sendFriendRequest(toUserId) {
     createdAt: new Date().toISOString()
   });
   writeList("friendRequests", reqs);
-  loadReactions();
+  loadReactions(true);
 }
 
 function confirmFriendRequest(requesterId) {
@@ -497,7 +499,7 @@ function confirmFriendRequest(requesterId) {
   writeList("friendRequests", updated);
 
   addFriendPair(myId, requesterId);
-  loadReactions();
+  loadReactions(true);
 }
 
 function escapeHtml(s) {
@@ -516,12 +518,13 @@ function getInitials(name) {
   return "•";
 }
 
-function loadReactions() {
+function loadReactions(forceRender = false) {
   currentUser = getCurrentUser();
   const listEl = document.getElementById("reactionList");
   const infoEl = document.getElementById("viewInfo");
 
   if (!postId) {
+    infoEl.style.display = "none";
     updateCounts([]);
     listEl.innerHTML = `<div class="empty">No post ID specified.</div>`;
     return;
@@ -530,19 +533,32 @@ function loadReactions() {
   const posts = readList("posts");
   currentPost = posts.find(p => String(p.id) === String(postId)) || null;
 
+  const snapshot = JSON.stringify({
+    post: currentPost ? currentPost.reactions : null,
+    authorId: currentPost ? (currentPost.authorId || currentPost.userId || "") : "",
+    me: currentUser ? currentUser.id : "",
+    friends: localStorage.getItem("friends") || "",
+    reqs: localStorage.getItem("friendRequests") || "",
+    users: localStorage.getItem("users") || ""
+  });
+
+  if (!forceRender && snapshot === lastSnapshot) {
+    return;
+  }
+  lastSnapshot = snapshot;
+
   if (!currentPost || !Array.isArray(currentPost.reactions)) {
+    infoEl.style.display = "none";
     updateCounts([]);
     listEl.innerHTML = `<div class="empty">No reactions found.</div>`;
     return;
   }
 
-  const usersMap = getUsersMap();
   const postAuthorId = String(currentPost.authorId || currentPost.userId || "");
-  const isPostAuthor = Boolean(currentUser && currentUser.id && String(currentUser.id) === postAuthorId);
+  isPostOwnerView = Boolean(currentUser && currentUser.id && String(currentUser.id) === postAuthorId);
+  infoEl.style.display = isPostOwnerView ? "none" : "block";
 
-  infoEl.textContent = isPostAuthor
-    ? "Post owner view: Click any reactor to open their profile."
-    : "Select any reactor to open their profile.";
+  const usersMap = getUsersMap();
 
   reactorItems = currentPost.reactions
     .map(r => {
@@ -561,8 +577,8 @@ function loadReactions() {
         name: displayName,
         avatar,
         type: normalizeType(r.type || r.reaction_type),
+        btnHint: r.btn || "",
         isSelf,
-        isPostAuthor,
         alreadyFriend,
         hasIncomingRequest: Boolean(incomingReq),
         hasOutgoingRequest: Boolean(outgoingReq)
@@ -605,9 +621,13 @@ function renderReactions() {
   const listEl = document.getElementById("reactionList");
   const q = (document.getElementById("searchInput").value || "").trim().toLowerCase();
 
-  let list = currentType === "all"
+  let baseList = isPostOwnerView
     ? reactorItems
-    : reactorItems.filter(item => item.type === currentType);
+    : reactorItems.filter(item => item.alreadyFriend || item.isSelf);
+
+  let list = currentType === "all"
+    ? baseList
+    : baseList.filter(item => item.type === currentType);
 
   if (q) {
     list = list.filter(item =>
@@ -617,7 +637,9 @@ function renderReactions() {
   }
 
   if (list.length === 0) {
-    listEl.innerHTML = `<div class="empty">No reactions to show.</div>`;
+    listEl.innerHTML = isPostOwnerView
+      ? `<div class="empty">No reactions to show.</div>`
+      : "";
     return;
   }
 
@@ -628,30 +650,18 @@ function renderReactions() {
       ? `<img class="avatar" src="${escapeHtml(item.avatar)}" alt="${escapeHtml(item.name)}" loading="lazy">`
       : `<div class="avatar-fallback">${escapeHtml(getInitials(item.name))}</div>`;
 
-    let subText = `ID: ${item.userId}`;
     let rightControl = "";
-
-    if (item.isSelf) {
-      rightControl = `<a class="action-btn btn-outline" href="${profileUrl}">Profile</a>`;
-    } else if (item.isPostAuthor) {
-      if (item.alreadyFriend) {
-        subText = `Friends • ID: ${item.userId}`;
-        rightControl = `<span class="action-btn btn-neutral">Friends</span>`;
-      } else if (item.hasIncomingRequest) {
-        subText = `Friend request • ID: ${item.userId}`;
+    if (isPostOwnerView && !item.isSelf) {
+      if (item.alreadyFriend || item.btnHint === "mention") {
+        rightControl = `<a class="action-btn btn-outline" href="${profileUrl}">Mention</a>`;
+      } else if (item.hasIncomingRequest || item.btnHint === "confirm") {
         rightControl = `<button type="button" class="action-btn btn-dark-green" onclick="confirmFriendRequest('${escapeHtml(item.userId)}')">Confirm</button>`;
       } else if (item.hasOutgoingRequest) {
-        subText = `Request sent • ID: ${item.userId}`;
         rightControl = `<span class="action-btn btn-neutral">Requested</span>`;
       } else {
         rightControl = `<button type="button" class="action-btn btn-dark-green" onclick="sendFriendRequest('${escapeHtml(item.userId)}')">Add friend</button>`;
       }
     } else {
-      if (item.alreadyFriend) {
-        subText = `Friends • ID: ${item.userId}`;
-      } else if (item.hasOutgoingRequest) {
-        subText = `Request sent • ID: ${item.userId}`;
-      }
       rightControl = `<a class="action-btn btn-outline" href="${profileUrl}">Profile</a>`;
     }
 
@@ -664,7 +674,7 @@ function renderReactions() {
           </div>
           <div class="user-meta">
             <div class="user-name">${escapeHtml(item.name)}</div>
-            <div class="user-sub">${escapeHtml(subText)}</div>
+            <div class="user-sub">ID: ${escapeHtml(item.userId)}</div>
           </div>
         </a>
         ${rightControl}
@@ -673,7 +683,13 @@ function renderReactions() {
   }).join("");
 }
 
-loadReactions();
+window.addEventListener("storage", () => loadReactions(false));
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) loadReactions(false);
+});
+setInterval(() => loadReactions(false), 1500);
+
+loadReactions(true);
 </script>
 
 </body>
