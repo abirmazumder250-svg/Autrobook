@@ -417,12 +417,12 @@
         </a>
         <div class="assistant-title-wrap">
           <div class="assistant-avatar" id="headerAvatarWrap">
-            <img src="au.png" alt="Autro AI" onerror="this.parentElement.classList.add('use-fallback')" />
+            <img id="headerAvatarImg" src="" alt="Autro AI" />
             <span class="fallback-robot"><i class="fa-solid fa-robot"></i></span>
           </div>
           <div>
             <div class="assistant-title">Autro AI Assistant</div>
-            <div class="assistant-sub" id="assistantSubtitle">Groq + Gemini • Instant replies in all languages</div>
+            <div class="assistant-sub" id="assistantSubtitle">Instant replies in all languages</div>
           </div>
         </div>
       </div>
@@ -436,7 +436,7 @@
     <main id="chatContainer" class="chat-container">
       <div id="emptyState" class="empty-state">
         <div class="empty-icon" id="emptyAvatarWrap">
-          <img src="au.png" alt="Autro AI" onerror="this.parentElement.classList.add('use-fallback')" />
+          <img id="emptyAvatarImg" src="" alt="Autro AI" />
           <span class="fallback-robot"><i class="fa-solid fa-robot"></i></span>
         </div>
         <h2 id="welcomeHeading">Autro AI Assistant</h2>
@@ -461,17 +461,111 @@
   </div>
 
   <script>
+    // auth.js - Authentication and onboarding guard for Autrobook
+    (function () {
+      const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
+      const LOGIN_PATH = '/login.html';
+      const SIGNUP_NAME_PATH = '/signup-name.html';
+      const SIGNUP_CONTACT_PATH = '/signup-contact.html';
+
+      let client = null;
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+
+      function getCurrentPath() {
+        return window.location.pathname || '/';
+      }
+
+      function redirectIfNeeded(targetPath) {
+        const current = getCurrentPath();
+        if (current.toLowerCase() !== targetPath.toLowerCase()) {
+          window.location.replace(targetPath);
+        }
+      }
+
+      async function checkSessionAndProfile(options = {}) {
+        const { requireCompleteProfile = true } = options;
+
+        if (!client) {
+          redirectIfNeeded(LOGIN_PATH);
+          return null;
+        }
+
+        const { data: { session }, error } = await client.auth.getSession();
+        if (error || !session || !session.user) {
+          redirectIfNeeded(LOGIN_PATH);
+          return null;
+        }
+
+        const user = session.user;
+        if (!requireCompleteProfile) {
+          return { session, user, profile: null };
+        }
+
+        let profile = null;
+        try {
+          const { data } = await client
+            .from('profiles')
+            .select('id, full_name, name, phone, contact, avatar_url')
+            .eq('id', user.id)
+            .maybeSingle();
+          profile = data || null;
+        } catch (_) {
+          profile = null;
+        }
+
+        const meta = user.user_metadata || {};
+        const fullName = String(
+          profile?.full_name || profile?.name || meta.full_name || meta.name || ''
+        ).trim();
+        const contact = String(
+          profile?.phone || profile?.contact || user.phone || user.email || ''
+        ).trim();
+
+        // Redirect new or incomplete accounts to name / contact sign-up steps
+        if (!fullName) {
+          redirectIfNeeded(SIGNUP_NAME_PATH);
+          return null;
+        }
+
+        if (!contact) {
+          redirectIfNeeded(SIGNUP_CONTACT_PATH);
+          return null;
+        }
+
+        return { session, user, profile };
+      }
+
+      window.AutroAuth = {
+        supabase: client,
+        checkSessionAndProfile,
+        signOut: async function () {
+          if (client) {
+            await client.auth.signOut();
+          }
+          redirectIfNeeded(LOGIN_PATH);
+        }
+      };
+    })();
+  </script>
+
+  <script>
     (function () {
       const API_ENDPOINT = '/api/autro-ai';
       const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
       const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-      let supabaseClient = null;
-      try {
-        if (window.supabase && typeof window.supabase.createClient === 'function') {
-          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        }
-      } catch (_) {}
+      let supabaseClient = (window.AutroAuth && window.AutroAuth.supabase) || null;
+      if (!supabaseClient) {
+        try {
+          if (window.supabase && typeof window.supabase.createClient === 'function') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          }
+        } catch (_) {}
+      }
 
       const chatContainer = document.getElementById('chatContainer');
       const emptyState = document.getElementById('emptyState');
@@ -481,6 +575,10 @@
       const clearChatBtn = document.getElementById('clearChatBtn');
       const assistantSubtitle = document.getElementById('assistantSubtitle');
       const welcomeHeading = document.getElementById('welcomeHeading');
+      const headerAvatarWrap = document.getElementById('headerAvatarWrap');
+      const headerAvatarImg = document.getElementById('headerAvatarImg');
+      const emptyAvatarWrap = document.getElementById('emptyAvatarWrap');
+      const emptyAvatarImg = document.getElementById('emptyAvatarImg');
 
       const conversationHistory = [];
       let currentUserProfile = {
@@ -488,29 +586,49 @@
         fullName: '',
         username: '',
         email: '',
+        avatarUrl: '',
         bio: '',
         location: '',
         education: ''
       };
 
-      function getDisplayName(profile = currentUserProfile) {
-        const name = (profile?.fullName || '').trim();
-        if (name) return name;
-        const uname = (profile?.username || '').trim();
-        if (uname) return uname;
-        const email = (profile?.email || '').trim();
-        if (email && email.includes('@')) {
-          return email.split('@')[0];
+      function setAvatarImage(url) {
+        const cleanUrl = String(url || '').trim();
+        const targets = [
+          { wrap: headerAvatarWrap, img: headerAvatarImg },
+          { wrap: emptyAvatarWrap, img: emptyAvatarImg }
+        ];
+
+        for (const { wrap, img } of targets) {
+          if (!wrap || !img) continue;
+          if (!cleanUrl) {
+            img.removeAttribute('src');
+            wrap.classList.add('use-fallback');
+            continue;
+          }
+          wrap.classList.remove('use-fallback');
+          img.onerror = () => {
+            wrap.classList.add('use-fallback');
+          };
+          img.onload = () => {
+            wrap.classList.remove('use-fallback');
+          };
+          img.src = cleanUrl;
         }
-        return '';
+      }
+
+      function getDisplayName(profile = currentUserProfile) {
+        return String(profile?.fullName || '').trim();
       }
 
       function applyPersonalizedGreeting(profile) {
         const displayName = getDisplayName(profile);
+        setAvatarImage(profile?.avatarUrl || '');
+
         if (assistantSubtitle) {
           assistantSubtitle.textContent = displayName
-            ? `Groq + Gemini • Profile: ${displayName}`
-            : 'Groq + Gemini • Instant replies in all languages';
+            ? `Profile: ${displayName}`
+            : '';
         }
         if (welcomeHeading) {
           welcomeHeading.textContent = displayName
@@ -525,6 +643,7 @@
           fullName: '',
           username: '',
           email: '',
+          avatarUrl: '',
           bio: '',
           location: '',
           education: ''
@@ -545,20 +664,30 @@
             const u = parsed.user && typeof parsed.user === 'object' ? parsed.user : parsed;
 
             if (!profile.userId) profile.userId = String(u.id || u.user_id || parsed.id || parsed.user_id || '').trim();
-            if (!profile.fullName) profile.fullName = String(u.full_name || u.fullName || u.name || parsed.full_name || parsed.name || '').trim();
-            if (!profile.username) profile.username = String(u.username || u.user_name || parsed.username || '').trim();
-            if (!profile.email) profile.email = String(u.email || parsed.email || '').trim();
-            if (!profile.bio) profile.bio = String(u.bio || u.about || parsed.bio || '').trim();
-            if (!profile.location) profile.location = String(u.location || u.city || u.lives_in || parsed.location || '').trim();
-            if (!profile.education) profile.education = String(u.education || u.school || u.university || parsed.education || '').trim();
-            if (profile.fullName) break;
+            if (!profile.fullName) profile.fullName = String(u.full_name ?? u.fullName ?? u.name ?? parsed.full_name ?? parsed.name ?? '').trim();
+            if (!profile.username) profile.username = String(u.username ?? u.user_name ?? parsed.username ?? '').trim();
+            if (!profile.email) profile.email = String(u.email ?? parsed.email ?? '').trim();
+            if (!profile.avatarUrl) profile.avatarUrl = String(u.avatar_url ?? u.avatarUrl ?? u.photo_url ?? u.photoUrl ?? u.avatar ?? parsed.avatar_url ?? '').trim();
+            if (!profile.bio) profile.bio = String(u.bio ?? u.about ?? parsed.bio ?? '').trim();
+            if (!profile.location) profile.location = String(u.location ?? u.city ?? u.lives_in ?? parsed.location ?? '').trim();
+            if (!profile.education) profile.education = String(u.education ?? u.school ?? u.university ?? parsed.education ?? '').trim();
+            if (profile.fullName || profile.avatarUrl) break;
           }
 
           if (!profile.fullName) {
             profile.fullName = String(
-              localStorage.getItem('autro_profile_name') ||
-              localStorage.getItem('autro_user_name') ||
-              sessionStorage.getItem('autro_profile_name') ||
+              localStorage.getItem('autro_profile_name') ??
+              localStorage.getItem('autro_user_name') ??
+              sessionStorage.getItem('autro_profile_name') ??
+              ''
+            ).trim();
+          }
+
+          if (!profile.avatarUrl) {
+            profile.avatarUrl = String(
+              localStorage.getItem('autro_profile_avatar') ??
+              localStorage.getItem('autro_avatar_url') ??
+              sessionStorage.getItem('autro_profile_avatar') ??
               ''
             ).trim();
           }
@@ -580,14 +709,21 @@
           if (session && session.user) {
             userId = session.user.id;
             currentUserProfile.userId = userId;
-            currentUserProfile.fullName =
-              session.user.user_metadata?.full_name ||
-              session.user.user_metadata?.name ||
-              currentUserProfile.fullName;
-            currentUserProfile.username =
-              session.user.user_metadata?.username ||
-              currentUserProfile.username;
-            currentUserProfile.email = session.user.email || currentUserProfile.email;
+            if (session.user.user_metadata?.full_name !== undefined || session.user.user_metadata?.name !== undefined) {
+              currentUserProfile.fullName = String(
+                session.user.user_metadata?.full_name ?? session.user.user_metadata?.name ?? ''
+              ).trim();
+            }
+            if (session.user.user_metadata?.username !== undefined) {
+              currentUserProfile.username = String(session.user.user_metadata.username ?? '').trim();
+            }
+            if (session.user.email !== undefined) {
+              currentUserProfile.email = String(session.user.email ?? '').trim();
+            }
+            const metaAvatar = session.user.user_metadata?.avatar_url ?? session.user.user_metadata?.picture;
+            if (metaAvatar !== undefined) {
+              currentUserProfile.avatarUrl = String(metaAvatar ?? '').trim();
+            }
           }
 
           if (userId) {
@@ -598,15 +734,17 @@
               .maybeSingle();
 
             if (profileRow) {
-              if (profileRow.full_name) currentUserProfile.fullName = String(profileRow.full_name).trim();
-              if (profileRow.username) currentUserProfile.username = String(profileRow.username).trim();
-              if (profileRow.email) currentUserProfile.email = String(profileRow.email).trim();
-              if (profileRow.bio) currentUserProfile.bio = String(profileRow.bio).trim();
-              if (profileRow.location || profileRow.city || profileRow.lives_in) {
-                currentUserProfile.location = String(profileRow.location || profileRow.city || profileRow.lives_in).trim();
+              if ('full_name' in profileRow) currentUserProfile.fullName = String(profileRow.full_name ?? '').trim();
+              if ('username' in profileRow) currentUserProfile.username = String(profileRow.username ?? '').trim();
+              if ('email' in profileRow) currentUserProfile.email = String(profileRow.email ?? '').trim();
+              const rowAvatar = profileRow.avatar_url ?? profileRow.avatarUrl ?? profileRow.photo_url ?? profileRow.avatar;
+              if (rowAvatar !== undefined) currentUserProfile.avatarUrl = String(rowAvatar ?? '').trim();
+              if ('bio' in profileRow) currentUserProfile.bio = String(profileRow.bio ?? '').trim();
+              if ('location' in profileRow || 'city' in profileRow || 'lives_in' in profileRow) {
+                currentUserProfile.location = String(profileRow.location ?? profileRow.city ?? profileRow.lives_in ?? '').trim();
               }
-              if (profileRow.education || profileRow.university || profileRow.school) {
-                currentUserProfile.education = String(profileRow.education || profileRow.university || profileRow.school).trim();
+              if ('education' in profileRow || 'university' in profileRow || 'school' in profileRow) {
+                currentUserProfile.education = String(profileRow.education ?? profileRow.university ?? profileRow.school ?? '').trim();
               }
             }
           }
@@ -648,17 +786,19 @@
           }
 
           if (settingsRow) {
-            if (settingsRow.full_name) currentUserProfile.fullName = String(settingsRow.full_name).trim();
-            if (settingsRow.bio) currentUserProfile.bio = String(settingsRow.bio).trim();
-            if (settingsRow.location || settingsRow.city || settingsRow.lives_in) {
-              currentUserProfile.location = String(settingsRow.location || settingsRow.city || settingsRow.lives_in).trim();
+            if ('full_name' in settingsRow) currentUserProfile.fullName = String(settingsRow.full_name ?? '').trim();
+            const settingsAvatar = settingsRow.avatar_url ?? settingsRow.avatarUrl ?? settingsRow.photo_url ?? settingsRow.avatar;
+            if (settingsAvatar !== undefined) currentUserProfile.avatarUrl = String(settingsAvatar ?? '').trim();
+            if ('bio' in settingsRow) currentUserProfile.bio = String(settingsRow.bio ?? '').trim();
+            if ('location' in settingsRow || 'city' in settingsRow || 'lives_in' in settingsRow) {
+              currentUserProfile.location = String(settingsRow.location ?? settingsRow.city ?? settingsRow.lives_in ?? '').trim();
             }
-            if (settingsRow.education || settingsRow.university || settingsRow.school) {
-              currentUserProfile.education = String(settingsRow.education || settingsRow.university || settingsRow.school).trim();
+            if ('education' in settingsRow || 'university' in settingsRow || 'school' in settingsRow) {
+              currentUserProfile.education = String(settingsRow.education ?? settingsRow.university ?? settingsRow.school ?? '').trim();
             }
           }
 
-          if (!getDisplayName(currentUserProfile)) {
+          if (!currentUserProfile.fullName && !currentUserProfile.avatarUrl && !userId) {
             const { data: fallbackUsers } = await supabaseClient
               .from('users')
               .select('*')
@@ -666,9 +806,11 @@
               .limit(1);
             if (Array.isArray(fallbackUsers) && fallbackUsers[0]) {
               const u = fallbackUsers[0];
-              if (u.full_name) currentUserProfile.fullName = String(u.full_name).trim();
-              if (u.username) currentUserProfile.username = String(u.username).trim();
-              if (u.email) currentUserProfile.email = String(u.email).trim();
+              if ('full_name' in u) currentUserProfile.fullName = String(u.full_name ?? '').trim();
+              if ('username' in u) currentUserProfile.username = String(u.username ?? '').trim();
+              if ('email' in u) currentUserProfile.email = String(u.email ?? '').trim();
+              const fallbackAvatar = u.avatar_url ?? u.avatarUrl ?? u.photo_url ?? u.avatar;
+              if (fallbackAvatar !== undefined) currentUserProfile.avatarUrl = String(fallbackAvatar ?? '').trim();
             }
           }
 
@@ -685,12 +827,15 @@
 
       function buildNameAwareGreeting(text, profile) {
         const name = getDisplayName(profile);
-        if (!name) return '';
         const isBengali = /[\u0980-\u09FF]/.test(text);
-        if (isBengali) {
-          return `হ্যালো ${name}! আমি আপনাকে কীভাবে সাহায্য করতে পারি?`;
+        if (name) {
+          return isBengali
+            ? `হ্যালো ${name}! আমি আপনাকে কীভাবে সাহায্য করতে পারি?`
+            : `Hello ${name}! How can I help you today?`;
         }
-        return `Hello ${name}! How can I help you today?`;
+        return isBengali
+          ? 'হ্যালো! আমি আপনাকে কীভাবে সাহায্য করতে পারি?'
+          : 'Hello! How can I help you today?';
       }
 
       function formatTime() {
@@ -791,7 +936,15 @@
           });
 
           clearTimeout(timeoutId);
-          const data = await response.json();
+
+          let data = {};
+          const rawBody = await response.text();
+          try {
+            data = rawBody ? JSON.parse(rawBody) : {};
+          } catch (_) {
+            data = { error: rawBody || `Request failed (${response.status})` };
+          }
+
           removeTypingIndicator();
 
           const elapsedSec = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -804,7 +957,7 @@
             } else {
               appendMessage(
                 'assistant',
-                data.error || 'Could not get a response right now.',
+                data.error || `Could not get a response right now (${response.status}).`,
                 `${providerLabel} • ${elapsedSec}s`
               );
             }
@@ -861,7 +1014,17 @@
         }
       });
 
-      resolveCurrentUserProfile();
+      async function initAssistantPage() {
+        if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
+          const authResult = await window.AutroAuth.checkSessionAndProfile({
+            requireCompleteProfile: true
+          });
+          if (!authResult) return;
+        }
+        await resolveCurrentUserProfile();
+      }
+
+      initAssistantPage();
     })();
   </script>
 
@@ -1011,4 +1174,4 @@
     })();
   </script>
 </body>
-</html>
+  </html>
