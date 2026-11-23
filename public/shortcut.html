@@ -733,6 +733,14 @@
     'language'
   ];
 
+  const PROFILE_CACHE_KEYS = [
+    'autro_account_profile',
+    'autrobook_user',
+    'autro_profile_name',
+    'autro_shared_profile_avatar',
+    'autro_profile_pic'
+  ];
+
   let supabaseClient = null;
   try {
     if (window.supabase && typeof window.supabase.createClient === 'function') {
@@ -958,6 +966,13 @@
     try {
       window.sessionStorage.clear();
     } catch (_) {}
+  }
+
+  function clearCachedProfileStorage() {
+    for (const key of PROFILE_CACHE_KEYS) {
+      safeStorageRemove(key);
+    }
+    safeStorageRemove('autro_profile_owner_id');
   }
 
   function showToast(message) {
@@ -1330,7 +1345,12 @@
     }
   }
 
-  function readCachedProfile() {
+  function readCachedProfile(expectedUserId = null) {
+    const cachedOwnerId = safeStorageGet('autro_profile_owner_id');
+    if (expectedUserId && cachedOwnerId && String(cachedOwnerId) !== String(expectedUserId)) {
+      return { name: '', avatar: '' };
+    }
+
     let name = '';
     let avatar = '';
 
@@ -1338,8 +1358,11 @@
       const pRaw = safeStorageGet('autro_account_profile') || safeStorageGet('autrobook_user');
       if (pRaw) {
         const parsed = JSON.parse(pRaw);
-        name = parsed.full_name || parsed.name || '';
-        avatar = parsed.avatar_url || parsed.avatar || parsed.profile_pic || '';
+        const parsedId = parsed.id || parsed.user_id || null;
+        if (!expectedUserId || !parsedId || String(parsedId) === String(expectedUserId)) {
+          name = parsed.full_name || parsed.name || '';
+          avatar = parsed.avatar_url || parsed.avatar || parsed.profile_pic || '';
+        }
       }
       const directName = safeStorageGet('autro_profile_name');
       if (directName !== null) {
@@ -1354,9 +1377,13 @@
     return { name: name || '', avatar: avatar || '' };
   }
 
-  function cacheSupabaseProfile(fullName, avatarUrl) {
+  function cacheSupabaseProfile(userId, fullName, avatarUrl) {
     const cleanName = typeof fullName === 'string' ? fullName.trim() : '';
     const cleanAvatar = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
+
+    if (userId) {
+      safeStorageSet('autro_profile_owner_id', String(userId));
+    }
 
     if (cleanName) {
       safeStorageSet('autro_profile_name', cleanName);
@@ -1375,8 +1402,12 @@
     try {
       const existingRaw = safeStorageGet('autro_account_profile') || safeStorageGet('autrobook_user');
       const existingObj = existingRaw ? JSON.parse(existingRaw) : {};
+      const existingId = existingObj.id || existingObj.user_id || null;
+      const baseObj = (userId && existingId && String(existingId) !== String(userId)) ? {} : existingObj;
+
       const merged = {
-        ...existingObj,
+        ...baseObj,
+        ...(userId ? { id: userId, user_id: userId } : {}),
         full_name: cleanName,
         name: cleanName,
         avatar_url: cleanAvatar,
@@ -1387,108 +1418,68 @@
   }
 
   async function loadUserProfile() {
-    const cached = readCachedProfile();
-    renderProfileCard(cached.name, cached.avatar);
+    let userId = null;
+    let authUser = null;
 
-    if (!supabaseClient) return;
-
-    try {
-      let userId = activeProfileUserId;
-      let fullName = '';
-      let avatarUrl = '';
-      let cloudTheme = null;
-      let cloudLang = null;
-
-      if (supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
+    if (supabaseClient && supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
+      try {
         const { data: sessionData } = await supabaseClient.auth.getSession();
-        let authUser = sessionData?.session?.user || null;
-
+        authUser = sessionData?.session?.user || null;
         if (!authUser && typeof supabaseClient.auth.getUser === 'function') {
           const { data: userData } = await supabaseClient.auth.getUser();
           authUser = userData?.user || null;
         }
+        userId = authUser?.id || null;
+      } catch (_) {}
+    }
 
-        if (authUser) {
-          userId = authUser.id;
-          activeProfileUserId = authUser.id;
-          const metaName =
-            authUser.user_metadata?.full_name ||
-            authUser.user_metadata?.name ||
-            authUser.user_metadata?.display_name ||
-            '';
-          const metaAvatar =
-            authUser.user_metadata?.avatar_url ||
-            authUser.user_metadata?.picture ||
-            '';
-          if (metaName) fullName = metaName;
-          if (metaAvatar) avatarUrl = metaAvatar;
-        }
+    const previousOwnerId = safeStorageGet('autro_profile_owner_id');
+    if (userId && previousOwnerId && String(previousOwnerId) !== String(userId)) {
+      clearCachedProfileStorage();
+      renderProfileCard('', '');
+    } else if (!userId && previousOwnerId) {
+      clearCachedProfileStorage();
+      renderProfileCard('', '');
+    }
+
+    activeProfileUserId = userId;
+
+    const cached = readCachedProfile(userId);
+    renderProfileCard(cached.name, cached.avatar);
+
+    if (!supabaseClient || !userId) return;
+
+    try {
+      let fullName =
+        authUser?.user_metadata?.full_name ||
+        authUser?.user_metadata?.name ||
+        authUser?.user_metadata?.display_name ||
+        '';
+      let avatarUrl =
+        authUser?.user_metadata?.avatar_url ||
+        authUser?.user_metadata?.picture ||
+        '';
+      let cloudTheme = null;
+      let cloudLang = null;
+
+      const { data: profileRow, error: profErr } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!profErr && profileRow) {
+        fullName = profileRow.full_name || profileRow.name || fullName;
+        avatarUrl = profileRow.avatar_url || profileRow.avatar || profileRow.photo_url || avatarUrl;
       }
 
-      if (userId) {
-        const { data: profileRow, error: profErr } = await supabaseClient
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (!profErr && profileRow) {
-          fullName = profileRow.full_name || profileRow.name || '';
-          avatarUrl = profileRow.avatar_url || profileRow.avatar || profileRow.photo_url || '';
-        }
-      }
-
-      const clientKey = safeStorageGet('autro_account_client_id');
-      let settingsRow = null;
-
-      if (userId) {
-        const { data } = await supabaseClient
-          .from('account_settings')
-          .select('*')
-          .eq('user_id', userId)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        settingsRow = data;
-      }
-
-      if (!settingsRow && clientKey) {
-        const { data } = await supabaseClient
-          .from('account_settings')
-          .select('*')
-          .eq('account_key', clientKey)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        settingsRow = data;
-      }
-
-      if (!settingsRow && !userId) {
-        const { data: latestRows } = await supabaseClient
-          .from('account_settings')
-          .select('*')
-          .order('updated_at', { ascending: false })
-          .limit(1);
-        if (Array.isArray(latestRows) && latestRows.length > 0) {
-          settingsRow = latestRows[0];
-          if (!activeProfileUserId && latestRows[0].user_id) {
-            activeProfileUserId = latestRows[0].user_id;
-          }
-        }
-      }
-
-      if (!fullName && !avatarUrl && !userId) {
-        const { data: fallbackProfiles } = await supabaseClient
-          .from('profiles')
-          .select('*')
-          .limit(1);
-        if (Array.isArray(fallbackProfiles) && fallbackProfiles.length > 0) {
-          const p = fallbackProfiles[0];
-          if (!activeProfileUserId && p.id) activeProfileUserId = p.id;
-          fullName = p.full_name || p.name || '';
-          avatarUrl = p.avatar_url || p.avatar || p.photo_url || '';
-        }
-      }
+      const { data: settingsRow } = await supabaseClient
+        .from('account_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (settingsRow) {
         if (settingsRow.full_name) fullName = settingsRow.full_name;
@@ -1498,7 +1489,7 @@
       }
 
       renderProfileCard(fullName, avatarUrl);
-      cacheSupabaseProfile(fullName, avatarUrl);
+      cacheSupabaseProfile(userId, fullName, avatarUrl);
 
       const normalizedCloudTheme = normalizeTheme(cloudTheme);
       if (normalizedCloudTheme && normalizedCloudTheme !== currentTheme) {
@@ -1544,10 +1535,8 @@
         }
       }
 
-      if (
-        ['autro_account_profile', 'autrobook_user', 'autro_profile_name', 'autro_shared_profile_avatar', 'autro_profile_pic'].includes(e.key)
-      ) {
-        const c = readCachedProfile();
+      if ([...PROFILE_CACHE_KEYS, 'autro_profile_owner_id'].includes(e.key)) {
+        const c = readCachedProfile(activeProfileUserId);
         renderProfileCard(c.name, c.avatar);
       }
     });
@@ -1582,10 +1571,14 @@
 
     window.addEventListener('autro:profile-updated', (ev) => {
       if (ev && ev.detail) {
+        const eventUserId = ev.detail.id || ev.detail.user_id || activeProfileUserId;
+        if (activeProfileUserId && eventUserId && String(activeProfileUserId) !== String(eventUserId)) {
+          return;
+        }
         const nextName = ev.detail.full_name ?? ev.detail.name ?? '';
         const nextAvatar = ev.detail.avatar_url ?? ev.detail.avatar ?? '';
         renderProfileCard(nextName, nextAvatar);
-        cacheSupabaseProfile(nextName, nextAvatar);
+        cacheSupabaseProfile(activeProfileUserId, nextName, nextAvatar);
       }
     });
 
@@ -1616,10 +1609,14 @@
       if (profileBroadcastChannel) {
         profileBroadcastChannel.onmessage = (ev) => {
           if (ev?.data?.type === 'PROFILE_SYNC' && ev?.data?.payload) {
+            const payloadUserId = ev.data.payload.id || ev.data.payload.user_id || null;
+            if (activeProfileUserId && payloadUserId && String(activeProfileUserId) !== String(payloadUserId)) {
+              return;
+            }
             const nextName = ev.data.payload.full_name ?? '';
             const nextAvatar = ev.data.payload.avatar_url ?? '';
             renderProfileCard(nextName, nextAvatar);
-            cacheSupabaseProfile(nextName, nextAvatar);
+            cacheSupabaseProfile(activeProfileUserId || payloadUserId, nextName, nextAvatar);
           } else if (ev?.data?.type === 'PROFILE_REFRESH') {
             loadUserProfile();
           }
@@ -1631,7 +1628,12 @@
       if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === 'function') {
         try {
           supabaseClient.auth.onAuthStateChange((_event, session) => {
-            activeProfileUserId = session?.user?.id || null;
+            const nextUserId = session?.user?.id || null;
+            if (String(nextUserId || '') !== String(activeProfileUserId || '')) {
+              clearCachedProfileStorage();
+              renderProfileCard('', '');
+            }
+            activeProfileUserId = nextUserId;
             loadUserProfile();
           });
         } catch (_) {}
@@ -1641,10 +1643,18 @@
         try {
           supabaseClient
             .channel('autro-shortcut-profile-live')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'account_settings' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'account_settings' }, (payload) => {
+              const rowUserId = payload?.new?.user_id || payload?.old?.user_id || null;
+              if (activeProfileUserId && rowUserId && String(rowUserId) !== String(activeProfileUserId)) {
+                return;
+              }
               loadUserProfile();
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+              const rowId = payload?.new?.id || payload?.old?.id || null;
+              if (activeProfileUserId && rowId && String(rowId) !== String(activeProfileUserId)) {
+                return;
+              }
               loadUserProfile();
             })
             .subscribe();
