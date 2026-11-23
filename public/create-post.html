@@ -674,14 +674,24 @@
   <div id="toast" class="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/auth.js"></script>
   <script>
     const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
     let sb = null;
     try {
-      if (window.supabase && typeof window.supabase.createClient === 'function') {
+      if (window.AutroAuth && window.AutroAuth.supabase) {
+        sb = window.AutroAuth.supabase;
+      } else if (window.supabase && typeof window.supabase.createClient === 'function') {
         sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (_) {}
+
+    let postSyncChannel = null;
+    try {
+      if ('BroadcastChannel' in window) {
+        postSyncChannel = new BroadcastChannel('autrobook_posts_sync');
       }
     } catch (_) {}
 
@@ -714,6 +724,7 @@
     let currentProfile = null;
     let galleryFile = null;
     let galleryMediaType = null;
+    let galleryDataUrl = '';
     let musicFile = null;
     let selectedMusicName = '';
     let selectedPeople = '';
@@ -733,7 +744,7 @@
       for (const k of heavyCandidates) {
         try {
           const val = localStorage.getItem(k);
-          if (val && val.length > 180000) {
+          if (val && val.length > 220000) {
             localStorage.removeItem(k);
           }
         } catch (_) {}
@@ -742,12 +753,7 @@
 
     function safeLocalStorageSet(key, valueStr) {
       const cleanStr = String(valueStr || '');
-      if (!cleanStr || cleanStr.includes('data:image/') || cleanStr.includes('data:video/') || cleanStr.includes('data:audio/')) {
-        return false;
-      }
-      if (cleanStr.length > 220000) {
-        return false;
-      }
+      if (!cleanStr) return false;
       try {
         localStorage.setItem(key, cleanStr);
         return true;
@@ -762,7 +768,6 @@
           localStorage.setItem(key, cleanStr);
           return true;
         } catch (_) {
-          try { localStorage.removeItem(key); } catch (__) {}
           return false;
         }
       }
@@ -772,7 +777,8 @@
       const item = { ...post };
       const stripVolatileUrl = (u) => {
         if (typeof u !== 'string') return '';
-        if (u.startsWith('data:') || u.startsWith('blob:')) return '';
+        if (u.startsWith('blob:')) return '';
+        if (u.startsWith('data:video/') || u.startsWith('data:audio/') || u.length > 150000) return '';
         return u;
       };
       item.media_url = stripVolatileUrl(item.media_url);
@@ -785,7 +791,7 @@
       return item;
     }
 
-    function appendPostToLocalCache(storageKey, newPost, maxItems = 8) {
+    function appendPostToLocalCache(storageKey, newPost, maxItems = 12) {
       try {
         let list = [];
         try {
@@ -796,9 +802,62 @@
           list = [];
         }
         const safePost = sanitizePostForCache(newPost);
-        const deduped = [safePost, ...list.filter(p => p && p.id !== safePost.id).map(sanitizePostForCache)].slice(0, maxItems);
+        const deduped = [safePost, ...list.filter(p => p && String(p.id) !== String(safePost.id)).map(sanitizePostForCache)].slice(0, maxItems);
         safeLocalStorageSet(storageKey, JSON.stringify(deduped));
       } catch (_) {}
+    }
+
+    function broadcastNewPost(postObj) {
+      try {
+        sessionStorage.setItem('autro_latest_created_post', JSON.stringify(postObj));
+      } catch (_) {}
+
+      try {
+        if (postSyncChannel) {
+          postSyncChannel.postMessage({
+            type: 'NEW_POST_CARD',
+            targets: ['/public/index.html', '/public/profile.html'],
+            post: postObj
+          });
+        }
+      } catch (_) {}
+
+      try {
+        window.dispatchEvent(new CustomEvent('autro:post-created', {
+          detail: {
+            post: postObj,
+            targets: ['/public/index.html', '/public/profile.html']
+          }
+        }));
+      } catch (_) {}
+    }
+
+    function resolveReturnUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const fromParam = (params.get('from') || '').toLowerCase().trim();
+      let storedTarget = '';
+      try {
+        storedTarget = String(sessionStorage.getItem('autro_post_return_target') || '').trim();
+        sessionStorage.removeItem('autro_post_return_target');
+      } catch (_) {}
+
+      if (fromParam === 'profile' || storedTarget.includes('profile.html')) {
+        return '/public/profile.html';
+      }
+      if (storedTarget.startsWith('/')) {
+        return storedTarget;
+      }
+      return '/public/index.html';
+    }
+
+    function captureOriginFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const fromParam = (params.get('from') || '').toLowerCase().trim();
+      if (fromParam === 'profile') {
+        try { sessionStorage.setItem('autro_post_return_target', '/public/profile.html'); } catch (_) {}
+      } else if (fromParam === 'feed' || fromParam === 'index') {
+        try { sessionStorage.setItem('autro_post_return_target', '/public/index.html'); } catch (_) {}
+      }
     }
 
     function showToast(msg) {
@@ -835,9 +894,9 @@
         avatar_url: safeAvatar
       };
 
-      document.getElementById('headerUserName').textContent = savedName;
+      document.getElementById('headerUserName').textContent = savedName || 'Create Post';
       document.getElementById('profileNameBox').textContent = savedName;
-      document.title = savedName || 'Create Post';
+      document.title = savedName ? `${savedName} - Create Post` : 'Create Post';
 
       const avatarBox = document.getElementById('profileAvatarBox');
       avatarBox.innerHTML = '';
@@ -854,11 +913,20 @@
 
     async function loadSupabaseAccount() {
       applyAccountIdentity('', '', null);
-      if (!sb) return;
+
+      if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
+        const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+        if (!authResult) return false;
+        currentUser = authResult.user;
+      }
+
+      if (!sb) return true;
 
       try {
-        const { data: { session } } = await sb.auth.getSession();
-        currentUser = session?.user || null;
+        if (!currentUser) {
+          const { data: { session } } = await sb.auth.getSession();
+          currentUser = session?.user || null;
+        }
 
         if (currentUser) {
           const { data: prof } = await sb
@@ -888,24 +956,12 @@
             '';
 
           applyAccountIdentity(savedName, savedAvatar, currentUser.id);
-          return;
-        }
-
-        const { data: profilesList } = await sb
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (profilesList && profilesList.length) {
-          const p = profilesList[0];
-          const savedName = p.full_name || p.name || p.display_name || p.username || '';
-          const savedAvatar = p.avatar_url || p.avatar || p.photo_url || '';
-          applyAccountIdentity(savedName, savedAvatar, p.id || null);
         }
       } catch (_) {
-        applyAccountIdentity('', '', null);
+        applyAccountIdentity('', '', currentUser?.id || null);
       }
+
+      return true;
     }
 
     function subscribeRealtimeProfileIdentity() {
@@ -928,11 +984,24 @@
       document.getElementById('phoneGalleryInput').click();
     }
 
-    function handleGalleryPicked(e) {
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve) => {
+        if (!file || !file.type.startsWith('image/')) return resolve('');
+        if (file.size > 140000) return resolve('');
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleGalleryPicked(e) {
       const file = e.target.files?.[0];
       if (!file) return;
       galleryFile = file;
       galleryMediaType = file.type.startsWith('video/') ? 'video' : 'image';
+      galleryDataUrl = galleryMediaType === 'image' ? await readFileAsDataUrl(file) : '';
+
       const url = URL.createObjectURL(file);
       const box = document.getElementById('previewBox');
       const content = document.getElementById('previewContent');
@@ -945,6 +1014,7 @@
     function clearGalleryMedia() {
       galleryFile = null;
       galleryMediaType = null;
+      galleryDataUrl = '';
       document.getElementById('phoneGalleryInput').value = '';
       document.getElementById('previewContent').innerHTML = '';
       document.getElementById('previewBox').classList.remove('active');
@@ -1230,13 +1300,21 @@
         let mediaUrl = '';
         if (galleryFile) {
           setProgress(40, 'Uploading media...');
-          mediaUrl = await uploadToStorage(galleryFile, galleryMediaType === 'video' ? 'videos' : 'images');
+          try {
+            mediaUrl = await uploadToStorage(galleryFile, galleryMediaType === 'video' ? 'videos' : 'images');
+          } catch (_) {
+            mediaUrl = galleryDataUrl || '';
+          }
         }
 
         let musicUrl = '';
         if (musicFile) {
           setProgress(65, 'Uploading music...');
-          musicUrl = await uploadToStorage(musicFile, 'music');
+          try {
+            musicUrl = await uploadToStorage(musicFile, 'music');
+          } catch (_) {
+            musicUrl = '';
+          }
         }
 
         const authorName = currentProfile?.full_name || '';
@@ -1276,41 +1354,44 @@
           }
         }
 
+        const resolvedMedia = mediaUrl || galleryDataUrl || '';
         const postPayload = {
           id: savedRow?.id || `post-${Date.now()}`,
           user_id: authorId,
           author_name: authorName,
           avatar: authorAvatar,
           posted_at: createdAt,
+          created_at: createdAt,
           quality: '1080p',
           is_bold: isBoldText,
           is_video: galleryMediaType === 'video',
-          media_url: mediaUrl || '',
+          media_url: resolvedMedia,
+          image: galleryMediaType === 'image' ? resolvedMedia : '',
           music_url: musicUrl || '',
           music_name: selectedMusicName || '',
-          poster_url: galleryMediaType === 'image' ? (mediaUrl || '') : authorAvatar,
+          poster_url: galleryMediaType === 'image' ? resolvedMedia : authorAvatar,
           caption,
+          text: caption,
           audience,
           reactions: 0,
+          likes: 0,
           views: 0,
           comments: 0,
           shares: 0
         };
 
-        appendPostToLocalCache('autro_instant_feed_posts', postPayload, 8);
-        appendPostToLocalCache('autro_profile_posts', postPayload, 8);
-        appendPostToLocalCache('autro_post_cards', postPayload, 8);
+        appendPostToLocalCache('autro_instant_feed_posts', postPayload, 12);
+        appendPostToLocalCache('autro_profile_posts', postPayload, 12);
+        appendPostToLocalCache('autro_post_cards', postPayload, 12);
+        broadcastNewPost(postPayload);
 
         setProgress(100, 'Posted!');
         showToast('Post published!');
 
-        try {
-          sessionStorage.removeItem('autro_post_return_target');
-        } catch (_) {}
-
+        const destination = resolveReturnUrl();
         setTimeout(() => {
-          window.location.href = '/public/index.html';
-        }, 350);
+          window.location.href = destination;
+        }, 300);
       } catch (err) {
         btn.disabled = false;
         document.getElementById('progressBox').classList.remove('active');
@@ -1319,8 +1400,10 @@
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
+      captureOriginFromUrl();
       pruneHeavyLocalKeys();
-      await loadSupabaseAccount();
+      const ok = await loadSupabaseAccount();
+      if (ok === false) return;
       subscribeRealtimeProfileIdentity();
       restoreDraftAndFriends();
     });
