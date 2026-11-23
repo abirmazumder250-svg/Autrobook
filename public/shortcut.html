@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
   :root {
     --bg-color: #FFFFFF;
@@ -63,6 +64,15 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     -webkit-tap-highlight-color: transparent;
     transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Hide content until login & signup profile verification succeeds */
+  body {
+    visibility: hidden;
+  }
+
+  body.auth-ready {
+    visibility: visible;
   }
 
   .wrap {
@@ -774,13 +784,15 @@
     'autro_profile_pic'
   ];
 
-  let supabaseClient = null;
-  try {
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let supabaseClient = (window.AutroAuth && window.AutroAuth.supabase) || null;
+  if (!supabaseClient) {
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (err) {
+      console.warn('Supabase initialization skipped:', err);
     }
-  } catch (err) {
-    console.warn('Supabase initialization skipped:', err);
   }
 
   let themeBroadcastChannel = null;
@@ -1466,13 +1478,13 @@
     } catch (_) {}
   }
 
-  async function loadUserProfile() {
+  async function loadUserProfile(prefetchedAuth = null) {
     const seq = ++profileLoadSeq;
 
-    let userId = null;
-    let authUser = null;
+    let userId = prefetchedAuth?.user?.id || null;
+    let authUser = prefetchedAuth?.user || null;
 
-    if (supabaseClient && supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
+    if (!userId && supabaseClient && supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
       try {
         const { data: sessionData } = await supabaseClient.auth.getSession();
         authUser = sessionData?.session?.user || null;
@@ -1482,10 +1494,6 @@
         }
         userId = authUser?.id || null;
       } catch (_) {}
-    }
-
-    if (!userId) {
-      userId = safeStorageGet('autro_user_id') || null;
     }
 
     if (seq !== profileLoadSeq) return;
@@ -1516,11 +1524,14 @@
 
     try {
       let fullName =
+        prefetchedAuth?.profile?.full_name ||
+        prefetchedAuth?.profile?.name ||
         authUser?.user_metadata?.full_name ||
         authUser?.user_metadata?.name ||
         authUser?.user_metadata?.display_name ||
         '';
       let avatarUrl =
+        prefetchedAuth?.profile?.avatar_url ||
         authUser?.user_metadata?.avatar_url ||
         authUser?.user_metadata?.picture ||
         '';
@@ -1701,12 +1712,21 @@
         try {
           supabaseClient.auth.onAuthStateChange((_event, session) => {
             const nextUserId = session?.user?.id || null;
-            if (String(nextUserId || '') !== String(activeProfileUserId || '')) {
+            if (!nextUserId) {
+              clearCachedProfileStorage();
+              renderProfileCard('', '');
+              if (document.body) document.body.classList.remove('auth-ready');
+              if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
+                window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+              }
+              return;
+            }
+            if (String(nextUserId) !== String(activeProfileUserId || '')) {
               clearCachedProfileStorage();
               renderProfileCard('', '');
             }
             activeProfileUserId = nextUserId;
-            loadUserProfile();
+            loadUserProfile({ session, user: session.user });
           });
         } catch (_) {}
       }
@@ -1751,7 +1771,16 @@
     if (e) e.preventDefault();
     showToast('Logging out...');
 
-    if (supabaseClient && supabaseClient.auth && typeof supabaseClient.auth.signOut === 'function') {
+    if (window.AutroAuth && typeof window.AutroAuth.signOut === 'function') {
+      try {
+        await Promise.race([
+          window.AutroAuth.signOut(),
+          new Promise((resolve) => setTimeout(resolve, 1200))
+        ]);
+      } catch (err) {
+        console.warn('Sign out error:', err);
+      }
+    } else if (supabaseClient && supabaseClient.auth && typeof supabaseClient.auth.signOut === 'function') {
       try {
         await Promise.race([
           supabaseClient.auth.signOut(),
@@ -1770,9 +1799,26 @@
   }
 
   let shortcutInitialized = false;
-  function initShortcutPage() {
+  async function initShortcutPage() {
     if (shortcutInitialized) return;
+
+    if (!window.AutroAuth || typeof window.AutroAuth.checkSessionAndProfile !== 'function') {
+      window.location.replace('/login.html');
+      return;
+    }
+
+    const authResult = await window.AutroAuth.checkSessionAndProfile({
+      requireCompleteProfile: true
+    });
+
+    if (!authResult || !authResult.user) {
+      return;
+    }
+
     shortcutInitialized = true;
+    if (document.body) {
+      document.body.classList.add('auth-ready');
+    }
 
     applyTheme(getSavedTheme(), { persist: true, syncCloud: false });
 
@@ -1830,7 +1876,7 @@
       logoutBtn.addEventListener('click', handleLogout);
     }
 
-    loadUserProfile();
+    await loadUserProfile(authResult);
     subscribeLiveUpdates();
   }
 
@@ -1841,4 +1887,4 @@
   }
 </script>
 </body>
-  </html>
+    </html>
