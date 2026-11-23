@@ -830,6 +830,7 @@
         : '';
 
       const resolvedId = storyId || generateUuid();
+      const profileUrl = `${PROFILE_PAGE}?tab=stories${ownerId ? `&user=${encodeURIComponent(ownerId)}` : ''}`;
 
       return {
         id: resolvedId,
@@ -841,6 +842,11 @@
         author_name: authorName,
         authorAvatar,
         author_avatar: authorAvatar,
+        profileUrl,
+        profile_url: profileUrl,
+        indexUrl: `${HOME_INDEX_PAGE}?tab=stories&story=${encodeURIComponent(resolvedId)}`,
+        cardPage: STORY_CARD_PAGE,
+        card_page: STORY_CARD_PAGE,
         privacy,
         audience: privacy,
         ownerFriends,
@@ -871,14 +877,14 @@
         created_at: nowIso,
         expires_at: expiresIso,
         viewed: [],
-        viewers: [],
-        visible_on: [STORY_CARD_PAGE, HOME_INDEX_PAGE, PROFILE_PAGE]
+        viewers: []
       };
     }
 
     function storeStoryInAllKeys(payload) {
       try {
         sessionStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
+        localStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
         localStorage.setItem('autrobook_active_story_id', payload.id);
         localStorage.setItem('autro_new_story_created', JSON.stringify(payload));
       } catch (e) {}
@@ -888,7 +894,8 @@
         'autrobook_stories_v1',
         'autrobook_stories',
         'autro_stories',
-        'autrobook_profile_stories'
+        'autrobook_profile_stories',
+        'autro_profile_stories'
       ];
       if (payload.user_id) {
         storyKeys.push(`autrobook_profile_stories_${payload.user_id}`);
@@ -899,7 +906,7 @@
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
           const arr = Array.isArray(existing) ? existing.filter(s => s && String(s.id) !== String(payload.id)) : [];
           arr.unshift(payload);
-          localStorage.setItem(key, JSON.stringify(arr.slice(0, 30)));
+          localStorage.setItem(key, JSON.stringify(arr.slice(0, 25)));
         } catch (e) {}
       });
 
@@ -909,7 +916,7 @@
             type: 'NEW_STORY_CREATED',
             story: payload,
             storyId: payload.id,
-            targets: [STORY_CARD_PAGE, HOME_INDEX_PAGE, PROFILE_PAGE]
+            targets: ['/story-card.html', '/index.html', '/profile.html']
           });
         }
       } catch (_) {}
@@ -920,9 +927,9 @@
       u.searchParams.set('storyId', storyObj.id);
       u.searchParams.set('id', storyObj.id);
       if (storyObj.user_id) u.searchParams.set('user_id', storyObj.user_id);
+      u.searchParams.set('profile_url', storyObj.profileUrl || `${PROFILE_PAGE}?tab=stories`);
+      u.searchParams.set('index_url', storyObj.indexUrl || HOME_INDEX_PAGE);
       u.searchParams.set('from', '/create-story.html');
-      u.searchParams.set('home', HOME_INDEX_PAGE);
-      u.searchParams.set('profile', `${PROFILE_PAGE}?tab=stories${storyObj.user_id ? `&user=${encodeURIComponent(storyObj.user_id)}` : ''}`);
       return u.toString();
     }
 
@@ -1307,7 +1314,7 @@
 
       await persistStoryToSupabase(payload);
 
-      publishedStories = [payload, ...publishedStories.filter(s => s && String(s.id) !== String(payload.id))].slice(0, 30);
+      publishedStories = [payload, ...publishedStories.filter(s => s && String(s.id) !== String(payload.id))].slice(0, 25);
       storeStoryInAllKeys(payload);
 
       renderSavedStories();
@@ -1377,4 +1384,4 @@
     });
   </script>
 </body>
-  </html>
+        </html>
