@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Posts Feed - Autrobook</title>
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth.js"></script>
@@ -27,6 +28,7 @@
     --btn-active-text: #ffffff;
     --accent-link: #1a73e8;
     --badge-bg: rgba(26, 115, 232, 0.1);
+    --danger-color: #d93025;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -48,6 +50,7 @@
       --btn-active-text: #202124;
       --accent-link: #8ab4f8;
       --badge-bg: rgba(138, 180, 248, 0.14);
+      --danger-color: #f28b82;
     }
   }
 
@@ -270,6 +273,7 @@
   .post-time {
     font-size: 12px;
     color: var(--muted-color);
+    font-variant-numeric: tabular-nums;
   }
 
   .header-pills {
@@ -277,10 +281,13 @@
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
-  .pill-link-btn {
-    padding: 6px 12px;
+  .pill-link-btn,
+  .owner-action-btn {
+    padding: 6px 11px;
     border-radius: 999px;
     border: 1px solid var(--btn-border);
     background: var(--btn-bg);
@@ -292,12 +299,22 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    cursor: pointer;
     transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
-  .pill-link-btn:hover {
+  .pill-link-btn:hover,
+  .owner-action-btn:hover {
     background: var(--btn-hover-bg);
     border-color: var(--accent-link);
+  }
+
+  .owner-action-btn.delete-btn {
+    color: var(--danger-color);
+  }
+
+  .owner-action-btn.delete-btn:hover {
+    border-color: var(--danger-color);
   }
 
   /* Clickable post body navigating to comment.html */
@@ -324,6 +341,64 @@
 
   .post-caption.bold-text {
     font-weight: 700;
+  }
+
+  /* Inline Caption Editor */
+  .edit-caption-box {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--subtle-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px;
+  }
+
+  .edit-caption-box.open {
+    display: flex;
+  }
+
+  .edit-caption-textarea {
+    width: 100%;
+    min-height: 82px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    padding: 9px 12px;
+    font-size: 14px;
+    line-height: 1.45;
+    resize: vertical;
+    outline: none;
+  }
+
+  .edit-caption-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .edit-save-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--btn-active-bg);
+    background: var(--btn-active-bg);
+    color: var(--btn-active-text);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .edit-cancel-btn {
+    padding: 6px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
   }
 
   .post-media-box {
@@ -376,6 +451,7 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
+    font-variant-numeric: tabular-nums;
   }
 
   .stat-text-link {
@@ -603,7 +679,7 @@
         <button type="button" class="icon-btn" id="refreshFeedBtn" title="Refresh Posts" aria-label="Refresh Posts">
           <i class="fa-solid fa-rotate-right"></i>
         </button>
-        <a href="/create-post.html" class="icon-btn" id="createPostPlusBtn" title="Create Post" aria-label="Create Post">
+        <a href="/create-post.html?from=post" class="icon-btn" id="createPostPlusBtn" title="Create Post" aria-label="Create Post">
           <i class="fa-solid fa-plus"></i>
         </a>
       </div>
@@ -617,8 +693,8 @@
 
   <section class="quick-composer">
     <div class="mini-avatar" id="headerUserAvatar">A</div>
-    <a href="/create-post.html" class="composer-trigger">What's on your mind? Create a post...</a>
-    <a href="/create-post.html" class="icon-btn" title="New Post" aria-label="New Post">
+    <a href="/create-post.html?from=post" class="composer-trigger">What's on your mind? Create a post...</a>
+    <a href="/create-post.html?from=post" class="icon-btn" title="New Post" aria-label="New Post">
       <i class="fa-solid fa-plus"></i>
     </a>
   </section>
@@ -644,7 +720,7 @@
     <i class="fa-solid fa-clapperboard"></i>
     <span>Reels</span>
   </a>
-  <a href="/create-post.html" class="nav-item" title="Create">
+  <a href="/create-post.html?from=post" class="nav-item" title="Create">
     <i class="fa-solid fa-plus-circle"></i>
     <span>Create</span>
   </a>
@@ -664,17 +740,33 @@
     ? window.AutroAuth.supabase
     : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
+  let postSyncChannel = null;
+  try {
+    if ('BroadcastChannel' in window) {
+      postSyncChannel = new BroadcastChannel('autrobook_posts_sync');
+    }
+  } catch (_) {}
+
   const feedStreamEl = document.getElementById('postsFeedStream');
   const searchInputEl = document.getElementById('postSearchInput');
   const refreshFeedBtn = document.getElementById('refreshFeedBtn');
   const headerUserAvatarEl = document.getElementById('headerUserAvatar');
   const toastBannerEl = document.getElementById('toastBanner');
 
+  const POST_CACHE_KEYS = [
+    'posts',
+    'autro_instant_feed_posts',
+    'autro_post_cards',
+    'autrobook_profile_posts',
+    'autro_profile_posts'
+  ];
+
   let currentUser = null;
   let currentProfile = null;
   let allPosts = [];
   let likedPostIds = new Set();
   let searchQuery = '';
+  let editingPostId = null;
 
   function showToast(msg) {
     toastBannerEl.textContent = msg;
@@ -696,11 +788,18 @@
 
   function formatTimeAgo(isoOrMs) {
     const ts = typeof isoOrMs === 'number' ? isoOrMs : new Date(isoOrMs || Date.now()).getTime();
+    if (Number.isNaN(ts)) return '0s';
     const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-    if (diffSec < 60) return 'Just now';
-    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
-    return `${Math.floor(diffSec / 86400)}d ago`;
+    if (diffSec < 60) return `${diffSec}s`;
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
+    return `${Math.floor(diffSec / 86400)}d`;
+  }
+
+  function refreshLiveTimestamps() {
+    document.querySelectorAll('.post-time[data-created-at]').forEach((el) => {
+      el.textContent = formatTimeAgo(el.getAttribute('data-created-at'));
+    });
   }
 
   function getDeletedPostIdSet() {
@@ -732,19 +831,23 @@
     return deletedSet;
   }
 
+  function recordDeletedPostId(postId) {
+    const cleanId = String(postId || '').trim();
+    if (!cleanId) return;
+    try {
+      const existing = JSON.parse(localStorage.getItem('autro_deleted_post_ids') || '[]');
+      const set = new Set(Array.isArray(existing) ? existing.map(String) : []);
+      set.add(cleanId);
+      localStorage.setItem('autro_deleted_post_ids', JSON.stringify(Array.from(set).slice(-120)));
+    } catch (_) {}
+  }
+
   function pruneDeletedPostFromLocalCaches(postId) {
     const cleanId = String(postId || '').trim();
     if (!cleanId) return;
+    recordDeletedPostId(cleanId);
 
-    const arrayKeys = [
-      'posts',
-      'autro_instant_feed_posts',
-      'autro_post_cards',
-      'autrobook_profile_posts',
-      'autro_profile_posts'
-    ];
-
-    arrayKeys.forEach((key) => {
+    POST_CACHE_KEYS.forEach((key) => {
       try {
         const arr = JSON.parse(localStorage.getItem(key) || '[]');
         if (Array.isArray(arr)) {
@@ -767,6 +870,142 @@
         }
       }
     } catch (e) {}
+
+    try {
+      const latestSession = JSON.parse(sessionStorage.getItem('autro_latest_created_post') || 'null');
+      if (latestSession && String(latestSession.id || '') === cleanId) {
+        sessionStorage.removeItem('autro_latest_created_post');
+      }
+    } catch (_) {}
+  }
+
+  function syncCaptionAcrossLocalCaches(postId, nextCaption) {
+    const cleanId = String(postId || '').trim();
+    if (!cleanId) return;
+
+    POST_CACHE_KEYS.forEach((key) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        if (Array.isArray(arr)) {
+          const updated = arr.map((item) => {
+            if (!item || typeof item !== 'object') return item;
+            const itemId = String(item.id || item.post_id || '').trim();
+            if (itemId === cleanId) {
+              return { ...item, caption: nextCaption, text: nextCaption };
+            }
+            return item;
+          });
+          localStorage.setItem(key, JSON.stringify(updated));
+        }
+      } catch (_) {}
+    });
+
+    try {
+      const singleNew = JSON.parse(localStorage.getItem('autro_new_post_created') || 'null');
+      if (singleNew && String(singleNew.id || singleNew.post_id || '') === cleanId) {
+        localStorage.setItem('autro_new_post_created', JSON.stringify({
+          ...singleNew,
+          caption: nextCaption,
+          text: nextCaption
+        }));
+      }
+    } catch (_) {}
+
+    try {
+      if (postSyncChannel) {
+        postSyncChannel.postMessage({
+          type: 'POST_UPDATED',
+          postId: cleanId,
+          caption: nextCaption,
+          targets: ['/index.html', '/profile.html', '/post.html']
+        });
+      }
+    } catch (_) {}
+  }
+
+  function broadcastPostDeletion(postId) {
+    const cleanId = String(postId || '').trim();
+    if (!cleanId) return;
+    try {
+      if (postSyncChannel) {
+        postSyncChannel.postMessage({
+          type: 'DELETE_POST_CARD',
+          postId: cleanId,
+          id: cleanId,
+          targets: ['/index.html', '/profile.html', '/post.html']
+        });
+        postSyncChannel.postMessage({
+          type: 'POST_DELETED',
+          postId: cleanId,
+          id: cleanId,
+          targets: ['/index.html', '/profile.html', '/post.html']
+        });
+      }
+    } catch (_) {}
+  }
+
+  async function savePostCaptionEdit(postId, nextCaption) {
+    const cleanId = String(postId || '').trim();
+    const post = allPosts.find((p) => String(p.id) === cleanId);
+    if (!post) return;
+
+    const trimmed = String(nextCaption || '').trim();
+    if (!trimmed && !post.media_url) {
+      showToast('Post caption cannot be empty without media.');
+      return;
+    }
+
+    if (supabaseClient && !cleanId.startsWith('local-')) {
+      let query = supabaseClient
+        .from('posts')
+        .update({ caption: trimmed })
+        .eq('id', cleanId);
+      if (currentUser?.id) {
+        query = query.eq('user_id', currentUser.id);
+      }
+      const { error } = await query;
+      if (error) {
+        showToast('Failed to update caption: ' + error.message);
+        return;
+      }
+    }
+
+    post.caption = trimmed;
+    editingPostId = null;
+    syncCaptionAcrossLocalCaches(cleanId, trimmed);
+    renderPosts();
+    showToast('Caption updated');
+  }
+
+  async function deletePostPermanently(postId) {
+    const cleanId = String(postId || '').trim();
+    if (!cleanId) return;
+
+    if (supabaseClient && !cleanId.startsWith('local-')) {
+      let query = supabaseClient
+        .from('posts')
+        .delete()
+        .eq('id', cleanId);
+      if (currentUser?.id) {
+        query = query.eq('user_id', currentUser.id);
+      }
+      const { data: deletedRows, error } = await query.select('id');
+      if (error) {
+        showToast('Delete failed: ' + error.message);
+        return;
+      }
+      if (!deletedRows || deletedRows.length === 0) {
+        showToast('Could not delete post (check ownership or RLS).');
+        return;
+      }
+    }
+
+    allPosts = allPosts.filter((p) => String(p.id) !== cleanId);
+    if (editingPostId === cleanId) editingPostId = null;
+    pruneDeletedPostFromLocalCaches(cleanId);
+    broadcastPostDeletion(cleanId);
+    renderPosts();
+    showToast('Post deleted from Supabase');
   }
 
   function renderCurrentUserAvatar() {
@@ -805,10 +1044,11 @@
 
     const mediaTypeRaw = String(raw.media_type || '').toLowerCase();
     const isVideo =
+      Boolean(raw.is_video) ||
       mediaTypeRaw.startsWith('video') ||
       /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl);
 
-    const rawTime = raw.created_at || raw.time || Date.now();
+    const rawTime = raw.created_at || raw.posted_at || raw.time || Date.now();
     const isoTime = typeof rawTime === 'number'
       ? new Date(rawTime).toISOString()
       : String(rawTime || new Date().toISOString());
@@ -817,7 +1057,7 @@
       id,
       user_id: raw.user_id || '',
       author_name: String(raw.author_name || raw.name || raw.username || 'Autrobook User').trim(),
-      author_avatar: String(raw.author_avatar || raw.avatar_url || '').trim(),
+      author_avatar: String(raw.author_avatar || raw.avatar_url || raw.avatar || '').trim(),
       caption,
       is_bold: Boolean(raw.is_bold),
       media_url: mediaUrl,
@@ -841,15 +1081,15 @@
         const { data, error } = await supabaseClient
           .from('posts')
           .select('*')
-          .eq('is_reel', false)
-          .eq('archived', false)
-          .eq('trashed', false)
-          .eq('deleted', false)
           .order('created_at', { ascending: false })
           .limit(60);
         if (!error && Array.isArray(data)) {
           supabaseLoadedSuccessfully = true;
-          supabasePosts.push(...data);
+          data.forEach((row) => {
+            if (row && row.is_reel !== true && row.archived !== true && row.trashed !== true && row.deleted !== true) {
+              supabasePosts.push(row);
+            }
+          });
         }
       } catch (e) {}
 
@@ -874,15 +1114,7 @@
         .filter(Boolean)
     );
 
-    const localKeys = [
-      'posts',
-      'autro_instant_feed_posts',
-      'autro_post_cards',
-      'autrobook_profile_posts',
-      'autro_profile_posts'
-    ];
-
-    localKeys.forEach((key) => {
+    POST_CACHE_KEYS.forEach((key) => {
       try {
         const arr = JSON.parse(localStorage.getItem(key) || '[]');
         if (Array.isArray(arr)) {
@@ -890,7 +1122,7 @@
             if (!item || typeof item !== 'object') return;
             const itemId = String(item.id || item.post_id || '').trim();
             if (!itemId || deletedSet.has(itemId)) return;
-            if (supabaseLoadedSuccessfully && !supabaseIdSet.has(itemId) && item.user_id && currentUser?.id && String(item.user_id) === String(currentUser.id)) {
+            if (supabaseLoadedSuccessfully && !itemId.startsWith('local-') && !supabaseIdSet.has(itemId)) {
               pruneDeletedPostFromLocalCaches(itemId);
               return;
             }
@@ -909,6 +1141,16 @@
         }
       }
     } catch (e) {}
+
+    try {
+      const latestSession = JSON.parse(sessionStorage.getItem('autro_latest_created_post') || 'null');
+      if (latestSession && typeof latestSession === 'object') {
+        const sessId = String(latestSession.id || '').trim();
+        if (sessId && !deletedSet.has(sessId)) {
+          collected.unshift(latestSession);
+        }
+      }
+    } catch (_) {}
 
     const map = new Map();
     collected.forEach((item) => {
@@ -962,7 +1204,7 @@
           <i class="fa-regular fa-newspaper" style="font-size:28px;"></i>
           <div style="font-size:15px;font-weight:700;">No posts found</div>
           <div style="font-size:12.5px;color:var(--muted-color);">Tap + to create a new post.</div>
-          <a href="/create-post.html" class="primary-pill-link"><i class="fa-solid fa-plus"></i> Create Post</a>
+          <a href="/create-post.html?from=post" class="primary-pill-link"><i class="fa-solid fa-plus"></i> Create Post</a>
         </div>
       `;
       return;
@@ -970,6 +1212,8 @@
 
     feedStreamEl.innerHTML = list.map((post) => {
       const isLiked = likedPostIds.has(String(post.id));
+      const isOwner = Boolean(currentUser?.id && post.user_id && String(post.user_id) === String(currentUser.id)) || String(post.id).startsWith('local-');
+      const isEditing = String(editingPostId) === String(post.id);
       const avatarInitial = (post.author_name[0] || 'A').toUpperCase();
       const commentHref = buildCommentUrl(post);
       const reactionsHref = buildReactionsUrl(post);
@@ -978,6 +1222,31 @@
         ? (post.media_type === 'video'
             ? `<div class="post-media-box"><video src="${escapeHtml(post.media_url)}" controls playsinline preload="metadata"></video></div>`
             : `<div class="post-media-box"><img src="${escapeHtml(post.media_url)}" alt="${escapeHtml(post.author_name)} post"></div>`)
+        : '';
+
+      const ownerControlsHtml = isOwner
+        ? `
+          <button type="button" class="owner-action-btn edit-post-btn" data-id="${escapeHtml(post.id)}" title="Edit Caption">
+            <i class="fa-regular fa-pen-to-square"></i>
+            <span>Edit</span>
+          </button>
+          <button type="button" class="owner-action-btn delete-btn delete-post-btn" data-id="${escapeHtml(post.id)}" title="Delete Post">
+            <i class="fa-regular fa-trash-can"></i>
+            <span>Delete</span>
+          </button>
+        `
+        : '';
+
+      const editBoxHtml = isOwner
+        ? `
+          <div class="edit-caption-box ${isEditing ? 'open' : ''}" id="edit-box-${escapeHtml(post.id)}">
+            <textarea class="edit-caption-textarea" id="edit-textarea-${escapeHtml(post.id)}" placeholder="Update post caption...">${escapeHtml(post.caption || '')}</textarea>
+            <div class="edit-caption-actions">
+              <button type="button" class="edit-cancel-btn" data-id="${escapeHtml(post.id)}">Cancel</button>
+              <button type="button" class="edit-save-btn" data-id="${escapeHtml(post.id)}">Save</button>
+            </div>
+          </div>
+        `
         : '';
 
       return `
@@ -991,10 +1260,11 @@
               </div>
               <div class="post-author-meta">
                 <span class="post-author-name">${escapeHtml(post.author_name)}</span>
-                <span class="post-time">${escapeHtml(formatTimeAgo(post.created_at))}</span>
+                <span class="post-time" data-created-at="${escapeHtml(post.created_at)}">${escapeHtml(formatTimeAgo(post.created_at))}</span>
               </div>
             </div>
             <div class="header-pills">
+              ${ownerControlsHtml}
               <a href="${escapeHtml(reactionsHref)}" class="pill-link-btn" title="View Reactions">
                 <i class="fa-regular fa-face-smile"></i>
                 <span>Reactions</span>
@@ -1005,6 +1275,8 @@
               </a>
             </div>
           </div>
+
+          ${editBoxHtml}
 
           <div class="post-clickable-body" data-id="${escapeHtml(post.id)}" title="Click post to view full comments">
             ${post.caption
@@ -1089,11 +1361,50 @@
   }
 
   function bindCardInteractions() {
+    document.querySelectorAll('.edit-post-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const postId = btn.getAttribute('data-id');
+        editingPostId = String(editingPostId) === String(postId) ? null : postId;
+        renderPosts();
+        if (editingPostId) {
+          const ta = document.getElementById(`edit-textarea-${postId}`);
+          if (ta) ta.focus();
+        }
+      });
+    });
+
+    document.querySelectorAll('.edit-cancel-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editingPostId = null;
+        renderPosts();
+      });
+    });
+
+    document.querySelectorAll('.edit-save-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const postId = btn.getAttribute('data-id');
+        const ta = document.getElementById(`edit-textarea-${postId}`);
+        await savePostCaptionEdit(postId, ta ? ta.value : '');
+      });
+    });
+
+    document.querySelectorAll('.delete-post-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const postId = btn.getAttribute('data-id');
+        await deletePostPermanently(postId);
+      });
+    });
+
     /* Clicking post caption or media opens comment.html */
     document.querySelectorAll('.post-clickable-body').forEach((bodyEl) => {
       bodyEl.addEventListener('click', (e) => {
         if (e.target.closest('video')) return;
         const postId = bodyEl.getAttribute('data-id');
+        if (String(editingPostId) === String(postId)) return;
         navigateToComment(postId);
       });
     });
@@ -1185,6 +1496,22 @@
     });
   }
 
+  if (postSyncChannel) {
+    postSyncChannel.onmessage = async (ev) => {
+      const msg = ev?.data;
+      if (!msg || typeof msg !== 'object') return;
+      if ((msg.type === 'DELETE_POST_CARD' || msg.type === 'POST_DELETED') && (msg.postId || msg.id)) {
+        const delId = String(msg.postId || msg.id);
+        pruneDeletedPostFromLocalCaches(delId);
+        allPosts = allPosts.filter((p) => String(p.id) !== delId);
+        renderPosts();
+      } else if (msg.type === 'NEW_POST_CARD' || msg.type === 'CREATE_POST_TO_CARD' || msg.type === 'POST_UPDATED') {
+        await loadPosts();
+        renderPosts();
+      }
+    };
+  }
+
   searchInputEl.addEventListener('input', () => {
     searchQuery = searchInputEl.value;
     renderPosts();
@@ -1198,10 +1525,8 @@
 
   window.addEventListener('storage', async (e) => {
     if (
-      e.key === 'posts' ||
-      e.key === 'autro_instant_feed_posts' ||
+      POST_CACHE_KEYS.includes(e.key) ||
       e.key === 'autro_new_post_created' ||
-      e.key === 'autrobook_profile_posts' ||
       e.key === 'autro_deleted_post_ids' ||
       e.key === 'deleted_post_ids'
     ) {
@@ -1214,6 +1539,8 @@
     await loadPosts();
     renderPosts();
   });
+
+  setInterval(refreshLiveTimestamps, 1000);
 
   document.addEventListener('DOMContentLoaded', async () => {
     if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
