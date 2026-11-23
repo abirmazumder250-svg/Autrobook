@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, code: 'METHOD_NOT_ALLOWED' });
+    return res.status(405).json({ success: false, ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   try {
@@ -44,21 +44,22 @@ export default async function handler(req, res) {
       try {
         body = JSON.parse(body);
       } catch {
-        return res.status(400).json({ success: false, code: 'INVALID_JSON' });
+        return res.status(400).json({ success: false, ok: false, code: 'INVALID_JSON', error: 'Invalid JSON body' });
       }
     }
 
-    const { email, name } = body || {};
+    const { email, name, purpose } = body || {};
     if (!email) {
-      return res.status(400).json({ success: false, code: 'EMAIL_REQUIRED' });
+      return res.status(400).json({ success: false, ok: false, code: 'EMAIL_REQUIRED', error: 'Email is required' });
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return res.status(400).json({ success: false, code: 'INVALID_EMAIL' });
+      return res.status(400).json({ success: false, ok: false, code: 'INVALID_EMAIL', error: 'Invalid email address' });
     }
 
     const cleanName = esc(name ? String(name).trim() : 'User');
+    const isReset = purpose === 'reset-password';
 
     const gmailUser = (process.env.GMAIL_USER || '').trim();
     const gmailAppPassword = (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '').trim();
@@ -66,8 +67,9 @@ export default async function handler(req, res) {
     if (!gmailUser || !gmailAppPassword) {
       return res.status(500).json({
         success: false,
+        ok: false,
         code: 'GMAIL_APP_PASSWORD_MISSING',
-        message: 'GMAIL_USER or GMAIL_APP_PASSWORD is missing in Vercel Environment Variables.'
+        error: 'GMAIL_USER or GMAIL_APP_PASSWORD is missing in Vercel Environment Variables.'
       });
     }
 
@@ -76,6 +78,9 @@ export default async function handler(req, res) {
 
     const transporter = createGmailTransporter(gmailUser, gmailAppPassword);
     await transporter.verify();
+
+    const headingText = isReset ? 'Reset Your Password' : 'Complete Your Sign Up';
+    const actionText = isReset ? 'reset your password' : 'complete your sign up';
 
     await transporter.sendMail({
       from: `"Autrobook" <${gmailUser}>`,
@@ -88,7 +93,7 @@ export default async function handler(req, res) {
             <h2 style="color:#fff;margin:0;font-size:22px">Autrobook</h2>
           </div>
           <h3 style="margin:0 0 12px;color:#050505">Hi ${cleanName},</h3>
-          <p style="color:#65676b;margin:0 0 20px">Use this verification code to complete your sign up. Valid for <b>5 minutes</b>.</p>
+          <p style="color:#65676b;margin:0 0 20px">${headingText}: use this verification code to ${actionText}. Valid for <b>5 minutes</b>.</p>
           <div style="text-align:center;background:#f0f2f5;padding:24px;border-radius:12px;margin:20px 0">
             <span style="letter-spacing:10px;color:#0B3D20;font-size:38px;font-weight:800;font-family:'Courier New',monospace">${otp}</span>
           </div>
@@ -100,16 +105,19 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
+      ok: true,
       code: 'OTP_SENT',
       from: gmailUser,
+      otp,
       expiresAt
     });
   } catch (e) {
     console.error('send-otp error:', e);
     return res.status(500).json({
       success: false,
+      ok: false,
       code: 'GMAIL_SEND_FAILED',
-      message: e && e.message ? e.message : 'Failed to send email via Gmail App Password.'
+      error: e && e.message ? e.message : 'Failed to send email via Gmail App Password.'
     });
   }
-                       }
+}
