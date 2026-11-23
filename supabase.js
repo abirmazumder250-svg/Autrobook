@@ -5,6 +5,7 @@
 const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 const STORAGE_BUCKET = 'images';
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 let supabaseClient = null;
 
@@ -20,25 +21,46 @@ function getSupabaseClient() {
 }
 
 /**
- * Uploads a file to the 'images' bucket in Supabase Storage.
- * @param {File} file - The file object from an <input type="file">
- * @returns {Promise<string|null>} - Returns the Public URL of the uploaded image, or null if failed.
+ * Uploads an image file to the 'images' bucket in Supabase Storage.
+ * @param {File} file
+ * @returns {Promise<string|null>}
  */
 async function uploadToSupabase(file) {
   if (!file) return null;
 
-  const safeName = (file.name || 'upload').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  if (!file.type || !file.type.startsWith('image/')) {
+    alert('Please select a valid image file.');
+    return null;
+  }
+
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    alert('Image size must be 5 MB or less.');
+    return null;
+  }
+
+  const safeName = (file.name || 'upload')
+    .replace(/[^a-zA-Z0-9.\-_]/g, '_')
+    .slice(-80);
   const fileName = `${Date.now()}-${safeName}`;
 
   try {
     const client = getSupabaseClient();
 
-    // 1. Upload the file to the 'images' bucket
+    // Optional: ensure user has an active session before uploading
+    const { data: { session } } = await client.auth.getSession();
+    if (!session || !session.user) {
+      alert('Please log in first to upload an image.');
+      return null;
+    }
+
+    const objectPath = `${session.user.id}/${fileName}`;
+
     const { error } = await client.storage
       .from(STORAGE_BUCKET)
-      .upload(fileName, file, {
+      .upload(objectPath, file, {
         cacheControl: '3600',
         upsert: false,
+        contentType: file.type,
       });
 
     if (error) {
@@ -47,10 +69,9 @@ async function uploadToSupabase(file) {
       return null;
     }
 
-    // 2. Get the Public URL for the uploaded file
     const { data: urlData } = client.storage
       .from(STORAGE_BUCKET)
-      .getPublicUrl(fileName);
+      .getPublicUrl(objectPath);
 
     return urlData?.publicUrl || null;
   } catch (err) {
