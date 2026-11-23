@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reactions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
   :root {
     --bg-primary: #202124;
@@ -30,6 +32,11 @@
     color: var(--text-primary);
     padding-bottom: 56px;
     min-height: 100vh;
+    visibility: hidden;
+  }
+
+  body.auth-ready {
+    visibility: visible;
   }
 
   .header {
@@ -385,6 +392,7 @@ let currentUser = null;
 let isPostOwnerView = false;
 let reactorItems = [];
 let lastSnapshot = "";
+let pageInitialized = false;
 
 document.getElementById("searchToggle").addEventListener("click", () => {
   const bar = document.getElementById("searchBar");
@@ -516,6 +524,33 @@ function getInitials(name) {
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return "•";
+}
+
+function syncCurrentUserFromAuth(authResult) {
+  if (!authResult || !authResult.user) return;
+  const authUser = authResult.user;
+  const authProfile = authResult.profile || {};
+  const meta = authUser.user_metadata || {};
+
+  const resolvedName = String(
+    authProfile.full_name || authProfile.name || meta.full_name || meta.name || ""
+  ).trim();
+  const resolvedAvatar = String(
+    authProfile.avatar_url || meta.avatar_url || meta.picture || ""
+  ).trim();
+
+  const existing = getCurrentUser() || {};
+  const updatedUser = {
+    ...existing,
+    id: String(authUser.id),
+    name: resolvedName || existing.name || authUser.email || authUser.phone || "User",
+    avatar: resolvedAvatar || existing.avatar || "",
+    email: authUser.email || existing.email || "",
+    phone: authProfile.phone || authUser.phone || existing.phone || ""
+  };
+
+  localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+  currentUser = updatedUser;
 }
 
 function loadReactions(forceRender = false) {
@@ -683,14 +718,50 @@ function renderReactions() {
   }).join("");
 }
 
-window.addEventListener("storage", () => loadReactions(false));
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) loadReactions(false);
+window.addEventListener("storage", () => {
+  if (pageInitialized) loadReactions(false);
 });
-setInterval(() => loadReactions(false), 1500);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && pageInitialized) loadReactions(false);
+});
 
-loadReactions(true);
+async function initReactionsPage() {
+  if (!window.AutroAuth || typeof window.AutroAuth.checkSessionAndProfile !== "function") {
+    window.location.replace("/login.html");
+    return;
+  }
+
+  const authResult = await window.AutroAuth.checkSessionAndProfile({
+    requireCompleteProfile: true
+  });
+
+  if (!authResult || !authResult.user) {
+    return;
+  }
+
+  syncCurrentUserFromAuth(authResult);
+  document.body.classList.add("auth-ready");
+  pageInitialized = true;
+
+  loadReactions(true);
+  setInterval(() => {
+    if (pageInitialized) loadReactions(false);
+  }, 1500);
+
+  const client = window.AutroAuth.supabase;
+  if (client && client.auth && typeof client.auth.onAuthStateChange === "function") {
+    client.auth.onAuthStateChange((_event, session) => {
+      if (!session || !session.user) {
+        pageInitialized = false;
+        document.body.classList.remove("auth-ready");
+        window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+      }
+    });
+  }
+}
+
+initReactionsPage();
 </script>
 
 </body>
-</html>
+  </html>
