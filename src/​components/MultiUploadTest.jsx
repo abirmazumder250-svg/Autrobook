@@ -4,7 +4,7 @@ function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
 }
@@ -38,12 +38,30 @@ async function uploadSingleProvider(targetProvider, file) {
     });
   }
 
-  const data = await res.json();
+  const rawText = await res.text();
+  let data = {};
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error(rawText.slice(0, 140) || `Invalid response from ${targetProvider}`);
+    }
+  }
+
   if (!res.ok || !data.success) {
     throw new Error(data.error || `Failed to upload to ${targetProvider}`);
   }
 
   return data;
+}
+
+function isSafeHttpUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 export default function MultiUploadTest() {
@@ -62,8 +80,7 @@ export default function MultiUploadTest() {
     setResults([]);
 
     try {
-      const targets =
-        provider === "both" ? ["imagekit", "mega"] : [provider];
+      const targets = provider === "both" ? ["imagekit", "mega"] : [provider];
 
       const settled = await Promise.allSettled(
         targets.map((target) => uploadSingleProvider(target, file))
@@ -136,7 +153,7 @@ export default function MultiUploadTest() {
           <h3>Upload Results</h3>
           {results.map((item, idx) => (
             <div
-              key={`${item.provider}-${idx}`}
+              key={`${item.provider || "provider"}-${idx}`}
               style={{
                 border: "1px solid #ccc",
                 borderRadius: "6px",
@@ -152,9 +169,13 @@ export default function MultiUploadTest() {
               </p>
               <p>
                 <strong>URL:</strong>{" "}
-                <a href={item.url} target="_blank" rel="noreferrer">
-                  {item.url}
-                </a>
+                {isSafeHttpUrl(item.url) ? (
+                  <a href={item.url} target="_blank" rel="noreferrer">
+                    {item.url}
+                  </a>
+                ) : (
+                  <span>{item.url || "N/A"}</span>
+                )}
               </p>
             </div>
           ))}
@@ -162,4 +183,4 @@ export default function MultiUploadTest() {
       )}
     </form>
   );
-        }
+}
