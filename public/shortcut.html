@@ -938,6 +938,7 @@
   let currentLangCode = 'en';
   let currentLangName = 'English';
   let activeProfileUserId = null;
+  let profileLoadSeq = 0;
 
   function safeStorageGet(key) {
     try {
@@ -1346,8 +1347,12 @@
   }
 
   function readCachedProfile(expectedUserId = null) {
+    if (!expectedUserId) {
+      return { name: '', avatar: '' };
+    }
+
     const cachedOwnerId = safeStorageGet('autro_profile_owner_id');
-    if (expectedUserId && cachedOwnerId && String(cachedOwnerId) !== String(expectedUserId)) {
+    if (!cachedOwnerId || String(cachedOwnerId) !== String(expectedUserId)) {
       return { name: '', avatar: '' };
     }
 
@@ -1359,7 +1364,7 @@
       if (pRaw) {
         const parsed = JSON.parse(pRaw);
         const parsedId = parsed.id || parsed.user_id || null;
-        if (!expectedUserId || !parsedId || String(parsedId) === String(expectedUserId)) {
+        if (parsedId && String(parsedId) === String(expectedUserId)) {
           name = parsed.full_name || parsed.name || '';
           avatar = parsed.avatar_url || parsed.avatar || parsed.profile_pic || '';
         }
@@ -1378,12 +1383,12 @@
   }
 
   function cacheSupabaseProfile(userId, fullName, avatarUrl) {
+    if (!userId) return;
+
     const cleanName = typeof fullName === 'string' ? fullName.trim() : '';
     const cleanAvatar = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
 
-    if (userId) {
-      safeStorageSet('autro_profile_owner_id', String(userId));
-    }
+    safeStorageSet('autro_profile_owner_id', String(userId));
 
     if (cleanName) {
       safeStorageSet('autro_profile_name', cleanName);
@@ -1403,11 +1408,12 @@
       const existingRaw = safeStorageGet('autro_account_profile') || safeStorageGet('autrobook_user');
       const existingObj = existingRaw ? JSON.parse(existingRaw) : {};
       const existingId = existingObj.id || existingObj.user_id || null;
-      const baseObj = (userId && existingId && String(existingId) !== String(userId)) ? {} : existingObj;
+      const baseObj = (existingId && String(existingId) !== String(userId)) ? {} : existingObj;
 
       const merged = {
         ...baseObj,
-        ...(userId ? { id: userId, user_id: userId } : {}),
+        id: userId,
+        user_id: userId,
         full_name: cleanName,
         name: cleanName,
         avatar_url: cleanAvatar,
@@ -1418,6 +1424,8 @@
   }
 
   async function loadUserProfile() {
+    const seq = ++profileLoadSeq;
+
     let userId = null;
     let authUser = null;
 
@@ -1433,11 +1441,19 @@
       } catch (_) {}
     }
 
+    if (seq !== profileLoadSeq) return;
+
     const previousOwnerId = safeStorageGet('autro_profile_owner_id');
-    if (userId && previousOwnerId && String(previousOwnerId) !== String(userId)) {
-      clearCachedProfileStorage();
+    if (!userId) {
+      if (previousOwnerId) {
+        clearCachedProfileStorage();
+      }
+      activeProfileUserId = null;
       renderProfileCard('', '');
-    } else if (!userId && previousOwnerId) {
+      return;
+    }
+
+    if (previousOwnerId && String(previousOwnerId) !== String(userId)) {
       clearCachedProfileStorage();
       renderProfileCard('', '');
     }
@@ -1445,9 +1461,11 @@
     activeProfileUserId = userId;
 
     const cached = readCachedProfile(userId);
-    renderProfileCard(cached.name, cached.avatar);
+    if (cached.name || cached.avatar) {
+      renderProfileCard(cached.name, cached.avatar);
+    }
 
-    if (!supabaseClient || !userId) return;
+    if (!supabaseClient) return;
 
     try {
       let fullName =
@@ -1468,6 +1486,8 @@
         .eq('id', userId)
         .maybeSingle();
 
+      if (seq !== profileLoadSeq) return;
+
       if (!profErr && profileRow) {
         fullName = profileRow.full_name || profileRow.name || fullName;
         avatarUrl = profileRow.avatar_url || profileRow.avatar || profileRow.photo_url || avatarUrl;
@@ -1480,6 +1500,8 @@
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      if (seq !== profileLoadSeq) return;
 
       if (settingsRow) {
         if (settingsRow.full_name) fullName = settingsRow.full_name;
@@ -1536,6 +1558,10 @@
       }
 
       if ([...PROFILE_CACHE_KEYS, 'autro_profile_owner_id'].includes(e.key)) {
+        if (!activeProfileUserId) {
+          renderProfileCard('', '');
+          return;
+        }
         const c = readCachedProfile(activeProfileUserId);
         renderProfileCard(c.name, c.avatar);
       }
@@ -1570,16 +1596,15 @@
     });
 
     window.addEventListener('autro:profile-updated', (ev) => {
-      if (ev && ev.detail) {
-        const eventUserId = ev.detail.id || ev.detail.user_id || activeProfileUserId;
-        if (activeProfileUserId && eventUserId && String(activeProfileUserId) !== String(eventUserId)) {
-          return;
-        }
-        const nextName = ev.detail.full_name ?? ev.detail.name ?? '';
-        const nextAvatar = ev.detail.avatar_url ?? ev.detail.avatar ?? '';
-        renderProfileCard(nextName, nextAvatar);
-        cacheSupabaseProfile(activeProfileUserId, nextName, nextAvatar);
+      if (!ev || !ev.detail || !activeProfileUserId) return;
+      const eventUserId = ev.detail.id || ev.detail.user_id || null;
+      if (!eventUserId || String(activeProfileUserId) !== String(eventUserId)) {
+        return;
       }
+      const nextName = ev.detail.full_name ?? ev.detail.name ?? '';
+      const nextAvatar = ev.detail.avatar_url ?? ev.detail.avatar ?? '';
+      renderProfileCard(nextName, nextAvatar);
+      cacheSupabaseProfile(activeProfileUserId, nextName, nextAvatar);
     });
 
     try {
@@ -1608,15 +1633,15 @@
     try {
       if (profileBroadcastChannel) {
         profileBroadcastChannel.onmessage = (ev) => {
-          if (ev?.data?.type === 'PROFILE_SYNC' && ev?.data?.payload) {
+          if (ev?.data?.type === 'PROFILE_SYNC' && ev?.data?.payload && activeProfileUserId) {
             const payloadUserId = ev.data.payload.id || ev.data.payload.user_id || null;
-            if (activeProfileUserId && payloadUserId && String(activeProfileUserId) !== String(payloadUserId)) {
+            if (!payloadUserId || String(activeProfileUserId) !== String(payloadUserId)) {
               return;
             }
             const nextName = ev.data.payload.full_name ?? '';
             const nextAvatar = ev.data.payload.avatar_url ?? '';
             renderProfileCard(nextName, nextAvatar);
-            cacheSupabaseProfile(activeProfileUserId || payloadUserId, nextName, nextAvatar);
+            cacheSupabaseProfile(activeProfileUserId, nextName, nextAvatar);
           } else if (ev?.data?.type === 'PROFILE_REFRESH') {
             loadUserProfile();
           }
@@ -1645,14 +1670,14 @@
             .channel('autro-shortcut-profile-live')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'account_settings' }, (payload) => {
               const rowUserId = payload?.new?.user_id || payload?.old?.user_id || null;
-              if (activeProfileUserId && rowUserId && String(rowUserId) !== String(activeProfileUserId)) {
+              if (!activeProfileUserId || !rowUserId || String(rowUserId) !== String(activeProfileUserId)) {
                 return;
               }
               loadUserProfile();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
               const rowId = payload?.new?.id || payload?.old?.id || null;
-              if (activeProfileUserId && rowId && String(rowId) !== String(activeProfileUserId)) {
+              if (!activeProfileUserId || !rowId || String(rowId) !== String(activeProfileUserId)) {
                 return;
               }
               loadUserProfile();
@@ -1769,4 +1794,4 @@
   }
 </script>
 </body>
-  </html>
+        </html>
