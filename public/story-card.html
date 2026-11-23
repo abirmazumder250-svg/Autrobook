@@ -309,6 +309,14 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .owner-privacy-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
     .viewer-pill-btn {
@@ -340,6 +348,26 @@
     .privacy-select option {
       background: var(--bg-dark);
       color: var(--text-white);
+    }
+
+    .specific-friends-btn {
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--border-line);
+      background: var(--bg-elevated);
+      color: var(--text-white);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .specific-friends-btn:hover {
+      background: #3c4043;
+    }
+
+    .privacy-helper-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
     }
 
     /* Viewers Drawer */
@@ -530,7 +558,7 @@
       border-color: var(--danger);
     }
 
-    /* Bottom Action Sheet & Modals */
+    /* Bottom Action Sheets & Modals */
     .sheet-backdrop {
       position: absolute;
       inset: 0;
@@ -622,6 +650,25 @@
       cursor: pointer;
     }
 
+    .friend-check-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-line);
+      font-size: 0.86rem;
+      cursor: pointer;
+    }
+
+    .friend-check-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .sheet-actions-row {
       display: flex;
       gap: 8px;
@@ -704,12 +751,20 @@
           <span id="viewerCountText">0 viewers</span>
         </button>
 
-        <select id="privacySelect" class="privacy-select" aria-label="Story Privacy">
-          <option value="public">Public</option>
-          <option value="friends">Friends</option>
-          <option value="specific">Specific Friends</option>
-        </select>
+        <div class="owner-privacy-group">
+          <select id="privacySelect" class="privacy-select" aria-label="Story Privacy">
+            <option value="public">Public</option>
+            <option value="friends">Friends</option>
+            <option value="specific">Specific Friends</option>
+          </select>
+          <button type="button" id="selectSpecificFriendsBtn" class="specific-friends-btn hidden">
+            Select Friends
+          </button>
+        </div>
       </div>
+      <p id="privacyHelperText" class="privacy-helper-text">
+        Public: Everyone including friends can see this story.
+      </p>
     </section>
 
     <!-- Viewers Drawer (Owner) -->
@@ -753,7 +808,23 @@
       </div>
     </section>
 
-    <!-- Owner Three-Dot Menu Sheet -->
+    <!-- Specific Friends Picker Sheet (Owner) -->
+    <div id="specificFriendsSheet" class="sheet-backdrop hidden">
+      <div class="sheet-panel">
+        <div class="sheet-header">
+          <span class="sheet-title">Specific Friends</span>
+          <button type="button" id="closeSpecificFriendsBtn" class="icon-btn">✕</button>
+        </div>
+        <div id="specificFriendsList" class="reason-list"></div>
+        <div id="specificFriendsNote" class="status-note"></div>
+        <div class="sheet-actions-row">
+          <button type="button" id="cancelSpecificFriendsBtn" class="secondary-action-btn">Cancel</button>
+          <button type="button" id="saveSpecificFriendsBtn" class="primary-action-btn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Owner Three-Dot Menu Sheet: Edit, Highlights, Delete -->
     <div id="ownerMenuSheet" class="sheet-backdrop hidden">
       <div class="sheet-panel">
         <div class="sheet-header">
@@ -790,7 +861,7 @@
       </div>
     </div>
 
-    <!-- Viewer Three-Dot Menu Sheet -->
+    <!-- Viewer Three-Dot Menu Sheet: Create message, React undo, Report -->
     <div id="viewerMenuSheet" class="sheet-backdrop hidden">
       <div class="sheet-panel">
         <div class="sheet-header">
@@ -825,7 +896,7 @@
         <textarea
           id="reportDetailsTextarea"
           class="modal-textarea"
-          placeholder="Add valid details about this issue..."
+          placeholder="Provide valid details for this report..."
         ></textarea>
 
         <div id="reportStatusNote" class="status-note"></div>
@@ -913,10 +984,19 @@
       const openViewersBtn = document.getElementById("openViewersBtn");
       const viewerCountText = document.getElementById("viewerCountText");
       const privacySelect = document.getElementById("privacySelect");
+      const selectSpecificFriendsBtn = document.getElementById("selectSpecificFriendsBtn");
+      const privacyHelperText = document.getElementById("privacyHelperText");
       const viewersDrawer = document.getElementById("viewersDrawer");
       const viewersDrawerTitle = document.getElementById("viewersDrawerTitle");
       const closeViewersBtn = document.getElementById("closeViewersBtn");
       const viewersList = document.getElementById("viewersList");
+
+      const specificFriendsSheet = document.getElementById("specificFriendsSheet");
+      const closeSpecificFriendsBtn = document.getElementById("closeSpecificFriendsBtn");
+      const specificFriendsList = document.getElementById("specificFriendsList");
+      const specificFriendsNote = document.getElementById("specificFriendsNote");
+      const cancelSpecificFriendsBtn = document.getElementById("cancelSpecificFriendsBtn");
+      const saveSpecificFriendsBtn = document.getElementById("saveSpecificFriendsBtn");
 
       const reactionButtons = Array.from(document.querySelectorAll(".reaction-btn"));
       const activeReactionBadge = document.getElementById("activeReactionBadge");
@@ -960,6 +1040,7 @@
       let timerId = null;
       let audioCtx = null;
       let selectedReportReason = "";
+      let candidateFriends = [];
 
       function readJson(key, fallback) {
         try {
@@ -1033,6 +1114,11 @@
         osc.stop(now + 0.2);
       }
 
+      function normalizeIdArray(val) {
+        if (!Array.isArray(val)) return [];
+        return Array.from(new Set(val.map((v) => String(v || "").trim()).filter(Boolean)));
+      }
+
       function normalizeStory(raw) {
         if (!raw || typeof raw !== "object") return null;
         const id = String(raw.id || raw.storyId || raw.story_id || "").trim();
@@ -1052,9 +1138,16 @@
         ).toLowerCase();
 
         const rawPrivacy = String(raw.privacy || raw.audience || "public").toLowerCase();
-        const privacy = rawPrivacy === "specific_friend"
+        const privacy = rawPrivacy === "specific_friend" || rawPrivacy === "specific_friends"
           ? "specific"
           : (ALLOWED_PRIVACY.includes(rawPrivacy) ? rawPrivacy : "public");
+
+        const allowedFriendIds = normalizeIdArray(
+          raw.allowedFriendIds || raw.allowed_friend_ids || raw.specific_friend_ids
+        );
+        const ownerFriends = normalizeIdArray(
+          raw.ownerFriends || raw.owner_friends || raw.friend_ids
+        );
 
         return {
           ...raw,
@@ -1067,6 +1160,8 @@
           mediaType: mediaType.startsWith("video") ? "video" : "image",
           text: String(raw.text ?? raw.caption ?? raw.title ?? "").trim(),
           privacy,
+          ownerFriends,
+          allowedFriendIds,
           createdAt: new Date(safeCreatedMs).toISOString(),
           expiresAtMs: Number.isNaN(expiresMs) ? (safeCreatedMs + FORTY_EIGHT_HOURS_MS) : expiresMs,
           viewers: Array.isArray(raw.viewers) ? raw.viewers : []
@@ -1130,6 +1225,24 @@
         } catch (_) {}
       }
 
+      async function updateStoryPrivacyInSupabase(storyId, nextPrivacy, allowedFriendIds) {
+        if (!storyId) return;
+        try {
+          await fetch(`${SUPABASE_URL}/rest/v1/stories?id=eq.${encodeURIComponent(storyId)}`, {
+            method: "PATCH",
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              privacy: nextPrivacy,
+              allowed_friend_ids: allowedFriendIds
+            })
+          });
+        } catch (_) {}
+      }
+
       async function fetchStoriesFromSupabase() {
         try {
           const res = await fetch(`${SUPABASE_URL}/rest/v1/stories?select=*&order=created_at.desc`, {
@@ -1142,6 +1255,58 @@
           const rows = await res.json();
           if (!Array.isArray(rows)) return [];
           return rows.map(normalizeStory).filter((s) => s && !isExpired(s));
+        } catch {
+          return [];
+        }
+      }
+
+      async function fetchProfilesFromSupabase(ids) {
+        const cleanIds = normalizeIdArray(ids);
+        if (!cleanIds.length) return [];
+        try {
+          const inFilter = cleanIds.map((id) => `"${encodeURIComponent(id)}"`).join(",");
+          const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/profiles?select=id,full_name,username,avatar_url&id=in.(${inFilter})`,
+            {
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+              }
+            }
+          );
+          if (!res.ok) return [];
+          const rows = await res.json();
+          return Array.isArray(rows) ? rows : [];
+        } catch {
+          return [];
+        }
+      }
+
+      async function fetchFriendsFromSupabase(userId) {
+        if (!userId) return [];
+        try {
+          const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/friends?select=user_id,friend_id,status&or=(user_id.eq.${encodeURIComponent(userId)},friend_id.eq.${encodeURIComponent(userId)})`,
+            {
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+              }
+            }
+          );
+          if (!res.ok) return [];
+          const rows = await res.json();
+          if (!Array.isArray(rows)) return [];
+          const ids = [];
+          rows.forEach((row) => {
+            const st = String(row.status || "accepted").toLowerCase();
+            if (st === "blocked" || st === "pending") return;
+            const u = String(row.user_id || "").trim();
+            const f = String(row.friend_id || "").trim();
+            if (u === String(userId) && f) ids.push(f);
+            else if (f === String(userId) && u) ids.push(u);
+          });
+          return normalizeIdArray(ids);
         } catch {
           return [];
         }
@@ -1205,12 +1370,13 @@
       function getCurrentUser() {
         const stored = readJson(STORAGE_KEYS.CURRENT_USER, null);
         const localUid = localStorage.getItem("autro_user_id") || "";
+        const localFriends = readJson("autrobook_friends_ids", []);
         if (stored && stored.id) {
           return {
             id: String(stored.id),
             name: stored.name || localStorage.getItem("autro_profile_name") || "",
             avatar: stored.avatar || localStorage.getItem("autro_profile_avatar") || "",
-            friends: Array.isArray(stored.friends) ? stored.friends.map(String) : []
+            friends: normalizeIdArray(stored.friends || localFriends)
           };
         }
         const params = new URLSearchParams(window.location.search);
@@ -1218,7 +1384,7 @@
           id: params.get("userId") || localUid || "",
           name: params.get("userName") || localStorage.getItem("autro_profile_name") || "",
           avatar: params.get("avatar") || localStorage.getItem("autro_profile_avatar") || "",
-          friends: []
+          friends: normalizeIdArray(localFriends)
         };
       }
 
@@ -1258,17 +1424,20 @@
         const viewerId = user && user.id ? String(user.id) : "";
 
         if (privacy === "public") return true;
+
         if (privacy === "friends") {
-          const authorFriends = Array.isArray(story.ownerFriends) ? story.ownerFriends.map(String) : [];
-          const userFriends = user && Array.isArray(user.friends) ? user.friends.map(String) : [];
+          if (!viewerId) return false;
+          const authorFriends = normalizeIdArray(story.ownerFriends);
+          const userFriends = user ? normalizeIdArray(user.friends) : [];
           return authorFriends.includes(viewerId) || userFriends.includes(String(story.ownerId));
         }
+
         if (privacy === "specific") {
-          const allowed = Array.isArray(story.allowedFriendIds)
-            ? story.allowedFriendIds.map(String)
-            : [];
+          if (!viewerId) return false;
+          const allowed = normalizeIdArray(story.allowedFriendIds);
           return allowed.includes(viewerId);
         }
+
         return false;
       }
 
@@ -1276,6 +1445,26 @@
         if (privacy === "friends") return "Friends";
         if (privacy === "specific") return "Specific Friends";
         return "Public";
+      }
+
+      function getPrivacyHelperText(privacy, allowedCount = 0) {
+        if (privacy === "friends") {
+          return "Friends: Only your ID friends can see this story.";
+        }
+        if (privacy === "specific") {
+          return `Specific Friends: Only ${allowedCount} selected ${allowedCount === 1 ? "friend" : "friends"} can see this story.`;
+        }
+        return "Public: Everyone including friends can see this story.";
+      }
+
+      function syncPrivacyControls(privacy, allowedFriendIds = []) {
+        const cleanAllowed = normalizeIdArray(allowedFriendIds);
+        if (privacy === "specific") {
+          selectSpecificFriendsBtn.classList.remove("hidden");
+        } else {
+          selectSpecificFriendsBtn.classList.add("hidden");
+        }
+        privacyHelperText.textContent = getPrivacyHelperText(privacy, cleanAllowed.length);
       }
 
       function formatTimeAgo(createdAt) {
@@ -1493,13 +1682,6 @@
         window.location.href = `profile.html?${params.toString()}`;
       }
 
-      function closeAllSheets() {
-        ownerMenuSheet.classList.add("hidden");
-        editStorySheet.classList.add("hidden");
-        viewerMenuSheet.classList.add("hidden");
-        reportStorySheet.classList.add("hidden");
-      }
-
       async function renderStory(index) {
         if (!visibleStories.length) {
           goToIndexPage();
@@ -1562,6 +1744,7 @@
           viewerControls.classList.add("hidden");
           quickRepliesRow.classList.add("hidden");
           privacySelect.value = currentPrivacy;
+          syncPrivacyControls(currentPrivacy, activeStory.allowedFriendIds);
           renderViewers(activeStory);
         } else {
           ownerControls.classList.add("hidden");
@@ -1647,12 +1830,101 @@
         }
       }
 
+      function persistStoryPrivacy(nextPrivacy, nextAllowedFriendIds) {
+        if (!activeStory) return;
+        const cleanPrivacy = ALLOWED_PRIVACY.includes(nextPrivacy) ? nextPrivacy : "public";
+        const cleanAllowed = normalizeIdArray(nextAllowedFriendIds);
+
+        activeStory.privacy = cleanPrivacy;
+        activeStory.allowedFriendIds = cleanAllowed;
+
+        STORY_LIST_KEYS.forEach((key) => {
+          const arr = readJson(key, []);
+          if (Array.isArray(arr)) {
+            const idx = arr.findIndex((s) => String(s?.id || s?.storyId || "") === String(activeStory.id));
+            if (idx !== -1) {
+              arr[idx] = {
+                ...arr[idx],
+                privacy: cleanPrivacy,
+                allowedFriendIds: cleanAllowed
+              };
+              writeJson(key, arr);
+            }
+          }
+        });
+
+        try {
+          sessionStorage.setItem(STORAGE_KEYS.ACTIVE_STORY_CARD, JSON.stringify(activeStory));
+        } catch (_) {}
+
+        storyPrivacyBadge.textContent = getPrivacyLabel(cleanPrivacy);
+        syncPrivacyControls(cleanPrivacy, cleanAllowed);
+        updateStoryPrivacyInSupabase(activeStory.id, cleanPrivacy, cleanAllowed);
+      }
+
+      async function openSpecificFriendsModal() {
+        if (!activeStory) return;
+        setPaused(true);
+        specificFriendsNote.textContent = "";
+        specificFriendsList.innerHTML = "";
+
+        const remoteFriends = currentUser?.id ? await fetchFriendsFromSupabase(currentUser.id) : [];
+        const friendIds = normalizeIdArray([
+          ...remoteFriends,
+          ...(currentUser?.friends || []),
+          ...(activeStory.ownerFriends || []),
+          ...(activeStory.allowedFriendIds || [])
+        ]);
+
+        const profiles = await fetchProfilesFromSupabase(friendIds);
+        const profileMap = new Map(profiles.map((p) => [String(p.id), p]));
+
+        candidateFriends = friendIds.map((id) => {
+          const p = profileMap.get(id);
+          return {
+            id,
+            name: (p && (p.full_name || p.username)) || id
+          };
+        });
+
+        if (!candidateFriends.length) {
+          const div = document.createElement("div");
+          div.className = "viewer-item-meta";
+          div.textContent = "No friends found.";
+          specificFriendsList.appendChild(div);
+        } else {
+          const selectedSet = new Set(normalizeIdArray(activeStory.allowedFriendIds));
+          candidateFriends.forEach((friend) => {
+            const label = document.createElement("label");
+            label.className = "friend-check-item";
+
+            const left = document.createElement("div");
+            left.className = "friend-check-left";
+
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.value = friend.id;
+            cb.checked = selectedSet.has(friend.id);
+
+            const nameSpan = document.createElement("span");
+            nameSpan.textContent = friend.name;
+
+            left.appendChild(cb);
+            left.appendChild(nameSpan);
+            label.appendChild(left);
+            specificFriendsList.appendChild(label);
+          });
+        }
+
+        specificFriendsSheet.classList.remove("hidden");
+      }
+
       function addCurrentStoryToHighlights() {
-        if (!activeStory || isExpired(activeStory)) return;
+        if (!activeStory) return;
         const highlights = readJson(STORAGE_KEYS.HIGHLIGHTS, []);
         const list = Array.isArray(highlights) ? highlights : [];
 
-        const highlightItem = {
+        const highlightEntry = {
           id: activeStory.id,
           highlightedAt: new Date().toISOString(),
           storyCard: { ...activeStory }
@@ -1660,9 +1932,9 @@
 
         const idx = list.findIndex((h) => String(h?.id) === String(activeStory.id));
         if (idx >= 0) {
-          list[idx] = highlightItem;
+          list[idx] = highlightEntry;
         } else {
-          list.unshift(highlightItem);
+          list.unshift(highlightEntry);
         }
 
         writeJson(STORAGE_KEYS.HIGHLIGHTS, list);
@@ -1897,7 +2169,7 @@
         const payload = validateReportPayload();
         if (!payload) return;
         saveReportLocally(payload);
-        reportStatusNote.textContent = "Report submitted. Click Send to email.";
+        reportStatusNote.textContent = "Report submitted.";
       });
 
       sendReportEmailBtn.addEventListener("click", async (e) => {
@@ -1914,7 +2186,7 @@
             setPaused(false);
           }, 900);
         } catch {
-          reportStatusNote.textContent = "Saved locally. Configure /api/report-story with Gmail env vars to send email.";
+          reportStatusNote.textContent = "Saved. Check /api/report-story email env vars.";
         }
       });
 
@@ -1960,20 +2232,38 @@
         e.stopPropagation();
         if (!activeStory) return;
         const nextPrivacy = ALLOWED_PRIVACY.includes(e.target.value) ? e.target.value : "public";
+        persistStoryPrivacy(nextPrivacy, activeStory.allowedFriendIds);
+        if (nextPrivacy === "specific") {
+          openSpecificFriendsModal();
+        }
+      });
 
-        STORY_LIST_KEYS.forEach((key) => {
-          const arr = readJson(key, []);
-          if (Array.isArray(arr)) {
-            const idx = arr.findIndex((s) => String(s?.id || s?.storyId || "") === String(activeStory.id));
-            if (idx !== -1) {
-              arr[idx].privacy = nextPrivacy;
-              writeJson(key, arr);
-            }
-          }
-        });
+      selectSpecificFriendsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openSpecificFriendsModal();
+      });
 
-        activeStory.privacy = nextPrivacy;
-        storyPrivacyBadge.textContent = getPrivacyLabel(nextPrivacy);
+      closeSpecificFriendsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        specificFriendsSheet.classList.add("hidden");
+        setPaused(false);
+      });
+
+      cancelSpecificFriendsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        specificFriendsSheet.classList.add("hidden");
+        setPaused(false);
+      });
+
+      saveSpecificFriendsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!activeStory) return;
+        const checkedIds = Array.from(
+          specificFriendsList.querySelectorAll('input[type="checkbox"]:checked')
+        ).map((cb) => String(cb.value));
+        persistStoryPrivacy("specific", checkedIds);
+        specificFriendsSheet.classList.add("hidden");
+        setPaused(false);
       });
 
       reactionButtons.forEach((btn) => {
@@ -2014,6 +2304,13 @@
 
       async function init() {
         currentUser = getCurrentUser();
+        if (currentUser && currentUser.id) {
+          const remoteFriends = await fetchFriendsFromSupabase(currentUser.id);
+          if (remoteFriends.length) {
+            currentUser.friends = normalizeIdArray([...currentUser.friends, ...remoteFriends]);
+          }
+        }
+
         const remoteStories = await fetchStoriesFromSupabase();
         const localStories = getLocalActiveStories();
 
@@ -2052,4 +2349,4 @@
     })();
   </script>
 </body>
-          </html>
+  </html>
