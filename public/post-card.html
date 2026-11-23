@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Post Card - Autrobook</title>
+  <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
     :root {
@@ -809,6 +810,15 @@
       'autrobook_profile_posts'
     ];
 
+    const POST_DESTINATIONS = [
+      'post.html',
+      '/public/post.html',
+      'index.html',
+      '/public/index.html',
+      'profile.html',
+      '/public/profile.html'
+    ];
+
     const DELETED_POST_IDS_KEY = 'autro_deleted_post_ids';
 
     const HEAVY_STORAGE_KEYS = [
@@ -1067,6 +1077,7 @@
       const mediaUrl = String(rawPost.media_url || rawPost.image_url || rawPost.mediaUrl || rawPost.imageUrl || '').trim();
       const mediaType = String(rawPost.media_type || rawPost.mediaType || '').toLowerCase();
       const isVideo = Boolean(rawPost.is_video || rawPost.isVideo || mediaType.startsWith('video') || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(mediaUrl));
+      const createdAt = rawPost.created_at || rawPost.posted_at || rawPost.createdAt || new Date().toISOString();
 
       return {
         id,
@@ -1076,11 +1087,15 @@
         is_bold: Boolean(rawPost.is_bold || rawPost.isBold),
         media_url: mediaUrl,
         is_video: isVideo,
+        card_type: 'post-card',
+        as_page: 'post.html',
+        destinations: POST_DESTINATIONS,
         reaction_count: Number(rawPost.reaction_count ?? rawPost.reactions ?? 0),
         comment_count: Number(rawPost.comment_count ?? rawPost.comments ?? 0),
         share_count: Number(rawPost.share_count ?? rawPost.shares ?? 0),
         view_count: Number(rawPost.view_count ?? rawPost.views ?? 0),
-        created_at: rawPost.created_at || rawPost.posted_at || rawPost.createdAt || new Date().toISOString()
+        created_at: createdAt,
+        live_elapsed: formatLiveElapsed(createdAt)
       };
     }
 
@@ -1097,13 +1112,27 @@
 
       try {
         sessionStorage.setItem('autro_latest_created_post', JSON.stringify(normalized));
+        sessionStorage.setItem('autro_latest_post_html', JSON.stringify({
+          ...normalized,
+          page: 'post.html',
+          targets: POST_DESTINATIONS
+        }));
       } catch (_) {}
 
       try {
         if (postSyncChannel) {
           postSyncChannel.postMessage({
             type: 'NEW_POST_CARD',
-            targets: ['/public/profile.html', '/public/index.html'],
+            asPage: 'post.html',
+            targets: POST_DESTINATIONS,
+            liveTime: formatLiveElapsed(normalized.created_at),
+            post: normalized
+          });
+          postSyncChannel.postMessage({
+            type: 'POST_PUBLISHED',
+            asPage: 'post.html',
+            targets: POST_DESTINATIONS,
+            liveTime: formatLiveElapsed(normalized.created_at),
             post: normalized
           });
         }
@@ -1113,7 +1142,17 @@
         window.dispatchEvent(new CustomEvent('autro:post-created', {
           detail: {
             post: normalized,
-            targets: ['/public/profile.html', '/public/index.html']
+            asPage: 'post.html',
+            targets: POST_DESTINATIONS,
+            liveTime: formatLiveElapsed(normalized.created_at)
+          }
+        }));
+        window.dispatchEvent(new CustomEvent('autro:post-card-ready', {
+          detail: {
+            post: normalized,
+            asPage: 'post.html',
+            targets: POST_DESTINATIONS,
+            liveTime: formatLiveElapsed(normalized.created_at)
           }
         }));
       } catch (_) {}
@@ -1160,20 +1199,20 @@
           postSyncChannel.postMessage({
             type: 'DELETE_POST_CARD',
             postId: cleanId,
-            targets: ['/public/profile.html', '/public/index.html']
+            targets: POST_DESTINATIONS
           });
           postSyncChannel.postMessage({
             type: 'POST_DELETED',
             postId: cleanId,
             id: cleanId,
-            targets: ['/public/profile.html', '/public/index.html']
+            targets: POST_DESTINATIONS
           });
         }
       } catch (_) {}
 
       try {
         window.dispatchEvent(new CustomEvent('autro:post-deleted', {
-          detail: { postId: cleanId, id: cleanId, targets: ['/public/profile.html', '/public/index.html'] }
+          detail: { postId: cleanId, id: cleanId, targets: POST_DESTINATIONS }
         }));
       } catch (_) {}
     }
@@ -1698,6 +1737,7 @@
         const article = document.createElement('article');
         article.className = 'fb-post';
         article.dataset.postId = post.id;
+        article.dataset.asPage = 'post.html';
 
         const head = document.createElement('div');
         head.className = 'fb-post-head';
@@ -1730,7 +1770,7 @@
         const timeEl = document.createElement('div');
         timeEl.className = 'fb-live-time';
         timeEl.dataset.createdAt = post.created_at || '';
-        timeEl.innerHTML = `<span>${formatLiveElapsed(post.created_at)}</span><span>·</span><i class="fas fa-globe-americas" style="font-size:11px;"></i>`;
+        timeEl.innerHTML = `<span class="live-elapsed-text">${formatLiveElapsed(post.created_at)}</span><span>·</span><i class="fas fa-globe-americas" style="font-size:11px;"></i>`;
 
         authorCol.appendChild(profileLinkEl);
         authorCol.appendChild(timeEl);
@@ -1996,7 +2036,7 @@
           const cTime = document.createElement('span');
           cTime.className = 'comment-time fb-live-time';
           cTime.dataset.createdAt = cmt.created_at || '';
-          cTime.textContent = formatLiveElapsed(cmt.created_at);
+          cTime.innerHTML = `<span class="live-elapsed-text">${formatLiveElapsed(cmt.created_at)}</span>`;
 
           cAuthorWrap.appendChild(cAuth);
           cAuthorWrap.appendChild(cTime);
@@ -2130,7 +2170,7 @@
               const rTime = document.createElement('span');
               rTime.className = 'reply-time fb-live-time';
               rTime.dataset.createdAt = rep.created_at || '';
-              rTime.textContent = formatLiveElapsed(rep.created_at);
+              rTime.innerHTML = `<span class="live-elapsed-text">${formatLiveElapsed(rep.created_at)}</span>`;
 
               const rText = document.createElement('div');
               rText.textContent = rep.text || '';
@@ -2155,7 +2195,13 @@
 
     function refreshLiveTimersOnly() {
       document.querySelectorAll('.fb-live-time').forEach(el => {
-        el.textContent = formatLiveElapsed(el.dataset.createdAt);
+        const elapsedStr = formatLiveElapsed(el.dataset.createdAt);
+        const targetSpan = el.querySelector('.live-elapsed-text');
+        if (targetSpan) {
+          targetSpan.textContent = elapsedStr;
+        } else {
+          el.textContent = elapsedStr;
+        }
       });
     }
 
@@ -2329,7 +2375,7 @@
         postSyncChannel.onmessage = (ev) => {
           const d = ev?.data;
           if (!d) return;
-          if ((d.type === 'CREATE_POST_TO_CARD' || d.type === 'NEW_POST_CARD') && d.post) {
+          if ((d.type === 'CREATE_POST_TO_CARD' || d.type === 'NEW_POST_CARD' || d.type === 'POST_PUBLISHED') && d.post) {
             ingestIncomingPostToFeed(d.post, d.type === 'CREATE_POST_TO_CARD');
           } else if ((d.type === 'DELETE_POST_CARD' || d.type === 'POST_DELETED') && (d.postId || d.id)) {
             const delId = String(d.postId || d.id);
@@ -2343,8 +2389,8 @@
       window.addEventListener('message', (ev) => {
         const d = ev?.data;
         if (!d || typeof d !== 'object') return;
-        if ((d.type === 'CREATE_POST_TO_CARD' || d.type === 'NEW_POST_CARD') && d.post) {
-          ingestIncomingPostToFeed(d.post, d.type === 'CREATE_POST_TO_CARD');
+        if ((d.type === 'CREATE_POST_TO_CARD' || d.type === 'NEW_POST_CARD' || d.type === 'POST_PUBLISHED') && d.post) {
+          ingestIncomingPostToFeed(d.post, true);
         }
       });
 
