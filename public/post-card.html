@@ -750,10 +750,14 @@
     ];
 
     const POST_STORE_KEYS = [
+      'posts',
       'autro_instant_feed_posts',
       'autro_post_cards',
-      'autro_profile_posts'
+      'autro_profile_posts',
+      'autrobook_profile_posts'
     ];
+
+    const DELETED_POST_IDS_KEY = 'autro_deleted_post_ids';
 
     const HEAVY_STORAGE_KEYS = [
       ...POST_STORE_KEYS,
@@ -903,6 +907,28 @@
       }
     }
 
+    function getDeletedIdsSet() {
+      const list = safeJsonParse(localStorage.getItem(DELETED_POST_IDS_KEY), []);
+      const set = new Set();
+      if (Array.isArray(list)) {
+        list.forEach(id => {
+          const clean = String(id || '').trim();
+          if (clean) set.add(clean);
+        });
+      }
+      return set;
+    }
+
+    function recordDeletedPostId(postId) {
+      const clean = String(postId || '').trim();
+      if (!clean) return;
+      const set = getDeletedIdsSet();
+      set.add(clean);
+      try {
+        localStorage.setItem(DELETED_POST_IDS_KEY, JSON.stringify(Array.from(set).slice(-100)));
+      } catch (_) {}
+    }
+
     function showToast(msg) {
       const el = document.getElementById('toastPill');
       el.textContent = msg;
@@ -977,6 +1003,7 @@
     function normalizeIncomingPost(rawPost) {
       if (!rawPost || typeof rawPost !== 'object') return null;
       const id = String(rawPost.id || rawPost.post_id || `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`).trim();
+      if (getDeletedIdsSet().has(id)) return null;
       const mediaUrl = String(rawPost.media_url || rawPost.image_url || rawPost.mediaUrl || rawPost.imageUrl || '').trim();
       const mediaType = String(rawPost.media_type || rawPost.mediaType || '').toLowerCase();
       const isVideo = Boolean(rawPost.is_video || rawPost.isVideo || mediaType.startsWith('video') || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(mediaUrl));
@@ -1036,6 +1063,8 @@
       const targetId = String(postId || '').trim();
       if (!targetId) return;
 
+      recordDeletedPostId(targetId);
+
       POST_STORE_KEYS.forEach((key) => {
         const existing = safeJsonParse(localStorage.getItem(key), []);
         if (Array.isArray(existing)) {
@@ -1073,12 +1102,18 @@
             postId: cleanId,
             targets: ['/public/profile.html', '/public/index.html']
           });
+          postSyncChannel.postMessage({
+            type: 'POST_DELETED',
+            postId: cleanId,
+            id: cleanId,
+            targets: ['/public/profile.html', '/public/index.html']
+          });
         }
       } catch (_) {}
 
       try {
         window.dispatchEvent(new CustomEvent('autro:post-deleted', {
-          detail: { postId: cleanId, targets: ['/public/profile.html', '/public/index.html'] }
+          detail: { postId: cleanId, id: cleanId, targets: ['/public/profile.html', '/public/index.html'] }
         }));
       } catch (_) {}
     }
@@ -1090,22 +1125,16 @@
       if (sb && !cleanId.startsWith('local-')) {
         let query = sb.from('posts').delete().eq('id', cleanId);
         if (activeUser?.id) {
-          // Owner check if user_id exists, fallback to id-only if needed
-          const { data: deletedRows, error } = await query.select('id');
-          if (error) {
-            showToast('Delete failed: ' + error.message);
-            return false;
-          }
-          if (!deletedRows || deletedRows.length === 0) {
-            showToast('Could not delete post (check RLS / ownership)');
-            return false;
-          }
-        } else {
-          const { error } = await query;
-          if (error) {
-            showToast('Delete failed: ' + error.message);
-            return false;
-          }
+          query = query.eq('user_id', activeUser.id);
+        }
+        const { data: deletedRows, error } = await query.select('id');
+        if (error) {
+          showToast('Delete failed: ' + error.message);
+          return false;
+        }
+        if (!deletedRows || deletedRows.length === 0) {
+          showToast('Could not delete post (check RLS / ownership)');
+          return false;
         }
       }
 
@@ -2069,6 +2098,7 @@
       const targetPostId = urlParams.get('post');
       const localReactions = readLocalReactionState();
       const sharedSet = readSharedPostsSet();
+      const deletedIds = getDeletedIdsSet();
       const map = new Map();
       let dbLoaded = false;
 
@@ -2147,11 +2177,16 @@
       ];
 
       combined.forEach(item => {
+        if (!item || typeof item !== 'object') return;
+        const rawId = String(item.id || item.post_id || '').trim();
+        if (rawId && deletedIds.has(rawId)) {
+          removePostFromLocalStores(rawId);
+          return;
+        }
         const norm = normalizeIncomingPost(item);
         if (!norm) return;
         const isLocalOnly = String(norm.id).startsWith('local-');
         if (dbLoaded && !isLocalOnly && !map.has(norm.id)) {
-          // Skip stale local items that no longer exist in Supabase posts table
           removePostFromLocalStores(norm.id);
           return;
         }
@@ -2199,9 +2234,10 @@
           if (!d) return;
           if ((d.type === 'CREATE_POST_TO_CARD' || d.type === 'NEW_POST_CARD') && d.post) {
             ingestIncomingPostToFeed(d.post, d.type === 'CREATE_POST_TO_CARD');
-          } else if (d.type === 'DELETE_POST_CARD' && d.postId) {
-            postsList = postsList.filter(p => String(p.id) !== String(d.postId));
-            removePostFromLocalStores(d.postId);
+          } else if ((d.type === 'DELETE_POST_CARD' || d.type === 'POST_DELETED') && (d.postId || d.id)) {
+            const delId = String(d.postId || d.id);
+            postsList = postsList.filter(p => String(p.id) !== delId);
+            removePostFromLocalStores(delId);
             renderPostsStream();
           }
         };
@@ -2224,7 +2260,7 @@
 
       window.addEventListener('storage', (e) => {
         if (!e || !e.key) return;
-        if (POST_STORE_KEYS.includes(e.key)) {
+        if (POST_STORE_KEYS.includes(e.key) || e.key === DELETED_POST_IDS_KEY) {
           loadPostsStream();
         }
       });
