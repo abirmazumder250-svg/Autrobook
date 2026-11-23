@@ -11,6 +11,27 @@ const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 
+const BLOCKED_DOMAINS = [
+  "tempmail.com",
+  "10minutemail.com",
+  "guerrillamail.com",
+  "mailinator.com",
+  "yopmail.com",
+  "throwaway.email",
+  "getnada.com",
+];
+
+function isValidRealEmail(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!emailRegex.test(normalized)) return false;
+
+  const domain = normalized.split("@")[1];
+  if (!domain || BLOCKED_DOMAINS.includes(domain)) return false;
+
+  return true;
+}
+
 function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -43,7 +64,8 @@ module.exports = async function handler(req, res) {
     if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
       return res.status(500).json({
         ok: false,
-        error: "Email service is not configured (missing GMAIL_USER or GMAIL_APP_PASSWORD)",
+        error:
+          "Email service is not configured (missing GMAIL_USER or GMAIL_APP_PASSWORD)",
       });
     }
 
@@ -61,10 +83,11 @@ module.exports = async function handler(req, res) {
     const email = String(body.email || "").trim().toLowerCase();
     const recaptchaToken = String(body.recaptchaToken || "").trim();
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Please enter a valid email address" });
+    if (!isValidRealEmail(email)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Please enter a valid, non-temporary email address",
+      });
     }
 
     const isHuman = await verifyRecaptcha(recaptchaToken);
