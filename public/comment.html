@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comments</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth.js"></script>
 <style>
   :root {
     --bg-primary: #202124;
@@ -34,6 +36,11 @@
     color: var(--text-primary);
     padding-bottom: 158px;
     min-height: 100vh;
+    visibility: hidden;
+  }
+
+  body.auth-ready {
+    visibility: visible;
   }
 
   /* Top Header */
@@ -1365,23 +1372,48 @@ document.getElementById("emojiLink").href = `emoji.html?${querySuffix}`;
 document.getElementById("avatarLink").href = `create-avatars.html?${querySuffix}`;
 document.getElementById("reactionsCornerLink").href = `reactions.html?${querySuffix}`;
 
-function getCurrentUser() {
+let currentUser = null;
+let commentsInitialized = false;
+
+function getStoredUserFallback() {
   try {
-    return JSON.parse(localStorage.getItem("currentUser")) || {
-      id: "me",
-      name: "Current User",
-      avatar: "https://ui-avatars.com/api/?background=303134&color=fff&name=Me"
-    };
+    return JSON.parse(localStorage.getItem("currentUser")) || null;
   } catch (_) {
-    return {
-      id: "me",
-      name: "Current User",
-      avatar: "https://ui-avatars.com/api/?background=303134&color=fff&name=Me"
-    };
+    return null;
   }
 }
 
-const currentUser = getCurrentUser();
+function syncCurrentUserFromAuth(authResult) {
+  if (!authResult || !authResult.user) {
+    currentUser = getStoredUserFallback();
+    return currentUser;
+  }
+
+  const authUser = authResult.user;
+  const authProfile = authResult.profile || {};
+  const meta = authUser.user_metadata || {};
+
+  const resolvedName = String(
+    authProfile.full_name || authProfile.name || meta.full_name || meta.name || ""
+  ).trim();
+  const resolvedAvatar = String(
+    authProfile.avatar_url || meta.avatar_url || meta.picture || ""
+  ).trim();
+
+  const existing = getStoredUserFallback() || {};
+  const updatedUser = {
+    ...existing,
+    id: String(authUser.id),
+    name: resolvedName || existing.name || authUser.email || authUser.phone || "User",
+    avatar: resolvedAvatar || existing.avatar || `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(resolvedName || "User")}`,
+    email: authUser.email || existing.email || "",
+    phone: authProfile.phone || authUser.phone || existing.phone || ""
+  };
+
+  localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+  currentUser = updatedUser;
+  return currentUser;
+}
 
 function readStorageArray(key) {
   try {
@@ -1469,12 +1501,13 @@ function escapeHtml(s) {
 }
 
 function getParentItem() {
+  const activeUser = currentUser || getStoredUserFallback() || { id: "" };
   const storageKey = itemType === "reel" ? "reels" : "posts";
   const arr = readStorageArray(storageKey);
   const found = arr.find(p => String(p.id) === String(itemId));
   return found || {
     id: itemId,
-    authorId: currentUser.id,
+    authorId: activeUser.id,
     pinnedCommentId: null,
     reactions: [],
     shares: 0,
@@ -1523,6 +1556,7 @@ function updateLiveCommentBadge(comments) {
 }
 
 async function syncCommentsWithSupabase() {
+  if (!commentsInitialized) return;
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/post_comments?post_id=eq.${encodeURIComponent(itemId)}&order=created_at.asc`,
@@ -1596,6 +1630,7 @@ async function pushCommentToSupabase(commentObj) {
 }
 
 function getActiveRestrictionForUser(userId) {
+  if (!userId) return null;
   const restrictions = readStorageObject("commentRestrictions");
   const rec = restrictions[String(userId)];
   if (!rec) return null;
@@ -1609,7 +1644,7 @@ function getActiveRestrictionForUser(userId) {
 
 function updateRestrictionBanner() {
   const banner = document.getElementById("restrictionBanner");
-  const active = getActiveRestrictionForUser(currentUser.id);
+  const active = getActiveRestrictionForUser(currentUser && currentUser.id);
   if (!active) {
     banner.style.display = "none";
     return;
@@ -1621,11 +1656,13 @@ function updateRestrictionBanner() {
 }
 
 function isCurrentUserPostAuthor(parent) {
+  if (!currentUser || !currentUser.id) return false;
   const authorId = String(parent.authorId || parent.userId || "");
   return Boolean(authorId && String(currentUser.id) === authorId);
 }
 
 function isFriendUser(targetUserId) {
+  if (!currentUser || !currentUser.id) return false;
   const friends = readStorageArray("friends");
   return friends.some(f =>
     (String(f.userId) === String(currentUser.id) && String(f.friendId) === String(targetUserId)) ||
@@ -1796,6 +1833,7 @@ function consumeReturnParamsFromSubpages() {
 }
 
 function openGalleryPicker() {
+  if (!currentUser || !currentUser.id) return;
   if (getActiveRestrictionForUser(currentUser.id)) {
     alert("You are currently restricted from commenting.");
     return;
@@ -1843,6 +1881,7 @@ let voiceTimerInterval = null;
 let voiceElapsedSec = 0;
 
 function openVoicePanel() {
+  if (!currentUser || !currentUser.id) return;
   if (getActiveRestrictionForUser(currentUser.id)) {
     alert("You are currently restricted from commenting.");
     return;
@@ -2049,6 +2088,7 @@ async function sendVoiceComment() {
 }
 
 async function submitComment() {
+  if (!currentUser || !currentUser.id) return;
   if (getActiveRestrictionForUser(currentUser.id)) {
     alert("You are currently restricted from commenting.");
     return;
@@ -2072,6 +2112,7 @@ async function submitComment() {
 }
 
 async function createCommentRecord({ text = "", imageUrl = "", attachmentKind = "", audioUrl = "", audioEffect = "" }) {
+  if (!currentUser || !currentUser.id) return null;
   const parent = getParentItem();
   if (!Array.isArray(parent.comments)) parent.comments = [];
 
@@ -2130,6 +2171,7 @@ function handleVotePointerUp(event, commentId, voteKind) {
 }
 
 function toggleSimpleVoteOrReaction(commentId, kind) {
+  if (!currentUser || !currentUser.id) return;
   const parent = getParentItem();
   const cmt = (parent.comments || []).find(c => String(c.id) === String(commentId));
   if (!cmt) return;
@@ -2167,7 +2209,7 @@ function toggleSimpleVoteOrReaction(commentId, kind) {
 function pickReaction(reactionType) {
   const picker = document.getElementById("longpressPicker");
   picker.classList.remove("open");
-  if (!activeReactionTargetCommentId) return;
+  if (!activeReactionTargetCommentId || !currentUser || !currentUser.id) return;
 
   const parent = getParentItem();
   const cmt = (parent.comments || []).find(c => String(c.id) === String(activeReactionTargetCommentId));
@@ -2192,6 +2234,7 @@ function pickReaction(reactionType) {
 }
 
 function undoCommentReaction(commentId) {
+  if (!currentUser || !currentUser.id) return;
   const parent = getParentItem();
   const cmt = (parent.comments || []).find(c => String(c.id) === String(commentId));
   if (!cmt) return;
@@ -2224,6 +2267,7 @@ function toggleReplyBox(commentId) {
 }
 
 function sendReply(commentId) {
+  if (!currentUser || !currentUser.id) return;
   if (getActiveRestrictionForUser(currentUser.id)) {
     alert("You are currently restricted from commenting.");
     return;
@@ -2267,7 +2311,7 @@ function closeReportSheet() {
 }
 
 async function submitAuthorReport() {
-  if (!reportingCommentTarget) return;
+  if (!reportingCommentTarget || !currentUser || !currentUser.id) return;
   const reason = document.getElementById("reportReasonSelect").value;
   const days = Number(document.getElementById("restrictDurationSelect").value || 0);
   const note = document.getElementById("reportExtraNote").value.trim();
@@ -2396,7 +2440,7 @@ function renderAll() {
     return;
   }
 
-  const uid = String(currentUser.id);
+  const uid = String((currentUser && currentUser.id) || "");
   const postAuthorId = String(parent.authorId || parent.userId || "");
 
   listEl.innerHTML = comments.map(cmt => {
@@ -2404,12 +2448,12 @@ function renderAll() {
     const cmtUserName = cmt.userName || "User";
     const profileUrl = `profile.html?userId=${encodeURIComponent(cmtUserId)}`;
     const isCmtAuthor = postAuthorId && cmtUserId === postAuthorId;
-    const isOwnComment = cmtUserId === uid;
+    const isOwnComment = Boolean(uid && cmtUserId === uid);
     const isPinned = pinnedId && String(cmt.id) === pinnedId;
     const isBad = containsProfanity(cmt.text);
     const rxnMap = cmt.reactions && typeof cmt.reactions === "object" ? cmt.reactions : {};
-    const myReaction = rxnMap[uid] || "";
-    const myVote = (cmt.userVote && cmt.userVote[uid]) || "";
+    const myReaction = uid ? (rxnMap[uid] || "") : "";
+    const myVote = uid ? ((cmt.userVote && cmt.userVote[uid]) || "") : "";
 
     const reactionEmojisList = Array.from(
       new Set(Object.values(rxnMap).map(r => REACTION_EMOJIS[r] || "👍"))
@@ -2595,6 +2639,7 @@ document.addEventListener("pointerdown", e => {
 });
 
 setInterval(() => {
+  if (!commentsInitialized) return;
   document.querySelectorAll(".comment-time[data-ts]").forEach(el => {
     const ts = Number(el.getAttribute("data-ts"));
     if (ts) el.textContent = formatTimeAgo(ts);
@@ -2603,15 +2648,49 @@ setInterval(() => {
 }, 1000);
 
 window.addEventListener("storage", () => {
+  if (!commentsInitialized) return;
   consumeReturnParamsFromSubpages();
   renderAll();
 });
 
-updateCharCounter();
-consumeReturnParamsFromSubpages();
-renderAll();
-syncCommentsWithSupabase();
+async function initCommentsPage() {
+  if (!window.AutroAuth || typeof window.AutroAuth.checkSessionAndProfile !== "function") {
+    window.location.replace("/login.html");
+    return;
+  }
+
+  const authResult = await window.AutroAuth.checkSessionAndProfile({
+    requireCompleteProfile: true
+  });
+
+  if (!authResult || !authResult.user) {
+    return;
+  }
+
+  syncCurrentUserFromAuth(authResult);
+  document.body.classList.add("auth-ready");
+  commentsInitialized = true;
+
+  updateCharCounter();
+  consumeReturnParamsFromSubpages();
+  renderAll();
+  syncCommentsWithSupabase();
+
+  const client = window.AutroAuth.supabase;
+  if (client && client.auth && typeof client.auth.onAuthStateChange === "function") {
+    client.auth.onAuthStateChange((_event, session) => {
+      if (!session || !session.user) {
+        commentsInitialized = false;
+        currentUser = null;
+        document.body.classList.remove("auth-ready");
+        window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+      }
+    });
+  }
+}
+
+initCommentsPage();
 </script>
 
 </body>
-  </html>
+      </html>
