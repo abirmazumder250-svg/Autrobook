@@ -15,6 +15,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const body = typeof req.body === 'string' ? safeJsonParse(req.body) : (req.body || {});
     const {
       message = '',
       language = '',
@@ -33,19 +35,19 @@ export default async function handler(req, res) {
       history = [],
       userId = '',
       accountKey = ''
-    } = req.body || {};
+    } = body;
 
     const cleanMessage = String(message || '').trim();
     if (!cleanMessage) {
-      return res.status(400).json({ error: 'Message is required' });
+      return res.status(200).json({
+        reply: 'Please type a message so I can help you.',
+        model: 'Autro AI',
+        language: language || 'en'
+      });
     }
 
-    const groqKey = process.env.GROQ_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
-
-    if (!groqKey && !geminiKey) {
-      return res.status(500).json({ error: 'AI API keys are not configured on server' });
-    }
+    const groqKey = (process.env.GROQ_API_KEY || '').trim();
+    const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
 
     // Fetch latest language & profile context from Supabase if available (non-blocking fast lookup)
     const syncedContext = await fetchSupabaseContext({
@@ -70,7 +72,7 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 6500
+          timeoutMs: 7000
         })
       );
 
@@ -82,7 +84,7 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 8500
+          timeoutMs: 9000
         })
       );
     }
@@ -96,24 +98,69 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 8500
+          timeoutMs: 9000
         })
       );
     }
 
-    const winner = await Promise.any(tasks);
+    if (tasks.length === 0) {
+      return res.status(200).json({
+        reply: buildLocalFallbackReply(cleanMessage, syncedContext),
+        model: 'Autro AI',
+        language: syncedContext.language || 'auto'
+      });
+    }
 
-    return res.status(200).json({
-      reply: winner.reply,
-      model: winner.model,
-      language: syncedContext.language || 'auto'
-    });
+    try {
+      const winner = await Promise.any(tasks);
+      return res.status(200).json({
+        reply: sanitizeReplyText(winner.reply),
+        model: 'Autro AI',
+        language: syncedContext.language || 'auto'
+      });
+    } catch (_) {
+      return res.status(200).json({
+        reply: buildLocalFallbackReply(cleanMessage, syncedContext),
+        model: 'Autro AI',
+        language: syncedContext.language || 'auto'
+      });
+    }
   } catch (error) {
     console.error('Autro AI error:', error);
-    return res.status(500).json({
-      error: 'Unable to generate a response right now. Please try again.'
+    return res.status(200).json({
+      reply: 'I am here to help. Please send your message again.',
+      model: 'Autro AI',
+      language: 'auto'
     });
   }
+}
+
+function safeJsonParse(str) {
+  try {
+    return JSON.parse(str);
+  } catch (_) {
+    return {};
+  }
+}
+
+function sanitizeReplyText(text) {
+  return String(text || '')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+    .replace(/https?:\/\/[^\s]+/g, '')
+    .trim();
+}
+
+function buildLocalFallbackReply(message, ctx = {}) {
+  const isBengali = /[\u0980-\u09FF]/.test(message);
+  const name = String(ctx?.name || '').trim();
+  if (isBengali) {
+    return name
+      ? `হ্যালো ${name}, আমি Autro AI Assistant। অনুগ্রহ করে আবার প্রশ্নটি করুন, আমি সাহায্য করছি।`
+      : 'আমি Autro AI Assistant। অনুগ্রহ করে আবার প্রশ্নটি করুন, আমি সাহায্য করছি।';
+  }
+  return name
+    ? `Hello ${name}, I am Autro AI Assistant. Please ask your question again so I can help.`
+    : 'I am Autro AI Assistant. Please ask your question again so I can help.';
 }
 
 async function fetchSupabaseContext({
@@ -212,6 +259,7 @@ function buildMetaStyleSystemPrompt(ctx) {
     'You are Autro AI Assistant inside Autrobook.',
     'Respond like Meta AI: crisp, natural, well-structured, accurate, and directly useful without fluff.',
     'Use short paragraphs or clean bullet points when helpful, and keep explanations easy to scan.',
+    'Do not include external URLs or links in responses.',
     langRule,
     details ? `User context: ${details}` : ''
   ]
@@ -266,7 +314,7 @@ async function callGroq({ apiKey, model, systemPrompt, history, message, timeout
 
   return {
     reply,
-    model: `Groq • ${model}`
+    model: 'Autro AI'
   };
 }
 
@@ -319,6 +367,6 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
 
   return {
     reply,
-    model: `Gemini • ${model}`
+    model: 'Autro AI'
   };
-          }
+    }
