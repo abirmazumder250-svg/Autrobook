@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reels Card - Autrobook</title>
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -19,6 +20,7 @@
     --accent-color: #111827;
     --accent-hover: #1f2937;
     --btn-text: #ffffff;
+    --danger-color: #ef4444;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -34,6 +36,7 @@
       --accent-color: #e8eaed;
       --accent-hover: #ffffff;
       --btn-text: #202124;
+      --danger-color: #f87171;
     }
   }
 
@@ -129,7 +132,7 @@
     position: absolute;
     top: 56px;
     right: 14px;
-    width: 245px;
+    width: 255px;
     background: #292a2d;
     border: 1px solid #3c4043;
     border-radius: 14px;
@@ -342,6 +345,56 @@
     margin-bottom: 6px;
     line-height: 1.35;
     word-break: break-word;
+  }
+
+  .inline-edit-panel {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(32, 33, 36, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .inline-edit-panel.open {
+    display: flex;
+  }
+
+  .inline-edit-textarea {
+    width: 100%;
+    min-height: 68px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    padding: 8px 10px;
+    font-size: 13px;
+    resize: vertical;
+    outline: none;
+  }
+
+  .inline-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .inline-edit-btn {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: #ffffff;
+    color: #202124;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .inline-edit-btn.secondary {
+    background: transparent;
+    color: #ffffff;
   }
 
   /* Live Audio Pill (Singer + Song) */
@@ -1187,11 +1240,15 @@
     <button type="button" class="top-pill-btn" id="moreDotsBtn" title="More options" aria-label="More options">
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
-    <a href="index.html" class="top-pill-btn" id="backToFeedBtn" title="Back to Feed"><i class="fa-solid fa-xmark"></i></a>
+    <a href="reels.html" class="top-pill-btn" id="backToFeedBtn" title="Back to Reels"><i class="fa-solid fa-xmark"></i></a>
   </div>
 
   <!-- Top-Right Three Dots Menu -->
   <div class="more-menu" id="moreMenu">
+    <button type="button" class="more-menu-item" id="menuEditCaptionBtn" style="display:none;">
+      <i class="fa-regular fa-pen-to-square"></i>
+      <span>Edit caption</span>
+    </button>
     <a href="reactions.html" class="more-menu-item" id="menuReactionsPageLink">
       <i class="fa-regular fa-face-smile"></i>
       <span>All Reactions (reactions.html)</span>
@@ -1204,9 +1261,13 @@
       <i class="fa-regular fa-bookmark"></i>
       <span>Save drafts</span>
     </button>
-    <a href="profile.html" class="more-menu-item" id="menuProfileReelsBtn">
+    <a href="profile.html?tab=reels" class="more-menu-item" id="menuProfileReelsBtn">
       <i class="fa-solid fa-clapperboard"></i>
       <span>Profile Reels</span>
+    </a>
+    <a href="index.html" class="more-menu-item" id="menuHomeFeedBtn">
+      <i class="fa-solid fa-house"></i>
+      <span>Home Feed (index.html)</span>
     </a>
     <a href="message.html" class="more-menu-item" id="menuDirectMessageBtn">
       <i class="fa-regular fa-paper-plane"></i>
@@ -1214,7 +1275,7 @@
     </a>
     <button type="button" class="more-menu-item" id="menuNotifyBtn">
       <i class="fa-regular fa-bell"></i>
-      <span id="notifyMenuLabel">Notification on for this post</span>
+      <span id="notifyMenuLabel">Notification on for this reel</span>
     </button>
     <button type="button" class="more-menu-item" id="menuShareBtn">
       <i class="fa-solid fa-share"></i>
@@ -1223,6 +1284,10 @@
     <button type="button" class="more-menu-item danger" id="menuReportBtn">
       <i class="fa-regular fa-flag"></i>
       <span>Report</span>
+    </button>
+    <button type="button" class="more-menu-item danger" id="menuDeleteReelBtn" style="display:none;">
+      <i class="fa-regular fa-trash-can"></i>
+      <span>Delete reel from Supabase</span>
     </button>
     <button type="button" class="more-menu-item danger" id="menuLogoutBtn">
       <i class="fa-solid fa-right-from-bracket"></i>
@@ -1286,6 +1351,14 @@
 
     <div class="caption" id="caption"></div>
 
+    <div class="inline-edit-panel" id="inlineEditPanel">
+      <textarea id="inlineEditTextarea" class="inline-edit-textarea" maxlength="500" placeholder="Edit reel caption..."></textarea>
+      <div class="inline-edit-actions">
+        <button type="button" class="inline-edit-btn secondary" id="cancelEditCaptionBtn">Cancel</button>
+        <button type="button" class="inline-edit-btn" id="saveEditCaptionBtn">Save</button>
+      </div>
+    </div>
+
     <!-- Live Audio Badge with Singer Name & Song Title -->
     <div class="audio-live-bar" id="audioLiveBar">
       <span class="audio-live-dot" title="Live Audio"></span>
@@ -1293,7 +1366,7 @@
       <span class="audio-live-text" id="audio">Original Audio</span>
     </div>
 
-    <div class="views-line" id="views">0 views • Just now</div>
+    <div class="views-line" id="views">0 views • 0s</div>
   </div>
 </div>
 
@@ -1594,6 +1667,13 @@
 <script>
   const supabaseClient = window.AutroAuth ? window.AutroAuth.supabase : null;
 
+  let reelSyncChannel = null;
+  try {
+    if ('BroadcastChannel' in window) {
+      reelSyncChannel = new BroadcastChannel('autrobook_reels_sync');
+    }
+  } catch (_) {}
+
   const MAX_VOICE_SECONDS = 30;
   const MAX_GROUP_SHARE = 10;
   const urlParams = new URLSearchParams(window.location.search);
@@ -1609,6 +1689,91 @@
     } catch (e) {
       return [];
     }
+  }
+
+  function getDeletedReelIdsSet() {
+    const set = new Set();
+    const keys = ['autro_deleted_reel_ids', 'deleted_reel_ids', 'autrobook_deleted_reels'];
+    keys.forEach((k) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(arr)) {
+          arr.forEach((v) => {
+            if (typeof v === 'string' || typeof v === 'number') {
+              const clean = String(v).trim();
+              if (clean) set.add(clean);
+            } else if (v && typeof v === 'object') {
+              const clean = String(v.id || v.reel_id || '').trim();
+              if (clean) set.add(clean);
+            }
+          });
+        }
+      } catch (_) {}
+    });
+    return set;
+  }
+
+  function markReelDeletedLocally(reelId) {
+    const cleanId = String(reelId || '').trim();
+    if (!cleanId) return;
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('autro_deleted_reel_ids') || '[]');
+      const set = new Set(Array.isArray(existing) ? existing.map(String) : []);
+      set.add(cleanId);
+      localStorage.setItem('autro_deleted_reel_ids', JSON.stringify(Array.from(set).slice(-120)));
+    } catch (_) {}
+
+    const pruneListKey = (key) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        if (Array.isArray(arr)) {
+          localStorage.setItem(
+            key,
+            JSON.stringify(arr.filter((item) => String(item?.id || item?.reel_id || '') !== cleanId))
+          );
+        }
+      } catch (_) {}
+    };
+
+    pruneListKey('autrobook_live_reels');
+    pruneListKey('autrobook_reels_queue');
+    pruneListKey('reels');
+
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('autrobook_profile_reels_')) {
+        pruneListKey(key);
+      }
+    });
+
+    try {
+      const engMap = JSON.parse(localStorage.getItem('autrobook_reel_engagement') || '{}');
+      if (engMap && engMap[cleanId]) {
+        delete engMap[cleanId];
+        localStorage.setItem('autrobook_reel_engagement', JSON.stringify(engMap));
+      }
+    } catch (_) {}
+  }
+
+  function broadcastReelDeletion(reelId) {
+    const cleanId = String(reelId || '').trim();
+    if (!cleanId) return;
+    try {
+      if (reelSyncChannel) {
+        reelSyncChannel.postMessage({
+          type: 'DELETE_REEL_CARD',
+          reelId: cleanId,
+          id: cleanId,
+          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+        });
+        reelSyncChannel.postMessage({
+          type: 'REEL_DELETED',
+          reelId: cleanId,
+          id: cleanId,
+          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+        });
+      }
+    } catch (_) {}
   }
 
   function formatLiveAudioLabel(item) {
@@ -1635,18 +1800,21 @@
   }
 
   function loadReelPlaylist() {
+    const deletedSet = getDeletedReelIdsSet();
     const merged = [];
     const seenIds = new Set();
 
     const addItems = (items) => {
       items.forEach((item, idx) => {
         if (!item || typeof item !== 'object') return;
-        const id = String(item.id || item.reel_id || `reel_${idx}`);
-        if (seenIds.has(id)) return;
+        const id = String(item.id || item.reel_id || `reel_${idx}`).trim();
+        if (!id || seenIds.has(id) || deletedSet.has(id)) return;
         seenIds.add(id);
         merged.push({
           ...item,
           id,
+          card_type: 'reels-card',
+          as_page: 'reels.html',
           user_id: item.user_id || item.author_id || '',
           author_name: item.author_name || item.author || item.username || '',
           author_avatar: item.author_avatar || item.avatar || '',
@@ -1670,6 +1838,7 @@
 
     addItems(readStoredList('autrobook_live_reels'));
     addItems(readStoredList('autrobook_reels_queue'));
+    addItems(readStoredList('reels'));
 
     Object.keys(localStorage).forEach((key) => {
       if (key.startsWith('autrobook_profile_reels_')) {
@@ -1699,6 +1868,8 @@
 
   const initialFromParams = {
     id: initialReelId,
+    card_type: 'reels-card',
+    as_page: 'reels.html',
     user_id: urlParams.get('user_id') || '',
     author_name: urlParams.get('author') || '',
     author_avatar: urlParams.get('avatar') || '',
@@ -1733,6 +1904,8 @@
   const reelData = {
     ...initialFromParams,
     ...(reelPlaylist[currentIndex] || {}),
+    card_type: 'reels-card',
+    as_page: 'reels.html',
     isPublic: ((reelPlaylist[currentIndex]?.audience || initialFromParams.audience || 'public') === 'public'),
     sound_enabled: true,
     has_issue: false
@@ -1808,6 +1981,10 @@
   const commentFooter = document.getElementById('commentFooter');
   const commentDotsMenu = document.getElementById('commentDotsMenu');
   const statusToast = document.getElementById('statusToast');
+  const inlineEditPanel = document.getElementById('inlineEditPanel');
+  const inlineEditTextarea = document.getElementById('inlineEditTextarea');
+  const menuEditCaptionBtn = document.getElementById('menuEditCaptionBtn');
+  const menuDeleteReelBtn = document.getElementById('menuDeleteReelBtn');
 
   function getActorId() {
     return currentUserId || getDeviceVisitorId();
@@ -1816,11 +1993,11 @@
   function isPostCreator() {
     const loggedInMatches = Boolean(currentUserId && reelData.user_id && currentUserId === reelData.user_id);
     const paramCreatorFlag = urlParams.get('is_owner') === '1' || urlParams.get('owner') === 'me';
-    return loggedInMatches || paramCreatorFlag;
+    return loggedInMatches || paramCreatorFlag || String(reelData.id || '').startsWith('local-reel-');
   }
 
   function buildShareableReelUrl() {
-    const base = new URL('reels-card.html', window.location.href);
+    const base = new URL('reels.html', window.location.href);
     if (reelData.id) base.searchParams.set('id', reelData.id);
     if (reelData.user_id) base.searchParams.set('user_id', reelData.user_id);
     return base.toString();
@@ -1862,11 +2039,14 @@
   }
 
   function persistLocalReelState() {
+    if (getDeletedReelIdsSet().has(String(reelData.id || ''))) return;
     try {
       const existing = readStoredList('autrobook_live_reels');
-      const idx = existing.findIndex((x) => x.id === reelData.id);
+      const idx = existing.findIndex((x) => String(x.id) === String(reelData.id));
       const record = {
         ...reelData,
+        card_type: 'reels-card',
+        as_page: 'reels.html',
         comments,
         updated_at: new Date().toISOString()
       };
@@ -1877,7 +2057,7 @@
       if (reelData.user_id) {
         const profileKey = `autrobook_profile_reels_${reelData.user_id}`;
         const profList = readStoredList(profileKey);
-        const pIdx = profList.findIndex((x) => x.id === reelData.id);
+        const pIdx = profList.findIndex((x) => String(x.id) === String(reelData.id));
         if (pIdx >= 0) profList[pIdx] = { ...profList[pIdx], ...record };
         else profList.unshift(record);
         localStorage.setItem(profileKey, JSON.stringify(profList.slice(0, 100)));
@@ -1905,6 +2085,7 @@
   }
 
   function saveLocalEngagementForReel() {
+    if (getDeletedReelIdsSet().has(String(reelData.id || ''))) return;
     try {
       const savedMap = JSON.parse(localStorage.getItem('autrobook_reel_engagement') || '{}');
       savedMap[reelData.id] = {
@@ -1924,6 +2105,99 @@
     } catch (e) {}
   }
 
+  async function saveReelCaptionEdit() {
+    const nextCaption = String(inlineEditTextarea.value || '').trim();
+    if (!nextCaption && !reelData.media_url) {
+      notify('Caption cannot be empty without media');
+      return;
+    }
+
+    if (supabaseClient && isValidUUID(reelData.id)) {
+      let q = supabaseClient
+        .from('reels')
+        .update({ caption: nextCaption })
+        .eq('id', reelData.id);
+      if (currentUserId) q = q.eq('user_id', currentUserId);
+      const { error } = await q;
+      if (error) {
+        notify('Failed to update caption: ' + error.message);
+        return;
+      }
+    }
+
+    reelData.caption = nextCaption;
+    document.getElementById('caption').textContent = nextCaption;
+    inlineEditPanel.classList.remove('open');
+    persistLocalReelState();
+
+    try {
+      if (reelSyncChannel) {
+        reelSyncChannel.postMessage({
+          type: 'REEL_UPDATED',
+          reelId: reelData.id,
+          caption: nextCaption,
+          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+        });
+      }
+    } catch (_) {}
+
+    notify('Caption updated');
+  }
+
+  function extractStoragePathFromPublicUrl(url, bucketName = 'reels') {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    const marker = `/storage/v1/object/public/${bucketName}/`;
+    const idx = raw.indexOf(marker);
+    if (idx === -1) return '';
+    return decodeURIComponent(raw.slice(idx + marker.length).split('?')[0]);
+  }
+
+  async function deleteCurrentReelFromSupabase() {
+    const cleanId = String(reelData.id || '').trim();
+    if (!cleanId) return;
+
+    if (supabaseClient && isValidUUID(cleanId)) {
+      let delQuery = supabaseClient
+        .from('reels')
+        .delete()
+        .eq('id', cleanId);
+      if (currentUserId) {
+        delQuery = delQuery.eq('user_id', currentUserId);
+      }
+      const { data: deletedRows, error } = await delQuery.select('id');
+      if (error) {
+        notify('Delete failed: ' + error.message);
+        return;
+      }
+      if (!deletedRows || deletedRows.length === 0) {
+        notify('Could not delete reel (check ownership or RLS policy)');
+        return;
+      }
+
+      const storagePath = extractStoragePathFromPublicUrl(reelData.media_url, 'reels');
+      if (storagePath) {
+        try {
+          await supabaseClient.storage.from('reels').remove([storagePath]);
+        } catch (_) {}
+      }
+    }
+
+    videoEl.pause();
+    markReelDeletedLocally(cleanId);
+    broadcastReelDeletion(cleanId);
+    reelPlaylist = reelPlaylist.filter((item) => String(item.id) !== cleanId);
+    notify('Reel deleted from Supabase');
+
+    setTimeout(() => {
+      if (reelPlaylist.length > 0) {
+        switchToReelAtIndex(Math.min(currentIndex, reelPlaylist.length - 1), 'down');
+      } else {
+        window.location.replace('reels.html');
+      }
+    }, 350);
+  }
+
   function notify(msg) {
     statusToast.textContent = msg;
     statusToast.classList.add('show');
@@ -1940,19 +2214,20 @@
 
   function formatLiveTime(isoDate) {
     const pastMs = new Date(isoDate || Date.now()).getTime();
-    const diffSec = Math.max(1, Math.floor((Date.now() - pastMs) / 1000));
+    if (Number.isNaN(pastMs)) return '0s';
+    const diffSec = Math.max(0, Math.floor((Date.now() - pastMs) / 1000));
 
-    if (diffSec < 60) return `${diffSec} sec${diffSec === 1 ? '' : 's'} ago`;
+    if (diffSec < 60) return `${diffSec}s`;
     const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
+    if (diffMin < 60) return `${diffMin}m`;
     const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+    if (diffHr < 24) return `${diffHr}h`;
     const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 30) return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+    if (diffDay < 30) return `${diffDay}d`;
     const diffMonth = Math.floor(diffDay / 30);
-    if (diffMonth < 12) return `${diffMonth} month${diffMonth === 1 ? '' : 's'} ago`;
+    if (diffMonth < 12) return `${diffMonth}mo`;
     const diffYear = Math.floor(diffMonth / 12);
-    return `${diffYear} year${diffYear === 1 ? '' : 's'} ago`;
+    return `${diffYear}y`;
   }
 
   function escapeHtml(str) {
@@ -2467,6 +2742,12 @@
     try {
       activeChannel = supabaseClient
         .channel(`reel-live-${reelData.id}`)
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'reels', filter: `id=eq.${reelData.id}` }, () => {
+          markReelDeletedLocally(reelData.id);
+          broadcastReelDeletion(reelData.id);
+          notify('This reel was deleted');
+          setTimeout(() => { window.location.replace('reels.html'); }, 350);
+        })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'reels', filter: `id=eq.${reelData.id}` }, async (payload) => {
           const updated = payload.new || {};
           if (updated.singer_name !== undefined || updated.artist_name !== undefined) {
@@ -2616,7 +2897,11 @@
       avatarEl.innerHTML = `<i class="fa-regular fa-user"></i>`;
     }
 
-    if (reelData.isPublic && reelData.user_id && !isPostCreator()) {
+    const canManageReel = isPostCreator();
+    menuEditCaptionBtn.style.display = canManageReel ? 'flex' : 'none';
+    menuDeleteReelBtn.style.display = canManageReel ? 'flex' : 'none';
+
+    if (reelData.isPublic && reelData.user_id && !canManageReel) {
       followBtn.style.display = 'inline-block';
       followBtn.textContent = isFollowing ? 'Following' : 'Follow';
       followBtn.classList.toggle('following', isFollowing);
@@ -2625,7 +2910,7 @@
     }
 
     const menuReportBtn = document.getElementById('menuReportBtn');
-    menuReportBtn.style.display = isPostCreator() ? 'none' : 'flex';
+    menuReportBtn.style.display = canManageReel ? 'none' : 'flex';
 
     if (reelData.media_type === 'image' && reelData.media_url) {
       videoEl.pause();
@@ -2981,6 +3266,24 @@
     notify(isFollowing ? `Following${targetLabel}` : `Unfollowed${targetLabel}`);
   });
 
+  menuEditCaptionBtn.addEventListener('click', () => {
+    moreMenu.classList.remove('open');
+    inlineEditTextarea.value = reelData.caption || '';
+    inlineEditPanel.classList.add('open');
+    inlineEditTextarea.focus();
+  });
+
+  document.getElementById('cancelEditCaptionBtn').addEventListener('click', () => {
+    inlineEditPanel.classList.remove('open');
+  });
+
+  document.getElementById('saveEditCaptionBtn').addEventListener('click', saveReelCaptionEdit);
+
+  menuDeleteReelBtn.addEventListener('click', async () => {
+    moreMenu.classList.remove('open');
+    await deleteCurrentReelFromSupabase();
+  });
+
   function closeAllSheets() {
     shareSheet.classList.remove('open');
     groupsShareSheet.classList.remove('open');
@@ -3004,6 +3307,7 @@
   }
 
   async function switchToReelAtIndex(nextIndex, direction = 'down') {
+    reelPlaylist = loadReelPlaylist();
     if (!reelPlaylist.length || nextIndex < 0 || nextIndex >= reelPlaylist.length) {
       notify(direction === 'down' ? 'No more reels below' : 'No previous reels');
       return;
@@ -3017,9 +3321,12 @@
 
     reelCardEl.style.transform = direction === 'down' ? 'translateY(-18px)' : 'translateY(18px)';
     reelCardEl.style.opacity = '0.45';
+    inlineEditPanel.classList.remove('open');
 
     Object.assign(reelData, {
       id: nextItem.id,
+      card_type: 'reels-card',
+      as_page: 'reels.html',
       user_id: nextItem.user_id || '',
       author_name: nextItem.author_name || '',
       author_avatar: nextItem.author_avatar || '',
@@ -3072,7 +3379,7 @@
 
   reelCardEl.addEventListener('touchstart', (e) => {
     if (hasAnySheetOpen()) return;
-    touchStartedOnInteractive = Boolean(e.target.closest('button, a, input, select, .actions, .bottom-info, .top-right-controls, .react-popup'));
+    touchStartedOnInteractive = Boolean(e.target.closest('button, a, input, select, textarea, .actions, .bottom-info, .top-right-controls, .react-popup'));
     if (touchStartedOnInteractive) return;
     if (e.touches && e.touches.length === 1) {
       touchStartY = e.touches[0].clientY;
@@ -3096,7 +3403,7 @@
   }, { passive: true });
 
   document.addEventListener('keydown', (e) => {
-    if (hasAnySheetOpen() || document.activeElement === commentInput || document.activeElement === groupSearchInput) {
+    if (hasAnySheetOpen() || document.activeElement === commentInput || document.activeElement === groupSearchInput || document.activeElement === inlineEditTextarea) {
       return;
     }
     if (e.key === 'ArrowDown') {
@@ -3157,9 +3464,9 @@
     moreMenu.classList.remove('open');
     postNotifyEnabled = !postNotifyEnabled;
     document.getElementById('notifyMenuLabel').textContent = postNotifyEnabled
-      ? 'Notification on for this post'
-      : 'Notification off for this post';
-    notify(postNotifyEnabled ? 'Post notifications ON' : 'Post notifications OFF');
+      ? 'Notification on for this reel'
+      : 'Notification off for this reel';
+    notify(postNotifyEnabled ? 'Reel notifications ON' : 'Reel notifications OFF');
   });
 
   document.getElementById('menuLogoutBtn').addEventListener('click', async () => {
@@ -3248,7 +3555,7 @@
 
   function openReportSheet(ctx) {
     if (isPostCreator() || (currentUserId && ctx.targetOwnerId && ctx.targetOwnerId === currentUserId)) {
-      notify('Post owner cannot report');
+      notify('Reel owner cannot report');
       return;
     }
     reportContext = ctx;
@@ -3824,6 +4131,20 @@
       document.getElementById('sendCommentBtn').click();
     }
   });
+
+  if (reelSyncChannel) {
+    reelSyncChannel.onmessage = (ev) => {
+      const msg = ev?.data;
+      if (!msg || typeof msg !== 'object') return;
+      if ((msg.type === 'DELETE_REEL_CARD' || msg.type === 'REEL_DELETED') && (msg.reelId || msg.id)) {
+        const delId = String(msg.reelId || msg.id);
+        markReelDeletedLocally(delId);
+        if (String(reelData.id) === delId) {
+          window.location.replace('reels.html');
+        }
+      }
+    };
+  }
 
   window.addEventListener('beforeunload', () => {
     saveLocalEngagementForReel();
