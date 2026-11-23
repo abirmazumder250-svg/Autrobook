@@ -2,12 +2,22 @@
 // SUPABASE IMAGE UPLOAD SERVICE
 // ============================================================
 
-// Corrected URL and Key based on your Supabase Project
-const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co'; 
+const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+const STORAGE_BUCKET = 'images';
 
-// Initialize Supabase Client (Make sure the Supabase SDK is loaded in your HTML)
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabaseClient = null;
+
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    throw new Error('Supabase SDK is not loaded on this page.');
+  }
+
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return supabaseClient;
+}
 
 /**
  * Uploads a file to the 'images' bucket in Supabase Storage.
@@ -16,17 +26,19 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
  */
 async function uploadToSupabase(file) {
   if (!file) return null;
-  
-  // Create a unique filename (Timestamp + Sanitized original name)
-  const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
-  
+
+  const safeName = (file.name || 'upload').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const fileName = `${Date.now()}-${safeName}`;
+
   try {
+    const client = getSupabaseClient();
+
     // 1. Upload the file to the 'images' bucket
-    const { data, error } = await supabaseClient.storage
-      .from('images')
+    const { error } = await client.storage
+      .from(STORAGE_BUCKET)
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: false // Prevents overwriting existing files
+        upsert: false,
       });
 
     if (error) {
@@ -34,17 +46,16 @@ async function uploadToSupabase(file) {
       alert('Image upload failed: ' + error.message);
       return null;
     }
-    
+
     // 2. Get the Public URL for the uploaded file
-    const { data: urlData } = supabaseClient.storage
-      .from('images')
+    const { data: urlData } = client.storage
+      .from(STORAGE_BUCKET)
       .getPublicUrl(fileName);
-      
-    return urlData.publicUrl;
-    
+
+    return urlData?.publicUrl || null;
   } catch (err) {
-    console.error('Network or Server Error:', err);
-    alert('Network error while uploading image. Please check your connection.');
+    console.error('Network or SDK Error:', err);
+    alert(err?.message || 'Network error while uploading image. Please check your connection.');
     return null;
   }
 }
