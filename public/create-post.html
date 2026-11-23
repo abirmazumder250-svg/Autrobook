@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Create Post</title>
+  <title>New post</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
     :root {
@@ -103,14 +103,13 @@
     }
 
     .header-title {
-      font-size: 15.5px;
+      font-size: 16px;
       font-weight: 800;
       letter-spacing: -0.2px;
       color: var(--text-primary);
       text-align: center;
       flex: 1;
       min-width: 0;
-      min-height: 20px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -575,7 +574,7 @@
       </a>
     </div>
 
-    <div id="headerUserName" class="header-title"></div>
+    <div id="headerUserName" class="header-title">New post</div>
     <button type="button" id="doneBtn" class="header-done-btn" onclick="handleDonePost()">Done</button>
   </header>
 
@@ -879,7 +878,7 @@
         if (cleanPath.startsWith('avatars/')) {
           return sb.storage.from('avatars').getPublicUrl(cleanPath.replace(/^avatars\//, '')).data.publicUrl || '';
         }
-        return sb.storage.from('media').getPublicUrl(cleanPath).data.publicUrl || '';
+        return sb.storage.from('avatars').getPublicUrl(cleanPath).data.publicUrl || '';
       }
       return '';
     }
@@ -894,16 +893,16 @@
         avatar_url: safeAvatar
       };
 
-      document.getElementById('headerUserName').textContent = savedName || 'Create Post';
+      document.getElementById('headerUserName').textContent = 'New post';
       document.getElementById('profileNameBox').textContent = savedName;
-      document.title = savedName ? `${savedName} - Create Post` : 'Create Post';
+      document.title = 'New post';
 
       const avatarBox = document.getElementById('profileAvatarBox');
       avatarBox.innerHTML = '';
       if (safeAvatar) {
         const img = document.createElement('img');
         img.src = safeAvatar;
-        img.alt = savedName;
+        img.alt = savedName || 'Profile';
         img.onerror = () => {
           img.remove();
         };
@@ -912,23 +911,28 @@
     }
 
     async function loadSupabaseAccount() {
-      applyAccountIdentity('', '', null);
-
-      if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
-        const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
-        if (!authResult) return false;
-        currentUser = authResult.user;
-      }
+      const cachedName = localStorage.getItem('autro_profile_name') || localStorage.getItem('autro_user_name') || '';
+      const cachedAvatar = localStorage.getItem('autro_profile_avatar') || '';
+      applyAccountIdentity(cachedName, cachedAvatar, localStorage.getItem('autro_user_id') || null);
 
       if (!sb) return true;
 
       try {
+        if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
+          try {
+            const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: false });
+            if (authResult?.user) currentUser = authResult.user;
+          } catch (_) {}
+        }
+
         if (!currentUser) {
           const { data: { session } } = await sb.auth.getSession();
           currentUser = session?.user || null;
         }
 
-        if (currentUser) {
+        if (currentUser?.id) {
+          safeLocalStorageSet('autro_user_id', String(currentUser.id));
+
           const { data: prof } = await sb
             .from('profiles')
             .select('*')
@@ -944,6 +948,7 @@
             meta.full_name ||
             meta.name ||
             meta.display_name ||
+            cachedName ||
             '';
 
           const savedAvatar =
@@ -953,12 +958,16 @@
             meta.avatar_url ||
             meta.avatar ||
             meta.picture ||
+            cachedAvatar ||
             '';
+
+          if (savedName) safeLocalStorageSet('autro_profile_name', savedName);
+          if (savedAvatar) safeLocalStorageSet('autro_profile_avatar', savedAvatar);
 
           applyAccountIdentity(savedName, savedAvatar, currentUser.id);
         }
       } catch (_) {
-        applyAccountIdentity('', '', currentUser?.id || null);
+        applyAccountIdentity(cachedName, cachedAvatar, currentUser?.id || null);
       }
 
       return true;
@@ -970,7 +979,7 @@
         sb.channel('public:create_post_profile_sync')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
             const row = payload?.new || {};
-            const targetId = currentUser?.id || currentProfile?.id;
+            const targetId = currentUser?.id || currentProfile?.id || localStorage.getItem('autro_user_id');
             if (!targetId || String(row.id || '') === String(targetId)) {
               loadSupabaseAccount();
             }
@@ -1263,10 +1272,11 @@
     async function uploadToStorage(file, folder) {
       if (!sb || !file) return '';
       const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
-      const path = `posts/${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error } = await sb.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+      const uid = currentUser?.id || currentProfile?.id || 'guest';
+      const path = `${uid}/${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await sb.storage.from('posts').upload(path, file, { cacheControl: '3600', upsert: false });
       if (error) throw error;
-      const { data } = sb.storage.from('media').getPublicUrl(path);
+      const { data } = sb.storage.from('posts').getPublicUrl(path);
       return data?.publicUrl || '';
     }
 
@@ -1402,8 +1412,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       captureOriginFromUrl();
       pruneHeavyLocalKeys();
-      const ok = await loadSupabaseAccount();
-      if (ok === false) return;
+      await loadSupabaseAccount();
       subscribeRealtimeProfileIdentity();
       restoreDraftAndFriends();
     });
