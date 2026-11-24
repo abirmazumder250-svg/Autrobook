@@ -27,6 +27,8 @@ const BLOCKED_DOMAINS = new Set([
   "yopmail.com",
   "throwaway.email",
   "getnada.com",
+  "sharklasers.com",
+  "trashmail.com",
 ]);
 
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -162,6 +164,15 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    if (!OTP_PEPPER) {
+      console.error("Missing OTP_PEPPER.");
+      return res.status(500).json({
+        ok: false,
+        success: false,
+        error: "OTP security configuration is missing on the server.",
+      });
+    }
+
     let body = req.body || {};
     if (typeof req.body === "string") {
       try {
@@ -185,7 +196,6 @@ module.exports = async function handler(req, res) {
 
     const email = String(body.email || "").trim().toLowerCase();
     const purpose = String(body.purpose || "verification").trim().toLowerCase();
-    const isResend = Boolean(body.isResend);
     const recaptchaToken = String(
       body.recaptchaToken || body.token || body["g-recaptcha-response"] || ""
     ).trim();
@@ -198,28 +208,26 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (!isResend) {
-      const captchaResult = await verifyRecaptcha(recaptchaToken);
-      if (!captchaResult.ok) {
-        if (captchaResult.configError) {
-          return res.status(500).json({
-            ok: false,
-            success: false,
-            error: "reCAPTCHA verification is not configured on the server.",
-          });
-        }
-
-        return res.status(400).json({
+    const captchaResult = await verifyRecaptcha(recaptchaToken);
+    if (!captchaResult.ok) {
+      if (captchaResult.configError) {
+        return res.status(500).json({
           ok: false,
           success: false,
-          error: `reCAPTCHA verification failed${
-            captchaResult.errorCodes.length
-              ? ` (${captchaResult.errorCodes.join(", ")})`
-              : ""
-          }.`,
-          errorCodes: captchaResult.errorCodes,
+          error: "reCAPTCHA verification is not configured on the server.",
         });
       }
+
+      return res.status(400).json({
+        ok: false,
+        success: false,
+        error: `reCAPTCHA verification failed${
+          captchaResult.errorCodes.length
+            ? ` (${captchaResult.errorCodes.join(", ")})`
+            : ""
+        }.`,
+        errorCodes: captchaResult.errorCodes,
+      });
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -230,11 +238,16 @@ module.exports = async function handler(req, res) {
       const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
         .from("profiles")
         .select("id, is_locked")
-        .ilike("email", email)
+        .eq("email", email)
         .maybeSingle();
 
       if (profileCheckError) {
         console.error("Failed checking existing profile:", profileCheckError);
+        return res.status(500).json({
+          ok: false,
+          success: false,
+          error: "Failed checking account status.",
+        });
       }
 
       if (existingProfile) {
@@ -247,13 +260,17 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const { data: latestOtp } = await supabaseAdmin
+    const { data: latestOtp, error: latestOtpError } = await supabaseAdmin
       .from("email_otps")
       .select("created_at")
-      .ilike("email", email)
+      .eq("email", email)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (latestOtpError) {
+      console.warn("Failed reading latest OTP:", latestOtpError);
+    }
 
     if (latestOtp && latestOtp.created_at) {
       const elapsedMs = Date.now() - new Date(latestOtp.created_at).getTime();
@@ -292,11 +309,15 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    await supabaseAdmin
+    const { error: cleanupError } = await supabaseAdmin
       .from("email_otps")
       .delete()
-      .ilike("email", email)
+      .eq("email", email)
       .neq("id", insertedOtp.id);
+
+    if (cleanupError) {
+      console.warn("Failed cleaning up old OTPs:", cleanupError);
+    }
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
