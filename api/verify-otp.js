@@ -63,7 +63,7 @@ async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
   const withAttempts = await supabaseAdmin
     .from("email_otps")
     .select("id, otp, expires_at, verified, attempts")
-    .eq("email", cleanEmail)
+    .ilike("email", cleanEmail)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -75,7 +75,7 @@ async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
   const fallback = await supabaseAdmin
     .from("email_otps")
     .select("id, otp, expires_at, verified")
-    .eq("email", cleanEmail)
+    .ilike("email", cleanEmail)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -88,6 +88,16 @@ async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
 }
 
 async function findAuthUserIdByEmail(supabaseAdmin, cleanEmail) {
+  const { data: profileRow } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .ilike("email", cleanEmail)
+    .maybeSingle();
+
+  if (profileRow?.id) {
+    return profileRow.id;
+  }
+
   let page = 1;
   const perPage = 200;
 
@@ -160,7 +170,9 @@ module.exports = async function handler(req, res) {
     const cleanEmail = String(email || "").trim().toLowerCase();
     const cleanOtp = String(otp || "").trim();
     const isPasswordReset = newPassword !== undefined;
-    const rawPassword = isPasswordReset ? String(newPassword || "") : String(password || "");
+    const rawPassword = isPasswordReset
+      ? String(newPassword || "")
+      : String(password || "");
 
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
       return res.status(400).json({
@@ -178,11 +190,12 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if ((isPasswordReset || password !== undefined) && !isStrongPassword(rawPassword)) {
+    if (!isStrongPassword(rawPassword)) {
       return res.status(400).json({
         success: false,
         code: "WEAK_PASSWORD",
-        message: "Password must be at least 8 characters with uppercase, lowercase, and a number.",
+        message:
+          "Password must be at least 8 characters with uppercase, lowercase, and a number.",
       });
     }
 
@@ -379,16 +392,34 @@ module.exports = async function handler(req, res) {
 
       if (profileInsertError) {
         console.error("Failed to upsert profile:", profileInsertError);
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        return res.status(500).json({
+          success: false,
+          code: "PROFILE_CREATE_FAILED",
+          message: "Failed to initialize user profile. Please try again.",
+        });
       }
 
       if (faceHash || fingerprintHash) {
-        await supabaseAdmin.from("biometric_registry").insert({
-          user_id: userId,
-          email: cleanEmail,
-          face_hash: faceHash,
-          fingerprint_hash: fingerprintHash,
-          is_locked: false,
-        });
+        const { error: bioInsertError } = await supabaseAdmin
+          .from("biometric_registry")
+          .insert({
+            user_id: userId,
+            email: cleanEmail,
+            face_hash: faceHash,
+            fingerprint_hash: fingerprintHash,
+            is_locked: false,
+          });
+
+        if (bioInsertError) {
+          console.error("Failed to insert biometric_registry:", bioInsertError);
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          return res.status(409).json({
+            success: false,
+            code: "BIOMETRIC_REGISTER_FAILED",
+            message: "Biometric data already registered or could not be saved.",
+          });
+        }
       }
     }
 
