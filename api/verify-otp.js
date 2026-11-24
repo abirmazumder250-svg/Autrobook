@@ -63,7 +63,7 @@ async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
   const withAttempts = await supabaseAdmin
     .from("email_otps")
     .select("id, otp, expires_at, verified, attempts")
-    .ilike("email", cleanEmail)
+    .eq("email", cleanEmail)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -75,7 +75,7 @@ async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
   const fallback = await supabaseAdmin
     .from("email_otps")
     .select("id, otp, expires_at, verified")
-    .ilike("email", cleanEmail)
+    .eq("email", cleanEmail)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -91,7 +91,7 @@ async function findAuthUserIdByEmail(supabaseAdmin, cleanEmail) {
   const { data: profileRow } = await supabaseAdmin
     .from("profiles")
     .select("id")
-    .ilike("email", cleanEmail)
+    .eq("email", cleanEmail)
     .maybeSingle();
 
   if (profileRow?.id) {
@@ -142,6 +142,14 @@ module.exports = async function handler(req, res) {
         success: false,
         code: "SUPABASE_CONFIG_MISSING",
         message: "Server configuration error: Supabase credentials are missing.",
+      });
+    }
+
+    if (!OTP_PEPPER) {
+      return res.status(500).json({
+        success: false,
+        code: "OTP_PEPPER_MISSING",
+        message: "Server configuration error: OTP pepper is missing.",
       });
     }
 
@@ -414,10 +422,13 @@ module.exports = async function handler(req, res) {
         if (bioInsertError) {
           console.error("Failed to insert biometric_registry:", bioInsertError);
           await supabaseAdmin.auth.admin.deleteUser(userId);
-          return res.status(409).json({
+          const isConflict = bioInsertError.code === "23505";
+          return res.status(isConflict ? 409 : 500).json({
             success: false,
             code: "BIOMETRIC_REGISTER_FAILED",
-            message: "Biometric data already registered or could not be saved.",
+            message: isConflict
+              ? "Biometric data is already registered with another account."
+              : "Could not save biometric verification data.",
           });
         }
       }
