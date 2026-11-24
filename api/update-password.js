@@ -7,15 +7,14 @@ const supabaseUrl =
   process.env.VITE_SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const supabase =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null;
 
 function verifySignedToken(token, expectedEmail) {
   const secret = process.env.RESET_TOKEN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -60,7 +59,7 @@ export default async function handler(req, res) {
     if (!supabase) {
       return res.status(500).json({
         success: false,
-        message: 'Supabase URL or key is missing in environment variables'
+        message: 'SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing in environment variables',
       });
     }
 
@@ -81,7 +80,7 @@ export default async function handler(req, res) {
     if (!cleanEmail || !cleanPassword || (!resetToken && !/^\d{6}$/.test(cleanOtp))) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields (email, password, and resetToken or valid 6-digit otp)'
+        message: 'Missing required fields (email, password, and resetToken or valid 6-digit otp)',
       });
     }
 
@@ -93,7 +92,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
     }
 
-    // যদি resetToken থাকে তবে স্বাক্ষর যাচাই করুন; আর শুধু otp থাকলে OTP টেবিল যাচাই করুন
+    let otpRowId = null;
+
     if (resetToken) {
       if (!verifySignedToken(resetToken, cleanEmail)) {
         return res.status(403).json({ success: false, message: 'Invalid or expired reset token' });
@@ -120,10 +120,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, message: 'Invalid OTP code' });
       }
 
-      await supabase
-        .from('password_reset_otps')
-        .update({ used: true })
-        .eq('id', otpRow.id);
+      otpRowId = otpRow.id;
     }
 
     const hashedPassword = await bcrypt.hash(cleanPassword, 10);
@@ -143,12 +140,19 @@ export default async function handler(req, res) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    if (otpRowId) {
+      await supabase
+        .from('password_reset_otps')
+        .update({ used: true })
+        .eq('id', otpRowId);
+    }
+
     return res.status(200).json({
       success: true,
-      message: 'Password updated successfully'
+      message: 'Password updated successfully',
     });
   } catch (e) {
     console.error('Server Internal Error:', e);
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
   }
-    }
+  }
