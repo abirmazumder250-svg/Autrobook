@@ -34,13 +34,18 @@ function generateBackupCode() {
 }
 
 async function findUserIdByEmail(email) {
-  if (!supabaseAdmin || !email) return '';
-  const { data } = await supabaseAdmin
+  if (!supabaseAdmin || !email) return null;
+  const { data, error } = await supabaseAdmin
     .from('profiles')
     .select('id')
     .eq('email', email)
     .maybeSingle();
-  return data?.id || '';
+
+  if (error) {
+    console.warn('findUserIdByEmail warning:', error.message);
+    return null;
+  }
+  return data?.id || null;
 }
 
 export default async function handler(req, res) {
@@ -49,7 +54,10 @@ export default async function handler(req, res) {
   }
 
   if (!supabaseAdmin) {
-    return res.status(500).json({ ok: false, error: 'Server configuration error' });
+    return res.status(500).json({
+      ok: false,
+      error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing'
+    });
   }
 
   try {
@@ -78,7 +86,11 @@ export default async function handler(req, res) {
         });
 
       if (error) {
-        return res.status(500).json({ ok: false, error: 'Failed to create backup code' });
+        console.error('Insert backup_codes error:', error);
+        return res.status(500).json({
+          ok: false,
+          error: `Failed to create backup code: ${error.message}`
+        });
       }
 
       return res.status(200).json({
@@ -119,6 +131,7 @@ export default async function handler(req, res) {
         .eq('used', false);
 
       if (updateError) {
+        console.error('Update backup_codes error:', updateError);
         return res.status(500).json({ ok: false, error: 'Failed to consume backup code' });
       }
 
@@ -129,7 +142,11 @@ export default async function handler(req, res) {
     }
 
     return res.status(400).json({ ok: false, error: 'Invalid action' });
-  } catch (_) {
-    return res.status(500).json({ ok: false, error: 'Unexpected server error' });
+  } catch (err) {
+    console.error('Backup code handler error:', err);
+    return res.status(500).json({
+      ok: false,
+      error: err?.message || 'Unexpected server error'
+    });
   }
-            }
+}
