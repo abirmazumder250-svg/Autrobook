@@ -110,7 +110,6 @@
     transform: translateY(6px);
   }
 
-  /* Entrance Animations */
   @keyframes fadeSlideUp {
     from {
       opacity: 0;
@@ -292,7 +291,6 @@
     animation: fadeSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
   }
 
-  /* Animated Logo with Pulse Ring & Float */
   .top-logo {
     position: relative;
     width: 68px;
@@ -436,6 +434,10 @@
     opacity: 0.72;
   }
 
+  [dir="rtl"] .lang-label-group {
+    text-align: right;
+  }
+
   .faint-note {
     margin-top: 6px;
     font-size: 12.5px;
@@ -523,7 +525,6 @@
     display: none !important;
   }
 
-  /* Language Selection Modal */
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -797,7 +798,6 @@ function safeSetStorage(key, value) {
   try { window.sessionStorage.setItem(key, String(value)); } catch (e) {}
 }
 
-/* ALL WORLD LANGUAGES (BY COUNTRY & REGION) */
 const languages = [
   { id: "en-US", code: "en", name: "English (US)", country: "United States" },
   { id: "en-GB", code: "en-GB", name: "English (UK)", country: "United Kingdom" },
@@ -939,27 +939,112 @@ const languages = [
   { id: "eo-001", code: "eo", name: "Esperanto", country: "International" }
 ];
 
-const UI_STRINGS = {
-  en: {
-    title: "What's your name?",
-    subtitle: "Enter the name you use in real life",
-    firstName: "First Name",
-    surname: "Surname",
-    username: "Username",
-    firstNamePlaceholder: "Enter your first name",
-    surnamePlaceholder: "Enter your surname",
-    usernamePlaceholder: "Choose a username",
-    usernameHint: "Unique handle for your Autrobook profile (e.g. @your_handle)",
-    handlePrefix: "Profile handle preview:",
-    next: "Next",
-    haveAcc: "Already have an account?",
-    loginLink: "Log in",
-    err1: "Please enter your first name",
-    err2: "Please enter your surname",
-    err3: "Please enter a username",
-    modalTitle: "Select Language",
-    searchPlaceholder: "Search language or country..."
-  }
+(function appendWorldLanguages() {
+  const existingIds = new Set(languages.map(l => l.id.toLowerCase()));
+  const rtlCodes = new Set(["ar", "fa", "ur", "he", "ps", "ku", "sd", "ug", "yi", "dv", "syr"]);
+  const worldLangCodes = [
+    "aa", "ab", "ae", "af", "ak", "am", "an", "ar", "as", "av", "ay", "az",
+    "ba", "be", "bg", "bh", "bi", "bm", "bn", "bo", "br", "bs",
+    "ca", "ce", "ch", "co", "cr", "cs", "cu", "cv", "cy",
+    "da", "de", "dv", "dz",
+    "ee", "el", "en", "eo", "es", "et", "eu",
+    "fa", "ff", "fi", "fj", "fo", "fr", "fy",
+    "ga", "gd", "gl", "gn", "gu", "gv",
+    "ha", "he", "hi", "ho", "hr", "ht", "hu", "hy", "hz",
+    "ia", "id", "ie", "ig", "ii", "ik", "io", "is", "it", "iu",
+    "ja", "jv",
+    "ka", "kg", "ki", "kj", "kk", "kl", "km", "kn", "ko", "kr", "ks", "ku", "kv", "kw", "ky",
+    "la", "lb", "lg", "li", "ln", "lo", "lt", "lu", "lv",
+    "mg", "mh", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my",
+    "na", "nb", "nd", "ne", "ng", "nl", "nn", "no", "nr", "nv", "ny",
+    "oc", "oj", "om", "or", "os",
+    "pa", "pi", "pl", "ps", "pt",
+    "qu",
+    "rm", "rn", "ro", "ru", "rw",
+    "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sq", "sr", "ss", "st", "su", "sv", "sw",
+    "ta", "te", "tg", "th", "ti", "tk", "tl", "tn", "to", "tr", "ts", "tt", "tw", "ty",
+    "ug", "uk", "ur", "uz",
+    "ve", "vi", "vo",
+    "wa", "wo",
+    "xh",
+    "yi", "yo",
+    "za", "zh", "zu"
+  ];
+
+  let enDisplay = null;
+  try {
+    if (typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function") {
+      enDisplay = new Intl.DisplayNames(["en"], { type: "language" });
+    }
+  } catch (_) {}
+
+  worldLangCodes.forEach(code => {
+    if (existingIds.has(code.toLowerCase())) return;
+    let nativeName = code.toUpperCase();
+    let englishName = code.toUpperCase();
+    try {
+      if (enDisplay) englishName = enDisplay.of(code) || code.toUpperCase();
+      if (typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function") {
+        const nativeDisplay = new Intl.DisplayNames([code], { type: "language" });
+        nativeName = nativeDisplay.of(code) || englishName;
+      }
+    } catch (_) {}
+
+    const label = nativeName.toLowerCase() === englishName.toLowerCase()
+      ? englishName
+      : `${nativeName} (${englishName})`;
+
+    languages.push({
+      id: code,
+      code,
+      name: label,
+      country: "Global",
+      rtl: rtlCodes.has(code)
+    });
+    existingIds.add(code.toLowerCase());
+  });
+})();
+
+const BASE_UI = {
+  title: "What's your name?",
+  subtitle: "Enter the name you use in real life",
+  firstName: "First Name",
+  surname: "Surname",
+  username: "Username",
+  firstNamePlaceholder: "Enter your first name",
+  surnamePlaceholder: "Enter your surname",
+  usernamePlaceholder: "Choose a username",
+  usernameHint: "Unique handle for your Autrobook profile (e.g. @your_handle)",
+  handlePrefix: "Profile handle preview:",
+  next: "Next",
+  haveAcc: "Already have an account?",
+  loginLink: "Log in",
+  err1: "Please enter your first name",
+  err2: "Please enter your surname",
+  err3: "Please enter a username",
+  modalTitle: "Select Language",
+  searchPlaceholder: "Search language or country..."
+};
+
+const LOCALIZED_UI = {
+  en: { ...BASE_UI },
+  bn: { ...BASE_UI },
+  hi: { ...BASE_UI },
+  ar: { ...BASE_UI },
+  es: { ...BASE_UI },
+  fr: { ...BASE_UI },
+  de: { ...BASE_UI },
+  pt: { ...BASE_UI },
+  ru: { ...BASE_UI },
+  ja: { ...BASE_UI },
+  ko: { ...BASE_UI },
+  "zh-CN": { ...BASE_UI },
+  "zh-TW": { ...BASE_UI },
+  ur: { ...BASE_UI },
+  tr: { ...BASE_UI },
+  id: { ...BASE_UI },
+  vi: { ...BASE_UI },
+  th: { ...BASE_UI }
 };
 
 const LANGUAGE_ID_KEY = 'autro_lang_id';
@@ -981,7 +1066,7 @@ function getActiveLanguageObj() {
 function getDict(langObj) {
   const code = (langObj && langObj.code) || 'en';
   const base = code.split('-')[0];
-  return UI_STRINGS[code] || UI_STRINGS[base] || UI_STRINGS.en;
+  return LOCALIZED_UI[langObj && langObj.id] || LOCALIZED_UI[code] || LOCALIZED_UI[base] || BASE_UI;
 }
 
 function escapeHTML(value) {
@@ -1112,7 +1197,7 @@ function selectLanguage(langObj) {
   syncLanguageToSupabase(langObj.code, langObj.name, isRtl);
 
   window.dispatchEvent(new CustomEvent('autro:languageChanged', {
-    detail: { code: langObj.code, name: langObj.name, rtl: isRtl }
+    detail: { id: langObj.id, code: langObj.code, name: langObj.name, rtl: isRtl }
   }));
 }
 
@@ -1125,7 +1210,8 @@ function buildLangList(filterQuery = '') {
   const filtered = languages.filter(lang =>
     lang.name.toLowerCase().includes(q) ||
     lang.country.toLowerCase().includes(q) ||
-    lang.code.toLowerCase().includes(q)
+    lang.code.toLowerCase().includes(q) ||
+    lang.id.toLowerCase().includes(q)
   );
 
   if (filtered.length === 0) {
@@ -1230,4 +1316,4 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 </script>
 </body>
-</html>
+  </html>
