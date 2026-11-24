@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { createClient } = require("@supabase/supabase-js");
 
@@ -8,6 +9,7 @@ const GMAIL_USER = String(process.env.GMAIL_USER || "").trim();
 const GMAIL_APP_PASSWORD = String(process.env.GMAIL_APP_PASSWORD || "")
   .replace(/\s+/g, "")
   .trim();
+const OTP_PEPPER = String(process.env.OTP_PEPPER || SUPABASE_SERVICE_ROLE_KEY || "");
 
 const MAX_OTP_ATTEMPTS = 5;
 
@@ -40,12 +42,21 @@ function esc(value) {
 
 function isStrongPassword(pw) {
   const s = String(pw || "");
-  return (
-    s.length >= 8 &&
-    /[a-z]/.test(s) &&
-    /[A-Z]/.test(s) &&
-    /[\d\W_]/.test(s)
-  );
+  return s.length >= 8 && /[a-z]/.test(s) && /[A-Z]/.test(s) && /\d/.test(s);
+}
+
+function hashOtp(email, otp) {
+  return crypto
+    .createHmac("sha256", OTP_PEPPER)
+    .update(`${String(email).trim().toLowerCase()}:${String(otp).trim()}`)
+    .digest("hex");
+}
+
+function timingSafeEqualStr(a, b) {
+  const bufA = Buffer.from(String(a || ""), "utf8");
+  const bufB = Buffer.from(String(b || ""), "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
@@ -85,9 +96,7 @@ async function findAuthUserIdByEmail(supabaseAdmin, cleanEmail) {
       page,
       perPage,
     });
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     const users = data?.users || [];
     const matched = users.find(
@@ -119,7 +128,6 @@ module.exports = async function handler(req, res) {
 
   try {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
       return res.status(500).json({
         success: false,
         code: "SUPABASE_CONFIG_MISSING",
@@ -148,10 +156,11 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const { email, otp, newPassword, profile } = body;
+    const { email, otp, password, newPassword, profile } = body;
     const cleanEmail = String(email || "").trim().toLowerCase();
     const cleanOtp = String(otp || "").trim();
-    const cleanNewPassword = String(newPassword || "");
+    const isPasswordReset = newPassword !== undefined;
+    const rawPassword = isPasswordReset ? String(newPassword || "") : String(password || "");
 
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
       return res.status(400).json({
@@ -169,12 +178,11 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (newPassword !== undefined && !isStrongPassword(cleanNewPassword)) {
+    if ((isPasswordReset || password !== undefined) && !isStrongPassword(rawPassword)) {
       return res.status(400).json({
         success: false,
         code: "WEAK_PASSWORD",
-        message:
-          "Password must be at least 8 characters with uppercase, lowercase, and a number or symbol.",
+        message: "Password must be at least 8 characters with uppercase, lowercase, and a number.",
       });
     }
 
@@ -222,7 +230,13 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (String(otpRecord.otp || "").trim() !== cleanOtp) {
+    const storedOtp = String(otpRecord.otp || "").trim();
+    const expectedHash = hashOtp(cleanEmail, cleanOtp);
+    const isMatch =
+      (/^\d{6}$/.test(storedOtp) && timingSafeEqualStr(storedOtp, cleanOtp)) ||
+      timingSafeEqualStr(storedOtp, expectedHash);
+
+    if (!isMatch) {
       if (supportsAttempts) {
         try {
           await supabaseAdmin
@@ -239,10 +253,11 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    let targetUserId = null;
-    if (newPassword !== undefined) {
-      targetUserId = await findAuthUserIdByEmail(supabaseAdmin, cleanEmail);
-      if (!targetUserId) {
+    let userId = null;
+
+    if (isPasswordReset) {
+      userId = await findAuthUserIdByEmail(supabaseAdmin, cleanEmail);
+      if (!userId) {
         return res.status(404).json({
           success: false,
           code: "USER_NOT_FOUND",
@@ -251,8 +266,8 @@ module.exports = async function handler(req, res) {
       }
 
       const { error: passUpdateError } =
-        await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
-          password: cleanNewPassword,
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          password: rawPassword,
         });
 
       if (passUpdateError) {
@@ -261,6 +276,118 @@ module.exports = async function handler(req, res) {
           success: false,
           code: "PASSWORD_UPDATE_FAILED",
           message: "Could not update password. Please try again.",
+        });
+      }
+    } else {
+      const existingUserId = await findAuthUserIdByEmail(supabaseAdmin, cleanEmail);
+      if (existingUserId) {
+        return res.status(409).json({
+          success: false,
+          alreadyExists: true,
+          code: "USER_EXISTS",
+          message: "An account already exists with this email address.",
+        });
+      }
+
+      const cleanName =
+        profile && typeof profile.full_name === "string" && profile.full_name.trim()
+          ? profile.full_name.trim().slice(0, 120)
+          : "User";
+      const cleanDob =
+        profile && typeof profile.dob === "string" && /^\d{4}-\d{2}-\d{2}$/.test(profile.dob)
+          ? profile.dob
+          : "2000-01-01";
+      const cleanLang =
+        profile && typeof profile.language === "string" && profile.language.trim()
+          ? profile.language.trim().slice(0, 16)
+          : "en";
+      const faceHash =
+        profile && typeof profile.faceHash === "string" && profile.faceHash.trim()
+          ? profile.faceHash.trim()
+          : null;
+      const fingerprintHash =
+        profile && typeof profile.fingerprintHash === "string" && profile.fingerprintHash.trim()
+          ? profile.fingerprintHash.trim()
+          : null;
+
+      if (faceHash) {
+        const { data: dupFace } = await supabaseAdmin
+          .from("biometric_registry")
+          .select("id")
+          .eq("face_hash", faceHash)
+          .maybeSingle();
+
+        if (dupFace) {
+          return res.status(409).json({
+            success: false,
+            code: "DUPLICATE_FACE",
+            message: "This face is already registered with another account.",
+          });
+        }
+      }
+
+      if (fingerprintHash) {
+        const { data: dupFp } = await supabaseAdmin
+          .from("biometric_registry")
+          .select("id")
+          .eq("fingerprint_hash", fingerprintHash)
+          .maybeSingle();
+
+        if (dupFp) {
+          return res.status(409).json({
+            success: false,
+            code: "DUPLICATE_FINGERPRINT",
+            message: "This fingerprint is already registered with another account.",
+          });
+        }
+      }
+
+      const { data: createdAuth, error: createAuthError } =
+        await supabaseAdmin.auth.admin.createUser({
+          email: cleanEmail,
+          password: rawPassword,
+          email_confirm: true,
+          user_metadata: { full_name: cleanName },
+        });
+
+      if (createAuthError || !createdAuth?.user?.id) {
+        console.error("Failed to create auth user:", createAuthError);
+        return res.status(500).json({
+          success: false,
+          code: "AUTH_CREATE_FAILED",
+          message: "Failed to create account.",
+        });
+      }
+
+      userId = createdAuth.user.id;
+
+      const { error: profileInsertError } = await supabaseAdmin
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            full_name: cleanName,
+            email: cleanEmail,
+            dob: cleanDob,
+            language: cleanLang,
+            face_hash: faceHash,
+            fingerprint_hash: fingerprintHash,
+            is_locked: false,
+          },
+          { onConflict: "id" }
+        );
+
+      if (profileInsertError) {
+        console.error("Failed to upsert profile:", profileInsertError);
+      }
+
+      if (faceHash || fingerprintHash) {
+        await supabaseAdmin.from("biometric_registry").insert({
+          user_id: userId,
+          email: cleanEmail,
+          face_hash: faceHash,
+          fingerprint_hash: fingerprintHash,
+          is_locked: false,
         });
       }
     }
@@ -278,24 +405,6 @@ module.exports = async function handler(req, res) {
         code: "OTP_ALREADY_USED",
         message: "This OTP has already been used.",
       });
-    }
-
-    const updatePayload = {
-      is_verified: true,
-      verified_at: new Date().toISOString(),
-    };
-
-    if (profile && typeof profile.full_name === "string" && profile.full_name.trim()) {
-      updatePayload.full_name = profile.full_name.trim().slice(0, 120);
-    }
-
-    const { error: profileUpdateError } = await supabaseAdmin
-      .from("profiles")
-      .update(updatePayload)
-      .eq("email", cleanEmail);
-
-    if (profileUpdateError) {
-      console.error("Failed to update profile verification status:", profileUpdateError);
     }
 
     if (GMAIL_USER && GMAIL_APP_PASSWORD) {
@@ -317,14 +426,13 @@ module.exports = async function handler(req, res) {
             : "User"
         );
 
-        const isPasswordReset = newPassword !== undefined;
         await transporter.sendMail({
           from: `"Autrobook" <${GMAIL_USER}>`,
           replyTo: GMAIL_USER,
           to: cleanEmail,
           subject: isPasswordReset
             ? "Your Autrobook Password Was Reset"
-            : "Your Autrobook Account is Verified",
+            : "Welcome to Autrobook - Account Verified",
           html: `
             <div style="font-family:Arial,sans-serif;padding:24px;max-width:500px;margin:auto;border:1px solid #e4e6e9;border-radius:14px;background:#ffffff">
               <div style="background:#0F5132;padding:18px;border-radius:10px;text-align:center;margin-bottom:20px">
@@ -334,27 +442,26 @@ module.exports = async function handler(req, res) {
               <p style="color:#374151;margin:0 0 12px">${
                 isPasswordReset
                   ? `Your password for (<b>${esc(cleanEmail)}</b>) has been reset successfully.`
-                  : `Your email (<b>${esc(cleanEmail)}</b>) has been verified successfully.`
+                  : `Your email (<b>${esc(cleanEmail)}</b>) has been verified and your Autrobook account is ready.`
               }</p>
               <p style="color:#6b7280;font-size:12px;margin:18px 0 0">&copy; 2026 Autrobook</p>
             </div>
           `,
         });
       } catch (mailErr) {
-        console.warn("Verification confirmation email warning:", mailErr?.message || mailErr);
+        console.warn("Confirmation email warning:", mailErr?.message || mailErr);
       }
     }
 
     return res.status(200).json({
       success: true,
-      code: newPassword !== undefined ? "PASSWORD_UPDATED" : "VERIFIED",
-      message:
-        newPassword !== undefined
-          ? "Password updated successfully."
-          : "OTP verified successfully.",
+      code: isPasswordReset ? "PASSWORD_UPDATED" : "ACCOUNT_CREATED",
+      message: isPasswordReset
+        ? "Password updated successfully."
+        : "Account created and verified successfully.",
     });
   } catch (err) {
-    console.error("update-password unexpected error:", err);
+    console.error("verify-otp unexpected error:", err);
     return res.status(500).json({
       success: false,
       code: "SERVER_ERROR",
