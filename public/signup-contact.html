@@ -1099,7 +1099,7 @@
     </div>
 
     <div style="display:flex;justify-content:center;transform:scale(0.9);margin-bottom:8px;min-height:78px;">
-      <div class="g-recaptcha" data-sitekey="6LdCfi8uAAAAAAmPBt26_S6gNd8Wgkv2zJd2YUPp" data-callback="enableBtn" data-expired-callback="enableBtn"></div>
+      <div class="g-recaptcha" data-sitekey="6LdCfi8uAAAAAAmPBt26_S6gNd8Wgkv2zJd2YUPp" data-callback="onCaptchaVerified" data-expired-callback="onCaptchaExpired"></div>
     </div>
 
     <label class="manual-captcha-row" for="humanCheck">
@@ -2170,6 +2170,7 @@ let modelsLoaded = false;
 let otpSent = false;
 let otpSending = false;
 let signupSubmitting = false;
+let pageInitialized = false;
 
 function lockAccountForBiometricMismatch(reasonMessage) {
   accountLocked = true;
@@ -2525,16 +2526,24 @@ function closeLangModal() {
   if (modal) modal.classList.remove('active');
 }
 
+function cleanupResources() {
+  stopCamera(document.getElementById('cameraBtn'));
+  if (otpTimer) {
+    clearInterval(otpTimer);
+    otpTimer = null;
+  }
+}
+
 function goBack(event) {
   if (event) event.preventDefault();
-  stopCamera(document.getElementById('cameraBtn'));
+  cleanupResources();
   saveSignupDraft();
   window.location.href = 'signup-name.html';
 }
 
 function goCancel(event) {
   if (event) event.preventDefault();
-  stopCamera(document.getElementById('cameraBtn'));
+  cleanupResources();
   window.location.href = 'welcome.html';
 }
 
@@ -2785,7 +2794,6 @@ function getDistance(p1, p2) {
   return Math.hypot(p1.x - p2.x, p1.y - p2.y);
 }
 
-// Measures frame-to-frame motion inside the face bounding box to reject static screens/photos
 function computeBoxMotion(prevCanvas, currCanvas, box) {
   if (!prevCanvas || !currCanvas || !box) return 0;
   const x = Math.max(0, Math.floor(box.x));
@@ -2884,7 +2892,6 @@ async function startCamera() {
     scanInterval = setInterval(async () => {
       if (completed || accountLocked || !video || video.readyState < 2) return;
       try {
-        // Strict single-human detection with higher score threshold
         const detections = await faceapi
           .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.65 }))
           .withFaceLandmarks();
@@ -2902,7 +2909,6 @@ async function startCamera() {
         const det = detections[0];
         const box = det.detection.box;
 
-        // Ensure face occupies reasonable portion of frame (filters tiny/distant/poster cutouts)
         const areaRatio = (box.width * box.height) / Math.max(1, video.videoWidth * video.videoHeight);
         if (areaRatio < 0.06) {
           statusEl.textContent = `Move closer to the camera so your eyes are clearly visible (${blinkCount}/${REQUIRED_BLINKS} blinks)`;
@@ -3023,7 +3029,6 @@ async function capturePhotoAndDescriptor(video) {
 
   const newFaceHash = await sha256Hex(extractedDescriptor.map(n => n.toFixed(3)).join(','));
 
-  // Enforce same-person lock across retakes/drafts
   if (Array.isArray(faceDescriptor) && faceDescriptor.length > 0) {
     const distFromLocked = euclideanDistance(faceDescriptor, extractedDescriptor);
     if (distFromLocked > 0.52) {
@@ -3067,7 +3072,6 @@ function isValidDob(day, month, year) {
   const dt = new Date(y, m - 1, d);
   if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return false;
 
-  // Minimum age check (13+)
   const today = new Date();
   let age = today.getFullYear() - y;
   const monthDiff = today.getMonth() - (m - 1);
@@ -3184,6 +3188,13 @@ function checkButtonState() {
 }
 
 window.enableBtn = () => checkButtonState();
+window.onCaptchaVerified = () => {
+  setMessage('');
+  checkButtonState();
+};
+window.onCaptchaExpired = () => {
+  checkButtonState();
+};
 window.manualCaptcha = () => checkButtonState();
 
 function updateTimer() {
@@ -3212,6 +3223,7 @@ async function sendOTP() {
   const btn = document.getElementById('sendOtpBtn');
   const activeLang = getActiveLanguageObj();
   const dict = getDict(activeLang);
+  const wasAlreadySent = otpSent;
   setMessage('');
 
   if (!isValidEmail(email)) {
@@ -3241,6 +3253,7 @@ async function sendOTP() {
         email,
         name: signupName,
         lang: activeLang.code,
+        isResend: wasAlreadySent,
         recaptchaToken
       })
     });
@@ -3264,7 +3277,7 @@ async function sendOTP() {
         setMessage(errMsg);
       }
       otpSending = false;
-      btn.innerHTML = dict.sendOtp;
+      btn.innerHTML = wasAlreadySent ? dict.resendOtp : dict.sendOtp;
       checkButtonState();
       return;
     }
@@ -3299,7 +3312,7 @@ async function sendOTP() {
     console.error('Send OTP network/client error:', err);
     otpSending = false;
     setMessage('Network or server error while sending OTP.');
-    btn.innerHTML = dict.sendOtp;
+    btn.innerHTML = wasAlreadySent ? dict.resendOtp : dict.sendOtp;
     checkButtonState();
   }
 }
@@ -3413,7 +3426,6 @@ async function verifyOTPAndSignup() {
       } catch (_) {}
     }
 
-    // Direct entry to index.html for newly created account
     window.location.replace('index.html');
   } catch (err) {
     console.error('Verify OTP / Signup error:', err);
@@ -3425,6 +3437,9 @@ async function verifyOTPAndSignup() {
 }
 
 function initPage() {
+  if (pageInitialized) return;
+  pageInitialized = true;
+
   const searchInput = document.getElementById('langSearchInput');
   if (searchInput && !searchInput.dataset.bound) {
     searchInput.dataset.bound = '1';
@@ -3436,7 +3451,7 @@ function initPage() {
       stopCamera(document.getElementById('cameraBtn'));
     }
   });
-  window.addEventListener('pagehide', () => stopCamera(document.getElementById('cameraBtn')));
+  window.addEventListener('pagehide', cleanupResources);
 
   restoreSignupDraft();
   checkExistingBiometricLock();
@@ -3447,8 +3462,11 @@ function initPage() {
   checkButtonState();
 }
 
-initPage();
-document.addEventListener('DOMContentLoaded', initPage);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPage);
+} else {
+  initPage();
+}
 </script>
 </body>
-  </html>
+        </html>
