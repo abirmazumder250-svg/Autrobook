@@ -4,8 +4,8 @@ const { createClient } = require("@supabase/supabase-js");
 const SUPABASE_URL =
   process.env.SUPABASE_URL || "https://gemyqaniztqrsilayblx.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const GMAIL_USER = (process.env.GMAIL_USER || "").trim();
-const GMAIL_APP_PASSWORD = (process.env.GMAIL_APP_PASSWORD || "")
+const GMAIL_USER = String(process.env.GMAIL_USER || "").trim();
+const GMAIL_APP_PASSWORD = String(process.env.GMAIL_APP_PASSWORD || "")
   .replace(/\s+/g, "")
   .trim();
 
@@ -217,10 +217,14 @@ module.exports = async function handler(req, res) {
       updatePayload.full_name = profile.full_name.trim().slice(0, 120);
     }
 
-    await supabaseAdmin
+    const { error: profileUpdateError } = await supabaseAdmin
       .from("profiles")
       .update(updatePayload)
       .eq("email", cleanEmail);
+
+    if (profileUpdateError) {
+      console.error("Failed to update profile verification status:", profileUpdateError);
+    }
 
     if (GMAIL_USER && GMAIL_APP_PASSWORD) {
       try {
