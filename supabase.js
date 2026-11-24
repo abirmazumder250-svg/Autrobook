@@ -2,22 +2,53 @@
 // SUPABASE IMAGE UPLOAD SERVICE
 // ============================================================
 
-const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+const AUTRO_IMAGE_SUPABASE_URL =
+  typeof window !== 'undefined' && window.AUTRO_SUPABASE_URL
+    ? window.AUTRO_SUPABASE_URL
+    : 'https://gemyqaniztqrsilayblx.supabase.co';
+
+const AUTRO_IMAGE_SUPABASE_KEY =
+  typeof window !== 'undefined' && window.AUTRO_SUPABASE_ANON_KEY
+    ? window.AUTRO_SUPABASE_ANON_KEY
+    : 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+
 const STORAGE_BUCKET = 'images';
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
-let supabaseClient = null;
+let autroImageSupabaseClient = null;
 
 function getSupabaseClient() {
-  if (supabaseClient) return supabaseClient;
+  if (autroImageSupabaseClient) return autroImageSupabaseClient;
 
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     throw new Error('Supabase SDK is not loaded on this page.');
   }
 
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  return supabaseClient;
+  autroImageSupabaseClient = window.supabase.createClient(
+    AUTRO_IMAGE_SUPABASE_URL,
+    AUTRO_IMAGE_SUPABASE_KEY,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    }
+  );
+
+  return autroImageSupabaseClient;
+}
+
+function getFallbackLocalUserId() {
+  try {
+    if (localStorage.getItem('autro_logged_out') === '1') return null;
+    const raw = localStorage.getItem('autro_user');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.id || parsed?.userId || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /**
@@ -46,14 +77,22 @@ async function uploadToSupabase(file) {
   try {
     const client = getSupabaseClient();
 
-    // Optional: ensure user has an active session before uploading
-    const { data: { session } } = await client.auth.getSession();
+    let {
+      data: { session },
+    } = await client.auth.getSession();
+
     if (!session || !session.user) {
+      const refreshed = await client.auth.refreshSession().catch(() => null);
+      session = refreshed?.data?.session || null;
+    }
+
+    const userId = session?.user?.id || getFallbackLocalUserId();
+    if (!userId) {
       alert('Please log in first to upload an image.');
       return null;
     }
 
-    const objectPath = `${session.user.id}/${fileName}`;
+    const objectPath = `${userId}/${fileName}`;
 
     const { error } = await client.storage
       .from(STORAGE_BUCKET)
@@ -76,7 +115,10 @@ async function uploadToSupabase(file) {
     return urlData?.publicUrl || null;
   } catch (err) {
     console.error('Network or SDK Error:', err);
-    alert(err?.message || 'Network error while uploading image. Please check your connection.');
+    alert(
+      err?.message ||
+        'Network error while uploading image. Please check your connection.'
+    );
     return null;
   }
 }
