@@ -38,6 +38,16 @@ function esc(value) {
   }[ch]));
 }
 
+function isStrongPassword(pw) {
+  const s = String(pw || "");
+  return (
+    s.length >= 8 &&
+    /[a-z]/.test(s) &&
+    /[A-Z]/.test(s) &&
+    /[\d\W_]/.test(s)
+  );
+}
+
 async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
   const withAttempts = await supabaseAdmin
     .from("email_otps")
@@ -64,6 +74,32 @@ async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
   }
 
   return { row: fallback.data, supportsAttempts: false };
+}
+
+async function findAuthUserIdByEmail(supabaseAdmin, cleanEmail) {
+  let page = 1;
+  const perPage = 200;
+
+  while (page <= 25) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error) {
+      throw error;
+    }
+
+    const users = data?.users || [];
+    const matched = users.find(
+      (u) => String(u.email || "").trim().toLowerCase() === cleanEmail
+    );
+    if (matched) return matched.id;
+
+    if (users.length < perPage) break;
+    page++;
+  }
+
+  return null;
 }
 
 module.exports = async function handler(req, res) {
@@ -112,9 +148,10 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const { email, otp, profile } = body;
+    const { email, otp, newPassword, profile } = body;
     const cleanEmail = String(email || "").trim().toLowerCase();
     const cleanOtp = String(otp || "").trim();
+    const cleanNewPassword = String(newPassword || "");
 
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
       return res.status(400).json({
@@ -129,6 +166,15 @@ module.exports = async function handler(req, res) {
         success: false,
         code: "OTP_INVALID",
         message: "OTP must be a 6-digit numeric code.",
+      });
+    }
+
+    if (newPassword !== undefined && !isStrongPassword(cleanNewPassword)) {
+      return res.status(400).json({
+        success: false,
+        code: "WEAK_PASSWORD",
+        message:
+          "Password must be at least 8 characters with uppercase, lowercase, and a number or symbol.",
       });
     }
 
@@ -193,6 +239,32 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    let targetUserId = null;
+    if (newPassword !== undefined) {
+      targetUserId = await findAuthUserIdByEmail(supabaseAdmin, cleanEmail);
+      if (!targetUserId) {
+        return res.status(404).json({
+          success: false,
+          code: "USER_NOT_FOUND",
+          message: "No account found for this email address.",
+        });
+      }
+
+      const { error: passUpdateError } =
+        await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+          password: cleanNewPassword,
+        });
+
+      if (passUpdateError) {
+        console.error("Failed to update auth user password:", passUpdateError);
+        return res.status(500).json({
+          success: false,
+          code: "PASSWORD_UPDATE_FAILED",
+          message: "Could not update password. Please try again.",
+        });
+      }
+    }
+
     const { data: consumedRow, error: consumeError } = await supabaseAdmin
       .from("email_otps")
       .delete()
@@ -245,18 +317,25 @@ module.exports = async function handler(req, res) {
             : "User"
         );
 
+        const isPasswordReset = newPassword !== undefined;
         await transporter.sendMail({
           from: `"Autrobook" <${GMAIL_USER}>`,
           replyTo: GMAIL_USER,
           to: cleanEmail,
-          subject: "Your Autrobook Account is Verified",
+          subject: isPasswordReset
+            ? "Your Autrobook Password Was Reset"
+            : "Your Autrobook Account is Verified",
           html: `
             <div style="font-family:Arial,sans-serif;padding:24px;max-width:500px;margin:auto;border:1px solid #e4e6e9;border-radius:14px;background:#ffffff">
               <div style="background:#0F5132;padding:18px;border-radius:10px;text-align:center;margin-bottom:20px">
                 <h2 style="color:#ffffff;margin:0;font-size:20px">Autrobook</h2>
               </div>
               <h3 style="margin:0 0 10px;color:#202124">Hi ${safeName},</h3>
-              <p style="color:#374151;margin:0 0 12px">Your email (<b>${esc(cleanEmail)}</b>) has been verified successfully.</p>
+              <p style="color:#374151;margin:0 0 12px">${
+                isPasswordReset
+                  ? `Your password for (<b>${esc(cleanEmail)}</b>) has been reset successfully.`
+                  : `Your email (<b>${esc(cleanEmail)}</b>) has been verified successfully.`
+              }</p>
               <p style="color:#6b7280;font-size:12px;margin:18px 0 0">&copy; 2026 Autrobook</p>
             </div>
           `,
@@ -268,11 +347,14 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      code: "VERIFIED",
-      message: "OTP verified successfully.",
+      code: newPassword !== undefined ? "PASSWORD_UPDATED" : "VERIFIED",
+      message:
+        newPassword !== undefined
+          ? "Password updated successfully."
+          : "OTP verified successfully.",
     });
   } catch (err) {
-    console.error("verify-otp unexpected error:", err);
+    console.error("update-password unexpected error:", err);
     return res.status(500).json({
       success: false,
       code: "SERVER_ERROR",
