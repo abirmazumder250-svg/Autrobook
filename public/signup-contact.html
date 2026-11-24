@@ -362,6 +362,18 @@
     border: 1px solid rgba(15, 81, 50, 0.25);
   }
 
+  .lock-banner {
+    background: rgba(220, 38, 38, 0.10);
+    color: var(--error);
+    border: 1.5px solid rgba(220, 38, 38, 0.45);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    line-height: 1.45;
+  }
+
   .form-group {
     margin-bottom: 16px;
     position: relative;
@@ -545,6 +557,7 @@
     color: var(--success);
     font-weight: 600;
     margin-bottom: 10px;
+    line-height: 1.4;
   }
 
   .action-row-btns {
@@ -553,47 +566,20 @@
     margin-bottom: 10px;
   }
 
-  .capture-now-btn,
-  .stop-cam-btn,
-  .upload-selfie-btn {
+  .stop-cam-btn {
     flex: 1;
     padding: 10px 12px;
     border-radius: var(--radius-pill);
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     gap: 6px;
-  }
-
-  .capture-now-btn {
-    display: none;
-    border: 1.5px solid var(--btn-green);
-    background: var(--btn-green-soft);
-    color: var(--success);
-  }
-
-  .stop-cam-btn {
-    display: none;
     border: 1.5px solid var(--border);
     background: var(--bg);
     color: var(--muted);
-  }
-
-  .upload-selfie-btn {
-    margin-top: 8px;
-    width: 100%;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--muted);
-    font-size: 12.5px;
-  }
-
-  .upload-selfie-btn:hover {
-    color: var(--text);
-    border-color: var(--accent);
   }
 
   .fingerprint-btn {
@@ -1026,6 +1012,11 @@
   </div>
 
   <div class="form-wrap">
+    <div id="accountLockBanner" class="lock-banner hide" role="alert">
+      <i class="fas fa-lock"></i>
+      <span id="accountLockText">Account &amp; Biometric Lock Active: A different face/photo or duplicate biometric signature was detected after verification. Registration is locked for security.</span>
+    </div>
+
     <div id="namePreview" class="name-badge hide">
       <span id="namePreviewText"></span>
       <span class="draft-pill" id="draftSavedBadge">Draft Saved</span>
@@ -1053,7 +1044,7 @@
 
     <div class="form-group">
       <label for="password" id="passwordLabel">Create Password</label>
-      <input type="password" id="password" placeholder="At least 6 characters" autocomplete="new-password" maxlength="128" oninput="handlePasswordChange()">
+      <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" maxlength="128" oninput="handlePasswordChange()">
       <i class="fa-solid fa-eye eye-icon" id="togglePasswordIcon" onclick="togglePass()"></i>
       <div class="strength-wrap">
         <div class="strength-bar">
@@ -1061,21 +1052,18 @@
         </div>
         <div class="strength-text">
           <span id="strengthLabel">Password strength: None</span>
-          <span id="strengthHint">Min 6 chars</span>
+          <span id="strengthHint">Min 8 chars, A-z &amp; 0-9</span>
         </div>
       </div>
     </div>
 
     <label id="securityLabel">Security Verification (Mandatory)</label>
     <div class="verify-box">
-      <p class="liveness-text hide" id="livenessText">Please look at the camera and blink clearly to verify</p>
+      <p class="liveness-text hide" id="livenessText">Live human check required: look directly at the camera and blink twice naturally (no static photos)</p>
       <video id="video" autoplay playsinline muted></video>
       <img id="photo" alt="Captured selfie">
 
       <div class="action-row-btns">
-        <button type="button" class="capture-now-btn" id="captureNowBtn" onclick="manualCaptureSelfie()">
-          <i class="fas fa-circle-dot"></i> <span id="captureNowText">Capture Now</span>
-        </button>
         <button type="button" class="stop-cam-btn" id="stopCamBtn" onclick="stopCamera(document.getElementById('cameraBtn'))">
           <i class="fas fa-xmark"></i> <span id="stopCamText">Stop</span>
         </button>
@@ -1089,17 +1077,12 @@
         <i class="fas fa-rotate-left"></i> <span id="retakeSelfieText">Retake Selfie</span>
       </button>
 
-      <input type="file" id="selfieFileInput" accept="image/*" capture="user" style="display:none;" onchange="handleSelfieFileUpload(event)">
-      <button type="button" class="upload-selfie-btn" id="uploadSelfieBtn" onclick="document.getElementById('selfieFileInput').click()">
-        <i class="fas fa-mobile-screen-button"></i> <span id="uploadSelfieBtnText">Use Front Camera / Photo Picker</span>
-      </button>
-
       <button type="button" class="fingerprint-btn" id="fingerprintBtn" onclick="registerFingerprint()">
         <i class="fas fa-fingerprint"></i> <span id="fingerprintBtnText">Verify Fingerprint (Mandatory)</span>
       </button>
 
       <div class="verify-status" id="verifyStatus">
-        Verify using camera &amp; fingerprint to proceed
+        Verify using live camera eye-scan &amp; fingerprint to proceed
       </div>
     </div>
 
@@ -1108,9 +1091,9 @@
         <span id="checklistTitleText">Sign Up Readiness Checklist</span>
         <span id="checklistScore">0 / 5</span>
       </div>
-      <div class="checklist-item" id="chkEmail"><i class="far fa-circle"></i> <span id="chkEmailText">Valid Email &amp; Birthday</span></div>
-      <div class="checklist-item" id="chkPass"><i class="far fa-circle"></i> <span id="chkPassText">Password (6+ characters)</span></div>
-      <div class="checklist-item" id="chkSelfie"><i class="far fa-circle"></i> <span id="chkSelfieText">Selfie / Camera Verified</span></div>
+      <div class="checklist-item" id="chkEmail"><i class="far fa-circle"></i> <span id="chkEmailText">Valid Email &amp; Birthday (13+)</span></div>
+      <div class="checklist-item" id="chkPass"><i class="far fa-circle"></i> <span id="chkPassText">Strong Password (8+ chars, mixed)</span></div>
+      <div class="checklist-item" id="chkSelfie"><i class="far fa-circle"></i> <span id="chkSelfieText">Live Human Selfie &amp; Eye Blink Verified</span></div>
       <div class="checklist-item" id="chkFingerprint"><i class="far fa-circle"></i> <span id="chkFingerprintText">Fingerprint Verified</span></div>
       <div class="checklist-item" id="chkOtp"><i class="far fa-circle"></i> <span id="chkOtpText">6-Digit Email OTP Entered</span></div>
     </div>
@@ -1156,7 +1139,11 @@
 const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
-const DRAFT_STORAGE_KEY = 'autro_signup_draft_v1';
+
+const DRAFT_STORAGE_KEY = 'autro_signup_draft_v2';
+const BIOMETRIC_LOCK_KEY = 'autro_biometric_lock_v1';
+const ENROLLED_FACES_KEY = 'autro_enrolled_faces_v1';
+const ENROLLED_FINGERPRINTS_KEY = 'autro_enrolled_fingerprints_v1';
 
 let supabaseClient = null;
 try {
@@ -1374,28 +1361,28 @@ const BASE_UI = {
   otpPlaceholder: 'Enter 6-digit OTP from email',
   dob: 'Birthday',
   password: 'Create Password',
-  passwordPlaceholder: 'At least 6 characters',
+  passwordPlaceholder: 'At least 8 characters',
   strengthNone: 'Password strength: None',
   strengthWeak: 'Password strength: Weak',
   strengthMedium: 'Password strength: Medium',
   strengthStrong: 'Password strength: Strong',
-  strengthHint: 'Min 6 chars',
+  strengthHint: 'Min 8 chars, A-z & 0-9',
   security: 'Security Verification (Mandatory)',
-  liveness: 'Please look at the camera and blink clearly to verify',
+  liveness: 'Live human check required: look directly at the camera and blink twice naturally (no static photos)',
   captureNow: 'Capture Now',
   stopCam: 'Stop',
   camera: 'Live Selfie & Eye Scan',
   retakeSelfie: 'Retake Selfie',
   uploadSelfie: 'Use Front Camera / Photo Picker',
   fingerprint: 'Verify Fingerprint (Mandatory)',
-  verifyStatus: 'Verify using camera & fingerprint to proceed',
-  statusBothOk: 'Selfie & fingerprint verified',
-  statusNeedFp: 'Selfie verified — fingerprint verification is mandatory',
-  statusNeedCam: 'Fingerprint verified — camera verification is mandatory',
+  verifyStatus: 'Verify using live camera eye-scan & fingerprint to proceed',
+  statusBothOk: 'Live human selfie & fingerprint verified',
+  statusNeedFp: 'Live selfie verified — fingerprint verification is mandatory',
+  statusNeedCam: 'Fingerprint verified — live camera eye-scan is mandatory',
   checklistTitle: 'Sign Up Readiness Checklist',
-  chkEmail: 'Valid Email & Birthday',
-  chkPass: 'Password (6+ characters)',
-  chkSelfie: 'Selfie / Camera Verified',
+  chkEmail: 'Valid Email & Birthday (13+)',
+  chkPass: 'Strong Password (8+ chars, mixed)',
+  chkSelfie: 'Live Human Selfie & Eye Blink Verified',
   chkFingerprint: 'Fingerprint Verified',
   chkOtp: '6-Digit Email OTP Entered',
   humanCheck: "I'm not a robot - Manual verification",
@@ -1426,28 +1413,28 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'ইমেইলের ৬ সংখ্যার OTP লিখুন',
     dob: 'জন্মদিন',
     password: 'পাসওয়ার্ড তৈরি করুন',
-    passwordPlaceholder: 'কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড',
+    passwordPlaceholder: 'কমপক্ষে ৮ অক্ষরের পাসওয়ার্ড',
     strengthNone: 'পাসওয়ার্ডের শক্তি: নেই',
     strengthWeak: 'পাসওয়ার্ডের শক্তি: দুর্বল',
     strengthMedium: 'পাসওয়ার্ডের শক্তি: মাঝারি',
     strengthStrong: 'পাসওয়ার্ডের শক্তি: শক্তিশালী',
-    strengthHint: 'কমপক্ষে ৬ অক্ষর',
+    strengthHint: 'কমপক্ষে ৮ অক্ষর, A-z ও 0-9',
     security: 'নিরাপত্তা যাচাইকরণ (বাধ্যতামূলক)',
-    liveness: 'যাচাই করতে ক্যামেরার দিকে তাকিয়ে স্পষ্টভাবে চোখের পলক ফেলুন',
+    liveness: 'লাইভ মানব যাচাই আবশ্যক: সরাসরি ক্যামেরার দিকে তাকিয়ে স্বাভাবিকভাবে দুবার চোখের পলক ফেলুন (স্থির ছবি নয়)',
     captureNow: 'এখনই ক্যাপচার করুন',
     stopCam: 'বন্ধ করুন',
     camera: 'লাইভ সেলফি ও আই স্ক্যান',
     retakeSelfie: 'আবার সেলফি নিন',
     uploadSelfie: 'ফ্রন্ট ক্যামেরা / ফটো পিকার ব্যবহার করুন',
     fingerprint: 'ফিঙ্গারপ্রিন্ট যাচাই করুন (বাধ্যতামূলক)',
-    verifyStatus: 'এগিয়ে যেতে ক্যামেরা ও ফিঙ্গারপ্রিন্ট যাচাই করুন',
-    statusBothOk: 'সেলফি ও ফিঙ্গারপ্রিন্ট যাচাই হয়েছে',
-    statusNeedFp: 'সেলফি যাচাই হয়েছে — ফিঙ্গারপ্রিন্ট যাচাই বাধ্যতামূলক',
-    statusNeedCam: 'ফিঙ্গারপ্রিন্ট যাচাই হয়েছে — ক্যামেরা যাচাই বাধ্যতামূলক',
+    verifyStatus: 'এগিয়ে যেতে লাইভ ক্যামেরা আই-স্ক্যান ও ফিঙ্গারপ্রিন্ট যাচাই করুন',
+    statusBothOk: 'লাইভ সেলফি ও ফিঙ্গারপ্রিন্ট যাচাই হয়েছে',
+    statusNeedFp: 'লাইভ সেলফি যাচাই হয়েছে — ফিঙ্গারপ্রিন্ট যাচাই বাধ্যতামূলক',
+    statusNeedCam: 'ফিঙ্গারপ্রিন্ট যাচাই হয়েছে — লাইভ ক্যামেরা আই-স্ক্যান বাধ্যতামূলক',
     checklistTitle: 'সাইন আপ প্রস্তুতি চেকলিস্ট',
-    chkEmail: 'সঠিক ইমেইল ও জন্মদিন',
-    chkPass: 'পাসওয়ার্ড (৬+ অক্ষর)',
-    chkSelfie: 'সেলফি / ক্যামেরা যাচাইকৃত',
+    chkEmail: 'সঠিক ইমেইল ও জন্মদিন (১৩+)',
+    chkPass: 'শক্তিশালী পাসওয়ার্ড (৮+ অক্ষর, মিশ্র)',
+    chkSelfie: 'লাইভ সেলফি ও চোখের পলক যাচাইকৃত',
     chkFingerprint: 'ফিঙ্গারপ্রিন্ট যাচাইকৃত',
     chkOtp: '৬ সংখ্যার ইমেইল OTP দেওয়া হয়েছে',
     humanCheck: 'আমি রোবট নই - ম্যানুয়াল যাচাইকরণ',
@@ -1474,25 +1461,25 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'ईमेल से 6 अंकों का OTP दर्ज करें',
     dob: 'जन्मदिन',
     password: 'पासवर्ड बनाएं',
-    passwordPlaceholder: 'कम से कम 6 अक्षर',
+    passwordPlaceholder: 'कम से कम 8 अक्षर',
     strengthNone: 'पासवर्ड शक्ति: कोई नहीं',
     strengthWeak: 'पासवर्ड शक्ति: कमजोर',
     strengthMedium: 'पासवर्ड शक्ति: मध्यम',
     strengthStrong: 'पासवर्ड शक्ति: मजबूत',
-    strengthHint: 'न्यूनतम 6 अक्षर',
+    strengthHint: 'न्यूनतम 8 अक्षर, A-z और 0-9',
     security: 'सुरक्षा सत्यापन (अनिवार्य)',
-    liveness: 'सत्यापित करने के लिए कैमरे की ओर देखें और पलक झपकाएं',
+    liveness: 'लाइव मानव जांच आवश्यक: कैमरे की ओर देखें और दो बार स्वाभाविक रूप से पलक झपकाएं',
     captureNow: 'अभी कैप्चर करें',
     stopCam: 'रोकें',
     camera: 'लाइव सेल्फी और आई स्कैन',
     retakeSelfie: 'दोबारा सेल्फी लें',
     uploadSelfie: 'फ्रंट कैमरा / फोटो पिकर चुनें',
     fingerprint: 'फ़िंगरप्रिंट सत्यापित करें (अनिवार्य)',
-    verifyStatus: 'आगे बढ़ने के लिए कैमरा और फ़िंगरप्रिंट सत्यापित करें',
+    verifyStatus: 'आगे बढ़ने के लिए लाइव कैमरा आई-स्कैन और फ़िंगरप्रिंट सत्यापित करें',
     checklistTitle: 'साइन अप तैयारी चेकलिस्ट',
-    chkEmail: 'सही ईमेल और जन्मदिन',
-    chkPass: 'पासवर्ड (6+ अक्षर)',
-    chkSelfie: 'सेल्फी / कैमरा सत्यापित',
+    chkEmail: 'सही ईमेल और जन्मदिन (13+)',
+    chkPass: 'मजबूत पासवर्ड (8+ अक्षर)',
+    chkSelfie: 'लाइव सेल्फी और पलक सत्यापित',
     chkFingerprint: 'फ़िंगरप्रिंट सत्यापित',
     chkOtp: '6-अंकीय ईमेल OTP दर्ज किया गया',
     humanCheck: 'मैं रोबोट नहीं हूँ - मैनुअल सत्यापन',
@@ -1519,9 +1506,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'أدخل رمز OTP المكون من 6 أرقام',
     dob: 'تاريخ الميلاد',
     password: 'إنشاء كلمة مرور',
-    passwordPlaceholder: '6 أحرف على الأقل',
+    passwordPlaceholder: '8 أحرف على الأقل',
     security: 'التحقق الأمني (إلزامي)',
-    liveness: 'انظر إلى الكاميرا واطرف بعينيك بوضوح للتحقق',
+    liveness: 'تحقق بشري مباشر مطلوب: انظر إلى الكاميرا واطرف مرتين بشكل طبيعي',
     captureNow: 'التقط الآن',
     stopCam: 'إيقاف',
     camera: 'سيلفي مباشر وفحص العين',
@@ -1530,9 +1517,9 @@ const LOCALIZED_UI = {
     fingerprint: 'التحقق بالبصمة (إلزامي)',
     verifyStatus: 'تحقق عبر الكاميرا والبصمة للمتابعة',
     checklistTitle: 'قائمة جاهزية إنشاء الحساب',
-    chkEmail: 'بريد إلكتروني وتاريخ ميلاد صحيحان',
-    chkPass: 'كلمة مرور (6+ أحرف)',
-    chkSelfie: 'تم التحقق من السيلفي / الكاميرا',
+    chkEmail: 'بريد إلكتروني وتاريخ ميلاد صحيحان (13+)',
+    chkPass: 'كلمة مرور قوية (8+ أحرف)',
+    chkSelfie: 'تم التحقق من السيلفي والرمش',
     chkFingerprint: 'تم التحقق من البصمة',
     chkOtp: 'تم إدخال رمز OTP المكون من 6 أرقام',
     humanCheck: 'أنا لست روبوتًا - تحقق يدوي',
@@ -1559,9 +1546,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'Ingresa el OTP de 6 dígitos',
     dob: 'Fecha de nacimiento',
     password: 'Crear contraseña',
-    passwordPlaceholder: 'Al menos 6 caracteres',
+    passwordPlaceholder: 'Al menos 8 caracteres',
     security: 'Verificación de seguridad (obligatoria)',
-    liveness: 'Mira a la cámara y parpadea claramente para verificar',
+    liveness: 'Comprobación humana en vivo: mira a la cámara y parpadea dos veces de forma natural',
     captureNow: 'Capturar ahora',
     stopCam: 'Detener',
     camera: 'Selfie en vivo y escaneo ocular',
@@ -1570,9 +1557,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Verificar huella (obligatorio)',
     verifyStatus: 'Verifica con cámara y huella para continuar',
     checklistTitle: 'Lista de preparación para registro',
-    chkEmail: 'Correo y cumpleaños válidos',
-    chkPass: 'Contraseña (6+ caracteres)',
-    chkSelfie: 'Selfie / cámara verificada',
+    chkEmail: 'Correo y cumpleaños válidos (13+)',
+    chkPass: 'Contraseña segura (8+ caracteres)',
+    chkSelfie: 'Selfie y parpadeo verificados',
     chkFingerprint: 'Huella verificada',
     chkOtp: 'OTP de 6 dígitos ingresado',
     humanCheck: 'No soy un robot - Verificación manual',
@@ -1599,9 +1586,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'Entrez le code OTP à 6 chiffres',
     dob: 'Date de naissance',
     password: 'Créer un mot de passe',
-    passwordPlaceholder: 'Au moins 6 caractères',
+    passwordPlaceholder: 'Au moins 8 caractères',
     security: 'Vérification de sécurité (obligatoire)',
-    liveness: 'Regardez la caméra et clignez des yeux clairement pour vérifier',
+    liveness: 'Vérification humaine en direct : regardez la caméra et clignez deux fois naturellement',
     captureNow: 'Capturer maintenant',
     stopCam: 'Arrêter',
     camera: 'Selfie en direct et scan oculaire',
@@ -1610,9 +1597,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Vérifier l’empreinte (obligatoire)',
     verifyStatus: 'Vérifiez avec caméra et empreinte pour continuer',
     checklistTitle: 'Liste de préparation à l’inscription',
-    chkEmail: 'E-mail et anniversaire valides',
-    chkPass: 'Mot de passe (6+ caractères)',
-    chkSelfie: 'Selfie / caméra vérifié',
+    chkEmail: 'E-mail et anniversaire valides (13+)',
+    chkPass: 'Mot de passe fort (8+ caractères)',
+    chkSelfie: 'Selfie et clignement vérifiés',
     chkFingerprint: 'Empreinte vérifiée',
     chkOtp: 'OTP à 6 chiffres saisi',
     humanCheck: 'Je ne suis pas un robot - Vérification manuelle',
@@ -1639,9 +1626,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: '6-stelligen OTP-Code eingeben',
     dob: 'Geburtstag',
     password: 'Passwort erstellen',
-    passwordPlaceholder: 'Mindestens 6 Zeichen',
+    passwordPlaceholder: 'Mindestens 8 Zeichen',
     security: 'Sicherheitsprüfung (verpflichtend)',
-    liveness: 'In die Kamera schauen und deutlich blinzeln',
+    liveness: 'Live-Menschprüfung: In die Kamera schauen und zweimal natürlich blinzeln',
     captureNow: 'Jetzt aufnehmen',
     stopCam: 'Stopp',
     camera: 'Live-Selfie & Augenscan',
@@ -1650,9 +1637,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Fingerabdruck prüfen (verpflichtend)',
     verifyStatus: 'Mit Kamera & Fingerabdruck fortfahren',
     checklistTitle: 'Registrierungs-Checkliste',
-    chkEmail: 'Gültige E-Mail & Geburtstag',
-    chkPass: 'Passwort (6+ Zeichen)',
-    chkSelfie: 'Selfie / Kamera geprüft',
+    chkEmail: 'Gültige E-Mail & Geburtstag (13+)',
+    chkPass: 'Starkes Passwort (8+ Zeichen)',
+    chkSelfie: 'Selfie & Blinzeln geprüft',
     chkFingerprint: 'Fingerabdruck geprüft',
     chkOtp: '6-stelliger OTP eingegeben',
     humanCheck: 'Ich bin kein Roboter - Manuelle Prüfung',
@@ -1679,9 +1666,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'Digite o OTP de 6 dígitos',
     dob: 'Data de nascimento',
     password: 'Criar senha',
-    passwordPlaceholder: 'Pelo menos 6 caracteres',
+    passwordPlaceholder: 'Pelo menos 8 caracteres',
     security: 'Verificação de segurança (obrigatória)',
-    liveness: 'Olhe para a câmera e pisque claramente para verificar',
+    liveness: 'Verificação humana ao vivo: olhe para a câmera e pisque duas vezes naturalmente',
     captureNow: 'Capturar agora',
     stopCam: 'Parar',
     camera: 'Selfie ao vivo e leitura ocular',
@@ -1690,9 +1677,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Verificar impressão digital (obrigatório)',
     verifyStatus: 'Verifique com câmera e digital para continuar',
     checklistTitle: 'Checklist de cadastro',
-    chkEmail: 'E-mail e nascimento válidos',
-    chkPass: 'Senha (6+ caracteres)',
-    chkSelfie: 'Selfie / câmera verificada',
+    chkEmail: 'E-mail e nascimento válidos (13+)',
+    chkPass: 'Senha forte (8+ caracteres)',
+    chkSelfie: 'Selfie e piscada verificadas',
     chkFingerprint: 'Digital verificada',
     chkOtp: 'OTP de 6 dígitos inserido',
     humanCheck: 'Não sou um robô - Verificação manual',
@@ -1719,9 +1706,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'Введите 6-значный OTP из письма',
     dob: 'Дата рождения',
     password: 'Создайте пароль',
-    passwordPlaceholder: 'Не менее 6 символов',
+    passwordPlaceholder: 'Не менее 8 символов',
     security: 'Проверка безопасности (обязательно)',
-    liveness: 'Посмотрите в камеру и моргните для проверки',
+    liveness: 'Проверка живого человека: смотрите в камеру и моргните дважды естественно',
     captureNow: 'Снять сейчас',
     stopCam: 'Стоп',
     camera: 'Живое селфи и сканирование глаз',
@@ -1730,9 +1717,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Подтвердить отпечаток (обязательно)',
     verifyStatus: 'Подтвердите камерой и отпечатком для продолжения',
     checklistTitle: 'Чек-лист готовности к регистрации',
-    chkEmail: 'Верные почта и дата рождения',
-    chkPass: 'Пароль (6+ символов)',
-    chkSelfie: 'Селфи / камера проверены',
+    chkEmail: 'Верные почта и дата рождения (13+)',
+    chkPass: 'Надёжный пароль (8+ символов)',
+    chkSelfie: 'Селфи и моргание проверены',
     chkFingerprint: 'Отпечаток проверен',
     chkOtp: '6-значный OTP введён',
     humanCheck: 'Я не робот - Ручная проверка',
@@ -1759,9 +1746,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'メールの6桁のOTPを入力',
     dob: '生年月日',
     password: 'パスワードを作成',
-    passwordPlaceholder: '6文字以上',
+    passwordPlaceholder: '8文字以上',
     security: 'セキュリティ確認（必須）',
-    liveness: 'カメラを見てはっきりまばたきしてください',
+    liveness: 'ライブ本人確認：カメラを見て自然に2回まばたきしてください',
     captureNow: '今すぐ撮影',
     stopCam: '停止',
     camera: 'ライブセルフィー＆アイ認証',
@@ -1770,9 +1757,9 @@ const LOCALIZED_UI = {
     fingerprint: '指紋認証（必須）',
     verifyStatus: 'カメラと指紋で確認して続行',
     checklistTitle: '登録準備チェックリスト',
-    chkEmail: '有効なメールと生年月日',
-    chkPass: 'パスワード（6文字以上）',
-    chkSelfie: 'セルフィー / カメラ確認済み',
+    chkEmail: '有効なメールと生年月日（13歳以上）',
+    chkPass: '強力なパスワード（8文字以上）',
+    chkSelfie: 'ライブセルフィー＆まばたき確認済み',
     chkFingerprint: '指紋確認済み',
     chkOtp: '6桁のOTP入力済み',
     humanCheck: 'ロボットではありません - 手動確認',
@@ -1799,9 +1786,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: '이메일의 6자리 OTP 입력',
     dob: '생년월일',
     password: '비밀번호 만들기',
-    passwordPlaceholder: '6자 이상 입력',
+    passwordPlaceholder: '8자 이상 입력',
     security: '보안 인증 (필수)',
-    liveness: '카메라를 보고 눈을 명확히 깜박여 주세요',
+    liveness: '실시간 본인 확인: 카메라를 보고 자연스럽게 두 번 깜박여 주세요',
     captureNow: '지금 촬영',
     stopCam: '중지',
     camera: '실시간 셀피 및 눈 스캔',
@@ -1810,9 +1797,9 @@ const LOCALIZED_UI = {
     fingerprint: '지문 인증 (필수)',
     verifyStatus: '계속하려면 카메라 및 지문 인증을 완료하세요',
     checklistTitle: '회원가입 준비 체크리스트',
-    chkEmail: '유효한 이메일 및 생년월일',
-    chkPass: '비밀번호 (6자 이상)',
-    chkSelfie: '셀피 / 카메라 인증 완료',
+    chkEmail: '유효한 이메일 및 생년월일 (13세 이상)',
+    chkPass: '강력한 비밀번호 (8자 이상)',
+    chkSelfie: '실시간 셀피 및 깜박임 인증 완료',
     chkFingerprint: '지문 인증 완료',
     chkOtp: '6자리 OTP 입력 완료',
     humanCheck: '로봇이 아닙니다 - 수동 확인',
@@ -1839,9 +1826,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: '输入邮件中的6位 OTP',
     dob: '出生日期',
     password: '创建密码',
-    passwordPlaceholder: '至少 6 个字符',
+    passwordPlaceholder: '至少 8 个字符',
     security: '安全验证（必填）',
-    liveness: '请注视摄像头并清晰眨眼以完成验证',
+    liveness: '真人活体检测：请直视摄像头并自然眨眼两次',
     captureNow: '立即拍摄',
     stopCam: '停止',
     camera: '实时自拍与眼部扫描',
@@ -1850,9 +1837,9 @@ const LOCALIZED_UI = {
     fingerprint: '指纹验证（必填）',
     verifyStatus: '请完成摄像头与指纹验证以继续',
     checklistTitle: '注册准备清单',
-    chkEmail: '有效的邮箱与出生日期',
-    chkPass: '密码（6位及以上）',
-    chkSelfie: '自拍 / 摄像头已验证',
+    chkEmail: '有效的邮箱与出生日期（13岁以上）',
+    chkPass: '强密码（8位及以上）',
+    chkSelfie: '真人自拍与眨眼已验证',
     chkFingerprint: '指纹已验证',
     chkOtp: '已输入6位 OTP',
     humanCheck: '我不是机器人 - 手动验证',
@@ -1879,9 +1866,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: '輸入郵件中的 6 位數 OTP',
     dob: '生日',
     password: '建立密碼',
-    passwordPlaceholder: '至少 6 個字元',
+    passwordPlaceholder: '至少 8 個字元',
     security: '安全性驗證（必填）',
-    liveness: '請看著鏡頭並清楚眨眼以完成驗證',
+    liveness: '真人活體偵測：請直視鏡頭並自然眨眼兩次',
     captureNow: '立即拍攝',
     stopCam: '停止',
     camera: '即時自拍與眼部掃描',
@@ -1890,9 +1877,9 @@ const LOCALIZED_UI = {
     fingerprint: '指紋驗證（必填）',
     verifyStatus: '請完成鏡頭與指紋驗證以繼續',
     checklistTitle: '註冊準備清單',
-    chkEmail: '有效的郵件與生日',
-    chkPass: '密碼（6 個字元以上）',
-    chkSelfie: '自拍 / 鏡頭已驗證',
+    chkEmail: '有效的郵件與生日（13 歲以上）',
+    chkPass: '高強度密碼（8 個字元以上）',
+    chkSelfie: '真人自拍與眨眼已驗證',
     chkFingerprint: '指紋已驗證',
     chkOtp: '已輸入 6 位數 OTP',
     humanCheck: '我不是機器人 - 手動驗證',
@@ -1919,9 +1906,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'ای میل سے 6 ہندسوں کا OTP درج کریں',
     dob: 'سالگرہ',
     password: 'پاس ورڈ بنائیں',
-    passwordPlaceholder: 'کم از کم 6 حروف',
+    passwordPlaceholder: 'کم از کم 8 حروف',
     security: 'سیکیورٹی تصدیق (لازمی)',
-    liveness: 'تصدیق کے لیے کیمرے کی طرف دیکھیں اور پلک جھپکائیں',
+    liveness: 'لائیو انسانی جانچ ضروری: کیمرے کی طرف دیکھیں اور دو بار قدرتی طور پر پلک جھپکائیں',
     captureNow: 'ابھی کیپچر کریں',
     stopCam: 'روکیں',
     camera: 'لائیو سیلفی اور آئی اسکین',
@@ -1930,9 +1917,9 @@ const LOCALIZED_UI = {
     fingerprint: 'فنگر پرنٹ تصدیق (لازمی)',
     verifyStatus: 'آگے بڑھنے کے لیے کیمرہ اور فنگر پرنٹ تصدیق کریں',
     checklistTitle: 'سائن اپ تیاری چیک لسٹ',
-    chkEmail: 'درست ای میل اور سالگرہ',
-    chkPass: 'پاس ورڈ (6+ حروف)',
-    chkSelfie: 'سیلفی / کیمرہ تصدیق شدہ',
+    chkEmail: 'درست ای میل اور سالگرہ (13+)',
+    chkPass: 'مضبوط پاس ورڈ (8+ حروف)',
+    chkSelfie: 'لائیو سیلفی اور پلک تصدیق شدہ',
     chkFingerprint: 'فنگر پرنٹ تصدیق شدہ',
     chkOtp: '6 ہندسوں کا OTP درج کیا گیا',
     humanCheck: 'میں روبوٹ نہیں ہوں - دستی تصدیق',
@@ -1959,9 +1946,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'E-postadaki 6 haneli OTP kodunu girin',
     dob: 'Doğum Günü',
     password: 'Şifre Oluştur',
-    passwordPlaceholder: 'En az 6 karakter',
+    passwordPlaceholder: 'En az 8 karakter',
     security: 'Güvenlik Doğrulaması (Zorunlu)',
-    liveness: 'Doğrulamak için kameraya bakın ve net şekilde göz kırpın',
+    liveness: 'Canlı insan kontrolü: kameraya bakın ve doğal şekilde iki kez göz kırpın',
     captureNow: 'Şimdi Çek',
     stopCam: 'Durdur',
     camera: 'Canlı Selfie ve Göz Taraması',
@@ -1970,9 +1957,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Parmak İzi Doğrulama (Zorunlu)',
     verifyStatus: 'Devam etmek için kamera ve parmak izini doğrulayın',
     checklistTitle: 'Kayıt Hazırlık Kontrol Listesi',
-    chkEmail: 'Geçerli E-posta ve Doğum Günü',
-    chkPass: 'Şifre (6+ karakter)',
-    chkSelfie: 'Selfie / Kamera Doğrulandı',
+    chkEmail: 'Geçerli E-posta ve Doğum Günü (13+)',
+    chkPass: 'Güçlü Şifre (8+ karakter)',
+    chkSelfie: 'Canlı Selfie ve Göz Kırpma Doğrulandı',
     chkFingerprint: 'Parmak İzi Doğrulandı',
     chkOtp: '6 Haneli OTP Girildi',
     humanCheck: 'Robot değilim - Manuel doğrulama',
@@ -1999,9 +1986,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'Masukkan OTP 6 digit dari email',
     dob: 'Tanggal Lahir',
     password: 'Buat Kata Sandi',
-    passwordPlaceholder: 'Minimal 6 karakter',
+    passwordPlaceholder: 'Minimal 8 karakter',
     security: 'Verifikasi Keamanan (Wajib)',
-    liveness: 'Lihat ke kamera dan kedipkan mata dengan jelas untuk verifikasi',
+    liveness: 'Pemeriksaan manusia langsung: lihat ke kamera dan kedipkan mata dua kali secara alami',
     captureNow: 'Ambil Sekarang',
     stopCam: 'Berhenti',
     camera: 'Selfie Langsung & Pindai Mata',
@@ -2010,9 +1997,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Verifikasi Sidik Jari (Wajib)',
     verifyStatus: 'Verifikasi dengan kamera & sidik jari untuk melanjutkan',
     checklistTitle: 'Daftar Kesiapan Daftar',
-    chkEmail: 'Email & Tanggal Lahir Valid',
-    chkPass: 'Kata Sandi (6+ karakter)',
-    chkSelfie: 'Selfie / Kamera Terverifikasi',
+    chkEmail: 'Email & Tanggal Lahir Valid (13+)',
+    chkPass: 'Kata Sandi Kuat (8+ karakter)',
+    chkSelfie: 'Selfie Langsung & Kedipan Terverifikasi',
     chkFingerprint: 'Sidik Jari Terverifikasi',
     chkOtp: 'OTP 6 Digit Dimasukkan',
     humanCheck: 'Saya bukan robot - Verifikasi manual',
@@ -2039,9 +2026,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'Nhập mã OTP 6 chữ số từ email',
     dob: 'Ngày sinh',
     password: 'Tạo mật khẩu',
-    passwordPlaceholder: 'Ít nhất 6 ký tự',
+    passwordPlaceholder: 'Ít nhất 8 ký tự',
     security: 'Xác minh bảo mật (Bắt buộc)',
-    liveness: 'Nhìn vào camera và chớp mắt rõ ràng để xác minh',
+    liveness: 'Kiểm tra người thật trực tiếp: nhìn thẳng vào camera và chớp mắt tự nhiên 2 lần',
     captureNow: 'Chụp ngay',
     stopCam: 'Dừng',
     camera: 'Selfie trực tiếp & Quét mắt',
@@ -2050,9 +2037,9 @@ const LOCALIZED_UI = {
     fingerprint: 'Xác minh vân tay (Bắt buộc)',
     verifyStatus: 'Xác minh bằng camera & vân tay để tiếp tục',
     checklistTitle: 'Danh sách sẵn sàng đăng ký',
-    chkEmail: 'Email & Ngày sinh hợp lệ',
-    chkPass: 'Mật khẩu (6+ ký tự)',
-    chkSelfie: 'Đã xác minh Selfie / Camera',
+    chkEmail: 'Email & Ngày sinh hợp lệ (13+)',
+    chkPass: 'Mật khẩu mạnh (8+ ký tự)',
+    chkSelfie: 'Đã xác minh Selfie trực tiếp & chớp mắt',
     chkFingerprint: 'Đã xác minh vân tay',
     chkOtp: 'Đã nhập OTP 6 chữ số',
     humanCheck: 'Tôi không phải người máy - Xác minh thủ công',
@@ -2079,9 +2066,9 @@ const LOCALIZED_UI = {
     otpPlaceholder: 'กรอกรหัส OTP 6 หลักจากอีเมล',
     dob: 'วันเกิด',
     password: 'สร้างรหัสผ่าน',
-    passwordPlaceholder: 'อย่างน้อย 6 ตัวอักษร',
+    passwordPlaceholder: 'อย่างน้อย 8 ตัวอักษร',
     security: 'การยืนยันความปลอดภัย (จำเป็น)',
-    liveness: 'มองกล้องและกะพริบตาให้ชัดเจนเพื่อยืนยัน',
+    liveness: 'ตรวจสอบบุคคลจริงสด: มองกล้องตรงๆ และกะพริบตาอย่างเป็นธรรมชาติ 2 ครั้ง',
     captureNow: 'ถ่ายเลย',
     stopCam: 'หยุด',
     camera: 'เซลฟี่สดและสแกนดวงตา',
@@ -2090,9 +2077,9 @@ const LOCALIZED_UI = {
     fingerprint: 'ยืนยันลายนิ้วมือ (จำเป็น)',
     verifyStatus: 'ยืนยันด้วยกล้องและลายนิ้วมือเพื่อดำเนินการต่อ',
     checklistTitle: 'รายการความพร้อมในการสมัคร',
-    chkEmail: 'อีเมลและวันเกิดถูกต้อง',
-    chkPass: 'รหัสผ่าน (6+ ตัวอักษร)',
-    chkSelfie: 'ยืนยันเซลฟี่ / กล้องแล้ว',
+    chkEmail: 'อีเมลและวันเกิดถูกต้อง (13+)',
+    chkPass: 'รหัสผ่านรัดกุม (8+ ตัวอักษร)',
+    chkSelfie: 'ยืนยันเซลฟี่สดและการกะพริบตาแล้ว',
     chkFingerprint: 'ยืนยันลายนิ้วมือแล้ว',
     chkOtp: 'กรอกรหัส OTP 6 หลักแล้ว',
     humanCheck: 'ฉันไม่ใช่โปรแกรมอัตโนมัติ - ยืนยันด้วยตนเอง',
@@ -2134,6 +2121,17 @@ function safeRemoveStorage(key) {
   } catch (_) {}
 }
 
+function safeGetJson(key, fallback) {
+  try {
+    const raw = safeGetStorage(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch (_) {
+    return fallback;
+  }
+}
+
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = '';
@@ -2143,9 +2141,117 @@ function arrayBufferToBase64(buffer) {
   return window.btoa(binary);
 }
 
+async function sha256Hex(input) {
+  const data = new TextEncoder().encode(String(input));
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 let currentLangId = safeGetStorage(LANGUAGE_ID_KEY) || 'en-US';
 let currentPasswordScore = 0;
 let currentPasswordHasValue = false;
+
+let selfieData = '';
+let faceDescriptor = null;
+let faceHash = '';
+let stream = null;
+let scanInterval = null;
+let scanTimeout = null;
+let livenessPassed = false;
+let fingerprintVerified = false;
+let webauthnCredentialId = null;
+let fingerprintHash = '';
+let accountLocked = false;
+let otpTimer = null;
+let otpSeconds = 60;
+let modelsLoaded = false;
+let otpSent = false;
+let otpSending = false;
+let signupSubmitting = false;
+
+function lockAccountForBiometricMismatch(reasonMessage) {
+  accountLocked = true;
+  livenessPassed = false;
+  fingerprintVerified = false;
+  selfieData = '';
+  faceDescriptor = null;
+  webauthnCredentialId = null;
+  stopCamera(document.getElementById('cameraBtn'));
+
+  const existingLock = safeGetJson(BIOMETRIC_LOCK_KEY, null) || {};
+  safeSetStorage(BIOMETRIC_LOCK_KEY, JSON.stringify({
+    locked: true,
+    reason: reasonMessage,
+    lockedAt: existingLock.lockedAt || Date.now()
+  }));
+
+  const banner = document.getElementById('accountLockBanner');
+  const lockText = document.getElementById('accountLockText');
+  if (banner) banner.classList.remove('hide');
+  if (lockText && reasonMessage) lockText.textContent = reasonMessage;
+
+  const camBtn = document.getElementById('cameraBtn');
+  const fpBtn = document.getElementById('fingerprintBtn');
+  const sendBtn = document.getElementById('sendOtpBtn');
+  const signBtn = document.getElementById('signUpBtn');
+  if (camBtn) { camBtn.disabled = true; camBtn.classList.remove('verified'); }
+  if (fpBtn) { fpBtn.disabled = true; fpBtn.classList.remove('verified'); }
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.classList.remove('active'); }
+  if (signBtn) { signBtn.disabled = true; signBtn.classList.remove('active'); }
+
+  setMessage(reasonMessage, false);
+  updateSecurityStatus();
+}
+
+function checkExistingBiometricLock() {
+  const lockState = safeGetJson(BIOMETRIC_LOCK_KEY, null);
+  if (lockState && lockState.locked) {
+    accountLocked = true;
+    const banner = document.getElementById('accountLockBanner');
+    const lockText = document.getElementById('accountLockText');
+    if (banner) banner.classList.remove('hide');
+    if (lockText && lockState.reason) lockText.textContent = lockState.reason;
+    const camBtn = document.getElementById('cameraBtn');
+    const fpBtn = document.getElementById('fingerprintBtn');
+    if (camBtn) camBtn.disabled = true;
+    if (fpBtn) fpBtn.disabled = true;
+  }
+}
+
+function euclideanDistance(descA, descB) {
+  if (!Array.isArray(descA) || !Array.isArray(descB) || descA.length !== descB.length || descA.length === 0) {
+    return Infinity;
+  }
+  let sum = 0;
+  for (let i = 0; i < descA.length; i++) {
+    const diff = descA[i] - descB[i];
+    sum += diff * diff;
+  }
+  return Math.sqrt(sum);
+}
+
+function isFaceAlreadyEnrolled(descriptor) {
+  if (!Array.isArray(descriptor) || descriptor.length === 0) return false;
+  const enrolled = safeGetJson(ENROLLED_FACES_KEY, []);
+  return enrolled.some(item => euclideanDistance(item.descriptor, descriptor) < 0.45);
+}
+
+function recordEnrolledBiometrics(descriptor, credId) {
+  if (Array.isArray(descriptor) && descriptor.length > 0) {
+    const enrolledFaces = safeGetJson(ENROLLED_FACES_KEY, []);
+    enrolledFaces.push({ descriptor, at: Date.now() });
+    safeSetStorage(ENROLLED_FACES_KEY, JSON.stringify(enrolledFaces.slice(-50)));
+  }
+  if (credId) {
+    const enrolledFps = safeGetJson(ENROLLED_FINGERPRINTS_KEY, []);
+    if (!enrolledFps.includes(credId)) {
+      enrolledFps.push(credId);
+      safeSetStorage(ENROLLED_FINGERPRINTS_KEY, JSON.stringify(enrolledFps.slice(-50)));
+    }
+  }
+}
 
 function getActiveLanguageObj() {
   const exact = languages.find(l => l.id === currentLangId);
@@ -2174,27 +2280,16 @@ function escapeHTML(value) {
     .replace(/'/g, '&#039;');
 }
 
-let selfieData = '';
-let faceDescriptor = null;
-let stream = null;
-let scanInterval = null;
-let scanTimeout = null;
-let livenessPassed = false;
-let fingerprintVerified = false;
-let webauthnCredentialId = null;
-let otpTimer = null;
-let otpSeconds = 60;
-let modelsLoaded = false;
-let otpSent = false;
-let otpSending = false;
-let signupSubmitting = false;
-
 function saveSignupDraft() {
+  if (accountLocked) return;
   const draft = {
     email: document.getElementById('email')?.value.trim().toLowerCase() || '',
     day: document.getElementById('day')?.value.trim() || '',
     month: document.getElementById('month')?.value.trim() || '',
     year: document.getElementById('year')?.value.trim() || '',
+    lockedFaceDescriptor: faceDescriptor,
+    lockedFaceHash: faceHash,
+    lockedFingerprintHash: fingerprintHash,
     updatedAt: Date.now()
   };
   safeSetStorage(DRAFT_STORAGE_KEY, JSON.stringify(draft));
@@ -2218,10 +2313,20 @@ function restoreSignupDraft() {
     if (draft.year && !document.getElementById('year').value) {
       document.getElementById('year').value = draft.year;
     }
+    if (Array.isArray(draft.lockedFaceDescriptor) && draft.lockedFaceDescriptor.length > 0) {
+      faceDescriptor = draft.lockedFaceDescriptor;
+    }
+    if (draft.lockedFaceHash) {
+      faceHash = draft.lockedFaceHash;
+    }
+    if (draft.lockedFingerprintHash) {
+      fingerprintHash = draft.lockedFingerprintHash;
+    }
   } catch (_) {}
 }
 
 function onFormFieldInput() {
+  if (accountLocked) return;
   saveSignupDraft();
   checkButtonState();
 }
@@ -2292,10 +2397,8 @@ function applyAppTranslation() {
   setText('strengthHint', dict.strengthHint);
   setText('securityLabel', dict.security);
   setText('livenessText', dict.liveness);
-  setText('captureNowText', dict.captureNow);
   setText('stopCamText', dict.stopCam);
   setText('retakeSelfieText', dict.retakeSelfie);
-  setText('uploadSelfieBtnText', dict.uploadSelfie);
   setText('checklistTitleText', dict.checklistTitle);
   setText('chkEmailText', dict.chkEmail);
   setText('chkPassText', dict.chkPass);
@@ -2455,10 +2558,10 @@ function updatePasswordStrength(pw) {
   if (!fill) return;
 
   let score = 0;
-  if (pw.length >= 6) score++;
-  if (pw.length >= 10) score++;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
   if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
-  if (/\d/.test(pw) || /[^A-Za-z0-9]/.test(pw)) score++;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) score++;
 
   currentPasswordHasValue = Boolean(pw);
   currentPasswordScore = score;
@@ -2479,7 +2582,16 @@ function updatePasswordStrength(pw) {
   refreshStrengthLabel();
 }
 
+function isStrongPassword(pw) {
+  return typeof pw === 'string' &&
+    pw.length >= 8 &&
+    /[a-z]/.test(pw) &&
+    /[A-Z]/.test(pw) &&
+    /\d/.test(pw);
+}
+
 function handlePasswordChange() {
+  if (accountLocked) return;
   const pw = document.getElementById('password').value;
   updatePasswordStrength(pw);
   checkButtonState();
@@ -2488,6 +2600,10 @@ function handlePasswordChange() {
 function updateSecurityStatus() {
   const statusEl = document.getElementById('verifyStatus');
   if (!statusEl) return;
+  if (accountLocked) {
+    statusEl.textContent = 'Account locked due to biometric/photo mismatch or duplicate face.';
+    return;
+  }
   const dict = getDict(getActiveLanguageObj());
   if (livenessPassed && fingerprintVerified) {
     statusEl.textContent = dict.statusBothOk;
@@ -2501,11 +2617,9 @@ function updateSecurityStatus() {
 }
 
 function resetSelfieVerification() {
+  if (accountLocked) return;
   selfieData = '';
-  faceDescriptor = null;
   livenessPassed = false;
-  const fileInput = document.getElementById('selfieFileInput');
-  if (fileInput) fileInput.value = '';
   const photoImg = document.getElementById('photo');
   const retakeBtn = document.getElementById('retakeSelfieBtn');
   const camBtn = document.getElementById('cameraBtn');
@@ -2528,6 +2642,7 @@ function resetSelfieVerification() {
 }
 
 async function registerFingerprint() {
+  if (accountLocked) return;
   const btn = document.getElementById('fingerprintBtn');
   const dict = getDict(getActiveLanguageObj());
   setMessage('');
@@ -2581,6 +2696,7 @@ async function registerFingerprint() {
           { type: 'public-key', alg: -257 }
         ],
         authenticatorSelection: {
+          authenticatorAttachment: 'platform',
           userVerification: 'required'
         },
         timeout: 60000,
@@ -2589,8 +2705,25 @@ async function registerFingerprint() {
     });
 
     if (credential && credential.rawId) {
-      webauthnCredentialId = arrayBufferToBase64(credential.rawId);
+      const credIdB64 = arrayBufferToBase64(credential.rawId);
+      const fpDigest = await sha256Hex(credIdB64);
+
+      if (fingerprintHash && fingerprintHash !== fpDigest) {
+        lockAccountForBiometricMismatch('Security Lock: A different fingerprint was presented than the one enrolled for this registration.');
+        return;
+      }
+
+      const enrolledFps = safeGetJson(ENROLLED_FINGERPRINTS_KEY, []);
+      if (enrolledFps.includes(fpDigest) && !fingerprintHash) {
+        lockAccountForBiometricMismatch('Security Lock: This fingerprint is already registered to another account.');
+        return;
+      }
+
+      webauthnCredentialId = credIdB64;
+      fingerprintHash = fpDigest;
       fingerprintVerified = true;
+      saveSignupDraft();
+
       btn.classList.add('verified');
       btn.innerHTML = '<i class="fas fa-check-circle"></i> Fingerprint Verified';
       btn.disabled = true;
@@ -2633,17 +2766,15 @@ function stopCamera(btn) {
   }
   const video = document.getElementById('video');
   const livenessEl = document.getElementById('livenessText');
-  const captureNowBtn = document.getElementById('captureNowBtn');
   const stopCamBtn = document.getElementById('stopCamBtn');
   if (video) {
     try { video.srcObject = null; } catch (_) {}
     video.style.display = 'none';
   }
   if (livenessEl) livenessEl.classList.add('hide');
-  if (captureNowBtn) captureNowBtn.style.display = 'none';
   if (stopCamBtn) stopCamBtn.style.display = 'none';
 
-  if (btn && !livenessPassed) {
+  if (btn && !livenessPassed && !accountLocked) {
     const dict = getDict(getActiveLanguageObj());
     btn.innerHTML = `<i class="fas fa-camera"></i> <span id="cameraBtnText">${escapeHTML(dict.camera)}</span>`;
     btn.disabled = false;
@@ -2654,79 +2785,49 @@ function getDistance(p1, p2) {
   return Math.hypot(p1.x - p2.x, p1.y - p2.y);
 }
 
-async function manualCaptureSelfie() {
-  const video = document.getElementById('video');
-  if (!video || !stream) return;
-  await capturePhotoAndDescriptor(video);
-}
+// Measures frame-to-frame motion inside the face bounding box to reject static screens/photos
+function computeBoxMotion(prevCanvas, currCanvas, box) {
+  if (!prevCanvas || !currCanvas || !box) return 0;
+  const x = Math.max(0, Math.floor(box.x));
+  const y = Math.max(0, Math.floor(box.y));
+  const w = Math.min(currCanvas.width - x, Math.floor(box.width));
+  const h = Math.min(currCanvas.height - y, Math.floor(box.height));
+  if (w <= 8 || h <= 8) return 0;
 
-async function handleSelfieFileUpload(event) {
-  const file = event && event.target && event.target.files && event.target.files[0];
-  if (!file) return;
-  setMessage('');
+  const pCtx = prevCanvas.getContext('2d');
+  const cCtx = currCanvas.getContext('2d');
+  const pData = pCtx.getImageData(x, y, w, h).data;
+  const cData = cCtx.getImageData(x, y, w, h).data;
 
-  const statusEl = document.getElementById('verifyStatus');
-  statusEl.textContent = 'Processing selfie photo...';
-
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    selfieData = e.target.result || '';
-    const photoImg = document.getElementById('photo');
-    photoImg.src = selfieData;
-    photoImg.style.display = 'block';
-
-    if (window.faceapi) {
-      try {
-        if (!modelsLoaded) {
-          await Promise.race([
-            Promise.all([
-              faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-              faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-              faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-            ]),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 7000))
-          ]);
-          modelsLoaded = true;
-        }
-        const fullDetection = await faceapi
-          .detectSingleFace(photoImg, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-        if (fullDetection && fullDetection.descriptor) {
-          faceDescriptor = Array.from(fullDetection.descriptor);
-        }
-      } catch (err) {
-        console.warn('Photo descriptor fallback:', err);
-      }
-    }
-
-    stopCamera(document.getElementById('cameraBtn'));
-    const btn = document.getElementById('cameraBtn');
-    btn.innerHTML = '<i class="fas fa-check"></i> Selfie Verified';
-    btn.classList.add('verified');
-    btn.disabled = true;
-
-    const retakeBtn = document.getElementById('retakeSelfieBtn');
-    if (retakeBtn) retakeBtn.style.display = 'flex';
-
-    livenessPassed = true;
-    updateSecurityStatus();
-    setMessage('Selfie verified successfully!', true);
-    checkButtonState();
-  };
-  reader.readAsDataURL(file);
+  let diffSum = 0;
+  let samples = 0;
+  for (let i = 0; i < cData.length; i += 16) {
+    const pLum = 0.299 * pData[i] + 0.587 * pData[i + 1] + 0.114 * pData[i + 2];
+    const cLum = 0.299 * cData[i] + 0.587 * cData[i + 1] + 0.114 * cData[i + 2];
+    diffSum += Math.abs(cLum - pLum);
+    samples++;
+  }
+  return samples > 0 ? diffSum / samples : 0;
 }
 
 async function startCamera() {
+  if (accountLocked) {
+    lockAccountForBiometricMismatch();
+    return;
+  }
   const btn = document.getElementById('cameraBtn');
   const statusEl = document.getElementById('verifyStatus');
-  const captureNowBtn = document.getElementById('captureNowBtn');
   const stopCamBtn = document.getElementById('stopCamBtn');
   setMessage('');
 
   if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-    statusEl.textContent = 'Live stream unavailable — tap "Use Front Camera / Photo Picker" below';
-    setMessage('Live camera stream is not supported here. Use the front camera / photo picker button below.');
+    setMessage('Live camera stream is required for human eye-scan verification.');
+    statusEl.textContent = 'Live camera required — static photo upload is disabled for security.';
+    return;
+  }
+
+  if (!window.faceapi) {
+    setMessage('Face & eye verification engine failed to load. Please refresh and try again.');
     return;
   }
 
@@ -2737,11 +2838,14 @@ async function startCamera() {
 
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } },
+        video: { facingMode: { exact: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false
       });
     } catch (_) {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false
+      });
     }
 
     const video = document.getElementById('video');
@@ -2750,81 +2854,121 @@ async function startCamera() {
     await video.play();
 
     document.getElementById('livenessText').classList.remove('hide');
-    captureNowBtn.style.display = 'flex';
     stopCamBtn.style.display = 'flex';
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning face &amp; eyes...';
-    statusEl.textContent = 'Loading eye & face scan models...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading eye & face models...';
+    statusEl.textContent = 'Loading human face & eye landmark models...';
 
-    if (!window.faceapi) {
-      statusEl.textContent = 'Camera ready — tap "Capture Now" to verify';
-      return;
+    if (!modelsLoaded) {
+      await Promise.race([
+        Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Model load timeout')), 12000))
+      ]);
+      modelsLoaded = true;
     }
 
-    try {
-      if (!modelsLoaded) {
-        await Promise.race([
-          Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-          ]),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Model load timeout')), 8000))
-        ]);
-        modelsLoaded = true;
-      }
-    } catch (modelErr) {
-      console.warn('Face-API models fallback:', modelErr);
-      statusEl.textContent = 'Eye model slow — tap "Capture Now" or blink';
-      return;
-    }
-
-    statusEl.textContent = 'Blink your eyes once to complete verification';
+    btn.innerHTML = '<i class="fas fa-eye"></i> Blink Twice Naturally (0/2)';
+    statusEl.textContent = 'Human check: keep one real face centered & blink twice naturally (0 / 2 blinks)';
 
     let blinkCount = 0;
-    let lastEyeState = 'open';
+    let eyeState = 'open';
+    let closedFrames = 0;
+    let motionDetectedFrames = 0;
+    let prevFrameCanvas = null;
     let completed = false;
+    const REQUIRED_BLINKS = 2;
 
     scanInterval = setInterval(async () => {
-      if (completed || !video || video.readyState < 2) return;
+      if (completed || accountLocked || !video || video.readyState < 2) return;
       try {
-        const detection = await faceapi
-          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+        // Strict single-human detection with higher score threshold
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.65 }))
           .withFaceLandmarks();
 
-        if (detection && detection.landmarks) {
-          const leftEye = detection.landmarks.getLeftEye();
-          const rightEye = detection.landmarks.getRightEye();
-          const earLeft = (getDistance(leftEye[1], leftEye[5]) + getDistance(leftEye[2], leftEye[4])) / (2 * getDistance(leftEye[0], leftEye[3]));
-          const earRight = (getDistance(rightEye[1], rightEye[5]) + getDistance(rightEye[2], rightEye[4])) / (2 * getDistance(rightEye[0], rightEye[3]));
-          const avgEar = (earLeft + earRight) / 2;
+        if (!detections || detections.length === 0) {
+          statusEl.textContent = `No clear human face detected — look straight at camera (${blinkCount}/${REQUIRED_BLINKS} blinks)`;
+          return;
+        }
 
-          if (avgEar < 0.25 && lastEyeState === 'open') {
+        if (detections.length > 1) {
+          statusEl.textContent = 'Multiple faces detected — only one person may appear in the frame';
+          return;
+        }
+
+        const det = detections[0];
+        const box = det.detection.box;
+
+        // Ensure face occupies reasonable portion of frame (filters tiny/distant/poster cutouts)
+        const areaRatio = (box.width * box.height) / Math.max(1, video.videoWidth * video.videoHeight);
+        if (areaRatio < 0.06) {
+          statusEl.textContent = `Move closer to the camera so your eyes are clearly visible (${blinkCount}/${REQUIRED_BLINKS} blinks)`;
+          return;
+        }
+
+        const scratchCanvas = document.createElement('canvas');
+        scratchCanvas.width = video.videoWidth || 320;
+        scratchCanvas.height = video.videoHeight || 240;
+        scratchCanvas.getContext('2d').drawImage(video, 0, 0, scratchCanvas.width, scratchCanvas.height);
+
+        if (prevFrameCanvas) {
+          const motion = computeBoxMotion(prevFrameCanvas, scratchCanvas, box);
+          if (motion > 1.35) {
+            motionDetectedFrames++;
+          }
+        }
+        prevFrameCanvas = scratchCanvas;
+
+        const leftEye = det.landmarks.getLeftEye();
+        const rightEye = det.landmarks.getRightEye();
+        const earLeft = (getDistance(leftEye[1], leftEye[5]) + getDistance(leftEye[2], leftEye[4])) / (2 * getDistance(leftEye[0], leftEye[3]));
+        const earRight = (getDistance(rightEye[1], rightEye[5]) + getDistance(rightEye[2], rightEye[4])) / (2 * getDistance(rightEye[0], rightEye[3]));
+        const avgEar = (earLeft + earRight) / 2;
+
+        if (avgEar < 0.22) {
+          closedFrames++;
+          if (eyeState === 'open' && closedFrames >= 1) {
+            eyeState = 'closed';
+          }
+        } else if (avgEar >= 0.255) {
+          if (eyeState === 'closed' && closedFrames >= 1) {
             blinkCount++;
-            lastEyeState = 'closed';
-          } else if (avgEar >= 0.25 && lastEyeState === 'closed') {
-            lastEyeState = 'open';
+            btn.innerHTML = `<i class="fas fa-eye"></i> Blink Twice Naturally (${blinkCount}/${REQUIRED_BLINKS})`;
           }
+          eyeState = 'open';
+          closedFrames = 0;
+        }
 
-          if (blinkCount >= 1) {
-            completed = true;
-            await capturePhotoAndDescriptor(video);
+        statusEl.textContent = `Live human scan: ${blinkCount}/${REQUIRED_BLINKS} natural blinks • natural motion ${motionDetectedFrames >= 2 ? 'OK' : 'checking...'}`;
+
+        if (blinkCount >= REQUIRED_BLINKS) {
+          if (motionDetectedFrames < 2) {
+            statusEl.textContent = 'Blink detected — please move head or eyes slightly so live human motion is confirmed';
+            return;
           }
+          completed = true;
+          await capturePhotoAndDescriptor(video);
         }
       } catch (frameErr) {
         console.warn('Frame scan skipped:', frameErr);
       }
-    }, 240);
+    }, 200);
 
     scanTimeout = setTimeout(() => {
-      if (!livenessPassed && !completed) {
-        statusEl.textContent = 'Auto-blink timed out — tap "Capture Now" to verify';
+      if (!livenessPassed && !completed && !accountLocked) {
+        statusEl.textContent = 'Live blink verification timed out — tap "Live Selfie & Eye Scan" to try again';
+        stopCamera(btn);
+        setMessage('Please complete 2 natural eye blinks in front of the live camera.');
       }
-    }, 15000);
+    }, 25000);
   } catch (err) {
     console.error('Camera error:', err);
     const reason = err && err.name === 'NotAllowedError'
-      ? 'Camera permission denied. Allow camera or tap "Use Front Camera / Photo Picker".'
-      : 'Live camera blocked here. Tap "Use Front Camera / Photo Picker" below.';
+      ? 'Camera permission denied. Allow live camera access to verify you are human.'
+      : 'Unable to start live camera. Please check camera permissions and try again.';
     setMessage(reason);
     statusEl.textContent = reason;
     stopCamera(btn);
@@ -2850,29 +2994,56 @@ async function capturePhotoAndDescriptor(video) {
   ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  selfieData = canvas.toDataURL('image/jpeg', 0.8);
+  const candidateDataUrl = canvas.toDataURL('image/jpeg', 0.85);
   const photoImg = document.getElementById('photo');
-  photoImg.src = selfieData;
+  photoImg.src = candidateDataUrl;
   photoImg.style.display = 'block';
 
-  if (window.faceapi && modelsLoaded) {
-    try {
-      const fullDetection = await faceapi
-        .detectSingleFace(photoImg, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-      if (fullDetection && fullDetection.descriptor) {
-        faceDescriptor = Array.from(fullDetection.descriptor);
-      }
-    } catch (e) {
-      console.warn('Descriptor extraction warning:', e);
+  let extractedDescriptor = null;
+  try {
+    const fullDetection = await faceapi
+      .detectSingleFace(photoImg, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.65 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (!fullDetection || !fullDetection.descriptor) {
+      stopCamera(document.getElementById('cameraBtn'));
+      photoImg.style.display = 'none';
+      setMessage('Could not extract a clear human face. Please try again in good lighting.');
+      return;
     }
+    extractedDescriptor = Array.from(fullDetection.descriptor);
+  } catch (e) {
+    console.error('Descriptor extraction failed:', e);
+    stopCamera(document.getElementById('cameraBtn'));
+    photoImg.style.display = 'none';
+    setMessage('Face verification failed. Please try again.');
+    return;
   }
+
+  const newFaceHash = await sha256Hex(extractedDescriptor.map(n => n.toFixed(3)).join(','));
+
+  // Enforce same-person lock across retakes/drafts
+  if (Array.isArray(faceDescriptor) && faceDescriptor.length > 0) {
+    const distFromLocked = euclideanDistance(faceDescriptor, extractedDescriptor);
+    if (distFromLocked > 0.52) {
+      lockAccountForBiometricMismatch('Account Locked: A different face was detected than the face initially enrolled for this account.');
+      return;
+    }
+  } else if (isFaceAlreadyEnrolled(extractedDescriptor)) {
+    lockAccountForBiometricMismatch('Account Locked: This face is already associated with another registered account.');
+    return;
+  }
+
+  selfieData = candidateDataUrl;
+  faceDescriptor = extractedDescriptor;
+  faceHash = newFaceHash;
+  saveSignupDraft();
 
   stopCamera(document.getElementById('cameraBtn'));
 
   const btn = document.getElementById('cameraBtn');
-  btn.innerHTML = '<i class="fas fa-check"></i> Face Verified';
+  btn.innerHTML = '<i class="fas fa-check"></i> Human Face & Eyes Verified';
   btn.classList.add('verified');
   btn.disabled = true;
 
@@ -2881,7 +3052,7 @@ async function capturePhotoAndDescriptor(video) {
 
   livenessPassed = true;
   updateSecurityStatus();
-  setMessage('Live selfie captured and verified!', true);
+  setMessage('Live human selfie & eye blink verified!', true);
   checkButtonState();
 }
 
@@ -2894,7 +3065,16 @@ function isValidDob(day, month, year) {
   const currentYear = new Date().getFullYear();
   if (y < 1900 || y > currentYear) return false;
   const dt = new Date(y, m - 1, d);
-  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return false;
+
+  // Minimum age check (13+)
+  const today = new Date();
+  let age = today.getFullYear() - y;
+  const monthDiff = today.getMonth() - (m - 1);
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {
+    age--;
+  }
+  return age >= 13;
 }
 
 function isValidEmail(email) {
@@ -2920,8 +3100,8 @@ function updateReadinessChecklist(emailOk, dobOk, passOk, otpOk) {
   const items = [
     { id: 'chkEmail', ok: emailOk && dobOk },
     { id: 'chkPass', ok: passOk },
-    { id: 'chkSelfie', ok: livenessPassed },
-    { id: 'chkFingerprint', ok: fingerprintVerified },
+    { id: 'chkSelfie', ok: livenessPassed && !accountLocked },
+    { id: 'chkFingerprint', ok: fingerprintVerified && !accountLocked },
     { id: 'chkOtp', ok: otpOk }
   ];
 
@@ -2952,6 +3132,16 @@ function updateReadinessChecklist(emailOk, dobOk, passOk, otpOk) {
 }
 
 function checkButtonState() {
+  const sendBtn = document.getElementById('sendOtpBtn');
+  const signBtn = document.getElementById('signUpBtn');
+
+  if (accountLocked) {
+    if (sendBtn) { sendBtn.classList.remove('active'); sendBtn.disabled = true; }
+    if (signBtn) { signBtn.classList.remove('active'); signBtn.disabled = true; }
+    updateReadinessChecklist(false, false, false, false);
+    return;
+  }
+
   const email = document.getElementById('email').value.trim().toLowerCase();
   const otp = document.getElementById('otp').value.trim();
   const day = document.getElementById('day').value.trim();
@@ -2961,15 +3151,13 @@ function checkButtonState() {
 
   const emailOk = isValidEmail(email);
   const dobOk = year.length === 4 && isValidDob(day, month, year);
-  const passOk = password.length >= 6;
+  const passOk = isStrongPassword(password);
   const otpOk = otpSent && /^\d{6}$/.test(otp);
 
   updateReadinessChecklist(emailOk, dobOk, passOk, otpOk);
 
   const dict = getDict(getActiveLanguageObj());
   const humanOk = hasHumanCheck();
-  const sendBtn = document.getElementById('sendOtpBtn');
-  const signBtn = document.getElementById('signUpBtn');
 
   const canSendNow = emailOk && humanOk && !otpSending && (!otpSent || otpSeconds <= 0);
   if (canSendNow) {
@@ -3019,7 +3207,7 @@ async function parseJsonSafe(res) {
 }
 
 async function sendOTP() {
-  if (otpSending) return;
+  if (otpSending || accountLocked) return;
   const email = document.getElementById('email').value.trim().toLowerCase();
   const btn = document.getElementById('sendOtpBtn');
   const activeLang = getActiveLanguageObj();
@@ -3117,7 +3305,7 @@ async function sendOTP() {
 }
 
 async function verifyOTPAndSignup() {
-  if (signupSubmitting) return;
+  if (signupSubmitting || accountLocked) return;
   const email = document.getElementById('email').value.trim().toLowerCase();
   const otp = document.getElementById('otp').value.trim();
   const password = document.getElementById('password').value;
@@ -3131,8 +3319,8 @@ async function verifyOTPAndSignup() {
   const dict = getDict(activeLang);
   setMessage('');
 
-  if (!livenessPassed) {
-    setMessage('Please complete selfie / camera verification first.');
+  if (!livenessPassed || !faceDescriptor || !selfieData) {
+    setMessage('Please complete live human selfie & two-blink eye verification first.');
     return;
   }
 
@@ -3142,12 +3330,12 @@ async function verifyOTPAndSignup() {
   }
 
   if (!isValidDob(day, month, year)) {
-    setMessage('Please enter a valid birthday (DD / MM / YYYY).');
+    setMessage('Please enter a valid birthday (DD / MM / YYYY, age 13+).');
     return;
   }
 
-  if (password.length < 6) {
-    setMessage('Password must be at least 6 characters long.');
+  if (!isStrongPassword(password)) {
+    setMessage('Password must be at least 8 characters and include uppercase, lowercase, and a number.');
     return;
   }
 
@@ -3171,7 +3359,9 @@ async function verifyOTPAndSignup() {
           dob,
           selfieData,
           faceDescriptor,
+          faceHash,
           webauthnCredentialId,
+          fingerprintHash,
           language: activeLang.code
         }
       })
@@ -3201,25 +3391,30 @@ async function verifyOTPAndSignup() {
       return;
     }
 
+    recordEnrolledBiometrics(faceDescriptor, fingerprintHash);
+
     safeSetStorage('autrobook_user', JSON.stringify({
       full_name: name,
       email,
       dob,
-      language: activeLang.code
+      language: activeLang.code,
+      faceHash,
+      fingerprintHash,
+      verifiedAt: Date.now()
     }));
     safeRemoveStorage('signup_name');
     safeRemoveStorage(DRAFT_STORAGE_KEY);
+    safeRemoveStorage(BIOMETRIC_LOCK_KEY);
     document.getElementById('password').value = '';
 
     if (supabaseClient) {
-      const { error: signInErr } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (signInErr) {
-        window.location.href = 'login.html?msg=signup_success';
-        return;
-      }
+      try {
+        await supabaseClient.auth.signInWithPassword({ email, password });
+      } catch (_) {}
     }
 
-    window.location.href = 'index.html';
+    // Direct entry to index.html for newly created account
+    window.location.replace('index.html');
   } catch (err) {
     console.error('Verify OTP / Signup error:', err);
     signupSubmitting = false;
@@ -3244,6 +3439,7 @@ function initPage() {
   window.addEventListener('pagehide', () => stopCamera(document.getElementById('cameraBtn')));
 
   restoreSignupDraft();
+  checkExistingBiometricLock();
   buildLangList('');
   applyAppTranslation();
   updatePasswordStrength(document.getElementById('password')?.value || '');
