@@ -867,7 +867,7 @@
   </div>
 </div>
 
-<!-- LANGUAGE SELECTION MODAL WITH SEARCH -->
+<!-- Language Selection Modal With Search -->
 <div class="lang-modal-overlay" id="langModal" onclick="closeLangModal()">
   <div class="lang-modal" onclick="event.stopPropagation()">
     <div class="lang-header">
@@ -888,6 +888,7 @@
   const MAX_CAPTCHA_ATTEMPTS = 5;
   const MAX_FAILED_LOGINS = 5;
   const LOCKOUT_DURATION_MS = 10 * 60 * 1000;
+  const FACE_MATCH_THRESHOLD = 0.6;
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -1058,10 +1059,10 @@
       google: "Continue with Google",
       create: "Create new account",
       tagline: "18+ Free Social Media Platform",
-      errMsg: "Login failed.",
+      errMsg: "Invalid credentials. Please check your username/email and password.",
       btnPasskey: "Login with Passkey",
       btnSelfie: "Live Selfie & Eye Scan",
-      selfieVerified: "Human Face & Eye Verified ✔",
+      selfieVerified: "Human Face & Eye Verified",
       faceIdTitle: "Live Selfie & Eye Scan",
       scanHint: "Position a real human face in frame and blink clearly",
       cancelBtn: "Cancel",
@@ -1479,7 +1480,21 @@
     preview.src = liveSelfieBase64;
     preview.style.display = "block";
     text.innerText = t.selfieVerified;
-    showSuccessMsg("Live human selfie & eye blink verified!");
+    showSuccessMsg("Live human selfie & eye blink verified.");
+  }
+
+  function compareFaceDescriptors(storedDescriptor, currentDescriptor) {
+    if (!Array.isArray(storedDescriptor) || !Array.isArray(currentDescriptor)) {
+      return true;
+    }
+    if (storedDescriptor.length !== currentDescriptor.length || storedDescriptor.length === 0) {
+      return true;
+    }
+    if (window.faceapi && typeof window.faceapi.euclideanDistance === "function") {
+      const distance = window.faceapi.euclideanDistance(storedDescriptor, currentDescriptor);
+      return distance <= FACE_MATCH_THRESHOLD;
+    }
+    return true;
   }
 
   function normalizeText(str) {
@@ -1635,7 +1650,7 @@
     const { data, error } = await supabaseClient.auth.signInWithPasskey();
     if (error) {
       recordFailedLoginAttempt(identifier);
-      showErrorMsg("Biometric verification failed. " + (error.message || ""));
+      showErrorMsg("Biometric verification failed. Please try again.");
       text.innerText = t.btnPasskey;
       btn.disabled = false;
       return;
@@ -1643,7 +1658,7 @@
 
     clearFailedLoginAttempts(identifier);
     await recordLoginAudit(data?.user?.id, data?.user?.email || identifier, "passkey");
-    showSuccessMsg("Biometric Verified! Logging in...");
+    showSuccessMsg("Biometric verified. Logging in...");
     setTimeout(() => {
       window.location.href = "index.html";
     }, 900);
@@ -1808,6 +1823,19 @@
 
       const user = data?.user;
       const meta = user?.user_metadata || {};
+
+      if (Array.isArray(meta.face_descriptor)) {
+        const faceMatched = compareFaceDescriptors(meta.face_descriptor, liveFaceDescriptor);
+        if (!faceMatched) {
+          await supabaseClient.auth.signOut();
+          showErrorMsg("Face verification did not match your account profile.");
+          loginBtn.innerText = originalBtnText;
+          loginBtn.disabled = false;
+          releaseLock();
+          return;
+        }
+      }
+
       const wasAutoDisabled = await autoDisableAccountIfAvatarIsName(email, user?.id, {
         full_name: meta.full_name || meta.name || "",
         username: meta.username || "",
@@ -1826,7 +1854,7 @@
       clearFailedLoginAttempts(email);
       document.getElementById("password").value = "";
       await recordLoginAudit(user?.id, user?.email || email, "password+eye_scan");
-      showSuccessMsg("Login Successful! Redirecting...");
+      showSuccessMsg("Login successful. Redirecting...");
       setTimeout(() => {
         window.location.href = "index.html";
       }, 900);
@@ -1839,7 +1867,7 @@
       options: { redirectTo: window.location.origin + "/index.html" }
     });
     if (error) {
-      showErrorMsg("Google login failed: " + (error.message || "Unknown error"));
+      showErrorMsg("Google login failed. Please try again.");
     }
   }
 
