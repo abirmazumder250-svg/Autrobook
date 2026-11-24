@@ -16,6 +16,8 @@ const ALLOWED_ORIGINS = new Set([
   'http://127.0.0.1:3000',
 ]);
 
+const MAX_OTP_ATTEMPTS = 5;
+
 const supabase =
   supabaseUrl && supabaseServiceKey
     ? createClient(supabaseUrl, supabaseServiceKey, {
@@ -31,6 +33,17 @@ function applyCors(req, res) {
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function isStrongPassword(pw) {
+  return (
+    typeof pw === 'string' &&
+    pw.length >= 8 &&
+    pw.length <= 128 &&
+    /[a-z]/.test(pw) &&
+    /[A-Z]/.test(pw) &&
+    /[\d\W_]/.test(pw)
+  );
 }
 
 function verifySignedToken(token, expectedEmail) {
@@ -131,8 +144,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Invalid email address' });
     }
 
-    if (cleanPassword.length < 8) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    if (!isStrongPassword(cleanPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters with uppercase, lowercase, and a number or symbol',
+      });
     }
 
     let otpRowId = null;
@@ -144,7 +160,7 @@ export default async function handler(req, res) {
     } else {
       const { data: otpRow, error: otpErr } = await supabase
         .from('password_reset_otps')
-        .select('id, otp, expires_at, used')
+        .select('id, otp, expires_at, used, attempts')
         .eq('email', cleanEmail)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -156,13 +172,28 @@ export default async function handler(req, res) {
       if (otpRow.used) {
         return res.status(400).json({ success: false, message: 'OTP already used' });
       }
+      if (Number(otpRow.attempts || 0) >= MAX_OTP_ATTEMPTS) {
+        return res.status(429).json({ success: false, message: 'Too many invalid OTP attempts' });
+      }
       if (otpRow.expires_at && Date.now() > new Date(otpRow.expires_at).getTime()) {
         return res.status(400).json({ success: false, message: 'OTP has expired' });
       }
 
       const otpBuf = Buffer.from(String(otpRow.otp || '').trim(), 'utf8');
       const inputBuf = Buffer.from(cleanOtp, 'utf8');
-      if (otpBuf.length !== inputBuf.length || !crypto.timingSafeEqual(otpBuf, inputBuf)) {
+      const isMatch =
+        otpBuf.length === inputBuf.length && crypto.timingSafeEqual(otpBuf, inputBuf);
+
+      if (!isMatch) {
+        const nextAttempts = Number(otpRow.attempts || 0) + 1;
+        await supabase
+          .from('password_reset_otps')
+          .update({
+            attempts: nextAttempts,
+            used: nextAttempts >= MAX_OTP_ATTEMPTS ? true : false,
+          })
+          .eq('id', otpRow.id);
+
         return res.status(400).json({ success: false, message: 'Invalid OTP code' });
       }
 
@@ -192,7 +223,8 @@ export default async function handler(req, res) {
       await supabase
         .from('password_reset_otps')
         .update({ used: true })
-        .eq('id', otpRowId);
+        .eq('id', otpRowId)
+        .eq('used', false);
     }
 
     return res.status(200).json({
@@ -203,4 +235,4 @@ export default async function handler(req, res) {
     console.error('Server Internal Error:', e);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
-    }
+                                          }
