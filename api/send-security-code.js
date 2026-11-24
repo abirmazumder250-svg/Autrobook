@@ -7,6 +7,8 @@ const ALLOWED_ORIGINS = new Set([
   'http://127.0.0.1:3000'
 ]);
 
+const INTERNAL_API_KEY = String(process.env.INTERNAL_MAIL_API_KEY || '').trim();
+
 function applyCorsHeaders(req, res) {
   const origin = String(req.headers.origin || '').trim();
   if (origin && ALLOWED_ORIGINS.has(origin)) {
@@ -14,11 +16,11 @@ function applyCorsHeaders(req, res) {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
 }
 
 function escapeHtml(value) {
-  return String(value || '')
+  return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -42,7 +44,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    let body = req.body || {};
+    if (INTERNAL_API_KEY) {
+      const providedKey = String(req.headers['x-api-key'] || '').trim();
+      if (providedKey !== INTERNAL_API_KEY) {
+        return res.status(401).json({
+          ok: false,
+          success: false,
+          error: 'Unauthorized request.'
+        });
+      }
+    }
+
+    let body = req.body ?? {};
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body || '{}');
@@ -55,7 +68,7 @@ export default async function handler(req, res) {
       }
     }
 
-    if (!body || typeof body !== 'object') {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return res.status(400).json({
         ok: false,
         success: false,
@@ -65,7 +78,10 @@ export default async function handler(req, res) {
 
     const recipient = String(body.to || body.email || '').trim().toLowerCase();
     const codeValue = String(body.code || body.otp || '').trim();
-    const purposeText = String(body.purpose || 'Account Security').trim().slice(0, 80);
+    const purposeText = String(body.purpose || 'Account Security')
+      .replace(/[\r\n]+/g, ' ')
+      .trim()
+      .slice(0, 80);
 
     if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(recipient)) {
       return res.status(400).json({
@@ -113,6 +129,7 @@ export default async function handler(req, res) {
 
     await transporter.sendMail({
       from: `"Autrobook Security" <${gmailUser}>`,
+      replyTo: gmailUser,
       to: recipient,
       subject: `${safeCode} is your Autrobook security code`,
       text: `Your Autrobook verification code for ${purposeText} is ${codeValue}. It expires in 5 minutes.`,
@@ -141,4 +158,4 @@ export default async function handler(req, res) {
       error: 'Failed to send verification email.'
     });
   }
-  }
+    }
