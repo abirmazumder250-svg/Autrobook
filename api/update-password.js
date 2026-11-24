@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
       return res.status(400).json({ success: false, message: 'Invalid email address' });
     }
 
@@ -155,4 +155,4 @@ export default async function handler(req, res) {
     console.error('Server Internal Error:', e);
     return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
   }
-  }
+}
