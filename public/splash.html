@@ -448,29 +448,159 @@
   <p class="footer-platform-note">18+ free social media platform</p>
 </div>
 
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="js/splash.js"></script>
 <script>
   (function () {
+    if (window.SPLASH_HANDLED) return;
+    window.SPLASH_HANDLED = true;
+
+    const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+
+    const supabaseClient =
+      window.supabase && typeof window.supabase.createClient === "function"
+        ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true
+            }
+          })
+        : null;
+
     let navigated = false;
-    const statusEl = document.getElementById('splashStatus');
+    const statusEl = document.getElementById("splashStatus");
 
     const stepTimer = setTimeout(() => {
       if (statusEl && !navigated) {
-        statusEl.textContent = 'Almost ready...';
+        statusEl.textContent = "Almost ready...";
       }
-    }, 950);
+    }, 900);
 
-    function goNext() {
+    function hasAuthenticatedAccount() {
+      if (localStorage.getItem("autro_logged_out") === "1") {
+        return false;
+      }
+
+      const rawUser = localStorage.getItem("autro_user");
+      if (rawUser) {
+        try {
+          const parsed = JSON.parse(rawUser);
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            (parsed.id || parsed.email || parsed.userId || parsed.username)
+          ) {
+            return true;
+          }
+        } catch (_) {}
+      }
+
+      const sessionKeys = [
+        "autro_session",
+        "autro_auth_session",
+        "autro_access_token"
+      ];
+      for (const k of sessionKeys) {
+        const val = localStorage.getItem(k);
+        if (val && val !== "null" && val !== "undefined" && val.trim() !== "") {
+          return true;
+        }
+      }
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i) || "";
+        if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              if (
+                parsed &&
+                (parsed.access_token || parsed.user || parsed.currentSession?.access_token)
+              ) {
+                return true;
+              }
+            } catch (_) {}
+          }
+        }
+      }
+
+      return false;
+    }
+
+    async function checkSupabaseAccount() {
+      if (localStorage.getItem("autro_logged_out") === "1") {
+        return false;
+      }
+      if (!supabaseClient) return false;
+
+      try {
+        const { data } = await supabaseClient.auth.getSession();
+        const sessionUser = data?.session?.user;
+        if (!sessionUser) return false;
+
+        let savedProfile = null;
+        try {
+          if (sessionUser.id) {
+            const { data: byId } = await supabaseClient
+              .from("profiles")
+              .select("id, email, full_name, username")
+              .eq("id", sessionUser.id)
+              .maybeSingle();
+            savedProfile = byId || null;
+          }
+          if (!savedProfile && sessionUser.email) {
+            const { data: byEmail } = await supabaseClient
+              .from("profiles")
+              .select("id, email, full_name, username")
+              .eq("email", String(sessionUser.email).trim().toLowerCase())
+              .maybeSingle();
+            savedProfile = byEmail || null;
+          }
+        } catch (_) {}
+
+        try {
+          localStorage.setItem(
+            "autro_user",
+            JSON.stringify({
+              id: savedProfile?.id || sessionUser.id,
+              email: savedProfile?.email || sessionUser.email || "",
+              full_name: savedProfile?.full_name || sessionUser.user_metadata?.full_name || "",
+              username: savedProfile?.username || sessionUser.user_metadata?.username || ""
+            })
+          );
+        } catch (_) {}
+
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    async function resolveTargetPage() {
+      const sbAccountExists = await checkSupabaseAccount();
+      if (sbAccountExists) return "index.html";
+      if (hasAuthenticatedAccount()) return "index.html";
+      return "welcome.html";
+    }
+
+    function goNext(target) {
       if (navigated) return;
       navigated = true;
       clearTimeout(stepTimer);
-      document.body.classList.add('fade-out');
+      document.body.classList.add("fade-out");
       setTimeout(() => {
-        window.location.replace('welcome.html');
+        window.location.replace(target);
       }, 350);
     }
 
-    setTimeout(goNext, 2000);
+    const targetPromise = resolveTargetPage();
+    setTimeout(async () => {
+      const target = await targetPromise;
+      goNext(target);
+    }, 1800);
   })();
 </script>
 </body>
