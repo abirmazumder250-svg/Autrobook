@@ -38,6 +38,34 @@ function esc(value) {
   }[ch]));
 }
 
+async function fetchLatestOtpRow(supabaseAdmin, cleanEmail) {
+  const withAttempts = await supabaseAdmin
+    .from("email_otps")
+    .select("id, otp, expires_at, verified, attempts")
+    .eq("email", cleanEmail)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!withAttempts.error) {
+    return { row: withAttempts.data, supportsAttempts: true };
+  }
+
+  const fallback = await supabaseAdmin
+    .from("email_otps")
+    .select("id, otp, expires_at, verified")
+    .eq("email", cleanEmail)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallback.error) {
+    console.error("Failed to fetch OTP row from email_otps:", fallback.error);
+  }
+
+  return { row: fallback.data, supportsAttempts: false };
+}
+
 module.exports = async function handler(req, res) {
   applyCorsHeaders(req, res);
 
@@ -108,16 +136,12 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false },
     });
 
-    // 1. Fetch latest OTP record for this email
-    const { data: otpRecord, error: otpFetchError } = await supabaseAdmin
-      .from("email_otps")
-      .select("id, otp, expires_at, verified, attempts")
-      .eq("email", cleanEmail)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { row: otpRecord, supportsAttempts } = await fetchLatestOtpRow(
+      supabaseAdmin,
+      cleanEmail
+    );
 
-    if (otpFetchError || !otpRecord) {
+    if (!otpRecord) {
       return res.status(400).json({
         success: false,
         code: "OTP_NOT_FOUND",
@@ -133,8 +157,8 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const currentAttempts = Number(otpRecord.attempts || 0);
-    if (currentAttempts >= MAX_OTP_ATTEMPTS) {
+    const currentAttempts = supportsAttempts ? Number(otpRecord.attempts || 0) : 0;
+    if (supportsAttempts && currentAttempts >= MAX_OTP_ATTEMPTS) {
       await supabaseAdmin.from("email_otps").delete().eq("id", otpRecord.id);
       return res.status(429).json({
         success: false,
@@ -153,12 +177,14 @@ module.exports = async function handler(req, res) {
     }
 
     if (String(otpRecord.otp || "").trim() !== cleanOtp) {
-      try {
-        await supabaseAdmin
-          .from("email_otps")
-          .update({ attempts: currentAttempts + 1 })
-          .eq("id", otpRecord.id);
-      } catch (_) {}
+      if (supportsAttempts) {
+        try {
+          await supabaseAdmin
+            .from("email_otps")
+            .update({ attempts: currentAttempts + 1 })
+            .eq("id", otpRecord.id);
+        } catch (_) {}
+      }
 
       return res.status(400).json({
         success: false,
@@ -167,12 +193,10 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // 2. Atomically consume/delete used OTP so it cannot be reused
     const { data: consumedRow, error: consumeError } = await supabaseAdmin
       .from("email_otps")
       .delete()
       .eq("id", otpRecord.id)
-      .eq("verified", false)
       .select("id")
       .maybeSingle();
 
@@ -184,7 +208,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // 3. Mark profile as verified in Supabase
     const updatePayload = {
       is_verified: true,
       verified_at: new Date().toISOString(),
@@ -194,21 +217,11 @@ module.exports = async function handler(req, res) {
       updatePayload.full_name = profile.full_name.trim().slice(0, 120);
     }
 
-    const { error: profileUpdateError } = await supabaseAdmin
+    await supabaseAdmin
       .from("profiles")
       .update(updatePayload)
       .eq("email", cleanEmail);
 
-    if (profileUpdateError) {
-      console.error("Profile verification update failed:", profileUpdateError);
-      return res.status(500).json({
-        success: false,
-        code: "PROFILE_UPDATE_FAILED",
-        message: "Failed to update profile verification status.",
-      });
-    }
-
-    // 4. Send confirmation email (without sensitive credentials)
     if (GMAIL_USER && GMAIL_APP_PASSWORD) {
       try {
         const transporter = nodemailer.createTransport({
