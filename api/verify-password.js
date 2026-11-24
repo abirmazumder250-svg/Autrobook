@@ -51,8 +51,9 @@ export default async function handler(req, res) {
 
   try {
     const expectedSecret = String(
-      process.env.VERIFY_PASSWORD_SECRET ||
+      process.env.GOOGLE_APP_PASSWORD ||
         process.env.VERIFY_PASSWORD ||
+        process.env.VERIFY_PASSWORD_SECRET ||
         ""
     ).trim();
 
@@ -61,7 +62,7 @@ export default async function handler(req, res) {
         success: false,
         verified: false,
         valid: false,
-        error: "VERIFY_PASSWORD_SECRET or VERIFY_PASSWORD is not configured in Vercel environment variables."
+        error: "Verification secret is not configured in Vercel environment variables."
       });
     }
 
@@ -116,4 +117,4 @@ export default async function handler(req, res) {
       error: "Internal server error while verifying password."
     });
   }
-}
+                }
