@@ -410,6 +410,55 @@
     border-style: solid;
   }
 
+  .backup-code-box {
+    margin-top: 4px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .backup-code-box.active {
+    display: flex;
+  }
+
+  .backup-code-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    outline: none;
+  }
+
+  .backup-code-input:focus {
+    border-color: var(--btn-green);
+  }
+
+  .backup-verify-btn {
+    padding: 10px 14px;
+    border-radius: var(--radius-pill);
+    border: none;
+    background: var(--btn-green);
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .backup-verify-btn:hover {
+    background: var(--btn-green-hover);
+  }
+
   button.btn-login,
   .login-form .btn-login {
     width: 100%;
@@ -844,6 +893,18 @@
         <i id="selfieIcon" class="fas fa-eye"></i>
         <span id="selfieText">Live Selfie &amp; Eye Scan</span>
       </button>
+
+      <button type="button" class="sec-btn" id="backupCodeToggleBtn" onclick="toggleBackupCodeBox()">
+        <i class="fas fa-key"></i>
+        <span id="backupCodeToggleText">Use Backup Recovery Code</span>
+      </button>
+
+      <div class="backup-code-box" id="backupCodeBox">
+        <input type="text" id="backupCodeInput" class="backup-code-input" placeholder="XXXX-XXXX" maxlength="16" autocomplete="off">
+        <button type="button" class="backup-verify-btn" id="backupCodeVerifyBtn" onclick="verifyBackupCodeForLogin()">
+          Verify Backup Code
+        </button>
+      </div>
     </div>
 
     <button type="submit" class="btn-login" id="loginBtn">Log in</button>
@@ -915,6 +976,7 @@
   let isLiveSelfieVerified = false;
   let liveSelfieBase64 = "";
   let liveFaceDescriptor = null;
+  let isBackupCodeVerified = false;
   let videoStream = null;
   let scanInterval = null;
   let scanTimeout = null;
@@ -1149,6 +1211,8 @@
     btnPasskey: "Login with Passkey",
     btnSelfie: "Live Selfie & Eye Scan",
     selfieVerified: "Human Face & Eye Verified",
+    btnBackupCode: "Use Backup Recovery Code",
+    verifyBackupCodeBtn: "Verify Backup Code",
     faceIdTitle: "Live Selfie & Eye Scan",
     scanHint: "Position a real human face in frame and blink clearly",
     cancelBtn: "Cancel",
@@ -1174,6 +1238,8 @@
       btnPasskey: "Passkey দিয়ে লগ ইন করুন",
       btnSelfie: "লাইভ সেলফি ও চোখ স্ক্যান",
       selfieVerified: "মানুষের মুখ ও চোখ যাচাই সম্পন্ন",
+      btnBackupCode: "ব্যাকআপ রিকভারি কোড ব্যবহার করুন",
+      verifyBackupCodeBtn: "ব্যাকআপ কোড যাচাই করুন",
       faceIdTitle: "লাইভ সেলফি ও চোখ স্ক্যান",
       scanHint: "ফ্রেমে মুখ রাখুন এবং স্পষ্টভাবে চোখের পলক ফেলুন",
       cancelBtn: "বাতিল করুন",
@@ -1196,6 +1262,8 @@
       btnPasskey: "Passkey से लॉग इन करें",
       btnSelfie: "लाइव सेल्फ़ी और आई स्कैन",
       selfieVerified: "चेहरा और आँख सत्यापित",
+      btnBackupCode: "बैकअप रिकवरी कोड उपयोग करें",
+      verifyBackupCodeBtn: "बैकअप कोड सत्यापित करें",
       faceIdTitle: "लाइव सेल्फ़ी और आई स्कैन",
       scanHint: "फ़्रेम में चेहरा रखें और स्पष्ट रूप से पलक झपकाएं",
       cancelBtn: "रद्द करें",
@@ -1218,6 +1286,8 @@
       btnPasskey: "تسجيل الدخول بمفتاح المرور",
       btnSelfie: "سيلفي مباشر وفحص العين",
       selfieVerified: "تم التحقق من الوجه والعين",
+      btnBackupCode: "استخدام رمز الاسترداد الاحتياطي",
+      verifyBackupCodeBtn: "التحقق من الرمز الاحتياطي",
       faceIdTitle: "سيلفي مباشر وفحص العين",
       scanHint: "ضع وجهك داخل الإطار واطرف بعينيك بوضوح",
       cancelBtn: "إلغاء",
@@ -1240,6 +1310,8 @@
       btnPasskey: "Iniciar con clave de acceso",
       btnSelfie: "Selfie en vivo y escaneo ocular",
       selfieVerified: "Rostro y ojos verificados",
+      btnBackupCode: "Usar código de respaldo",
+      verifyBackupCodeBtn: "Verificar código de respaldo",
       faceIdTitle: "Selfie en vivo y escaneo ocular",
       scanHint: "Coloca tu rostro en el marco y parpadea con claridad",
       cancelBtn: "Cancelar",
@@ -1262,6 +1334,8 @@
       btnPasskey: "Connexion avec clé d’accès",
       btnSelfie: "Selfie en direct et scan oculaire",
       selfieVerified: "Visage et yeux vérifiés",
+      btnBackupCode: "Utiliser un code de secours",
+      verifyBackupCodeBtn: "Vérifier le code de secours",
       faceIdTitle: "Selfie en direct et scan oculaire",
       scanHint: "Placez votre visage dans le cadre et clignez clairement des yeux",
       cancelBtn: "Annuler",
@@ -1284,6 +1358,8 @@
       btnPasskey: "Mit Passkey anmelden",
       btnSelfie: "Live-Selfie & Augenscan",
       selfieVerified: "Gesicht & Augen verifiziert",
+      btnBackupCode: "Backup-Code verwenden",
+      verifyBackupCodeBtn: "Backup-Code prüfen",
       faceIdTitle: "Live-Selfie & Augenscan",
       scanHint: "Positioniere dein Gesicht im Rahmen und blinzle deutlich",
       cancelBtn: "Abbrechen",
@@ -1306,6 +1382,8 @@
       btnPasskey: "Entrar com chave de acesso",
       btnSelfie: "Selfie ao vivo e leitura ocular",
       selfieVerified: "Rosto e olhos verificados",
+      btnBackupCode: "Usar código de backup",
+      verifyBackupCodeBtn: "Verificar código de backup",
       faceIdTitle: "Selfie ao vivo e leitura ocular",
       scanHint: "Posicione seu rosto no quadro e pisque claramente",
       cancelBtn: "Cancelar",
@@ -1328,6 +1406,8 @@
       btnPasskey: "Войти по ключу доступа",
       btnSelfie: "Живое селфи и сканирование глаз",
       selfieVerified: "Лицо и глаза подтверждены",
+      btnBackupCode: "Использовать резервный код",
+      verifyBackupCodeBtn: "Проверить резервный код",
       faceIdTitle: "Живое селфи и сканирование глаз",
       scanHint: "Поместите лицо в кадр и чётко моргните",
       cancelBtn: "Отмена",
@@ -1350,6 +1430,8 @@
       btnPasskey: "パスキーでログイン",
       btnSelfie: "ライブセルフィー＆まばたき認証",
       selfieVerified: "顔とまばたきを確認済み",
+      btnBackupCode: "バックアップコードを使用",
+      verifyBackupCodeBtn: "バックアップコードを確認",
       faceIdTitle: "ライブセルフィー＆まばたき認証",
       scanHint: "枠内に顔を合わせて、はっきりとまばたきしてください",
       cancelBtn: "キャンセル",
@@ -1372,6 +1454,8 @@
       btnPasskey: "패스키로 로그인",
       btnSelfie: "실시간 셀피 및 눈 깜빡임 스캔",
       selfieVerified: "얼굴 및 눈 인증 완료",
+      btnBackupCode: "백업 복구 코드 사용",
+      verifyBackupCodeBtn: "백업 코드 확인",
       faceIdTitle: "실시간 셀피 및 눈 깜빡임 스캔",
       scanHint: "프레임에 얼굴을 맞추고 눈을 뚜렷하게 깜빡이세요",
       cancelBtn: "취소",
@@ -1394,6 +1478,8 @@
       btnPasskey: "使用通行密钥登录",
       btnSelfie: "实时自拍与眨眼扫描",
       selfieVerified: "人脸与眨眼已验证",
+      btnBackupCode: "使用备用恢复代码",
+      verifyBackupCodeBtn: "验证备用代码",
       faceIdTitle: "实时自拍与眨眼扫描",
       scanHint: "请将面部置于框内并清晰眨眼",
       cancelBtn: "取消",
@@ -1416,6 +1502,8 @@
       btnPasskey: "使用通行密鑰登入",
       btnSelfie: "即時自拍與眨眼掃描",
       selfieVerified: "人臉與眨眼已驗證",
+      btnBackupCode: "使用備用復原碼",
+      verifyBackupCodeBtn: "驗證備用復原碼",
       faceIdTitle: "即時自拍與眨眼掃描",
       scanHint: "請將臉部置於框內並清楚眨眼",
       cancelBtn: "取消",
@@ -1438,6 +1526,8 @@
       btnPasskey: "پاس کی سے لاگ ان کریں",
       btnSelfie: "لائیو سیلفی اور آنکھ اسکین",
       selfieVerified: "چہرہ اور آنکھ کی تصدیق مکمل",
+      btnBackupCode: "بیک اپ ریکوری کوڈ استعمال کریں",
+      verifyBackupCodeBtn: "بیک اپ کوڈ تصدیق کریں",
       faceIdTitle: "لائیو سیلفی اور آنکھ اسکین",
       scanHint: "چہرہ فریم میں رکھیں اور واضح طور پر پلک جھپکائیں",
       cancelBtn: "منسوخ کریں",
@@ -1460,6 +1550,8 @@
       btnPasskey: "Passkey ile giriş yap",
       btnSelfie: "Canlı Selfie ve Göz Taraması",
       selfieVerified: "Yüz ve göz doğrulandı",
+      btnBackupCode: "Yedek Kurtarma Kodu Kullan",
+      verifyBackupCodeBtn: "Yedek Kodu Doğrula",
       faceIdTitle: "Canlı Selfie ve Göz Taraması",
       scanHint: "Yüzünüzü çerçeveye hizalayın ve net şekilde göz kırpın",
       cancelBtn: "İptal",
@@ -1482,6 +1574,8 @@
       btnPasskey: "Masuk dengan Passkey",
       btnSelfie: "Swafoto Langsung & Pindai Mata",
       selfieVerified: "Wajah & mata terverifikasi",
+      btnBackupCode: "Gunakan Kode Pemulihan Cadangan",
+      verifyBackupCodeBtn: "Verifikasi Kode Cadangan",
       faceIdTitle: "Swafoto Langsung & Pindai Mata",
       scanHint: "Posisikan wajah di bingkai dan berkediplah dengan jelas",
       cancelBtn: "Batal",
@@ -1504,6 +1598,8 @@
       btnPasskey: "Đăng nhập bằng Passkey",
       btnSelfie: "Selfie trực tiếp & Quét mắt",
       selfieVerified: "Đã xác minh khuôn mặt & mắt",
+      btnBackupCode: "Dùng mã khôi phục dự phòng",
+      verifyBackupCodeBtn: "Xác minh mã dự phòng",
       faceIdTitle: "Selfie trực tiếp & Quét mắt",
       scanHint: "Đưa khuôn mặt vào khung hình và chớp mắt rõ ràng",
       cancelBtn: "Hủy",
@@ -1526,6 +1622,8 @@
       btnPasskey: "เข้าสู่ระบบด้วย Passkey",
       btnSelfie: "เซลฟี่สดและสแกนดวงตา",
       selfieVerified: "ยืนยันใบหน้าและดวงตาแล้ว",
+      btnBackupCode: "ใช้รหัสกู้คืนสำรอง",
+      verifyBackupCodeBtn: "ยืนยันรหัสสำรอง",
       faceIdTitle: "เซลฟี่สดและสแกนดวงตา",
       scanHint: "จัดใบหน้าให้อยู่ในกรอบและกะพริบตาให้ชัดเจน",
       cancelBtn: "ยกเลิก",
@@ -1625,6 +1723,99 @@
     return { locked: false, message: "" };
   }
 
+  async function sha256Hex(text) {
+    const data = new TextEncoder().encode(String(text || "").trim().toUpperCase());
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  async function resolveUserIdFromIdentifier(identifier) {
+    const clean = sanitizeIdentifier(identifier).toLowerCase();
+    if (!clean) return "";
+    const { data } = await supabaseClient
+      .from("profiles")
+      .select("id")
+      .or(`email.eq.${clean},username.eq.${clean}`)
+      .maybeSingle();
+    return data?.id || "";
+  }
+
+  async function verifyAndConsumeBackupCode(userId, plainCode) {
+    const normalized = String(plainCode || "").trim().toUpperCase();
+    if (!userId || !normalized) {
+      return { valid: false, message: "Please enter a valid account identifier and backup code." };
+    }
+
+    const codeHash = await sha256Hex(normalized);
+
+    const { data: matchRow, error: selErr } = await supabaseClient
+      .from("backup_codes")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("code_hash", codeHash)
+      .eq("used", false)
+      .maybeSingle();
+
+    if (selErr || !matchRow) {
+      return { valid: false, message: "Invalid or already used backup code." };
+    }
+
+    const { error: updErr } = await supabaseClient
+      .from("backup_codes")
+      .update({ used: true, used_at: new Date().toISOString() })
+      .eq("id", matchRow.id)
+      .eq("used", false);
+
+    if (updErr) {
+      return { valid: false, message: "Could not mark backup code as used." };
+    }
+
+    return { valid: true, message: "Backup code verified." };
+  }
+
+  function toggleBackupCodeBox() {
+    clearMessages();
+    const box = document.getElementById("backupCodeBox");
+    if (!box) return;
+    box.classList.toggle("active");
+    if (box.classList.contains("active")) {
+      document.getElementById("backupCodeInput")?.focus();
+    }
+  }
+
+  async function verifyBackupCodeForLogin() {
+    clearMessages();
+    const rawIdentifier = sanitizeIdentifier(document.getElementById("email")?.value);
+    const codeVal = document.getElementById("backupCodeInput")?.value || "";
+    const verifyBtn = document.getElementById("backupCodeVerifyBtn");
+    const toggleBtn = document.getElementById("backupCodeToggleBtn");
+
+    if (!rawIdentifier) {
+      showErrorMsg("Please enter your username or email first.");
+      return;
+    }
+
+    if (verifyBtn) verifyBtn.disabled = true;
+    const userId = await resolveUserIdFromIdentifier(rawIdentifier);
+    const res = await verifyAndConsumeBackupCode(userId, codeVal);
+    if (verifyBtn) verifyBtn.disabled = false;
+
+    if (!res.valid) {
+      isBackupCodeVerified = false;
+      showErrorMsg(res.message);
+      return;
+    }
+
+    isBackupCodeVerified = true;
+    if (toggleBtn) toggleBtn.classList.add("verified");
+    if (document.getElementById("backupCodeInput")) {
+      document.getElementById("backupCodeInput").value = "";
+    }
+    showSuccessMsg("Backup recovery code verified.");
+  }
+
   function togglePasswordVisibility() {
     const input = document.getElementById("password");
     const icon = document.getElementById("togglePasswordIcon");
@@ -1668,6 +1859,8 @@
     setText("btnCreate", t.create);
     setText("footerSub", t.tagline);
     setText("fingerprintText", t.btnPasskey);
+    setText("backupCodeToggleText", t.btnBackupCode);
+    setText("backupCodeVerifyBtn", t.verifyBackupCodeBtn);
     setText("faceIdTitle", t.faceIdTitle);
     setText("scanHint", t.scanHint);
     setText("cancelCamBtn", t.cancelBtn);
@@ -2086,6 +2279,7 @@
         method,
         language: activeLang.code,
         eye_verified: isLiveSelfieVerified,
+        backup_code_verified: isBackupCodeVerified,
         user_agent: navigator.userAgent,
         logged_in_at: new Date().toISOString()
       });
