@@ -37,12 +37,16 @@ function generateOtp() {
 }
 
 async function verifyRecaptcha(token) {
-  if (!RECAPTCHA_SECRET_KEY) return true;
-  if (!token) return false;
+  if (!RECAPTCHA_SECRET_KEY) {
+    return { ok: true, errorCodes: [] };
+  }
+  if (!token) {
+    return { ok: false, errorCodes: ["missing-input-response"] };
+  }
 
   const params = new URLSearchParams();
-  params.append("secret", RECAPTCHA_SECRET_KEY);
-  params.append("response", token);
+  params.append("secret", String(RECAPTCHA_SECRET_KEY).trim());
+  params.append("response", String(token).trim());
 
   const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
     method: "POST",
@@ -50,9 +54,25 @@ async function verifyRecaptcha(token) {
     body: params.toString(),
   });
 
-  if (!res.ok) return false;
+  if (!res.ok) {
+    return { ok: false, errorCodes: [`http_${res.status}`] };
+  }
+
   const data = await res.json();
-  return Boolean(data && data.success);
+  const errorCodes = Array.isArray(data && data["error-codes"])
+    ? data["error-codes"]
+    : [];
+
+  if (!data || !data.success) {
+    console.error("reCAPTCHA siteverify failed:", {
+      success: data && data.success,
+      hostname: data && data.hostname,
+      errorCodes,
+    });
+    return { ok: false, errorCodes };
+  }
+
+  return { ok: true, errorCodes: [] };
 }
 
 module.exports = async function handler(req, res) {
@@ -81,7 +101,9 @@ module.exports = async function handler(req, res) {
         ? JSON.parse(req.body || "{}")
         : req.body || {};
     const email = String(body.email || "").trim().toLowerCase();
-    const recaptchaToken = String(body.recaptchaToken || "").trim();
+    const recaptchaToken = String(
+      body.recaptchaToken || body.token || body["g-recaptcha-response"] || ""
+    ).trim();
 
     if (!isValidRealEmail(email)) {
       return res.status(400).json({
@@ -90,11 +112,17 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const isHuman = await verifyRecaptcha(recaptchaToken);
-    if (!isHuman) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "reCAPTCHA verification failed" });
+    const captchaResult = await verifyRecaptcha(recaptchaToken);
+    if (!captchaResult.ok) {
+      return res.status(400).json({
+        ok: false,
+        error: `reCAPTCHA verification failed${
+          captchaResult.errorCodes.length
+            ? ` (${captchaResult.errorCodes.join(", ")})`
+            : ""
+        }`,
+        errorCodes: captchaResult.errorCodes,
+      });
     }
 
     const otp = generateOtp();
