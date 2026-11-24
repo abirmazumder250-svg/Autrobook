@@ -99,7 +99,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (new Date(otpRecord.expires_at).getTime() < Date.now()) {
+    if (!otpRecord.expires_at || new Date(otpRecord.expires_at).getTime() < Date.now()) {
       await supabaseAdmin.from("email_otps").delete().eq("id", otpRecord.id);
       return res.status(400).json({
         success: false,
@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (otpRecord.otp !== cleanOtp) {
+    if (String(otpRecord.otp || "").trim() !== cleanOtp) {
       return res.status(400).json({
         success: false,
         code: "OTP_MISMATCH",
@@ -116,8 +116,22 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // 2. Delete used OTP so it cannot be reused
-    await supabaseAdmin.from("email_otps").delete().eq("id", otpRecord.id);
+    // 2. Consume/delete used OTP atomically so it cannot be reused
+    const { data: consumedRow, error: consumeError } = await supabaseAdmin
+      .from("email_otps")
+      .delete()
+      .eq("id", otpRecord.id)
+      .eq("verified", false)
+      .select("id")
+      .maybeSingle();
+
+    if (consumeError || !consumedRow) {
+      return res.status(400).json({
+        success: false,
+        code: "OTP_ALREADY_USED",
+        message: "This OTP has already been used.",
+      });
+    }
 
     // 3. Mark profile as verified in Supabase
     const updatePayload = {
@@ -167,7 +181,7 @@ module.exports = async function handler(req, res) {
           subject: "Your Autrobook Account is Verified",
           html: `
             <div style="font-family:Arial,sans-serif;padding:24px;max-width:500px;margin:auto;border:1px solid #e4e6e9;border-radius:14px;background:#fff">
-              <div style="background:#0B3D20;padding:18px;border-radius:10px;text-align:center;margin-bottom:20px">
+              <div style="background:#0F5132;padding:18px;border-radius:10px;text-align:center;margin-bottom:20px">
                 <h2 style="color:#fff;margin:0;font-size:20px">Autrobook</h2>
               </div>
               <h3 style="margin:0 0 10px;color:#050505">Hi ${cleanName},</h3>
