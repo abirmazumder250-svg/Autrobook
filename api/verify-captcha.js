@@ -20,7 +20,10 @@ export default async function handler(req, res) {
     }
   }
 
-  const token = String(body.token || body.recaptchaToken || body.gRecaptchaResponse || '').trim();
+  const token = String(
+    body.token || body.recaptchaToken || body.gRecaptchaResponse || body['g-recaptcha-response'] || ''
+  ).trim();
+
   if (!token) {
     return res.status(400).json({ success: false, message: 'Captcha token missing' });
   }
@@ -64,7 +67,7 @@ export default async function handler(req, res) {
 
     return res.status(400).json({
       success: false,
-      message: 'Captcha verification failed',
+      message: `Captcha verification failed (${errorCodes.join(', ') || 'unknown'})`,
       errors: errorCodes,
     });
   } catch (e) {
