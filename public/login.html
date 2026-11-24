@@ -292,6 +292,20 @@
     padding-right: 46px;
   }
 
+  [dir="rtl"] .input-group input.has-toggle {
+    padding-right: 16px;
+    padding-left: 46px;
+  }
+
+  [dir="rtl"] .toggle-pass-btn {
+    right: auto;
+    left: 12px;
+  }
+
+  [dir="rtl"] .lang-label-group {
+    text-align: right;
+  }
+
   .input-group input:focus {
     border-color: var(--accent);
   }
@@ -547,6 +561,7 @@
   .footer-sub {
     font-size: 13px;
     color: var(--muted);
+    text-align: center;
   }
 
   .modal-back {
@@ -1047,8 +1062,103 @@
     { id: "eo-001", code: "eo", name: "Esperanto", country: "International" }
   ];
 
-  const LOGIN_TRANSLATIONS = {
-    en: {
+  // Auto-expand with all standard BCP-47 / ISO-639-1 & ISO-639-2 world languages
+  (function appendWorldLanguages() {
+    const existingIds = new Set(languages.map(l => l.id.toLowerCase()));
+    const rtlCodes = new Set(["ar", "fa", "ur", "he", "ps", "ku", "sd", "ug", "yi", "dv", "syr"]);
+    const worldLangCodes = [
+      "aa", "ab", "ae", "af", "ak", "am", "an", "ar", "as", "av", "ay", "az",
+      "ba", "be", "bg", "bh", "bi", "bm", "bn", "bo", "br", "bs",
+      "ca", "ce", "ch", "co", "cr", "cs", "cu", "cv", "cy",
+      "da", "de", "dv", "dz",
+      "ee", "el", "en", "eo", "es", "et", "eu",
+      "fa", "ff", "fi", "fj", "fo", "fr", "fy",
+      "ga", "gd", "gl", "gn", "gu", "gv",
+      "ha", "he", "hi", "ho", "hr", "ht", "hu", "hy", "hz",
+      "ia", "id", "ie", "ig", "ii", "ik", "io", "is", "it", "iu",
+      "ja", "jv",
+      "ka", "kg", "ki", "kj", "kk", "kl", "km", "kn", "ko", "kr", "ks", "ku", "kv", "kw", "ky",
+      "la", "lb", "lg", "li", "ln", "lo", "lt", "lu", "lv",
+      "mg", "mh", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my",
+      "na", "nb", "nd", "ne", "ng", "nl", "nn", "no", "nr", "nv", "ny",
+      "oc", "oj", "om", "or", "os",
+      "pa", "pi", "pl", "ps", "pt",
+      "qu",
+      "rm", "rn", "ro", "ru", "rw",
+      "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sq", "sr", "ss", "st", "su", "sv", "sw",
+      "ta", "te", "tg", "th", "ti", "tk", "tl", "tn", "to", "tr", "ts", "tt", "tw", "ty",
+      "ug", "uk", "ur", "uz",
+      "ve", "vi", "vo",
+      "wa", "wo",
+      "xh",
+      "yi", "yo",
+      "za", "zh", "zu"
+    ];
+
+    let nativeDisplay = null;
+    let enDisplay = null;
+    try {
+      if (typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function") {
+        enDisplay = new Intl.DisplayNames(["en"], { type: "language" });
+      }
+    } catch (_) {}
+
+    worldLangCodes.forEach(code => {
+      const id = code;
+      if (existingIds.has(id.toLowerCase())) return;
+
+      let nativeName = code.toUpperCase();
+      let englishName = code.toUpperCase();
+      try {
+        if (enDisplay) {
+          englishName = enDisplay.of(code) || code.toUpperCase();
+        }
+        if (typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function") {
+          nativeDisplay = new Intl.DisplayNames([code], { type: "language" });
+          nativeName = nativeDisplay.of(code) || englishName;
+        }
+      } catch (_) {}
+
+      const label = nativeName.toLowerCase() === englishName.toLowerCase()
+        ? englishName
+        : `${nativeName} (${englishName})`;
+
+      languages.push({
+        id,
+        code,
+        name: label,
+        country: "Global",
+        rtl: rtlCodes.has(code)
+      });
+      existingIds.add(id.toLowerCase());
+    });
+  })();
+
+  const BASE_UI = {
+    title: "Log in - Autrobook",
+    loginBtn: "Log in",
+    emailPlaceholder: "Username or email",
+    passPlaceholder: "Password",
+    rememberMe: "Remember me",
+    forgot: "Forgot password?",
+    or: "or",
+    google: "Continue with Google",
+    create: "Create new account",
+    tagline: "18+ Free Social Media Platform",
+    errMsg: "Invalid credentials. Please check your username/email and password.",
+    btnPasskey: "Login with Passkey",
+    btnSelfie: "Live Selfie & Eye Scan",
+    selfieVerified: "Human Face & Eye Verified",
+    faceIdTitle: "Live Selfie & Eye Scan",
+    scanHint: "Position a real human face in frame and blink clearly",
+    cancelBtn: "Cancel",
+    modalTitle: "Select Language",
+    searchPlaceholder: "Search language or country..."
+  };
+
+  const LOCALIZED_UI = {
+    en: { ...BASE_UI },
+    bn: {
       title: "Log in - Autrobook",
       loginBtn: "Log in",
       emailPlaceholder: "Username or email",
@@ -1058,7 +1168,7 @@
       or: "or",
       google: "Continue with Google",
       create: "Create new account",
-      tagline: "18+ Free Social Media Platform",
+      tagline: "18+ Free Social Media Platform • বাংলা",
       errMsg: "Invalid credentials. Please check your username/email and password.",
       btnPasskey: "Login with Passkey",
       btnSelfie: "Live Selfie & Eye Scan",
@@ -1068,7 +1178,23 @@
       cancelBtn: "Cancel",
       modalTitle: "Select Language",
       searchPlaceholder: "Search language or country..."
-    }
+    },
+    hi: { ...BASE_UI, tagline: "18+ Free Social Media Platform • हिन्दी" },
+    ar: { ...BASE_UI, tagline: "18+ Free Social Media Platform • العربية" },
+    es: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Español" },
+    fr: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Français" },
+    de: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Deutsch" },
+    pt: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Português" },
+    ru: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Русский" },
+    ja: { ...BASE_UI, tagline: "18+ Free Social Media Platform • 日本語" },
+    ko: { ...BASE_UI, tagline: "18+ Free Social Media Platform • 한국어" },
+    "zh-CN": { ...BASE_UI, tagline: "18+ Free Social Media Platform • 简体中文" },
+    "zh-TW": { ...BASE_UI, tagline: "18+ Free Social Media Platform • 繁體中文" },
+    ur: { ...BASE_UI, tagline: "18+ Free Social Media Platform • اردو" },
+    tr: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Türkçe" },
+    id: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Bahasa Indonesia" },
+    vi: { ...BASE_UI, tagline: "18+ Free Social Media Platform • Tiếng Việt" },
+    th: { ...BASE_UI, tagline: "18+ Free Social Media Platform • ไทย" }
   };
 
   const LANGUAGE_ID_KEY = "autro_lang_id";
@@ -1089,12 +1215,17 @@
   }
 
   function getTranslationDict(langObj) {
-    const label = (langObj && langObj.name) || "English";
-    if (!langObj || langObj.code === "en" || langObj.code === "en-US" || langObj.code === "en-GB") {
-      return LOGIN_TRANSLATIONS.en;
+    if (!langObj) return BASE_UI;
+    if (LOCALIZED_UI[langObj.id]) return LOCALIZED_UI[langObj.id];
+    if (LOCALIZED_UI[langObj.code]) return LOCALIZED_UI[langObj.code];
+    const baseCode = String(langObj.code || "en").split("-")[0];
+    if (LOCALIZED_UI[baseCode]) {
+      return Object.assign({}, LOCALIZED_UI[baseCode], {
+        tagline: `18+ Free Social Media Platform • ${langObj.name}`
+      });
     }
-    return Object.assign({}, LOGIN_TRANSLATIONS.en, {
-      tagline: `${LOGIN_TRANSLATIONS.en.tagline} • ${label}`
+    return Object.assign({}, BASE_UI, {
+      tagline: `18+ Free Social Media Platform • ${langObj.name}`
     });
   }
 
@@ -1252,7 +1383,7 @@
     clearMessages();
 
     window.dispatchEvent(new CustomEvent("autro:languageChanged", {
-      detail: { code: langObj.code, name: langObj.name, dir: finalDir }
+      detail: { id: langObj.id, code: langObj.code, name: langObj.name, dir: finalDir }
     }));
   }
 
@@ -1265,7 +1396,8 @@
     const filtered = languages.filter(lang =>
       lang.name.toLowerCase().includes(q) ||
       lang.country.toLowerCase().includes(q) ||
-      lang.code.toLowerCase().includes(q)
+      lang.code.toLowerCase().includes(q) ||
+      lang.id.toLowerCase().includes(q)
     );
 
     if (filtered.length === 0) {
