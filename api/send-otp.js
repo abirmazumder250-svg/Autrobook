@@ -10,6 +10,7 @@ const GMAIL_APP_PASSWORD = String(process.env.GMAIL_APP_PASSWORD || "")
   .replace(/\s+/g, "")
   .trim();
 const RECAPTCHA_SECRET_KEY = String(process.env.RECAPTCHA_SECRET_KEY || "").trim();
+const OTP_PEPPER = String(process.env.OTP_PEPPER || SUPABASE_SERVICE_ROLE_KEY || "");
 
 const ALLOWED_ORIGINS = new Set([
   "https://autrobook.vercel.app",
@@ -27,6 +28,9 @@ const BLOCKED_DOMAINS = new Set([
   "throwaway.email",
   "getnada.com",
 ]);
+
+const OTP_TTL_MS = 10 * 60 * 1000;
+const RESEND_COOLDOWN_MS = 45 * 1000;
 
 function applyCorsHeaders(req, res) {
   const origin = String(req.headers.origin || "").trim();
@@ -62,6 +66,13 @@ function isValidRealEmail(email) {
 
 function generateSecureOtp() {
   return String(crypto.randomInt(100000, 1000000));
+}
+
+function hashOtp(email, otp) {
+  return crypto
+    .createHmac("sha256", OTP_PEPPER)
+    .update(`${String(email).trim().toLowerCase()}:${String(otp).trim()}`)
+    .digest("hex");
 }
 
 async function verifyRecaptcha(token) {
@@ -127,6 +138,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
       ok: false,
+      success: false,
       error: "Method not allowed. Use POST.",
     });
   }
@@ -136,6 +148,7 @@ module.exports = async function handler(req, res) {
       console.error("Missing GMAIL_USER or GMAIL_APP_PASSWORD environment variables.");
       return res.status(500).json({
         ok: false,
+        success: false,
         error: "Email service is not configured on the server.",
       });
     }
@@ -144,6 +157,7 @@ module.exports = async function handler(req, res) {
       console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
       return res.status(500).json({
         ok: false,
+        success: false,
         error: "Database configuration is missing on the server.",
       });
     }
@@ -155,6 +169,7 @@ module.exports = async function handler(req, res) {
       } catch (_) {
         return res.status(400).json({
           ok: false,
+          success: false,
           error: "Invalid JSON request body.",
         });
       }
@@ -163,6 +178,7 @@ module.exports = async function handler(req, res) {
     if (!body || typeof body !== "object") {
       return res.status(400).json({
         ok: false,
+        success: false,
         error: "Request body must be a JSON object.",
       });
     }
@@ -177,6 +193,7 @@ module.exports = async function handler(req, res) {
     if (!isValidRealEmail(email)) {
       return res.status(400).json({
         ok: false,
+        success: false,
         error: "Please enter a valid, non-temporary email address.",
       });
     }
@@ -187,12 +204,14 @@ module.exports = async function handler(req, res) {
         if (captchaResult.configError) {
           return res.status(500).json({
             ok: false,
+            success: false,
             error: "reCAPTCHA verification is not configured on the server.",
           });
         }
 
         return res.status(400).json({
           ok: false,
+          success: false,
           error: `reCAPTCHA verification failed${
             captchaResult.errorCodes.length
               ? ` (${captchaResult.errorCodes.join(", ")})`
@@ -203,18 +222,63 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const otp = generateSecureOtp();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     });
+
+    // Check if an account already exists in profiles for signup/verification
+    if (purpose !== "reset-password") {
+      const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, is_locked")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (profileCheckError) {
+        console.error("Failed checking existing profile:", profileCheckError);
+      }
+
+      if (existingProfile) {
+        return res.status(409).json({
+          ok: false,
+          success: false,
+          alreadyExists: true,
+          error: "An account already exists with this email address.",
+        });
+      }
+    }
+
+    // Enforce resend cooldown so users cannot spam OTP requests
+    const { data: latestOtp } = await supabaseAdmin
+      .from("email_otps")
+      .select("created_at")
+      .eq("email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestOtp && latestOtp.created_at) {
+      const elapsedMs = Date.now() - new Date(latestOtp.created_at).getTime();
+      if (elapsedMs >= 0 && elapsedMs < RESEND_COOLDOWN_MS) {
+        const waitSeconds = Math.ceil((RESEND_COOLDOWN_MS - elapsedMs) / 1000);
+        return res.status(429).json({
+          ok: false,
+          success: false,
+          error: `Please wait ${waitSeconds}s before requesting another OTP.`,
+          retryAfterSeconds: waitSeconds,
+        });
+      }
+    }
+
+    const otp = generateSecureOtp();
+    const otpHash = hashOtp(email, otp);
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
     await supabaseAdmin.from("email_otps").delete().eq("email", email);
 
     const { error: dbError } = await supabaseAdmin.from("email_otps").insert({
       email,
-      otp,
+      otp: otpHash,
       expires_at: expiresAt,
       verified: false,
     });
@@ -223,6 +287,7 @@ module.exports = async function handler(req, res) {
       console.error("Failed to store OTP in email_otps:", dbError);
       return res.status(500).json({
         ok: false,
+        success: false,
         error: "Failed to store OTP in database.",
       });
     }
@@ -266,12 +331,14 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
+      success: true,
       message: "OTP sent successfully.",
     });
   } catch (err) {
     console.error("send-otp unexpected error:", err);
     return res.status(500).json({
       ok: false,
+      success: false,
       error: "Unexpected server error while sending OTP.",
     });
   }
