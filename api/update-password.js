@@ -9,12 +9,29 @@ const supabaseUrl =
 
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const ALLOWED_ORIGINS = new Set([
+  'https://autrobook.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+]);
+
 const supabase =
   supabaseUrl && supabaseServiceKey
     ? createClient(supabaseUrl, supabaseServiceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
     : null;
+
+function applyCors(req, res) {
+  const origin = String(req.headers.origin || '').trim();
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
 
 function verifySignedToken(token, expectedEmail) {
   const secret = process.env.RESET_TOKEN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -37,7 +54,7 @@ function verifySignedToken(token, expectedEmail) {
 
   try {
     const parsed = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
-    if (!parsed || String(parsed.email || '').toLowerCase() !== expectedEmail) return false;
+    if (!parsed || String(parsed.email || '').trim().toLowerCase() !== expectedEmail) return false;
     if (!parsed.exp || Date.now() > Number(parsed.exp)) return false;
     return true;
   } catch {
@@ -45,12 +62,38 @@ function verifySignedToken(token, expectedEmail) {
   }
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+async function syncSupabaseAuthPasswordIfExists(supabaseAdmin, email, newPassword) {
+  let page = 1;
+  const perPage = 200;
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  while (page <= 25) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) return;
+
+    const users = data?.users || [];
+    const matched = users.find(
+      (u) => String(u.email || '').trim().toLowerCase() === email
+    );
+
+    if (matched) {
+      const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(matched.id, {
+        password: newPassword,
+      });
+      if (authErr) {
+        console.warn('Supabase Auth password sync warning:', authErr.message || authErr);
+      }
+      return;
+    }
+
+    if (users.length < perPage) break;
+    page++;
+  }
+}
+
+export default async function handler(req, res) {
+  applyCors(req, res);
+
+  if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
@@ -88,8 +131,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Invalid email address' });
     }
 
-    if (cleanPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    if (cleanPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
     }
 
     let otpRowId = null;
@@ -116,7 +159,10 @@ export default async function handler(req, res) {
       if (otpRow.expires_at && Date.now() > new Date(otpRow.expires_at).getTime()) {
         return res.status(400).json({ success: false, message: 'OTP has expired' });
       }
-      if (String(otpRow.otp).trim() !== cleanOtp) {
+
+      const otpBuf = Buffer.from(String(otpRow.otp || '').trim(), 'utf8');
+      const inputBuf = Buffer.from(cleanOtp, 'utf8');
+      if (otpBuf.length !== inputBuf.length || !crypto.timingSafeEqual(otpBuf, inputBuf)) {
         return res.status(400).json({ success: false, message: 'Invalid OTP code' });
       }
 
@@ -140,6 +186,8 @@ export default async function handler(req, res) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    await syncSupabaseAuthPasswordIfExists(supabase, cleanEmail, cleanPassword);
+
     if (otpRowId) {
       await supabase
         .from('password_reset_otps')
@@ -153,6 +201,6 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error('Server Internal Error:', e);
-    return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
-}
+    }
