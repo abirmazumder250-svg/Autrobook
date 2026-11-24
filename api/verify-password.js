@@ -69,10 +69,7 @@ export default async function handler(req, res) {
 
   try {
     const expectedSecret = String(
-      process.env.VERIFY_PASSWORD ||
-        process.env.VERIFY_PASSWORD_SECRET ||
-        process.env.GOOGLE_APP_PASSWORD ||
-        ""
+      process.env.VERIFY_PASSWORD || process.env.VERIFY_PASSWORD_SECRET || ""
     ).trim();
 
     if (!expectedSecret) {
