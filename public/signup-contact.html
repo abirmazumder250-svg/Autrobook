@@ -549,7 +549,8 @@
     margin-bottom: 18px;
   }
 
-  .verify-box video {
+  .verify-box video,
+  .scanner-box video {
     width: 100%;
     max-height: 240px;
     object-fit: cover;
@@ -1979,6 +1980,7 @@ let generatedDemoBackupCode = '';
 let webauthnCredentialId = null;
 let fingerprintHash = '';
 let deviceFingerprintId = '';
+let latestDeviceSignals = null;
 let accountLocked = false;
 let otpTimer = null;
 let sessionTimer = null;
@@ -1989,25 +1991,142 @@ let otpSending = false;
 let signupSubmitting = false;
 let pageInitialized = false;
 
+async function inspectDeviceSignals() {
+  const ua = navigator.userAgent || '';
+  const isMobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  const touchPoints = Number(navigator.maxTouchPoints || 0);
+  const cores = Number(navigator.hardwareConcurrency || 0);
+  const memory = Number(navigator.deviceMemory || 0);
+  const webdriver = Boolean(navigator.webdriver);
+  const sw = Number(screen.width || 0);
+  const sh = Number(screen.height || 0);
+  const colorDepth = Number(screen.colorDepth || 0);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+
+  let glVendor = '';
+  let glRenderer = '';
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      if (ext) {
+        glVendor = String(gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || '');
+        glRenderer = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
+      }
+    }
+  } catch (_) {}
+
+  let riskScore = 0;
+  const flags = [];
+
+  if (webdriver) {
+    riskScore += 45;
+    flags.push('webdriver');
+  }
+  if (!sw || !sh || sw < 240 || sh < 320) {
+    riskScore += 25;
+    flags.push('abnormal_screen');
+  }
+  if (colorDepth && colorDepth < 24) {
+    riskScore += 15;
+    flags.push('low_color_depth');
+  }
+  if (isMobileUa && touchPoints === 0) {
+    riskScore += 20;
+    flags.push('mobile_ua_no_touch');
+  }
+  if (/swiftshader|llvmpipe|mesa|virtualbox|vmware|genymotion/i.test(glRenderer + ' ' + glVendor)) {
+    riskScore += 35;
+    flags.push('virtual_gpu');
+  }
+  if (!tz) {
+    riskScore += 10;
+    flags.push('missing_timezone');
+  }
+
+  const trustScore = Math.max(0, 100 - riskScore);
+  const trustLevel = trustScore >= 75 ? 'HIGH' : trustScore >= 45 ? 'MEDIUM' : 'LOW';
+
+  const rawFp = [
+    ua,
+    navigator.platform || '',
+    touchPoints,
+    cores,
+    memory,
+    sw,
+    sh,
+    colorDepth,
+    tz,
+    glVendor,
+    glRenderer
+  ].join('|');
+
+  const hex = await sha256Hex(rawFp);
+  const computedDeviceId = 'FP-' + hex.slice(0, 8).toUpperCase();
+
+  return {
+    deviceId: computedDeviceId,
+    trustScore,
+    trustLevel,
+    flags,
+    meta: {
+      isMobileUa,
+      touchPoints,
+      cores,
+      memory,
+      sw,
+      sh,
+      tz,
+      glRenderer: glRenderer.slice(0, 80)
+    }
+  };
+}
+
+function renderDeviceGuardUi(report) {
+  const fpLabel = document.getElementById('deviceFpLabel');
+  const badge = document.getElementById('shieldRiskBadge');
+
+  if (fpLabel && report?.deviceId) {
+    fpLabel.textContent = `Device: ${report.deviceId}`;
+  }
+
+  const attempts = getAttemptCount();
+  if (badge) {
+    if (accountLocked || attempts >= 5) {
+      badge.textContent = 'LOCKED';
+      badge.style.color = 'var(--error)';
+      badge.style.borderColor = 'rgba(220, 38, 38, 0.45)';
+      badge.style.background = 'rgba(220, 38, 38, 0.12)';
+    } else if (report?.trustLevel === 'LOW' || attempts >= 5) {
+      badge.textContent = 'TRUST: LOW';
+      badge.style.color = 'var(--error)';
+      badge.style.borderColor = 'rgba(220, 38, 38, 0.45)';
+      badge.style.background = 'rgba(220, 38, 38, 0.12)';
+    } else if (report?.trustLevel === 'MEDIUM' || attempts >= 3) {
+      badge.textContent = 'TRUST: MEDIUM';
+      badge.style.color = 'var(--warn)';
+      badge.style.borderColor = 'rgba(217, 119, 6, 0.45)';
+      badge.style.background = 'rgba(217, 119, 6, 0.12)';
+    } else {
+      badge.textContent = 'TRUST: HIGH';
+      badge.style.color = 'var(--success)';
+      badge.style.borderColor = 'rgba(15, 81, 50, 0.28)';
+      badge.style.background = 'var(--btn-green-soft)';
+    }
+  }
+}
+
 async function initDeviceFingerprint() {
+  const report = await inspectDeviceSignals();
+  latestDeviceSignals = report;
   let stored = safeGetStorage(DEVICE_FP_KEY);
   if (!stored) {
-    const rawSignal = [
-      navigator.userAgent || '',
-      navigator.language || '',
-      screen.width || 0,
-      screen.height || 0,
-      screen.colorDepth || 0,
-      Intl.DateTimeFormat().resolvedOptions().timeZone || '',
-      navigator.hardwareConcurrency || 0
-    ].join('|');
-    const digest = await sha256Hex(rawSignal);
-    stored = 'FP-' + digest.slice(0, 8).toUpperCase();
+    stored = report.deviceId;
     safeSetStorage(DEVICE_FP_KEY, stored);
   }
   deviceFingerprintId = stored;
-  const el = document.getElementById('deviceFpLabel');
-  if (el) el.textContent = `Device: ${deviceFingerprintId}`;
+  renderDeviceGuardUi({ ...report, deviceId: deviceFingerprintId });
 }
 
 function getAttemptCount() {
@@ -2032,7 +2151,6 @@ function updateShieldTelemetry() {
   const sessionEl = document.getElementById('sessionAgeLabel');
   const nonceEl = document.getElementById('nonceLabel');
   const rateEl = document.getElementById('rateLimitLabel');
-  const badgeEl = document.getElementById('shieldRiskBadge');
 
   const elapsedSec = Math.max(0, Math.floor((Date.now() - SESSION_START_MS) / 1000));
   if (sessionEl) sessionEl.textContent = `Session: ${elapsedSec}s`;
@@ -2041,24 +2159,7 @@ function updateShieldTelemetry() {
   const attempts = getAttemptCount();
   if (rateEl) rateEl.textContent = `Attempts: ${attempts}/5`;
 
-  if (badgeEl) {
-    if (accountLocked || attempts >= 5) {
-      badgeEl.textContent = 'LOCKED';
-      badgeEl.style.color = 'var(--error)';
-      badgeEl.style.borderColor = 'rgba(220, 38, 38, 0.45)';
-      badgeEl.style.background = 'rgba(220, 38, 38, 0.12)';
-    } else if (attempts >= 3) {
-      badgeEl.textContent = 'TRUST: MEDIUM';
-      badgeEl.style.color = 'var(--warn)';
-      badgeEl.style.borderColor = 'rgba(217, 119, 6, 0.45)';
-      badgeEl.style.background = 'rgba(217, 119, 6, 0.12)';
-    } else {
-      badgeEl.textContent = 'TRUST: HIGH';
-      badgeEl.style.color = 'var(--success)';
-      badgeEl.style.borderColor = 'rgba(15, 81, 50, 0.28)';
-      badgeEl.style.background = 'var(--btn-green-soft)';
-    }
-  }
+  renderDeviceGuardUi(latestDeviceSignals || { deviceId: deviceFingerprintId || '...', trustLevel: 'HIGH' });
 }
 
 function lockAccountForBiometricMismatch(reasonMessage) {
@@ -3373,6 +3474,8 @@ async function sendOTP() {
   const signupName = safeGetStorage('signup_name') || 'User';
   const recaptchaToken = getRecaptchaToken();
   const requestProof = await sha256Hex(`${email}:${SESSION_NONCE}:${deviceFingerprintId}`);
+  const deviceSignals = latestDeviceSignals || await inspectDeviceSignals();
+  latestDeviceSignals = deviceSignals;
 
   otpSending = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending OTP...';
@@ -3392,7 +3495,8 @@ async function sendOTP() {
         security: {
           deviceFingerprintId,
           sessionNonce: SESSION_NONCE,
-          requestProof
+          requestProof,
+          deviceSignals
         }
       })
     });
@@ -3495,6 +3599,8 @@ async function verifyOTPAndSignup() {
   recordAttempt();
   const dob = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const payloadSignature = await sha256Hex(`${email}:${dob}:${verifiedMethod}:${deviceFingerprintId}:${SESSION_NONCE}`);
+  const deviceSignals = latestDeviceSignals || await inspectDeviceSignals();
+  latestDeviceSignals = deviceSignals;
 
   signupSubmitting = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
@@ -3520,6 +3626,7 @@ async function verifyOTPAndSignup() {
           fingerprintHash: fingerprintHash || null,
           backupCodeHash: verifiedBackupCodeHash || null,
           deviceFingerprintId,
+          deviceSignals,
           sessionNonce: SESSION_NONCE,
           payloadSignature,
           language: activeLang.code
@@ -3627,4 +3734,4 @@ if (document.readyState === 'loading') {
 }
 </script>
 </body>
-  </html>
+    </html>
