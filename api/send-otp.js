@@ -226,12 +226,11 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false },
     });
 
-    // Check if an account already exists in profiles for signup/verification
     if (purpose !== "reset-password") {
       const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
         .from("profiles")
         .select("id, is_locked")
-        .eq("email", email)
+        .ilike("email", email)
         .maybeSingle();
 
       if (profileCheckError) {
@@ -248,11 +247,10 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Enforce resend cooldown so users cannot spam OTP requests
     const { data: latestOtp } = await supabaseAdmin
       .from("email_otps")
       .select("created_at")
-      .eq("email", email)
+      .ilike("email", email)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -274,16 +272,18 @@ module.exports = async function handler(req, res) {
     const otpHash = hashOtp(email, otp);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
-    await supabaseAdmin.from("email_otps").delete().eq("email", email);
+    const { data: insertedOtp, error: dbError } = await supabaseAdmin
+      .from("email_otps")
+      .insert({
+        email,
+        otp: otpHash,
+        expires_at: expiresAt,
+        verified: false,
+      })
+      .select("id")
+      .single();
 
-    const { error: dbError } = await supabaseAdmin.from("email_otps").insert({
-      email,
-      otp: otpHash,
-      expires_at: expiresAt,
-      verified: false,
-    });
-
-    if (dbError) {
+    if (dbError || !insertedOtp?.id) {
       console.error("Failed to store OTP in email_otps:", dbError);
       return res.status(500).json({
         ok: false,
@@ -291,6 +291,12 @@ module.exports = async function handler(req, res) {
         error: "Failed to store OTP in database.",
       });
     }
+
+    await supabaseAdmin
+      .from("email_otps")
+      .delete()
+      .ilike("email", email)
+      .neq("id", insertedOtp.id);
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -309,25 +315,30 @@ module.exports = async function handler(req, res) {
       ? "reset your password"
       : "complete your verification";
 
-    await transporter.sendMail({
-      from: `"Autrobook" <${GMAIL_USER}>`,
-      replyTo: GMAIL_USER,
-      to: email,
-      subject: isReset
-        ? "Your Autrobook Password Reset 6-Digit OTP"
-        : "Your Autrobook 6-Digit Verification OTP",
-      text: `Your Autrobook verification code is ${otp} to ${actionText}. It will expire in 10 minutes.`,
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:420px;margin:auto;padding:20px;border:1px solid #e5e7eb;border-radius:10px;background:#ffffff;">
-          <h2 style="color:#0F5132;margin-top:0;">Autrobook Verification</h2>
-          <p style="color:#202124;">Use the 6-digit OTP below to ${escapeHtml(actionText)}:</p>
-          <div style="font-size:28px;font-weight:700;letter-spacing:6px;background:#f3f4f6;padding:12px 16px;border-radius:8px;text-align:center;color:#202124;">
-            ${safeOtp}
+    try {
+      await transporter.sendMail({
+        from: `"Autrobook" <${GMAIL_USER}>`,
+        replyTo: GMAIL_USER,
+        to: email,
+        subject: isReset
+          ? "Your Autrobook Password Reset 6-Digit OTP"
+          : "Your Autrobook 6-Digit Verification OTP",
+        text: `Your Autrobook verification code is ${otp} to ${actionText}. It will expire in 10 minutes.`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:420px;margin:auto;padding:20px;border:1px solid #e5e7eb;border-radius:10px;background:#ffffff;">
+            <h2 style="color:#0F5132;margin-top:0;">Autrobook Verification</h2>
+            <p style="color:#202124;">Use the 6-digit OTP below to ${escapeHtml(actionText)}:</p>
+            <div style="font-size:28px;font-weight:700;letter-spacing:6px;background:#f3f4f6;padding:12px 16px;border-radius:8px;text-align:center;color:#202124;">
+              ${safeOtp}
+            </div>
+            <p style="font-size:12px;color:#5F6368;margin-top:14px;">This code is valid for 10 minutes.</p>
           </div>
-          <p style="font-size:12px;color:#5F6368;margin-top:14px;">This code is valid for 10 minutes.</p>
-        </div>
-      `,
-    });
+        `,
+      });
+    } catch (mailErr) {
+      await supabaseAdmin.from("email_otps").delete().eq("id", insertedOtp.id);
+      throw mailErr;
+    }
 
     return res.status(200).json({
       ok: true,
