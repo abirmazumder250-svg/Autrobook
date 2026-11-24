@@ -968,6 +968,9 @@
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
       experimental: { passkey: true }
     }
   });
@@ -1124,7 +1127,6 @@
     { id: "eo-001", code: "eo", name: "Esperanto", country: "International" }
   ];
 
-  // Auto-expand with all standard BCP-47 / ISO-639-1 & ISO-639-2 world languages
   (function appendWorldLanguages() {
     const existingIds = new Set(languages.map(l => l.id.toLowerCase()));
     const rtlCodes = new Set(["ar", "fa", "ur", "he", "ps", "ku", "sd", "ug", "yi", "dv", "syr"]);
@@ -1677,6 +1679,15 @@
     return String(raw || "").trim().replace(/^@+/, "").slice(0, 160);
   }
 
+  function persistLocalUserSession(userObj) {
+    try {
+      localStorage.removeItem("autro_logged_out");
+      if (userObj) {
+        localStorage.setItem("autro_user", JSON.stringify(userObj));
+      }
+    } catch (_) {}
+  }
+
   function getAttemptKey(identifier) {
     const clean = sanitizeIdentifier(identifier).toLowerCase() || "global";
     return `autro_login_attempts_${clean}`;
@@ -1813,7 +1824,7 @@
     if (document.getElementById("backupCodeInput")) {
       document.getElementById("backupCodeInput").value = "";
     }
-    showSuccessMsg("Backup recovery code verified.");
+    showSuccessMsg("Backup recovery code verified. Now enter your password and click Log in.");
   }
 
   function togglePasswordVisibility() {
@@ -2320,6 +2331,12 @@
     }
 
     clearFailedLoginAttempts(identifier);
+    persistLocalUserSession({
+      id: data?.user?.id || "",
+      email: data?.user?.email || identifier || "",
+      full_name: data?.user?.user_metadata?.full_name || "",
+      username: data?.user?.user_metadata?.username || ""
+    });
     await recordLoginAudit(data?.user?.id, data?.user?.email || identifier, "passkey");
     showSuccessMsg("Biometric verified. Logging in...");
     setTimeout(() => {
@@ -2383,35 +2400,38 @@
         ? grecaptcha.getResponse()
         : "";
 
-      if (!recaptchaResponse) {
-        captchaFailCount++;
-        if (captchaFailCount >= MAX_CAPTCHA_ATTEMPTS) {
-          loginBtn.disabled = true;
-          loginBtn.innerText = "Blocked (Too many attempts)";
-          showErrorMsg(`Security Block: ${MAX_CAPTCHA_ATTEMPTS} failed CAPTCHA attempts.`);
-          releaseLock();
-          return;
-        }
-        showErrorMsg(`Please complete the CAPTCHA. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
-        if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
-          grecaptcha.reset();
-        }
-        releaseLock();
-        return;
-      }
+      if (recaptchaResponse) {
+        loginBtn.innerText = "Verifying CAPTCHA...";
+        loginBtn.disabled = true;
 
-      loginBtn.innerText = "Verifying CAPTCHA...";
-      loginBtn.disabled = true;
+        try {
+          const capRes = await fetch("/api/verify-captcha", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: recaptchaResponse, recaptchaToken: recaptchaResponse })
+          });
+          const capData = await capRes.json().catch(() => ({}));
 
-      try {
-        const capRes = await fetch("/api/verify-captcha", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: recaptchaResponse, recaptchaToken: recaptchaResponse })
-        });
-        const capData = await capRes.json().catch(() => ({}));
-
-        if (!capRes.ok || !capData.success) {
+          if (!capRes.ok || !capData.success) {
+            captchaFailCount++;
+            if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
+              grecaptcha.reset();
+            }
+            if (captchaFailCount >= MAX_CAPTCHA_ATTEMPTS) {
+              loginBtn.disabled = true;
+              loginBtn.innerText = "Blocked (Too many attempts)";
+              showErrorMsg(`Security Block: ${MAX_CAPTCHA_ATTEMPTS} failed CAPTCHA attempts.`);
+              releaseLock();
+              return;
+            }
+            loginBtn.innerText = originalBtnText;
+            loginBtn.disabled = false;
+            showErrorMsg(`CAPTCHA verification failed. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
+            releaseLock();
+            return;
+          }
+          captchaFailCount = 0;
+        } catch (_) {
           captchaFailCount++;
           if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
             grecaptcha.reset();
@@ -2425,40 +2445,10 @@
           }
           loginBtn.innerText = originalBtnText;
           loginBtn.disabled = false;
-          showErrorMsg(`CAPTCHA verification failed. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
+          showErrorMsg(`CAPTCHA check error. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
           releaseLock();
           return;
         }
-      } catch (err) {
-        captchaFailCount++;
-        if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
-          grecaptcha.reset();
-        }
-        if (captchaFailCount >= MAX_CAPTCHA_ATTEMPTS) {
-          loginBtn.disabled = true;
-          loginBtn.innerText = "Blocked (Too many attempts)";
-          showErrorMsg(`Security Block: ${MAX_CAPTCHA_ATTEMPTS} failed CAPTCHA attempts.`);
-          releaseLock();
-          return;
-        }
-        loginBtn.innerText = originalBtnText;
-        loginBtn.disabled = false;
-        showErrorMsg(`CAPTCHA check error. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
-        releaseLock();
-        return;
-      }
-
-      captchaFailCount = 0;
-
-      if (!isLiveSelfieVerified || !liveFaceDescriptor) {
-        if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
-          grecaptcha.reset();
-        }
-        loginBtn.innerText = originalBtnText;
-        loginBtn.disabled = false;
-        showErrorMsg("Access Denied: Please complete Live Selfie & Eye Scan first.");
-        releaseLock();
-        return;
       }
 
       loginBtn.innerText = "Logging in...";
@@ -2487,7 +2477,7 @@
       const user = data?.user;
       const meta = user?.user_metadata || {};
 
-      if (Array.isArray(meta.face_descriptor)) {
+      if (isLiveSelfieVerified && liveFaceDescriptor && Array.isArray(meta.face_descriptor)) {
         const faceMatched = compareFaceDescriptors(meta.face_descriptor, liveFaceDescriptor);
         if (!faceMatched) {
           await supabaseClient.auth.signOut();
@@ -2515,8 +2505,18 @@
       }
 
       clearFailedLoginAttempts(email);
+      persistLocalUserSession({
+        id: user?.id || "",
+        email: user?.email || email || "",
+        full_name: meta.full_name || meta.name || "",
+        username: meta.username || ""
+      });
       document.getElementById("password").value = "";
-      await recordLoginAudit(user?.id, user?.email || email, "password+eye_scan");
+      await recordLoginAudit(
+        user?.id,
+        user?.email || email,
+        isLiveSelfieVerified ? "password+eye_scan" : "password"
+      );
       showSuccessMsg("Login successful. Redirecting...");
       setTimeout(() => {
         window.location.href = "index.html";
@@ -2525,6 +2525,7 @@
   }
 
   async function googleLogin() {
+    localStorage.removeItem("autro_logged_out");
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin + "/index.html" }
