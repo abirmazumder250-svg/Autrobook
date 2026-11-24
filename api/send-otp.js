@@ -168,6 +168,8 @@ module.exports = async function handler(req, res) {
     }
 
     const email = String(body.email || "").trim().toLowerCase();
+    const purpose = String(body.purpose || "verification").trim().toLowerCase();
+    const isResend = Boolean(body.isResend);
     const recaptchaToken = String(
       body.recaptchaToken || body.token || body["g-recaptcha-response"] || ""
     ).trim();
@@ -179,24 +181,26 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const captchaResult = await verifyRecaptcha(recaptchaToken);
-    if (!captchaResult.ok) {
-      if (captchaResult.configError) {
-        return res.status(500).json({
+    if (!isResend) {
+      const captchaResult = await verifyRecaptcha(recaptchaToken);
+      if (!captchaResult.ok) {
+        if (captchaResult.configError) {
+          return res.status(500).json({
+            ok: false,
+            error: "reCAPTCHA verification is not configured on the server.",
+          });
+        }
+
+        return res.status(400).json({
           ok: false,
-          error: "reCAPTCHA verification is not configured on the server.",
+          error: `reCAPTCHA verification failed${
+            captchaResult.errorCodes.length
+              ? ` (${captchaResult.errorCodes.join(", ")})`
+              : ""
+          }.`,
+          errorCodes: captchaResult.errorCodes,
         });
       }
-
-      return res.status(400).json({
-        ok: false,
-        error: `reCAPTCHA verification failed${
-          captchaResult.errorCodes.length
-            ? ` (${captchaResult.errorCodes.join(", ")})`
-            : ""
-        }.`,
-        errorCodes: captchaResult.errorCodes,
-      });
     }
 
     const otp = generateSecureOtp();
@@ -235,17 +239,23 @@ module.exports = async function handler(req, res) {
     });
 
     const safeOtp = escapeHtml(otp);
+    const isReset = purpose === "reset-password";
+    const actionText = isReset
+      ? "reset your password"
+      : "complete your verification";
 
     await transporter.sendMail({
       from: `"Autrobook" <${GMAIL_USER}>`,
       replyTo: GMAIL_USER,
       to: email,
-      subject: "Your Autrobook 6-Digit Verification OTP",
-      text: `Your Autrobook verification code is ${otp}. It will expire in 10 minutes.`,
+      subject: isReset
+        ? "Your Autrobook Password Reset 6-Digit OTP"
+        : "Your Autrobook 6-Digit Verification OTP",
+      text: `Your Autrobook verification code is ${otp} to ${actionText}. It will expire in 10 minutes.`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:420px;margin:auto;padding:20px;border:1px solid #e5e7eb;border-radius:10px;background:#ffffff;">
           <h2 style="color:#0F5132;margin-top:0;">Autrobook Verification</h2>
-          <p style="color:#202124;">Use the 6-digit OTP below to complete your sign-up:</p>
+          <p style="color:#202124;">Use the 6-digit OTP below to ${escapeHtml(actionText)}:</p>
           <div style="font-size:28px;font-weight:700;letter-spacing:6px;background:#f3f4f6;padding:12px 16px;border-radius:8px;text-align:center;color:#202124;">
             ${safeOtp}
           </div>
