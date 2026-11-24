@@ -369,4 +369,4 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
     reply,
     model: 'Autro AI'
   };
-                      }
+}
