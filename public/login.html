@@ -834,7 +834,7 @@
     <button type="submit" class="btn-login" id="loginBtn">Log in</button>
   </form>
 
-  <div class="g-recaptcha" data-sitekey="6LfVliMuAAAAALzEo5ntOmIqZNY40IcMa8dtLg_d"></div>
+  <div class="g-recaptcha" data-sitekey="6LdCfi8uAAAAAAmPBt26_S6gNd8Wgkv2zJd2YUPp"></div>
 
   <div id="errorMsg" class="error-msg"></div>
   <div id="successMsg" class="success-msg"></div>
@@ -901,6 +901,7 @@
   let scanInterval = null;
   let scanTimeout = null;
   let modelsLoaded = false;
+  let isSubmittingLogin = false;
 
   const languages = [
     { id: "en-US", code: "en", name: "English (US)", country: "United States" },
@@ -1263,21 +1264,28 @@
   }
 
   async function syncLanguageToSupabase(langCode, langName, dir) {
-    const emailEl = document.getElementById("email");
-    const emailVal = emailEl ? emailEl.value.trim() : "";
+    try {
+      const emailEl = document.getElementById("email");
+      const emailVal = emailEl ? emailEl.value.trim().toLowerCase() : "";
 
-    await supabaseClient.auth.updateUser({
-      data: { language: langCode, language_name: langName, dir }
-    });
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      if (sessionData?.session) {
+        await supabaseClient.auth.updateUser({
+          data: { language: langCode, language_name: langName, dir }
+        });
+      }
 
-    const payload = {
-      language: langCode,
-      language_name: langName,
-      dir,
-      updated_at: new Date().toISOString()
-    };
-    if (emailVal) payload.email = emailVal;
-    await supabaseClient.from("language_preferences").upsert(payload, { onConflict: "email" });
+      if (emailVal) {
+        const payload = {
+          email: emailVal,
+          language: langCode,
+          language_name: langName,
+          dir,
+          updated_at: new Date().toISOString()
+        };
+        await supabaseClient.from("language_preferences").upsert(payload, { onConflict: "email" });
+      }
+    } catch (_) {}
   }
 
   function selectLanguage(langObj) {
@@ -1415,64 +1423,73 @@
     hint.innerText = "Starting camera & human face detector...";
     btn.disabled = true;
 
-    videoStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-      audio: false
-    });
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera access is not supported on this browser.");
+      }
 
-    const video = document.getElementById("cameraStream");
-    video.srcObject = videoStream;
-    await video.play();
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false
+      });
 
-    if (!modelsLoaded) {
-      hint.innerText = "Loading eye & face scan models...";
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-      modelsLoaded = true;
+      const video = document.getElementById("cameraStream");
+      video.srcObject = videoStream;
+      await video.play();
+
+      if (!modelsLoaded) {
+        hint.innerText = "Loading eye & face scan models...";
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        modelsLoaded = true;
+      }
+
+      hint.innerText = t.scanHint;
+      let blinkCount = 0;
+      let eyeClosed = false;
+      let finished = false;
+
+      scanInterval = setInterval(async () => {
+        if (finished || video.readyState < 2) return;
+
+        const detection = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.55 }))
+          .withFaceLandmarks();
+
+        if (!detection || !detection.landmarks) {
+          hint.innerText = "No real human face detected — show your face clearly";
+          return;
+        }
+
+        const leftEAR = computeEAR(detection.landmarks.getLeftEye());
+        const rightEAR = computeEAR(detection.landmarks.getRightEye());
+        const avgEAR = (leftEAR + rightEAR) / 2;
+
+        if (avgEAR < 0.24) {
+          eyeClosed = true;
+          hint.innerText = "Eye blink detected — open eyes to capture";
+        } else if (eyeClosed && avgEAR >= 0.25) {
+          eyeClosed = false;
+          blinkCount++;
+        }
+
+        if (blinkCount >= 1) {
+          finished = true;
+          await finalizeLiveSelfie(video);
+        }
+      }, 220);
+
+      scanTimeout = setTimeout(() => {
+        if (!isLiveSelfieVerified && !finished) {
+          showErrorMsg("Eye blink scan timed out. Please look at the camera and blink once.");
+          closeCamera();
+        }
+      }, 18000);
+    } catch (err) {
+      showErrorMsg(err?.message || "Unable to access camera for live selfie scan.");
+      closeCamera();
     }
-
-    hint.innerText = t.scanHint;
-    let blinkCount = 0;
-    let eyeClosed = false;
-    let finished = false;
-
-    scanInterval = setInterval(async () => {
-      if (finished || video.readyState < 2) return;
-
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.55 }))
-        .withFaceLandmarks();
-
-      if (!detection || !detection.landmarks) {
-        hint.innerText = "No real human face detected — show your face clearly";
-        return;
-      }
-
-      const leftEAR = computeEAR(detection.landmarks.getLeftEye());
-      const rightEAR = computeEAR(detection.landmarks.getRightEye());
-      const avgEAR = (leftEAR + rightEAR) / 2;
-
-      if (avgEAR < 0.24) {
-        eyeClosed = true;
-        hint.innerText = "Eye blink detected — open eyes to capture";
-      } else if (eyeClosed && avgEAR >= 0.25) {
-        eyeClosed = false;
-        blinkCount++;
-      }
-
-      if (blinkCount >= 1) {
-        finished = true;
-        await finalizeLiveSelfie(video);
-      }
-    }, 220);
-
-    scanTimeout = setTimeout(() => {
-      if (!isLiveSelfieVerified && !finished) {
-        showErrorMsg("Eye blink scan timed out. Please look at the camera and blink once.");
-        closeCamera();
-      }
-    }, 18000);
   }
 
   async function finalizeLiveSelfie(video) {
@@ -1633,16 +1650,18 @@
   }
 
   async function recordLoginAudit(userId, email, method) {
-    const activeLang = getActiveLanguageObj();
-    await supabaseClient.from("login_logs").insert({
-      user_id: userId || null,
-      email: email || null,
-      method,
-      language: activeLang.code,
-      eye_verified: isLiveSelfieVerified,
-      user_agent: navigator.userAgent,
-      logged_in_at: new Date().toISOString()
-    });
+    try {
+      const activeLang = getActiveLanguageObj();
+      await supabaseClient.from("login_logs").insert({
+        user_id: userId || null,
+        email: email || null,
+        method,
+        language: activeLang.code,
+        eye_verified: isLiveSelfieVerified,
+        user_agent: navigator.userAgent,
+        logged_in_at: new Date().toISOString()
+      });
+    } catch (_) {}
   }
 
   async function loginWithPasskey() {
@@ -1680,10 +1699,13 @@
 
   function setupLoginForm() {
     const form = document.getElementById("loginForm");
-    if (!form) return;
+    if (!form || form.dataset.bound === "1") return;
+    form.dataset.bound = "1";
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (isSubmittingLogin) return;
+      isSubmittingLogin = true;
       clearMessages();
 
       const loginBtn = document.getElementById("loginBtn");
@@ -1693,6 +1715,10 @@
       const email = await resolveEmailFromIdentifier(rawIdentifier);
       const password = document.getElementById("password").value;
       const rememberMe = document.getElementById("rememberMe")?.checked;
+
+      const releaseLock = () => {
+        isSubmittingLogin = false;
+      };
 
       if (rememberMe) {
         localStorage.setItem(REMEMBERED_ID_KEY, rawIdentifier);
@@ -1705,6 +1731,7 @@
         loginBtn.disabled = true;
         loginBtn.innerText = "Account Disabled";
         showErrorMsg("Account Disabled: " + statusCheck.reason);
+        releaseLock();
         return;
       }
 
@@ -1718,12 +1745,14 @@
           loginBtn.disabled = true;
           loginBtn.innerText = "Blocked (Too many attempts)";
           showErrorMsg(`Security Block: ${MAX_CAPTCHA_ATTEMPTS} failed CAPTCHA attempts.`);
+          releaseLock();
           return;
         }
         showErrorMsg(`Please complete the CAPTCHA. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
         if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
           grecaptcha.reset();
         }
+        releaseLock();
         return;
       }
 
@@ -1734,7 +1763,7 @@
         const capRes = await fetch("/api/verify-captcha", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: recaptchaResponse })
+          body: JSON.stringify({ token: recaptchaResponse, recaptchaToken: recaptchaResponse })
         });
         const capData = await capRes.json().catch(() => ({}));
 
@@ -1747,11 +1776,13 @@
             loginBtn.disabled = true;
             loginBtn.innerText = "Blocked (Too many attempts)";
             showErrorMsg(`Security Block: ${MAX_CAPTCHA_ATTEMPTS} failed CAPTCHA attempts.`);
+            releaseLock();
             return;
           }
           loginBtn.innerText = originalBtnText;
           loginBtn.disabled = false;
           showErrorMsg(`CAPTCHA verification failed. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
+          releaseLock();
           return;
         }
       } catch (err) {
@@ -1763,20 +1794,26 @@
           loginBtn.disabled = true;
           loginBtn.innerText = "Blocked (Too many attempts)";
           showErrorMsg(`Security Block: ${MAX_CAPTCHA_ATTEMPTS} failed CAPTCHA attempts.`);
+          releaseLock();
           return;
         }
         loginBtn.innerText = originalBtnText;
         loginBtn.disabled = false;
         showErrorMsg(`CAPTCHA check error. (Attempt ${captchaFailCount}/${MAX_CAPTCHA_ATTEMPTS})`);
+        releaseLock();
         return;
       }
 
       captchaFailCount = 0;
 
       if (!isLiveSelfieVerified || !liveFaceDescriptor) {
+        if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
+          grecaptcha.reset();
+        }
         loginBtn.innerText = originalBtnText;
         loginBtn.disabled = false;
         showErrorMsg("Access Denied: Please complete Live Selfie & Eye Scan first.");
+        releaseLock();
         return;
       }
 
@@ -1795,6 +1832,7 @@
         }
         loginBtn.innerText = originalBtnText;
         loginBtn.disabled = false;
+        releaseLock();
         return;
       }
 
@@ -1811,6 +1849,7 @@
         showErrorMsg("Account automatically disabled because the profile photo matches the account name.");
         loginBtn.innerText = originalBtnText;
         loginBtn.disabled = false;
+        releaseLock();
         return;
       }
 
@@ -1860,12 +1899,15 @@
       emailInput.value = savedId;
     }
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeLangModal();
-        closeCamera();
-      }
-    });
+    if (!document.body.dataset.keyBound) {
+      document.body.dataset.keyBound = "1";
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closeLangModal();
+          closeCamera();
+        }
+      });
+    }
 
     buildLangList("");
     applyLanguage();
@@ -1876,4 +1918,4 @@
   document.addEventListener("DOMContentLoaded", initLoginPage);
 </script>
 </body>
-      </html>
+    </html>
