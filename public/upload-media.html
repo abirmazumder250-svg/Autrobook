@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -95,12 +95,17 @@
 
     .upload-wrapper {
       width: 100%;
-      max-width: 480px;
+      max-width: 500px;
       background-color: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 16px;
       padding: 24px;
       box-shadow: var(--shadow-card);
+      display: none;
+    }
+
+    .upload-wrapper.ready {
+      display: block;
     }
 
     .upload-header {
@@ -108,7 +113,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
     }
 
     .brand-group {
@@ -138,18 +144,18 @@
       color: var(--text-muted);
     }
 
-    .theme-btn {
+    .lang-select {
       background-color: var(--bg-subtle);
       color: var(--text-main);
       border: 1px solid var(--border-color);
       border-radius: 10px;
-      padding: 8px 12px;
+      padding: 8px 10px;
       font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
     }
 
-    .theme-btn:hover {
+    .lang-select:hover {
       border-color: var(--accent-green);
     }
 
@@ -282,28 +288,40 @@
   </style>
 </head>
 <body>
-  <main class="upload-wrapper">
+  <main id="uploadCard" class="upload-wrapper">
     <header class="upload-header">
       <div class="brand-group">
         <img src="/logo.png" alt="Autrobook" class="brand-logo" onerror="this.style.display='none'" />
         <div>
-          <h1 class="upload-title">Upload Media</h1>
-          <p class="upload-subtitle">Autrobook Storage</p>
+          <h1 id="pageTitle" class="upload-title">Upload Media</h1>
+          <p id="pageSubtitle" class="upload-subtitle">Autrobook Storage</p>
         </div>
       </div>
-      <button type="button" id="themeToggleBtn" class="theme-btn">Theme</button>
+
+      <select id="langSelect" class="lang-select" aria-label="Language">
+        <option value="en">English</option>
+        <option value="bn">বাংলা</option>
+        <option value="hi">हिन्दी</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="ar">العربية</option>
+        <option value="zh">中文</option>
+        <option value="ja">日本語</option>
+        <option value="pt">Português</option>
+        <option value="ru">Русский</option>
+      </select>
     </header>
 
     <div class="form-group">
-      <label for="bucketSelect" class="form-label">Bucket নির্বাচন করুন</label>
+      <label for="bucketSelect" id="bucketLabel" class="form-label">Select Bucket</label>
       <select id="bucketSelect" class="select-input">
-        <option value="avatars">avatars (Profile / Avatar)</option>
-        <option value="images">images (Posts / Media)</option>
+        <option value="avatars" id="optAvatars">avatars (Profile / Avatar)</option>
+        <option value="images" id="optImages">images (Posts / Media)</option>
       </select>
     </div>
 
     <div class="form-group">
-      <label for="mediaInput" class="form-label">ছবি নির্বাচন করুন</label>
+      <label for="mediaInput" id="fileLabel" class="form-label">Choose an Image</label>
       <input type="file" id="mediaInput" class="file-input" accept="image/*" />
     </div>
 
@@ -315,6 +333,9 @@
 
     <div id="statusBox" class="status-box"></div>
   </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/auth.js"></script>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -329,7 +350,207 @@
       },
     });
 
-    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    const TRANSLATIONS = {
+      en: {
+        dir: "ltr",
+        docTitle: "Upload Media • Autrobook",
+        pageTitle: "Upload Media",
+        pageSubtitle: "Autrobook Storage",
+        bucketLabel: "Select Bucket",
+        optAvatars: "avatars (Profile / Avatar)",
+        optImages: "images (Posts / Media)",
+        fileLabel: "Choose an Image",
+        uploadBtn: "Upload",
+        uploadingBtn: "Uploading...",
+        selectFileError: "Please choose an image first.",
+        authRequiredError: "Please log in or sign up first.",
+        uploadingStatus: "Uploading, please wait...",
+        uploadSuccess: "Uploaded successfully!",
+        uploadFailed: "Upload failed:",
+        copyBtn: "Copy",
+        copiedBtn: "Copied",
+      },
+      bn: {
+        dir: "ltr",
+        docTitle: "মিডিয়া আপলোড • Autrobook",
+        pageTitle: "মিডিয়া আপলোড",
+        pageSubtitle: "Autrobook স্টোরেজ",
+        bucketLabel: "বাকেট নির্বাচন করুন",
+        optAvatars: "avatars (প্রোফাইল / অ্যাভাটার)",
+        optImages: "images (পোস্ট / মিডিয়া)",
+        fileLabel: "ছবি নির্বাচন করুন",
+        uploadBtn: "আপলোড",
+        uploadingBtn: "আপলোড হচ্ছে...",
+        selectFileError: "অনুগ্রহ করে প্রথমে একটি ছবি নির্বাচন করুন।",
+        authRequiredError: "অনুগ্রহ করে আগে লগইন বা সাইনআপ করুন।",
+        uploadingStatus: "আপলোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...",
+        uploadSuccess: "সফলভাবে আপলোড হয়েছে!",
+        uploadFailed: "আপলোড ব্যর্থ হয়েছে:",
+        copyBtn: "কপি",
+        copiedBtn: "কপি হয়েছে",
+      },
+      hi: {
+        dir: "ltr",
+        docTitle: "मीडिया अपलोड • Autrobook",
+        pageTitle: "मीडिया अपलोड",
+        pageSubtitle: "Autrobook स्टोरेज",
+        bucketLabel: "बकेट चुनें",
+        optAvatars: "avatars (प्रोफ़ाइल / अवतार)",
+        optImages: "images (पोस्ट / मीडिया)",
+        fileLabel: "एक छवि चुनें",
+        uploadBtn: "अपलोड करें",
+        uploadingBtn: "अपलोड हो रहा है...",
+        selectFileError: "कृपया पहले एक छवि चुनें।",
+        authRequiredError: "कृपया पहले लॉगिन या साइनअप करें।",
+        uploadingStatus: "अपलोड हो रहा है, कृपया प्रतीक्षा करें...",
+        uploadSuccess: "सफलतापूर्वक अपलोड हो गया!",
+        uploadFailed: "अपलोड विफल रहा:",
+        copyBtn: "कॉपी",
+        copiedBtn: "कॉपी किया गया",
+      },
+      es: {
+        dir: "ltr",
+        docTitle: "Subir medio • Autrobook",
+        pageTitle: "Subir medio",
+        pageSubtitle: "Almacenamiento de Autrobook",
+        bucketLabel: "Seleccionar bucket",
+        optAvatars: "avatars (Perfil / Avatar)",
+        optImages: "images (Publicaciones / Medios)",
+        fileLabel: "Elige una imagen",
+        uploadBtn: "Subir",
+        uploadingBtn: "Subiendo...",
+        selectFileError: "Por favor, elige una imagen primero.",
+        authRequiredError: "Inicia sesión o regístrate primero.",
+        uploadingStatus: "Subiendo, por favor espera...",
+        uploadSuccess: "¡Subido correctamente!",
+        uploadFailed: "Error al subir:",
+        copyBtn: "Copiar",
+        copiedBtn: "Copiado",
+      },
+      fr: {
+        dir: "ltr",
+        docTitle: "Importer un média • Autrobook",
+        pageTitle: "Importer un média",
+        pageSubtitle: "Stockage Autrobook",
+        bucketLabel: "Choisir un bucket",
+        optAvatars: "avatars (Profil / Avatar)",
+        optImages: "images (Publications / Médias)",
+        fileLabel: "Choisissez une image",
+        uploadBtn: "Importer",
+        uploadingBtn: "Importation...",
+        selectFileError: "Veuillez d'abord choisir une image.",
+        authRequiredError: "Veuillez d'abord vous connecter ou vous inscrire.",
+        uploadingStatus: "Importation en cours, veuillez patienter...",
+        uploadSuccess: "Importé avec succès !",
+        uploadFailed: "Échec de l'importation :",
+        copyBtn: "Copier",
+        copiedBtn: "Copié",
+      },
+      ar: {
+        dir: "rtl",
+        docTitle: "رفع الوسائط • Autrobook",
+        pageTitle: "رفع الوسائط",
+        pageSubtitle: "تخزين Autrobook",
+        bucketLabel: "اختر الحاوية (Bucket)",
+        optAvatars: "avatars (الملف الشخصي / الصورة الرمزية)",
+        optImages: "images (المنشورات / الوسائط)",
+        fileLabel: "اختر صورة",
+        uploadBtn: "رفع",
+        uploadingBtn: "جارٍ الرفع...",
+        selectFileError: "يرجى اختيار صورة أولاً.",
+        authRequiredError: "يرجى تسجيل الدخول أو إنشاء حساب أولاً.",
+        uploadingStatus: "جارٍ الرفع، يرجى الانتظار...",
+        uploadSuccess: "تم الرفع بنجاح!",
+        uploadFailed: "فشل الرفع:",
+        copyBtn: "نسخ",
+        copiedBtn: "تم النسخ",
+      },
+      zh: {
+        dir: "ltr",
+        docTitle: "上传媒体 • Autrobook",
+        pageTitle: "上传媒体",
+        pageSubtitle: "Autrobook 存储",
+        bucketLabel: "选择存储桶",
+        optAvatars: "avatars（个人资料 / 头像）",
+        optImages: "images（帖子 / 媒体）",
+        fileLabel: "选择图片",
+        uploadBtn: "上传",
+        uploadingBtn: "正在上传...",
+        selectFileError: "请先选择一张图片。",
+        authRequiredError: "请先登录或注册。",
+        uploadingStatus: "正在上传，请稍候...",
+        uploadSuccess: "上传成功！",
+        uploadFailed: "上传失败：",
+        copyBtn: "复制",
+        copiedBtn: "已复制",
+      },
+      ja: {
+        dir: "ltr",
+        docTitle: "メディアをアップロード • Autrobook",
+        pageTitle: "メディアをアップロード",
+        pageSubtitle: "Autrobook ストレージ",
+        bucketLabel: "バケットを選択",
+        optAvatars: "avatars（プロフィール / アバター）",
+        optImages: "images（投稿 / メディア）",
+        fileLabel: "画像を選択",
+        uploadBtn: "アップロード",
+        uploadingBtn: "アップロード中...",
+        selectFileError: "先に画像を選択してください。",
+        authRequiredError: "先にログインまたは新規登録してください。",
+        uploadingStatus: "アップロード中です。お待ちください...",
+        uploadSuccess: "アップロードに成功しました！",
+        uploadFailed: "アップロードに失敗しました：",
+        copyBtn: "コピー",
+        copiedBtn: "コピー済み",
+      },
+      pt: {
+        dir: "ltr",
+        docTitle: "Enviar mídia • Autrobook",
+        pageTitle: "Enviar mídia",
+        pageSubtitle: "Armazenamento Autrobook",
+        bucketLabel: "Selecionar bucket",
+        optAvatars: "avatars (Perfil / Avatar)",
+        optImages: "images (Postagens / Mídia)",
+        fileLabel: "Escolha uma imagem",
+        uploadBtn: "Enviar",
+        uploadingBtn: "Enviando...",
+        selectFileError: "Escolha uma imagem primeiro.",
+        authRequiredError: "Faça login ou cadastre-se primeiro.",
+        uploadingStatus: "Enviando, aguarde...",
+        uploadSuccess: "Enviado com sucesso!",
+        uploadFailed: "Falha no envio:",
+        copyBtn: "Copiar",
+        copiedBtn: "Copiado",
+      },
+      ru: {
+        dir: "ltr",
+        docTitle: "Загрузка медиа • Autrobook",
+        pageTitle: "Загрузка медиа",
+        pageSubtitle: "Хранилище Autrobook",
+        bucketLabel: "Выберите bucket",
+        optAvatars: "avatars (Профиль / Аватар)",
+        optImages: "images (Посты / Медиа)",
+        fileLabel: "Выберите изображение",
+        uploadBtn: "Загрузить",
+        uploadingBtn: "Загрузка...",
+        selectFileError: "Сначала выберите изображение.",
+        authRequiredError: "Сначала войдите или зарегистрируйтесь.",
+        uploadingStatus: "Идёт загрузка, подождите...",
+        uploadSuccess: "Успешно загружено!",
+        uploadFailed: "Ошибка загрузки:",
+        copyBtn: "Копировать",
+        copiedBtn: "Скопировано",
+      },
+    };
+
+    const uploadCard = document.getElementById("uploadCard");
+    const langSelect = document.getElementById("langSelect");
+    const pageTitle = document.getElementById("pageTitle");
+    const pageSubtitle = document.getElementById("pageSubtitle");
+    const bucketLabel = document.getElementById("bucketLabel");
+    const optAvatars = document.getElementById("optAvatars");
+    const optImages = document.getElementById("optImages");
+    const fileLabel = document.getElementById("fileLabel");
     const bucketSelect = document.getElementById("bucketSelect");
     const mediaInput = document.getElementById("mediaInput");
     const uploadBtn = document.getElementById("uploadBtn");
@@ -337,27 +558,41 @@
     const previewImg = document.getElementById("previewImg");
     const statusBox = document.getElementById("statusBox");
 
-    function applyTheme(mode) {
-      if (mode === "light" || mode === "dark") {
-        document.documentElement.setAttribute("data-theme", mode);
-        localStorage.setItem("autrobook_theme", mode);
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-        localStorage.removeItem("autrobook_theme");
-      }
-      const isDark =
-        mode === "dark" ||
-        (!mode && window.matchMedia("(prefers-color-scheme: dark)").matches);
-      themeToggleBtn.textContent = isDark ? "Light (#FFF)" : "Dark (#202124)";
+    let currentLang = localStorage.getItem("autrobook_lang") || "en";
+    if (!TRANSLATIONS[currentLang]) currentLang = "en";
+    let isUploading = false;
+    let activeUser = null;
+
+    function t(key) {
+      return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || TRANSLATIONS.en[key];
     }
 
-    applyTheme(localStorage.getItem("autrobook_theme"));
+    function applyLanguage(langCode) {
+      currentLang = TRANSLATIONS[langCode] ? langCode : "en";
+      localStorage.setItem("autrobook_lang", currentLang);
+      langSelect.value = currentLang;
 
-    themeToggleBtn.addEventListener("click", () => {
-      const current = document.documentElement.getAttribute("data-theme");
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const currentlyDark = current === "dark" || (!current && systemDark);
-      applyTheme(currentlyDark ? "light" : "dark");
+      document.documentElement.lang = currentLang;
+      document.documentElement.dir = t("dir");
+      document.title = t("docTitle");
+      pageTitle.textContent = t("pageTitle");
+      pageSubtitle.textContent = t("pageSubtitle");
+      bucketLabel.textContent = t("bucketLabel");
+      optAvatars.textContent = t("optAvatars");
+      optImages.textContent = t("optImages");
+      fileLabel.textContent = t("fileLabel");
+      uploadBtn.textContent = isUploading ? t("uploadingBtn") : t("uploadBtn");
+
+      const copyBtn = document.getElementById("copyUrlBtn");
+      if (copyBtn && copyBtn.dataset.state !== "copied") {
+        copyBtn.textContent = t("copyBtn");
+      }
+    }
+
+    applyLanguage(currentLang);
+
+    langSelect.addEventListener("change", () => {
+      applyLanguage(langSelect.value);
     });
 
     function showStatus(type, message, publicUrl = "") {
@@ -367,7 +602,7 @@
           <div>${message}</div>
           <div class="url-row">
             <input type="text" id="publicUrlField" class="url-input" value="${publicUrl}" readonly />
-            <button type="button" id="copyUrlBtn" class="copy-btn">Copy</button>
+            <button type="button" id="copyUrlBtn" class="copy-btn" data-state="idle">${t("copyBtn")}</button>
           </div>
         `;
         const copyBtn = document.getElementById("copyUrlBtn");
@@ -375,9 +610,11 @@
         copyBtn?.addEventListener("click", async () => {
           try {
             await navigator.clipboard.writeText(urlField.value);
-            copyBtn.textContent = "Copied";
+            copyBtn.dataset.state = "copied";
+            copyBtn.textContent = t("copiedBtn");
             setTimeout(() => {
-              copyBtn.textContent = "Copy";
+              copyBtn.dataset.state = "idle";
+              copyBtn.textContent = t("copyBtn");
             }, 1500);
           } catch (_) {
             urlField.select();
@@ -388,6 +625,24 @@
         statusBox.textContent = message;
       }
     }
+
+    async function enforceAuth() {
+      if (!window.AutroAuth || typeof window.AutroAuth.checkSessionAndProfile !== "function") {
+        window.location.replace("/login.html");
+        return false;
+      }
+
+      const authData = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+      if (!authData || !authData.user) {
+        return false;
+      }
+
+      activeUser = authData.user;
+      uploadCard.classList.add("ready");
+      return true;
+    }
+
+    const isAuthorized = await enforceAuth();
 
     mediaInput.addEventListener("change", () => {
       const file = mediaInput.files && mediaInput.files[0];
@@ -425,50 +680,46 @@
     }
 
     uploadBtn.addEventListener("click", async () => {
+      if (!isAuthorized) {
+        showStatus("error", t("authRequiredError"));
+        await enforceAuth();
+        return;
+      }
+
       const file = mediaInput.files && mediaInput.files[0];
       if (!file) {
-        showStatus("error", "অনুগ্রহ করে প্রথমে একটি ছবি নির্বাচন করুন।");
+        showStatus("error", t("selectFileError"));
         return;
       }
 
       const bucketName = bucketSelect.value || "avatars";
-      let folderPrefix = "user123";
-
-      try {
-        if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === "function") {
-          const authData = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: false });
-          if (authData?.user?.id) {
-            folderPrefix = authData.user.id;
-          }
-        } else {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user?.id) {
-            folderPrefix = session.user.id;
-          }
-        }
-      } catch (_) {
-        // Fallback to default folder prefix if guest/test session
+      const authCheck = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
+      if (!authCheck || !authCheck.user) {
+        return;
       }
 
+      activeUser = authCheck.user;
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const filePath = `${folderPrefix}/${Date.now()}_${safeName}`;
+      const filePath = `${activeUser.id}/${Date.now()}_${safeName}`;
 
+      isUploading = true;
       uploadBtn.disabled = true;
-      uploadBtn.textContent = "Uploading...";
-      showStatus("success", "আপলোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...");
+      uploadBtn.textContent = t("uploadingBtn");
+      showStatus("success", t("uploadingStatus"));
 
       try {
         const url = await uploadMedia(bucketName, filePath, file);
         console.log("Public URL:", url);
-        showStatus("success", "সফলভাবে আপলোড হয়েছে!", url);
+        showStatus("success", t("uploadSuccess"), url);
       } catch (err) {
         console.error("Upload error:", err);
-        showStatus("error", `আপলোড ব্যর্থ হয়েছে: ${err?.message || "Unknown error"}`);
+        showStatus("error", `${t("uploadFailed")} ${err?.message || "Unknown error"}`);
       } finally {
+        isUploading = false;
         uploadBtn.disabled = false;
-        uploadBtn.textContent = "Upload";
+        uploadBtn.textContent = t("uploadBtn");
       }
     });
   </script>
 </body>
-      </html>
+</html>
