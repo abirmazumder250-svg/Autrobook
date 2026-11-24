@@ -28,7 +28,7 @@ function parseRequestBody(req) {
 }
 
 function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || "").trim());
 }
 
 export default async function handler(req, res) {
@@ -42,6 +42,7 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     return res.status(405).json({
+      success: false,
       verified: false,
       valid: false,
       error: "Method not allowed. Use POST."
@@ -50,17 +51,17 @@ export default async function handler(req, res) {
 
   try {
     const expectedSecret = String(
-      process.env.GOOGLE_APP_PASSWORD ||
+      process.env.VERIFY_PASSWORD_SECRET ||
         process.env.VERIFY_PASSWORD ||
-        process.env.VERIFY_PASSWORD_SECRET ||
         ""
     ).trim();
 
     if (!expectedSecret) {
       return res.status(500).json({
+        success: false,
         verified: false,
         valid: false,
-        error: "Verification secret is not configured in Vercel environment variables."
+        error: "VERIFY_PASSWORD_SECRET or VERIFY_PASSWORD is not configured in Vercel environment variables."
       });
     }
 
@@ -68,10 +69,11 @@ export default async function handler(req, res) {
     const providedPassword = String(
       body.verifyPassword ?? body.secret ?? body.password ?? ""
     ).trim();
-    const email = String(body.email ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase();
 
     if (!providedPassword) {
       return res.status(400).json({
+        success: false,
         verified: false,
         valid: false,
         error: "Verify password is required."
@@ -80,6 +82,7 @@ export default async function handler(req, res) {
 
     if (email && !isValidEmail(email)) {
       return res.status(400).json({
+        success: false,
         verified: false,
         valid: false,
         error: "Invalid email address format."
@@ -90,6 +93,7 @@ export default async function handler(req, res) {
 
     if (!isMatched) {
       return res.status(401).json({
+        success: false,
         verified: false,
         valid: false,
         error: "Verification failed. Password did not match."
@@ -97,6 +101,7 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
+      success: true,
       verified: true,
       valid: true,
       email: email || null,
@@ -105,6 +110,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     return res.status(500).json({
+      success: false,
       verified: false,
       valid: false,
       error: "Internal server error while verifying password."
