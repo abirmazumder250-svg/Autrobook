@@ -984,14 +984,14 @@
             Verify Backup Code
           </button>
           <button type="button" class="backup-gen-btn" id="backupCodeGenerateBtn" onclick="generateBackupCodesForUser()">
-            <i class="fas fa-plus"></i> Generate Backup Codes
+            <i class="fas fa-plus"></i> <span id="backupCodeGenerateText">Generate Backup Codes</span>
           </button>
         </div>
         <div class="generated-codes-panel" id="generatedBackupCodesPanel">
           <div class="generated-codes-header">
             <span id="generatedCodesTitle">Generated Backup Codes (Save Safely)</span>
             <button type="button" class="copy-codes-btn" id="copyBackupCodesBtn" onclick="copyGeneratedBackupCodes()">
-              <i class="fas fa-copy"></i> Copy All
+              <i class="fas fa-copy"></i> <span id="copyBackupCodesText">Copy All</span>
             </button>
           </div>
           <div class="generated-codes-grid" id="generatedBackupCodesGrid"></div>
@@ -1322,30 +1322,30 @@
     en: { ...BASE_UI },
     bn: {
       ...BASE_UI,
-      title: "লগ ইন - Autrobook",
-      loginBtn: "লগ ইন",
-      emailPlaceholder: "ইউজারনেম বা ইমেইল",
-      passPlaceholder: "পাসওয়ার্ড",
-      rememberMe: "আমাকে মনে রাখুন",
-      forgot: "পাসওয়ার্ড ভুলে গেছেন?",
-      or: "অথবা",
-      google: "Google দিয়ে চালিয়ে যান",
-      create: "নতুন অ্যাকাউন্ট তৈরি করুন",
-      tagline: "১৮+ ফ্রি সোশ্যাল মিডিয়া প্ল্যাটফর্ম",
-      errMsg: "ভুল তথ্য। অনুগ্রহ করে আপনার ইউজারনেম/ইমেইল এবং পাসওয়ার্ড যাচাই করুন।",
-      btnPasskey: "Passkey দিয়ে লগ ইন করুন",
-      btnSelfie: "লাইভ সেলফি ও চোখ স্ক্যান",
-      selfieVerified: "মানুষের মুখ ও চোখ যাচাই সম্পন্ন",
-      btnBackupCode: "ব্যাকআপ রিকভারি কোড ব্যবহার করুন",
+      title: "Log in - Autrobook",
+      loginBtn: "Log in",
+      emailPlaceholder: "Username or email",
+      passPlaceholder: "Password",
+      rememberMe: "Remember me",
+      forgot: "Forgot password?",
+      or: "or",
+      google: "Continue with Google",
+      create: "Create new account",
+      tagline: "18+ Free Social Media Platform",
+      errMsg: "Invalid credentials. Please check your username/email and password.",
+      btnPasskey: "Login with Passkey",
+      btnSelfie: "Live Selfie & Eye Scan",
+      selfieVerified: "Human Face & Eye Verified",
+      btnBackupCode: "Use Backup Recovery Code",
       verifyBackupCodeBtn: "Verify Backup Code",
       generateBackupCodeBtn: "Generate Backup Codes",
       generatedCodesTitle: "Generated Backup Codes (Save Safely)",
       copyBackupCodesBtn: "Copy All",
-      faceIdTitle: "লাইভ সেলফি ও চোখ স্ক্যান",
-      scanHint: "ফ্রেমে মুখ রাখুন এবং স্পষ্টভাবে চোখের পলক ফেলুন",
-      cancelBtn: "বাতিল করুন",
-      modalTitle: "ভাষা নির্বাচন করুন",
-      searchPlaceholder: "ভাষা বা দেশ খুঁজুন..."
+      faceIdTitle: "Live Selfie & Eye Scan",
+      scanHint: "Position a real human face in frame and blink clearly",
+      cancelBtn: "Cancel",
+      modalTitle: "Select Language",
+      searchPlaceholder: "Search language or country..."
     },
     hi: {
       ...BASE_UI,
@@ -1946,6 +1946,7 @@
     const panel = document.getElementById("generatedBackupCodesPanel");
     const grid = document.getElementById("generatedBackupCodesGrid");
     const rawIdentifier = sanitizeIdentifier(document.getElementById("email")?.value);
+    const resolvedEmail = await resolveEmailFromIdentifier(rawIdentifier);
 
     if (genBtn) genBtn.disabled = true;
 
@@ -1973,7 +1974,32 @@
         return;
       }
 
-      const codes = generateRandomBackupCodes(6);
+      let codes = [];
+      let apiSucceeded = false;
+
+      if (resolvedEmail && resolvedEmail.includes("@")) {
+        try {
+          const apiRes = await fetch("/api/backup-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "generate",
+              userId: lookupId || null,
+              email: resolvedEmail
+            })
+          });
+          const apiData = await apiRes.json().catch(() => ({}));
+          if (apiRes.ok && apiData.ok && apiData.code) {
+            codes = [apiData.code];
+            apiSucceeded = true;
+          }
+        } catch (_) {}
+      }
+
+      if (!apiSucceeded) {
+        codes = generateRandomBackupCodes(6);
+      }
+
       latestGeneratedBackupCodes = codes;
 
       try {
@@ -1982,13 +2008,14 @@
         localStorage.setItem(cacheKey, JSON.stringify(codes));
       } catch (_) {}
 
-      if (lookupId) {
+      if (!apiSucceeded && lookupId) {
         try {
           const rows = [];
           for (const code of codes) {
             const codeHash = await sha256Hex(code);
             rows.push({
               user_id: lookupId,
+              email: resolvedEmail || null,
               code_hash: codeHash,
               used: false,
               created_at: new Date().toISOString()
@@ -2010,7 +2037,7 @@
       }
 
       if (genBtn) genBtn.style.display = "none";
-      showSuccessMsg("Backup codes shown once. Copy or save them safely now—they will not be shown again.");
+      showSuccessMsg("Backup code shown once. Copy or save it safely now—it will not be shown again.");
     } catch (err) {
       showErrorMsg(err?.message || "Could not generate backup codes. Please try again.");
       if (genBtn) genBtn.disabled = false;
@@ -2040,6 +2067,29 @@
     const normalized = String(plainCode || "").trim().toUpperCase();
     if (!normalized) {
       return { valid: false, message: "Please enter a valid backup code." };
+    }
+
+    const resolvedEmail = await resolveEmailFromIdentifier(rawIdentifier);
+    if (resolvedEmail && resolvedEmail.includes("@")) {
+      try {
+        const apiRes = await fetch("/api/backup-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "verify",
+            userId: userId || null,
+            email: resolvedEmail,
+            code: normalized
+          })
+        });
+        const apiData = await apiRes.json().catch(() => ({}));
+        if (apiRes.ok && apiData.ok) {
+          return { valid: true, message: "Backup code verified." };
+        }
+        if (apiRes.status >= 400 && apiRes.status < 500 && apiData.error) {
+          return { valid: false, message: apiData.error };
+        }
+      } catch (_) {}
     }
 
     if (userId) {
@@ -2166,8 +2216,9 @@
     setText("fingerprintText", t.btnPasskey);
     setText("backupCodeToggleText", t.btnBackupCode);
     setText("backupCodeVerifyBtn", t.verifyBackupCodeBtn);
+    setText("backupCodeGenerateText", t.generateBackupCodeBtn);
     setText("generatedCodesTitle", t.generatedCodesTitle);
-    setText("copyBackupCodesBtn", t.copyBackupCodesBtn);
+    setText("copyBackupCodesText", t.copyBackupCodesBtn);
     setText("faceIdTitle", t.faceIdTitle);
     setText("scanHint", t.scanHint);
     setText("cancelCamBtn", t.cancelBtn);
