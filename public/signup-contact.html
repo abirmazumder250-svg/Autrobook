@@ -1024,7 +1024,7 @@
 
     <div class="form-group">
       <label for="email" id="emailLabel">Email Address</label>
-      <input type="email" id="email" placeholder="you@example.com" autocomplete="email" oninput="onFormFieldInput()">
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email" maxlength="160" oninput="onFormFieldInput()">
     </div>
 
     <div class="form-group hide" id="otpGroup">
@@ -1044,7 +1044,7 @@
 
     <div class="form-group">
       <label for="password" id="passwordLabel">Create Password</label>
-      <input type="password" id="password" placeholder="At least 6 characters" autocomplete="new-password" oninput="handlePasswordChange()">
+      <input type="password" id="password" placeholder="At least 6 characters" autocomplete="new-password" maxlength="128" oninput="handlePasswordChange()">
       <i class="fa-solid fa-eye eye-icon" id="togglePasswordIcon" onclick="togglePass()"></i>
       <div class="strength-wrap">
         <div class="strength-bar">
@@ -1116,7 +1116,7 @@
       <span id="humanCheckText">I'm not a robot - Manual verification</span>
     </label>
 
-    <div class="msg" id="msgDetails"></div>
+    <div class="msg" id="msgDetails" role="alert"></div>
 
     <button type="button" class="btn" id="sendOtpBtn" onclick="sendOTP()" disabled>Send OTP</button>
     <button type="button" class="btn" id="signUpBtn" onclick="verifyOTPAndSignup()" disabled>Sign Up</button>
@@ -1395,10 +1395,11 @@ let otpSeconds = 60;
 let modelsLoaded = false;
 let otpSent = false;
 let otpSending = false;
+let signupSubmitting = false;
 
 function saveSignupDraft() {
   const draft = {
-    email: document.getElementById('email')?.value.trim() || '',
+    email: document.getElementById('email')?.value.trim().toLowerCase() || '',
     day: document.getElementById('day')?.value.trim() || '',
     month: document.getElementById('month')?.value.trim() || '',
     year: document.getElementById('year')?.value.trim() || '',
@@ -1513,7 +1514,7 @@ function applyAppTranslation() {
   }
 
   const signBtn = document.getElementById('signUpBtn');
-  if (signBtn && !signBtn.innerHTML.includes('fa-spinner')) {
+  if (signBtn && !signupSubmitting && !signBtn.innerHTML.includes('fa-spinner')) {
     signBtn.textContent = dict.signUp;
   }
 
@@ -1736,7 +1737,7 @@ async function registerFingerprint() {
     window.crypto.getRandomValues(challenge);
     const userId = new Uint8Array(16);
     window.crypto.getRandomValues(userId);
-    const emailVal = document.getElementById('email').value.trim() || 'user@autrobook.com';
+    const emailVal = document.getElementById('email').value.trim().toLowerCase() || 'user@autrobook.com';
     const displayName = safeGetStorage('signup_name') || 'Autrobook User';
 
     const credential = await navigator.credentials.create({
@@ -2070,7 +2071,7 @@ function isValidDob(day, month, year) {
 }
 
 function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || '').trim().toLowerCase());
 }
 
 function getRecaptchaToken() {
@@ -2124,7 +2125,7 @@ function updateReadinessChecklist(emailOk, dobOk, passOk, otpOk) {
 }
 
 function checkButtonState() {
-  const email = document.getElementById('email').value.trim();
+  const email = document.getElementById('email').value.trim().toLowerCase();
   const otp = document.getElementById('otp').value.trim();
   const day = document.getElementById('day').value.trim();
   const month = document.getElementById('month').value.trim();
@@ -2134,7 +2135,7 @@ function checkButtonState() {
   const emailOk = isValidEmail(email);
   const dobOk = year.length === 4 && isValidDob(day, month, year);
   const passOk = password.length >= 6;
-  const otpOk = otpSent && otp.length === 6;
+  const otpOk = otpSent && /^\d{6}$/.test(otp);
 
   updateReadinessChecklist(emailOk, dobOk, passOk, otpOk);
 
@@ -2158,7 +2159,7 @@ function checkButtonState() {
     }
   }
 
-  if (otpOk && humanOk && livenessPassed && fingerprintVerified && emailOk && dobOk && passOk) {
+  if (!signupSubmitting && otpOk && humanOk && livenessPassed && fingerprintVerified && emailOk && dobOk && passOk) {
     signBtn.classList.add('active');
     signBtn.disabled = false;
   } else {
@@ -2191,7 +2192,8 @@ async function parseJsonSafe(res) {
 }
 
 async function sendOTP() {
-  const email = document.getElementById('email').value.trim();
+  if (otpSending) return;
+  const email = document.getElementById('email').value.trim().toLowerCase();
   const btn = document.getElementById('sendOtpBtn');
   const activeLang = getActiveLanguageObj();
   const dict = getDict(activeLang);
@@ -2281,14 +2283,15 @@ async function sendOTP() {
   } catch (err) {
     console.error('Send OTP network/client error:', err);
     otpSending = false;
-    setMessage('Network or server error while sending OTP: ' + (err.message || 'Unknown error'));
+    setMessage('Network or server error while sending OTP.');
     btn.innerHTML = dict.sendOtp;
     checkButtonState();
   }
 }
 
 async function verifyOTPAndSignup() {
-  const email = document.getElementById('email').value.trim();
+  if (signupSubmitting) return;
+  const email = document.getElementById('email').value.trim().toLowerCase();
   const otp = document.getElementById('otp').value.trim();
   const password = document.getElementById('password').value;
   const name = safeGetStorage('signup_name') || 'User';
@@ -2323,8 +2326,10 @@ async function verifyOTPAndSignup() {
 
   const dob = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+  signupSubmitting = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
   btn.disabled = true;
+  btn.classList.remove('active');
 
   try {
     const res = await fetch('/api/verify-otp', {
@@ -2348,6 +2353,7 @@ async function verifyOTPAndSignup() {
     const data = await parseJsonSafe(res);
 
     if (data.alreadyExists) {
+      signupSubmitting = false;
       setMessage('An account already exists with this email. Redirecting to login...');
       setTimeout(() => {
         window.location.href = 'login.html';
@@ -2362,6 +2368,7 @@ async function verifyOTPAndSignup() {
         const errMsg = data.message || data.error || data.code || `Signup failed (HTTP ${res.status}).`;
         setMessage(errMsg);
       }
+      signupSubmitting = false;
       btn.innerHTML = dict.signUp;
       checkButtonState();
       return;
@@ -2371,11 +2378,11 @@ async function verifyOTPAndSignup() {
       full_name: name,
       email,
       dob,
-      language: activeLang.code,
-      avatar_url: selfieData || ''
+      language: activeLang.code
     }));
     safeRemoveStorage('signup_name');
     safeRemoveStorage(DRAFT_STORAGE_KEY);
+    document.getElementById('password').value = '';
 
     if (supabaseClient) {
       const { error: signInErr } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -2388,7 +2395,8 @@ async function verifyOTPAndSignup() {
     window.location.href = 'index.html';
   } catch (err) {
     console.error('Verify OTP / Signup error:', err);
-    setMessage('Error completing sign up: ' + (err.message || 'Unknown error'));
+    signupSubmitting = false;
+    setMessage('Error completing sign up. Please try again.');
     btn.innerHTML = dict.signUp;
     checkButtonState();
   }
@@ -2420,4 +2428,4 @@ initPage();
 document.addEventListener('DOMContentLoaded', initPage);
 </script>
 </body>
-          </html>
+  </html>
