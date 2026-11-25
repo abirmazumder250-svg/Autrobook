@@ -32,7 +32,7 @@ function applyCors(req, res) {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
 function isStrongPassword(pw) {
@@ -75,32 +75,78 @@ function verifySignedToken(token, expectedEmail) {
   }
 }
 
-async function syncSupabaseAuthPasswordIfExists(supabaseAdmin, email, newPassword) {
+async function findSupabaseAuthUserByEmail(supabaseAdmin, email) {
   let page = 1;
   const perPage = 200;
 
   while (page <= 25) {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-    if (error) return;
+    if (error) return null;
 
     const users = data?.users || [];
     const matched = users.find(
       (u) => String(u.email || '').trim().toLowerCase() === email
     );
-
-    if (matched) {
-      const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(matched.id, {
-        password: newPassword,
-      });
-      if (authErr) {
-        console.warn('Supabase Auth password sync warning:', authErr.message || authErr);
-      }
-      return;
-    }
+    if (matched) return matched;
 
     if (users.length < perPage) break;
     page++;
   }
+  return null;
+}
+
+async function verifyOtpFromTables(supabaseAdmin, cleanEmail, cleanOtp) {
+  const candidateTables = ['password_reset_otps', 'otps', 'email_otps'];
+
+  for (const tableName of candidateTables) {
+    const { data: row, error } = await supabaseAdmin
+      .from(tableName)
+      .select('*')
+      .eq('email', cleanEmail)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !row) continue;
+
+    if (row.used === true) {
+      return { ok: false, status: 400, message: 'OTP already used' };
+    }
+
+    const currentAttempts = Number(row.attempts || 0);
+    if (currentAttempts >= MAX_OTP_ATTEMPTS) {
+      return { ok: false, status: 429, message: 'Too many invalid OTP attempts' };
+    }
+
+    if (row.expires_at && Date.now() > new Date(row.expires_at).getTime()) {
+      return { ok: false, status: 400, message: 'OTP has expired' };
+    }
+
+    const storedOtp = String(row.otp ?? row.code ?? row.otp_code ?? '').trim();
+    const otpBuf = Buffer.from(storedOtp, 'utf8');
+    const inputBuf = Buffer.from(cleanOtp, 'utf8');
+    const isMatch =
+      storedOtp.length > 0 &&
+      otpBuf.length === inputBuf.length &&
+      crypto.timingSafeEqual(otpBuf, inputBuf);
+
+    if (!isMatch) {
+      const nextAttempts = currentAttempts + 1;
+      await supabaseAdmin
+        .from(tableName)
+        .update({
+          attempts: nextAttempts,
+          used: nextAttempts >= MAX_OTP_ATTEMPTS,
+        })
+        .eq('id', row.id);
+
+      return { ok: false, status: 400, message: 'Invalid OTP code' };
+    }
+
+    return { ok: true, tableName, rowId: row.id };
+  }
+
+  return { ok: false, status: 400, message: 'OTP record not found' };
 }
 
 export default async function handler(req, res) {
@@ -151,79 +197,58 @@ export default async function handler(req, res) {
       });
     }
 
-    let otpRowId = null;
+    let otpVerification = null;
 
     if (resetToken) {
       if (!verifySignedToken(resetToken, cleanEmail)) {
         return res.status(403).json({ success: false, message: 'Invalid or expired reset token' });
       }
     } else {
-      const { data: otpRow, error: otpErr } = await supabase
-        .from('password_reset_otps')
-        .select('id, otp, expires_at, used, attempts')
-        .eq('email', cleanEmail)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (otpErr || !otpRow) {
-        return res.status(400).json({ success: false, message: 'OTP record not found' });
+      otpVerification = await verifyOtpFromTables(supabase, cleanEmail, cleanOtp);
+      if (!otpVerification.ok) {
+        return res.status(otpVerification.status).json({
+          success: false,
+          message: otpVerification.message,
+        });
       }
-      if (otpRow.used) {
-        return res.status(400).json({ success: false, message: 'OTP already used' });
-      }
-      if (Number(otpRow.attempts || 0) >= MAX_OTP_ATTEMPTS) {
-        return res.status(429).json({ success: false, message: 'Too many invalid OTP attempts' });
-      }
-      if (otpRow.expires_at && Date.now() > new Date(otpRow.expires_at).getTime()) {
-        return res.status(400).json({ success: false, message: 'OTP has expired' });
-      }
-
-      const otpBuf = Buffer.from(String(otpRow.otp || '').trim(), 'utf8');
-      const inputBuf = Buffer.from(cleanOtp, 'utf8');
-      const isMatch =
-        otpBuf.length === inputBuf.length && crypto.timingSafeEqual(otpBuf, inputBuf);
-
-      if (!isMatch) {
-        const nextAttempts = Number(otpRow.attempts || 0) + 1;
-        await supabase
-          .from('password_reset_otps')
-          .update({
-            attempts: nextAttempts,
-            used: nextAttempts >= MAX_OTP_ATTEMPTS ? true : false,
-          })
-          .eq('id', otpRow.id);
-
-        return res.status(400).json({ success: false, message: 'Invalid OTP code' });
-      }
-
-      otpRowId = otpRow.id;
     }
 
     const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+    let updatedAnyAccount = false;
 
-    const { data, error: updateError } = await supabase
+    const { data: updatedUsers, error: updateError } = await supabase
       .from('users')
       .update({ password: hashedPassword })
       .eq('email', cleanEmail)
       .select('id');
 
     if (updateError) {
-      console.error('Supabase Update Error:', updateError);
-      return res.status(500).json({ success: false, message: 'Failed to update password in database' });
+      console.error('Supabase users table update warning:', updateError.message || updateError);
+    } else if (Array.isArray(updatedUsers) && updatedUsers.length > 0) {
+      updatedAnyAccount = true;
     }
 
-    if (!Array.isArray(data) || data.length === 0) {
+    const authUser = await findSupabaseAuthUserByEmail(supabase, cleanEmail);
+    if (authUser) {
+      const { error: authErr } = await supabase.auth.admin.updateUserById(authUser.id, {
+        password: cleanPassword,
+      });
+      if (authErr) {
+        console.error('Supabase Auth password update error:', authErr.message || authErr);
+      } else {
+        updatedAnyAccount = true;
+      }
+    }
+
+    if (!updatedAnyAccount) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    await syncSupabaseAuthPasswordIfExists(supabase, cleanEmail, cleanPassword);
-
-    if (otpRowId) {
+    if (otpVerification && otpVerification.rowId && otpVerification.tableName) {
       await supabase
-        .from('password_reset_otps')
+        .from(otpVerification.tableName)
         .update({ used: true })
-        .eq('id', otpRowId)
+        .eq('id', otpVerification.rowId)
         .eq('used', false);
     }
 
@@ -235,4 +260,4 @@ export default async function handler(req, res) {
     console.error('Server Internal Error:', e);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
-                                          }
+}
