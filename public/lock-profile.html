@@ -133,7 +133,8 @@
     border: 2px solid var(--bg-color);
   }
 
-  .page-shell.is-locked .verified-tick {
+  /* Green check badge shown only when locked AND not in unlock-confirm view */
+  .page-shell.is-locked:not(.unlock-confirm) .verified-tick {
     display: inline-flex;
   }
 
@@ -168,7 +169,7 @@
   }
 
   .hero-title {
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.01em;
@@ -178,7 +179,7 @@
     margin: 0;
     font-size: 14px;
     color: var(--muted-color);
-    line-height: 1.45;
+    line-height: 1.48;
   }
 
   .locked-actions {
@@ -191,7 +192,7 @@
     z-index: 5;
   }
 
-  .page-shell.is-locked .locked-actions {
+  .page-shell.is-locked:not(.unlock-confirm) .locked-actions {
     display: grid;
   }
 
@@ -276,12 +277,17 @@
   }
 
   .help-link {
-    display: inline-block;
-    margin-top: 4px;
+    display: block;
+    text-align: center;
+    margin-top: 18px;
     color: var(--link-green);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
+  }
+
+  .page-shell.is-locked:not(.unlock-confirm) .help-link {
+    display: none;
   }
 
   .footer-cta {
@@ -325,7 +331,7 @@
 <div class="page-shell" id="pageShell">
   <div>
     <div class="top-bar">
-      <button type="button" class="back-btn" id="backBtn" aria-label="Back" onclick="handleBackRedirect()">
+      <button type="button" class="back-btn" id="backBtn" aria-label="Back" onclick="handleBackClick()">
         <i class="fa-solid fa-chevron-left"></i>
       </button>
     </div>
@@ -333,7 +339,7 @@
     <div class="hero-section">
       <div class="badge-pair">
         <span class="shield-badge">
-          <i class="fa-solid fa-lock"></i>
+          <i class="fa-solid fa-lock" id="shieldMainIcon"></i>
           <span class="verified-tick"><i class="fa-solid fa-check"></i></span>
         </span>
         <span class="avatar-badge" id="avatarBadge">
@@ -352,7 +358,7 @@
         <span>Invite friends</span>
       </button>
 
-      <button type="button" class="action-tile" id="unlockTileBtn" onclick="handleUnlockProfile()">
+      <button type="button" class="action-tile" id="unlockTileBtn" onclick="openUnlockConfirmView()">
         <span class="action-circle"><i class="fa-solid fa-lock-open"></i></span>
         <span>Unlock</span>
       </button>
@@ -363,25 +369,24 @@
       </a>
     </div>
 
-    <div class="benefits-list">
+    <div class="benefits-list" id="benefitsList">
       <div class="benefit-row">
         <i class="fa-solid fa-user-group benefit-icon"></i>
-        <div class="benefit-text">Only friends will see your past and future photos, posts and stories on your profile.</div>
+        <div class="benefit-text" id="benefit1">Only friends will see your past and future photos, posts and stories on your profile.</div>
       </div>
 
       <div class="benefit-row">
         <i class="fa-solid fa-id-badge benefit-icon"></i>
-        <div class="benefit-text">Your full resolution profile picture and cover photo will only be shown to friends.</div>
+        <div class="benefit-text" id="benefit2">Your full resolution profile picture and cover photo will only be shown to friends.</div>
       </div>
 
       <div class="benefit-row">
-        <i class="fa-solid fa-globe benefit-icon"></i>
-        <div class="benefit-text">
-          You can make some profile info Public so friends can find you and send friend requests.
-          <a href="privacy-center.html" class="help-link">Learn more in the Help Center</a>
-        </div>
+        <i class="fa-solid fa-globe benefit-icon" id="benefit3Icon"></i>
+        <div class="benefit-text" id="benefit3">You can make some profile info Public so friends can find you and send friend requests.</div>
       </div>
     </div>
+
+    <a href="privacy-center.html" class="help-link" id="helpCenterLink">Learn more in the Help Center</a>
   </div>
 
   <div class="footer-cta">
@@ -394,6 +399,7 @@
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
   const LOCK_STORAGE_KEY = 'autro_profile_locked';
+  const LOCK_DATE_STORAGE_KEY = 'autro_profile_locked_date';
   const REDIRECT_SESSION_KEY = 'autro_lock_redirect_to';
 
   let supabaseClient = null;
@@ -405,6 +411,7 @@
 
   let currentUser = null;
   let isLocked = readStoredLockState();
+  let isUnlockConfirmStep = false;
 
   function readStoredLockState() {
     try {
@@ -414,9 +421,37 @@
     }
   }
 
+  function formatFormattedDate(dateObj) {
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(dateObj);
+    } catch (_) {
+      return 'Nov 26, 2026';
+    }
+  }
+
+  function getLockedDateLabel() {
+    try {
+      const saved = localStorage.getItem(LOCK_DATE_STORAGE_KEY);
+      if (saved) return saved;
+    } catch (_) {}
+    return formatFormattedDate(new Date());
+  }
+
   function writeStoredLockState(locked) {
     try {
       localStorage.setItem(LOCK_STORAGE_KEY, String(Boolean(locked)));
+      if (locked) {
+        const existingDate = localStorage.getItem(LOCK_DATE_STORAGE_KEY);
+        if (!existingDate) {
+          localStorage.setItem(LOCK_DATE_STORAGE_KEY, formatFormattedDate(new Date()));
+        }
+      } else {
+        localStorage.removeItem(LOCK_DATE_STORAGE_KEY);
+      }
       window.dispatchEvent(new StorageEvent('storage', {
         key: LOCK_STORAGE_KEY,
         newValue: String(Boolean(locked))
@@ -466,9 +501,18 @@
     }, 180);
   }
 
-  function handleBackRedirect() {
-    const target = getSafeRedirectUrl('profile-settings.html');
-    window.location.href = target;
+  function handleBackClick() {
+    if (isUnlockConfirmStep) {
+      isUnlockConfirmStep = false;
+      updateUI();
+      return;
+    }
+    window.location.href = getSafeRedirectUrl('profile-settings.html');
+  }
+
+  function openUnlockConfirmView() {
+    isUnlockConfirmStep = true;
+    updateUI();
   }
 
   function updateUI() {
@@ -476,16 +520,55 @@
     const titleEl = document.getElementById('heroTitle');
     const subtitleEl = document.getElementById('heroSubtitle');
     const ctaBtn = document.getElementById('primaryCtaBtn');
+    const benefit1 = document.getElementById('benefit1');
+    const benefit2 = document.getElementById('benefit2');
+    const benefit3 = document.getElementById('benefit3');
+    const benefit3Icon = document.getElementById('benefit3Icon');
 
     if (!shell || !titleEl || !subtitleEl || !ctaBtn) return;
 
+    shell.classList.toggle('is-locked', isLocked);
+    shell.classList.toggle('unlock-confirm', isLocked && isUnlockConfirmStep);
+
+    if (isLocked && isUnlockConfirmStep) {
+      const lockedDate = getLockedDateLabel();
+      titleEl.textContent = 'Unlock your profile';
+      subtitleEl.textContent =
+        `Your settings will return to the way they were before you locked your profile on ${lockedDate}. Any privacy settings changed after locking your profile will stay the same.`;
+      if (benefit1) {
+        benefit1.textContent = 'More people may see the photos, posts and stories on your profile.';
+      }
+      if (benefit2) {
+        benefit2.textContent = 'More people may see your full-size profile picture and cover photo.';
+      }
+      if (benefit3) {
+        benefit3.textContent = 'You can share photos, posts and stories with anyone.';
+      }
+      if (benefit3Icon) {
+        benefit3Icon.className = 'fa-solid fa-message benefit-icon';
+      }
+      ctaBtn.textContent = 'Unlock your profile';
+      return;
+    }
+
+    if (benefit1) {
+      benefit1.textContent = 'Only friends will see your past and future photos, posts and stories on your profile.';
+    }
+    if (benefit2) {
+      benefit2.textContent = 'Your full resolution profile picture and cover photo will only be shown to friends.';
+    }
+    if (benefit3) {
+      benefit3.textContent = 'You can make some profile info Public so friends can find you and send friend requests.';
+    }
+    if (benefit3Icon) {
+      benefit3Icon.className = 'fa-solid fa-globe benefit-icon';
+    }
+
     if (isLocked) {
-      shell.classList.add('is-locked');
       titleEl.textContent = 'You locked your profile';
       subtitleEl.textContent = 'Your photos and posts are more private.';
       ctaBtn.textContent = 'See your profile';
     } else {
-      shell.classList.remove('is-locked');
       titleEl.textContent = 'Lock your profile';
       subtitleEl.textContent = 'Make your photos and posts more private in one step.';
       ctaBtn.textContent = 'Lock your profile';
@@ -507,6 +590,9 @@
     const redirectTarget = options.redirectTarget || 'profile-settings.html';
 
     isLocked = Boolean(nextLocked);
+    if (!isLocked) {
+      isUnlockConfirmStep = false;
+    }
     writeStoredLockState(isLocked);
     updateUI();
     showStatus(isLocked ? 'Profile locked.' : 'Profile unlocked.');
@@ -532,15 +618,16 @@
   }
 
   async function handlePrimaryCta() {
+    if (isLocked && isUnlockConfirmStep) {
+      await setLocked(false, { redirect: true, redirectTarget: 'profile-settings.html' });
+      return;
+    }
+
     if (!isLocked) {
       await setLocked(true, { redirect: false });
     } else {
-      window.location.href = 'profile.html';
+      window.location.href = getSafeRedirectUrl('profile.html');
     }
-  }
-
-  async function handleUnlockProfile() {
-    await setLocked(false, { redirect: true, redirectTarget: 'profile-settings.html' });
   }
 
   async function handleInviteFriends() {
@@ -566,6 +653,7 @@
   async function initProfileState() {
     captureRedirectFromReferrer();
     isLocked = readStoredLockState();
+    isUnlockConfirmStep = false;
     updateUI();
 
     if (!supabaseClient) return;
@@ -607,6 +695,7 @@
   document.addEventListener('DOMContentLoaded', initProfileState);
   window.addEventListener('pageshow', () => {
     isLocked = readStoredLockState();
+    isUnlockConfirmStep = false;
     updateUI();
   });
 </script>
