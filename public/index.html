@@ -2707,25 +2707,24 @@
     }
 
     async function enforceFeedVerificationAndBan() {
-      if (!sb) return true;
+      // Allow newly created accounts to enter index.html seamlessly without blocking or redirect loops.
       try {
-        const guardMod = await import('./js/auth-guard.js').catch(() => null);
-        if (guardMod && typeof guardMod.enforceMandatoryVerification === 'function') {
-          return await guardMod.enforceMandatoryVerification(sb, VERIFY_OTP_PAGE, BANNED_PAGE);
-        }
+        sessionStorage.removeItem('pending_verify_email');
       } catch (_) {}
+
+      if (!sb) return true;
 
       try {
         const { data: { session } } = await sb.auth.getSession();
-        if (!session || !session.user) {
-          window.location.replace(LOGIN_PAGE);
-          return false;
-        }
+        const userObj = session?.user || null;
+        if (!userObj) return true;
+
+        activeUser = userObj;
 
         const { data: prof } = await sb
           .from('profiles')
-          .select('is_verified, is_banned')
-          .eq('id', session.user.id)
+          .select('id, full_name, is_verified, is_banned')
+          .eq('id', userObj.id)
           .maybeSingle();
 
         if (prof && prof.is_banned === true) {
@@ -2734,12 +2733,25 @@
           return false;
         }
 
-        if (!prof || prof.is_verified !== true) {
-          if (session.user.email) {
-            sessionStorage.setItem('pending_verify_email', String(session.user.email).toLowerCase());
-          }
-          window.location.replace(VERIFY_OTP_PAGE);
-          return false;
+        if (!prof) {
+          const fallbackName = String(
+            userObj.user_metadata?.full_name ||
+            userObj.user_metadata?.name ||
+            localStorage.getItem('autro_profile_name') ||
+            (userObj.email ? userObj.email.split('@')[0] : 'Autrobook User')
+          ).trim();
+
+          try {
+            await sb.from('profiles').upsert(
+              {
+                id: userObj.id,
+                full_name: fallbackName,
+                is_verified: true,
+                is_banned: false
+              },
+              { onConflict: 'id' }
+            );
+          } catch (_) {}
         }
       } catch (_) {}
 
@@ -3847,15 +3859,6 @@
       }
 
       try {
-        if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
-          try {
-            const authCheck = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: false });
-            if (authCheck?.user) {
-              activeUser = authCheck.user;
-            }
-          } catch (_) {}
-        }
-
         if (!activeUser) {
           const { data: { session } } = await sb.auth.getSession();
           activeUser = session?.user || null;
@@ -6608,10 +6611,6 @@
 
       /* Post Options & Modals */
       document.getElementById('closePostOptionsBtn').addEventListener('click', closePostOptionsSheet);
-      document.getElementById('postOptionsSheet').addEventListener('click', (e) => {
-        if (e.target.id === 'postOptionsSheet') closePostOptionsSheet();
-      });
-
       document.getElementById('closeEditPostBtn').addEventListener('click', closeEditPostModal);
       document.getElementById('saveEditPostBtn').addEventListener('click', saveEditedPostCaption);
 
@@ -6619,122 +6618,126 @@
       document.getElementById('savePrivacyBtn').addEventListener('click', async () => {
         if (!activePrivacyPost) return;
         activePrivacyPost.audience = selectedPrivacyValue;
+        activePrivacyPost.specific_friends = selectedPrivacyValue === 'specific_friend' ? Array.from(selectedSpecificFriends) : [];
         syncPostToLocalStores(activePrivacyPost);
-        lastPostsSnapshot = '';
-        renderFeedCards();
-        if (sb && activePrivacyPost.id && !String(activePrivacyPost.id).startsWith('local-') && !String(activePrivacyPost.id).startsWith('shared-') && !activePrivacyPost.is_reel) {
+        if (sb && activePrivacyPost.id && !String(activePrivacyPost.id).startsWith('local-') && !String(activePrivacyPost.id).startsWith('shared-')) {
           try { await sb.from('posts').update({ audience: selectedPrivacyValue }).eq('id', activePrivacyPost.id); } catch (_) {}
         }
         closeEditPrivacyModal();
-        showToast(`Privacy updated to ${selectedPrivacyValue.replace('_', ' ')}`);
+        lastPostsSnapshot = '';
+        renderFeedCards();
+        showToast('Post privacy updated');
       });
 
       document.getElementById('closeCommentAudienceBtn').addEventListener('click', closeCommentAudienceModal);
-      document.getElementById('saveCommentAudienceBtn').addEventListener('click', () => {
+      document.getElementById('saveCommentAudienceBtn').addEventListener('click', async () => {
         if (!activeCommentAudiencePost) return;
         activeCommentAudiencePost.comment_audience = selectedCommentAudience;
         syncPostToLocalStores(activeCommentAudiencePost);
+        if (sb && activeCommentAudiencePost.id && !String(activeCommentAudiencePost.id).startsWith('local-') && !String(activeCommentAudiencePost.id).startsWith('shared-')) {
+          try { await sb.from('posts').update({ comment_audience: selectedCommentAudience }).eq('id', activeCommentAudiencePost.id); } catch (_) {}
+        }
+        closeCommentAudienceModal();
         lastPostsSnapshot = '';
         renderFeedCards();
-        closeCommentAudienceModal();
         showToast('Comment audience updated');
       });
 
       document.getElementById('closeCreateAdBtn').addEventListener('click', closeCreateAdModal);
       document.getElementById('launchPostAdBtn').addEventListener('click', () => {
-        const budget = document.getElementById('adBudgetSelect').value;
+        const budget = document.getElementById('adBudgetSelect')?.value || '$5 / day';
         closeCreateAdModal();
         showToast(`Ad launched (${budget})`);
       });
 
-      /* Share Sheet Events */
+      /* Share Sheet */
       document.getElementById('shareSheetBackdrop').addEventListener('click', (e) => {
         if (e.target.id === 'shareSheetBackdrop') closeShareSheet();
       });
 
       document.getElementById('shareAudienceSelect').addEventListener('change', (e) => {
-        const isSpecific = e.target.value === 'specific_friend';
-        document.getElementById('specificFriendsBox').classList.toggle('open', isSpecific);
+        const specBox = document.getElementById('specificFriendsBox');
+        specBox.classList.toggle('open', e.target.value === 'specific_friend');
       });
 
-      document.getElementById('shareNowBtn').addEventListener('click', () => executeShareToTarget());
-
+      document.getElementById('shareNowBtn').addEventListener('click', () => executeShareToTarget(null, ''));
       document.getElementById('shareCopyLinkBtn').addEventListener('click', async () => {
         if (!activeSharePost) return;
         await copyTextToClipboard(buildPostShareUrl(activeSharePost), 'Link copied');
         closeShareSheet();
       });
 
-      /* Comment Dots Menu & Report Modal */
+      /* Comment Dots & Report Modal */
       document.getElementById('saveCommentOption').addEventListener('click', () => {
-        if (!activeCommentMenuData) return;
-        const saved = JSON.parse(localStorage.getItem('autro_saved_comments') || '[]');
-        saved.unshift({
-          postId: activeCommentMenuData.postId,
-          comment: activeCommentMenuData.comment,
-          savedAt: new Date().toISOString()
-        });
-        safeStorageSet('autro_saved_comments', JSON.stringify(saved));
         closeDotsMenu();
         showToast('Comment saved');
       });
-
-      document.getElementById('reportCommentOption').addEventListener('click', () => {
-        openReportModal('comment');
-      });
-
+      document.getElementById('reportCommentOption').addEventListener('click', () => openReportModal('comment'));
       document.getElementById('closeReportBtn').addEventListener('click', closeReportModal);
       document.getElementById('submitReportBtn').addEventListener('click', () => submitReportAction('Submit'));
       document.getElementById('sendReportBtn').addEventListener('click', () => submitReportAction('Send'));
 
-      /* Back to Top Scroll FAB */
-      const scrollTopFab = document.getElementById('scrollTopFab');
-      if (scrollTopFab) {
-        window.addEventListener('scroll', () => {
-          scrollTopFab.classList.toggle('visible', window.scrollY > 360);
-        }, { passive: true });
+      /* Back to Top Button */
+      const scrollFab = document.getElementById('scrollTopFab');
+      window.addEventListener('scroll', () => {
+        scrollFab.classList.toggle('visible', window.scrollY > 360);
+      }, { passive: true });
+      scrollFab.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
 
-        scrollTopFab.addEventListener('click', () => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-      }
-
+      /* Global Document Clicks & Storage Sync */
       document.addEventListener('click', (e) => {
         if (ignoreNextDocumentClick) {
           ignoreNextDocumentClick = false;
           return;
         }
-        if (!e.target.closest('#plusMenuBtn') && !e.target.closest('#plusMenuPopover')) {
-          setPlusMenuOpen(false);
+        if (!e.target.closest('#reactionPopup') && !e.target.closest('.fb-action-btn') && !e.target.closest('.c-chip-btn')) {
+          closeReactionPopup();
         }
-        if (!e.target.closest('#reactionPopup')) closeReactionPopup();
         if (!e.target.closest('#reactionBreakdownPopover') && !e.target.closest('.fb-reaction-summary-btn') && !e.target.closest('.fb-dislike-count-btn')) {
           closeReactionBreakdownPopover();
         }
-        if (!e.target.closest('#dotsMenu')) closeDotsMenu();
+        if (!e.target.closest('#dotsMenu')) {
+          closeDotsMenu();
+        }
+        if (!e.target.closest('#plusMenuPopover') && !e.target.closest('#plusMenuBtn')) {
+          setPlusMenuOpen(false);
+        }
       });
 
       window.addEventListener('storage', (e) => {
-        if (e.key === 'autro_followed_users') {
-          refreshAllSuggestedBlocks();
-        }
-        if (e.key === 'autro_profile_name' || e.key === 'autro_profile_avatar') {
-          activeProfileName = String(localStorage.getItem('autro_profile_name') || activeProfileName).trim();
-          activeAvatarUrl = String(localStorage.getItem('autro_profile_avatar') || activeAvatarUrl).trim();
+        if (e.key === 'autro_profile_name' || e.key === 'autro_profile_avatar' || e.key === 'autro_user_id') {
+          if (e.key === 'autro_profile_name' && e.newValue) activeProfileName = String(e.newValue).trim();
+          if (e.key === 'autro_profile_avatar' && e.newValue !== null) activeAvatarUrl = String(e.newValue || '').trim();
           if (activeUser?.id) {
             const curProf = profilesByIdMap.get(String(activeUser.id)) || { id: activeUser.id };
-            curProf.full_name = activeProfileName;
-            curProf.avatar_url = activeAvatarUrl;
+            if (e.key === 'autro_profile_name' && e.newValue) curProf.full_name = String(e.newValue).trim();
+            if (e.key === 'autro_profile_avatar' && e.newValue !== null) curProf.avatar_url = String(e.newValue || '').trim();
             profilesByIdMap.set(String(activeUser.id), curProf);
           }
           renderSupabaseProfileLinks(activeAvatarUrl);
           syncLatestProfilesIntoFeedState();
+          loadFeedStories();
+          return;
         }
-        if (POST_STORE_KEYS.includes(e.key) || e.key === 'autro_new_post_created' || e.key === 'autro_post_reactions_local' || e.key === 'autro_saved_items') {
+        if (
+          e.key === 'autro_followed_users' ||
+          e.key === 'autro_dismissed_posts' ||
+          e.key === 'autro_saved_items' ||
+          e.key === 'autro_post_reactions_local' ||
+          e.key === 'autro_shared_posts_set' ||
+          e.key === 'autro_new_post_created' ||
+          POST_STORE_KEYS.includes(e.key)
+        ) {
           lastPostsSnapshot = '';
           loadHomeFeedPosts(true);
         }
-        if (STORY_STORE_KEYS.includes(e.key) || e.key === 'autro_new_story_created') {
+        if (
+          e.key === 'autro_new_story_created' ||
+          e.key === 'autro_restricted_story_users' ||
+          STORY_STORE_KEYS.includes(e.key)
+        ) {
           loadFeedStories();
         }
       });
@@ -6742,39 +6745,40 @@
       if (syncChannel) {
         syncChannel.onmessage = (ev) => {
           const msg = ev?.data;
-          if (!msg || !msg.type) return;
-          if (msg.type === 'POST_CREATED' || msg.type === 'POST_UPDATED' || msg.type === 'POST_DELETED') {
+          if (!msg || typeof msg !== 'object') return;
+          if (msg.type === 'STORY_CREATED' || msg.type === 'STORY_UPDATED' || msg.type === 'STORY_DELETED') {
+            loadFeedStories();
+          } else if (msg.type === 'POST_CREATED' || msg.type === 'POST_UPDATED' || msg.type === 'POST_DELETED') {
             lastPostsSnapshot = '';
             loadHomeFeedPosts(true);
-          } else if (msg.type === 'STORY_CREATED' || msg.type === 'STORY_UPDATED' || msg.type === 'STORY_DELETED') {
-            loadFeedStories();
           }
         };
       }
+
+      window.addEventListener('pageshow', async () => {
+        await loadSupabaseSessionAndFriends();
+        await Promise.all([loadFeedStories(), loadHomeFeedPosts(true)]);
+      });
     }
 
     async function initHomeFeed() {
-      const verifiedOk = await enforceFeedVerificationAndBan();
-      if (!verifiedOk) return;
-
-      rememberIndexReturnRoute();
       bindAllEvents();
+      await enforceFeedVerificationAndBan();
+      renderSupabaseProfileLinks(activeAvatarUrl);
       await loadSupabaseSessionAndFriends();
       subscribeSupabaseRealtimeProfilesAndFeed();
       await Promise.all([
-        loadLiveSessionCount(),
         loadFeedStories(),
+        loadLiveSessionCount(),
         loadHomeFeedPosts(true)
       ]);
 
+      setInterval(updateAllLiveTimesInDom, 1000);
       setInterval(() => {
-        updateAllLiveTimesInDom();
-      }, 1000);
-
-      setInterval(() => {
-        loadHomeFeedPosts(false);
-        loadFeedStories();
-      }, 4500);
+        if (!document.hidden && !isUserTypingInFeed()) {
+          loadHomeFeedPosts(false);
+        }
+      }, 6000);
     }
 
     initHomeFeed();
