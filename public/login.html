@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
@@ -93,7 +93,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-tap-highlight-color: rgba(32, 33, 36, 0.12);
     -webkit-font-smoothing: antialiased;
   }
@@ -1174,7 +1174,7 @@
     { id: "en-NG", code: "en", name: "English (Nigeria)", country: "Nigeria" },
     { id: "bn-BD", code: "bn", name: "বাংলা (বাংলাদেশ)", country: "বাংলাদেশ" },
     { id: "bn-IN", code: "bn", name: "বাংলা (ভারত)", country: "ভারত" },
-    { id: "hi-IN", code: "hi", name: "हिन्दी", country: "India" },
+    { id: "hi-IN", code: "hi", name: "हिन्दी", country: "भारत (India)" },
     { id: "ur-PK", code: "ur", name: "اردو (پاکستان)", country: "Pakistan", rtl: true },
     { id: "ur-IN", code: "ur", name: "اردو (بھارت)", country: "India", rtl: true },
     { id: "ne-NP", code: "ne", name: "नेपाली", country: "Nepal" },
@@ -1959,16 +1959,53 @@
   const LANGUAGE_CODE_KEY = "autro_lang";
   const REMEMBERED_ID_KEY = "autro_remembered_identifier";
 
-  let currentLangId = localStorage.getItem(LANGUAGE_ID_KEY) || "en-US";
-  let currentLang = localStorage.getItem(LANGUAGE_CODE_KEY) || localStorage.getItem("lang") || "en";
+  function readSavedLangId() {
+    return (
+      localStorage.getItem(LANGUAGE_ID_KEY) ||
+      localStorage.getItem("autro_language_id") ||
+      ""
+    );
+  }
+
+  function readSavedLangCode() {
+    return (
+      localStorage.getItem(LANGUAGE_CODE_KEY) ||
+      localStorage.getItem("autro_language") ||
+      localStorage.getItem("lang") ||
+      "en"
+    );
+  }
+
+  let currentLangId = readSavedLangId() || "en-US";
+  let currentLang = readSavedLangCode() || "en";
 
   function getActiveLanguageObj() {
-    const exact = languages.find(l => l.id === currentLangId);
-    if (exact) return exact;
-    if (currentLang) {
-      const byCode = languages.find(l => l.code === currentLang || l.id === currentLang);
-      if (byCode) return byCode;
+    const cleanId = String(currentLangId || "").trim();
+    const cleanCode = String(currentLang || "").trim();
+
+    if (cleanId) {
+      const exact = languages.find(l => l.id.toLowerCase() === cleanId.toLowerCase());
+      if (exact) return exact;
     }
+
+    if (cleanCode) {
+      const lowerCode = cleanCode.toLowerCase();
+      if (lowerCode === "hi" || lowerCode.startsWith("hi-")) {
+        return languages.find(l => l.id === "hi-IN") || languages.find(l => l.code === "hi") || languages[0];
+      }
+      if (lowerCode === "bn" || lowerCode.startsWith("bn-")) {
+        return languages.find(l => l.id === "bn-BD") || languages.find(l => l.code === "bn") || languages[0];
+      }
+      const byIdOrCode = languages.find(
+        l => l.id.toLowerCase() === lowerCode || l.code.toLowerCase() === lowerCode
+      );
+      if (byIdOrCode) return byIdOrCode;
+
+      const basePart = lowerCode.split("-")[0];
+      const byBase = languages.find(l => l.code.toLowerCase() === basePart);
+      if (byBase) return byBase;
+    }
+
     return languages[0];
   }
 
@@ -1976,8 +2013,12 @@
     if (!langObj || !langObj.country) {
       return baseTagline || BASE_UI.tagline;
     }
-    if ((langObj.code || "").startsWith("bn")) {
+    const code = String(langObj.code || "").toLowerCase();
+    if (code.startsWith("bn")) {
       return `১৮+ ফ্রি সোশ্যাল মিডিয়া প্ল্যাটফর্ম • ${langObj.country}`;
+    }
+    if (code.startsWith("hi")) {
+      return `18+ फ़्री सोशल मीडिया प्लेटफ़ॉर्म • ${langObj.country}`;
     }
     return `${baseTagline || BASE_UI.tagline} • ${langObj.country}`;
   }
@@ -1985,22 +2026,23 @@
   function getTranslationDict(langObj) {
     let dict = BASE_UI;
     if (langObj) {
-      if (LOCALIZED_UI[langObj.id]) {
-        dict = Object.assign({}, BASE_UI, LOCALIZED_UI[langObj.id]);
-      } else if (LOCALIZED_UI[langObj.code]) {
-        dict = Object.assign({}, BASE_UI, LOCALIZED_UI[langObj.code]);
+      const idKey = String(langObj.id || "");
+      const codeKey = String(langObj.code || "");
+      const baseCode = codeKey.split("-")[0];
+
+      if (LOCALIZED_UI[idKey]) {
+        dict = Object.assign({}, BASE_UI, LOCALIZED_UI[idKey]);
+      } else if (LOCALIZED_UI[codeKey]) {
+        dict = Object.assign({}, BASE_UI, LOCALIZED_UI[codeKey]);
+      } else if (LOCALIZED_UI[baseCode]) {
+        dict = Object.assign({}, BASE_UI, LOCALIZED_UI[baseCode]);
       } else {
-        const baseCode = String(langObj.code || "en").split("-")[0];
-        if (LOCALIZED_UI[baseCode]) {
-          dict = Object.assign({}, BASE_UI, LOCALIZED_UI[baseCode]);
-        } else {
-          const langLabel = langObj.name || baseCode.toUpperCase();
-          dict = Object.assign({}, BASE_UI, {
-            title: `${BASE_UI.title} (${langLabel})`,
-            loginBtn: `${BASE_UI.loginBtn} • ${langLabel}`,
-            modalTitle: `${BASE_UI.modalTitle} (${langLabel})`
-          });
-        }
+        const langLabel = langObj.name || baseCode.toUpperCase();
+        dict = Object.assign({}, BASE_UI, {
+          title: `${BASE_UI.title} (${langLabel})`,
+          loginBtn: `${BASE_UI.loginBtn} • ${langLabel}`,
+          modalTitle: `${BASE_UI.modalTitle} (${langLabel})`
+        });
       }
     }
     return Object.assign({}, dict, {
@@ -2455,6 +2497,9 @@
   }
 
   function applyLanguage() {
+    currentLangId = readSavedLangId() || currentLangId;
+    currentLang = readSavedLangCode() || currentLang;
+
     const activeLang = getActiveLanguageObj();
     const t = getTranslationDict(activeLang);
 
@@ -2537,6 +2582,7 @@
 
     try {
       localStorage.setItem(LANGUAGE_ID_KEY, langObj.id);
+      localStorage.setItem("autro_language_id", langObj.id);
       localStorage.setItem(LANGUAGE_CODE_KEY, langObj.code);
       localStorage.setItem("lang", langObj.code);
       localStorage.setItem("autro_language", langObj.code);
@@ -2567,6 +2613,7 @@
     if (!list) return;
     list.innerHTML = "";
 
+    const activeObj = getActiveLanguageObj();
     const q = String(filterQuery || "").trim().toLowerCase();
     const filtered = languages.filter(lang =>
       lang.name.toLowerCase().includes(q) ||
@@ -2581,7 +2628,7 @@
     }
 
     filtered.forEach(language => {
-      const isSelected = currentLangId === language.id;
+      const isSelected = activeObj && activeObj.id === language.id;
       const item = document.createElement("div");
       item.className = "lang-item" + (isSelected ? " selected" : "");
       item.innerHTML = `
@@ -3247,6 +3294,23 @@
       cleanupScanner();
     });
 
+    window.addEventListener("pageshow", () => {
+      applyLanguage();
+    });
+
+    window.addEventListener("storage", (e) => {
+      if (
+        e.key === LANGUAGE_ID_KEY ||
+        e.key === LANGUAGE_CODE_KEY ||
+        e.key === "autro_language" ||
+        e.key === "autro_language_id" ||
+        e.key === "lang"
+      ) {
+        applyLanguage();
+        buildLangList(document.getElementById("langSearchInput")?.value || "");
+      }
+    });
+
     initLoginDeviceId();
     evaluateIdentifierGuard(emailInput?.value || "");
     buildLangList("");
@@ -3258,4 +3322,4 @@
   document.addEventListener("DOMContentLoaded", initLoginPage);
 </script>
 </body>
-      </html>
+          </html>
