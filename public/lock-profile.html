@@ -188,6 +188,8 @@
     gap: 10px;
     padding: 16px 0;
     border-bottom: 1px solid var(--border-color);
+    position: relative;
+    z-index: 5;
   }
 
   .page-shell.is-locked .locked-actions {
@@ -205,14 +207,24 @@
     gap: 7px;
     font-size: 13px;
     font-weight: 600;
-    padding: 6px;
+    padding: 8px 6px;
     border-radius: 10px;
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    user-select: none;
+    touch-action: manipulation;
+    transition: background-color 0.15s ease, transform 0.08s ease;
+  }
+
+  .action-tile > * {
+    pointer-events: none;
   }
 
   .action-tile:hover {
     background-color: var(--hover-color);
+  }
+
+  .action-tile:active {
+    transform: scale(0.96);
   }
 
   .action-circle {
@@ -265,17 +277,12 @@
   }
 
   .help-link {
-    display: block;
-    text-align: center;
-    margin-top: 18px;
+    display: inline-block;
+    margin-top: 4px;
     color: var(--link-green);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
-  }
-
-  .page-shell.is-locked .help-link {
-    display: none;
   }
 
   .footer-cta {
@@ -292,6 +299,7 @@
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;
+    touch-action: manipulation;
     transition: background-color 0.15s ease, transform 0.08s ease;
   }
 
@@ -340,12 +348,12 @@
     </div>
 
     <div class="locked-actions">
-      <button type="button" class="action-tile" id="inviteBtn">
+      <button type="button" class="action-tile" id="inviteBtn" onclick="handleInviteFriends()">
         <span class="action-circle"><i class="fa-solid fa-envelope"></i></span>
         <span>Invite friends</span>
       </button>
 
-      <button type="button" class="action-tile" id="unlockTileBtn">
+      <button type="button" class="action-tile" id="unlockTileBtn" onclick="handleUnlockProfile()">
         <span class="action-circle"><i class="fa-solid fa-lock-open"></i></span>
         <span>Unlock</span>
       </button>
@@ -369,15 +377,16 @@
 
       <div class="benefit-row">
         <i class="fa-solid fa-globe benefit-icon"></i>
-        <div class="benefit-text">You can make some profile info Public so friends can find you and send friend requests.</div>
+        <div class="benefit-text">
+          You can make some profile info Public so friends can find you and send friend requests.
+          <a href="privacy-center.html" class="help-link">Learn more in the Help Center</a>
+        </div>
       </div>
     </div>
-
-    <a href="privacy-center.html" class="help-link">Learn more in the Help Center</a>
   </div>
 
   <div class="footer-cta">
-    <button type="button" class="btn-dark-green" id="primaryCtaBtn">Lock your profile</button>
+    <button type="button" class="btn-dark-green" id="primaryCtaBtn" onclick="handlePrimaryCta()">Lock your profile</button>
     <div class="status-text" id="statusText"></div>
   </div>
 </div>
@@ -387,9 +396,12 @@
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
   const LOCK_STORAGE_KEY = 'autro_profile_locked';
 
-  const supabaseClient = window.supabase
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
+  let supabaseClient = null;
+  try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+  } catch (_) {}
 
   let currentUser = null;
   let isLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
@@ -399,6 +411,8 @@
     const titleEl = document.getElementById('heroTitle');
     const subtitleEl = document.getElementById('heroSubtitle');
     const ctaBtn = document.getElementById('primaryCtaBtn');
+
+    if (!shell || !titleEl || !subtitleEl || !ctaBtn) return;
 
     if (isLocked) {
       shell.classList.add('is-locked');
@@ -413,26 +427,60 @@
     }
   }
 
+  function showStatus(msg) {
+    const statusEl = document.getElementById('statusText');
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    clearTimeout(window.__lockStatusTimer);
+    window.__lockStatusTimer = setTimeout(() => {
+      if (statusEl) statusEl.textContent = '';
+    }, 2000);
+  }
+
   async function setLocked(nextLocked) {
     isLocked = Boolean(nextLocked);
-    localStorage.setItem(LOCK_STORAGE_KEY, String(isLocked));
+    try {
+      localStorage.setItem(LOCK_STORAGE_KEY, String(isLocked));
+    } catch (_) {}
+
     updateUI();
+    showStatus(isLocked ? 'Profile locked.' : 'Profile unlocked.');
 
-    const statusEl = document.getElementById('statusText');
-    if (statusEl) {
-      statusEl.textContent = isLocked ? 'Profile locked.' : 'Profile unlocked.';
-      setTimeout(() => {
-        if (statusEl) statusEl.textContent = '';
-      }, 1800);
-    }
-
-    if (supabaseClient && currentUser) {
+    if (supabaseClient) {
       try {
-        await supabaseClient
-          .from('profiles')
-          .update({ is_locked: isLocked })
-          .eq('id', currentUser.id);
+        if (!currentUser) {
+          const { data } = await supabaseClient.auth.getUser();
+          currentUser = data?.user || null;
+        }
+        if (currentUser) {
+          await supabaseClient
+            .from('profiles')
+            .update({ is_locked: isLocked })
+            .eq('id', currentUser.id);
+        }
       } catch (_) {}
+    }
+  }
+
+  async function handlePrimaryCta() {
+    if (!isLocked) {
+      await setLocked(true);
+    } else {
+      window.location.href = 'profile.html';
+    }
+  }
+
+  async function handleUnlockProfile() {
+    await setLocked(false);
+  }
+
+  async function handleInviteFriends() {
+    const shareUrl = window.location.origin + '/profile.html';
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showStatus('Profile link copied to invite friends!');
+    } catch (_) {
+      showStatus(shareUrl);
     }
   }
 
@@ -447,6 +495,7 @@
   }
 
   async function initProfileState() {
+    isLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
     updateUI();
     if (!supabaseClient) return;
 
@@ -459,13 +508,13 @@
         const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
         if (metaAvatar) applyAvatar(metaAvatar);
 
-        const { data: profileRow } = await supabaseClient
+        const { data: profileRow, error } = await supabaseClient
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (profileRow) {
+        if (!error && profileRow) {
           if (profileRow.avatar_url) applyAvatar(profileRow.avatar_url);
           if (typeof profileRow.is_locked === 'boolean') {
             isLocked = profileRow.is_locked;
@@ -484,31 +533,10 @@
     } catch (_) {}
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    initProfileState();
-
-    document.getElementById('primaryCtaBtn').addEventListener('click', async () => {
-      if (!isLocked) {
-        await setLocked(true);
-      } else {
-        window.location.href = 'profile.html';
-      }
-    });
-
-    document.getElementById('unlockTileBtn').addEventListener('click', async () => {
-      await setLocked(false);
-    });
-
-    document.getElementById('inviteBtn').addEventListener('click', async () => {
-      const shareUrl = window.location.origin + '/profile.html';
-      const statusEl = document.getElementById('statusText');
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        if (statusEl) statusEl.textContent = 'Profile link copied to invite friends!';
-      } catch (_) {
-        if (statusEl) statusEl.textContent = shareUrl;
-      }
-    });
+  document.addEventListener('DOMContentLoaded', initProfileState);
+  window.addEventListener('pageshow', () => {
+    isLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
+    updateUI();
   });
 </script>
 </body>
