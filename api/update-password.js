@@ -123,18 +123,41 @@ async function findSupabaseAuthUserByEmail(supabaseAdmin, email) {
   return null;
 }
 
+async function findOtpRowInTable(supabaseAdmin, tableName, cleanEmail) {
+  const { data: purposeRow, error: purposeErr } = await supabaseAdmin
+    .from(tableName)
+    .select('*')
+    .eq('email', cleanEmail)
+    .eq('purpose', 'reset-password')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!purposeErr && purposeRow) {
+    return { row: purposeRow, error: null };
+  }
+
+  const { data: fallbackRow, error: fallbackErr } = await supabaseAdmin
+    .from(tableName)
+    .select('*')
+    .eq('email', cleanEmail)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return { row: fallbackRow, error: fallbackErr };
+}
+
 async function verifyOtpFromTables(supabaseAdmin, cleanEmail, cleanOtp) {
   const candidateTables = ['password_reset_otps', 'otps', 'email_otps'];
   const computedHash = otpPepper ? hashOtp(cleanEmail, cleanOtp) : '';
 
   for (const tableName of candidateTables) {
-    const { data: row, error } = await supabaseAdmin
-      .from(tableName)
-      .select('*')
-      .eq('email', cleanEmail)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { row, error } = await findOtpRowInTable(
+      supabaseAdmin,
+      tableName,
+      cleanEmail
+    );
 
     if (error || !row) continue;
 
@@ -348,4 +371,4 @@ export default async function handler(req, res) {
       .status(500)
       .json({ ok: false, success: false, message: 'Internal server error' });
   }
-      }
+}
