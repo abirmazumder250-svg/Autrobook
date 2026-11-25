@@ -1571,6 +1571,8 @@ const PROFANITY_LIST = [
   "শুয়োর", "শুয়ার", "ভোদা", "নুনু", "লেংড়া", "হিজড়া", "ব্যাটা", "ছোটলোক"
 ];
 
+const PLACEHOLDER_NAMES = new Set(["user", "autrobook member", "guest", "member", "unknown"]);
+
 const urlParams = new URLSearchParams(window.location.search);
 const itemType = (urlParams.get("type") || "post").toLowerCase();
 const itemId = urlParams.get("post") || urlParams.get("postId") || urlParams.get("reelId") || "123";
@@ -1585,6 +1587,18 @@ document.getElementById("reactionsCornerLink").href = `reactions.html?post=${enc
 let currentUser = null;
 let commentsInitialized = false;
 let currentCategoryFilter = "all";
+const profileCache = new Map();
+
+function isMeaningfulName(val) {
+  const clean = String(val || "").trim();
+  if (!clean) return false;
+  return !PLACEHOLDER_NAMES.has(clean.toLowerCase());
+}
+
+function makeAvatarFallback(name) {
+  const label = isMeaningfulName(name) ? String(name).trim() : "Abir";
+  return `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(label)}`;
+}
 
 function showToast(message) {
   const el = document.getElementById("toastPill");
@@ -1597,24 +1611,66 @@ function showToast(message) {
   }, 2400);
 }
 
-function getOrCreateLocalGuestUser() {
+function findBestLocalName() {
+  const candidates = [
+    localStorage.getItem("autro_profile_name"),
+    localStorage.getItem("autro_user_name"),
+    localStorage.getItem("userName"),
+    localStorage.getItem("profile_name")
+  ];
+  for (const c of candidates) {
+    if (isMeaningfulName(c)) return String(c).trim();
+  }
   try {
-    const existing = JSON.parse(localStorage.getItem("currentUser") || "null");
-    if (existing && existing.id) return existing;
+    const u = JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (u && isMeaningfulName(u.name)) return String(u.name).trim();
+  } catch (_) {}
+  return "Abir";
+}
+
+function findBestLocalAvatar(name) {
+  const candidates = [
+    localStorage.getItem("autro_profile_avatar"),
+    localStorage.getItem("autro_user_avatar"),
+    localStorage.getItem("userAvatar")
+  ];
+  for (const c of candidates) {
+    const clean = String(c || "").trim();
+    if (clean && !clean.includes("name=User")) return clean;
+  }
+  try {
+    const u = JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (u && u.avatar && !String(u.avatar).includes("name=User")) return String(u.avatar).trim();
+  } catch (_) {}
+  return makeAvatarFallback(name);
+}
+
+function getOrCreateLocalGuestUser() {
+  let existing = null;
+  try {
+    existing = JSON.parse(localStorage.getItem("currentUser") || "null");
   } catch (_) {}
 
-  const storedUid = localStorage.getItem("autro_user_id") || ("user_" + Date.now());
-  const storedName = localStorage.getItem("autro_profile_name") || "Autrobook Member";
-  const storedAvatar = localStorage.getItem("autro_profile_avatar") ||
-    `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(storedName)}`;
+  const bestName = isMeaningfulName(existing?.name) ? String(existing.name).trim() : findBestLocalName();
+  const bestAvatar = (existing?.avatar && !String(existing.avatar).includes("name=User"))
+    ? String(existing.avatar).trim()
+    : findBestLocalAvatar(bestName);
+  const uid = String(
+    existing?.id ||
+    localStorage.getItem("autro_user_id") ||
+    localStorage.getItem("userId") ||
+    ("user_" + Date.now())
+  );
 
-  const guest = {
-    id: String(storedUid),
-    name: storedName,
-    avatar: storedAvatar
+  const userObj = {
+    id: uid,
+    name: bestName,
+    avatar: bestAvatar
   };
-  localStorage.setItem("currentUser", JSON.stringify(guest));
-  return guest;
+  localStorage.setItem("currentUser", JSON.stringify(userObj));
+  localStorage.setItem("autro_profile_name", bestName);
+  localStorage.setItem("autro_profile_avatar", bestAvatar);
+  return userObj;
 }
 
 async function resolveCurrentUserWithoutAuthJs() {
@@ -1636,27 +1692,38 @@ async function resolveCurrentUserWithoutAuthJs() {
     try {
       const { data } = await sbClient
         .from("profiles")
-        .select("id, full_name, avatar_url")
+        .select("*")
         .eq("id", authUser.id)
         .maybeSingle();
       prof = data || null;
     } catch (_) {}
 
     const meta = authUser.user_metadata || {};
-    const resolvedName = String(
-      prof?.full_name ||
-      meta.full_name ||
-      meta.name ||
-      localStorage.getItem("autro_profile_name") ||
-      (authUser.email ? authUser.email.split("@")[0] : "Autrobook Member")
-    ).trim();
+    const emailPrefix = authUser.email ? authUser.email.split("@")[0] : "";
+    const rawNameCandidates = [
+      prof?.full_name,
+      prof?.name,
+      prof?.username,
+      meta.full_name,
+      meta.name,
+      fallback.name,
+      emailPrefix
+    ];
 
-    const resolvedAvatar = String(
-      prof?.avatar_url ||
-      meta.avatar_url ||
-      localStorage.getItem("autro_profile_avatar") ||
-      `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(resolvedName)}`
-    ).trim();
+    const resolvedName = rawNameCandidates.find(v => isMeaningfulName(v))
+      ? String(rawNameCandidates.find(v => isMeaningfulName(v))).trim()
+      : "Abir";
+
+    const rawAvatarCandidates = [
+      prof?.avatar_url,
+      prof?.avatar,
+      meta.avatar_url,
+      meta.picture,
+      fallback.avatar
+    ];
+    const resolvedAvatar = rawAvatarCandidates.find(v => v && !String(v).includes("name=User"))
+      ? String(rawAvatarCandidates.find(v => v && !String(v).includes("name=User"))).trim()
+      : makeAvatarFallback(resolvedName);
 
     currentUser = {
       id: String(authUser.id),
@@ -1664,17 +1731,79 @@ async function resolveCurrentUserWithoutAuthJs() {
       avatar: resolvedAvatar,
       email: authUser.email || ""
     };
+
+    profileCache.set(String(authUser.id), { name: resolvedName, avatar: resolvedAvatar });
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
     localStorage.setItem("autro_user_id", currentUser.id);
     localStorage.setItem("autro_profile_name", currentUser.name);
-    if (prof?.avatar_url) {
-      localStorage.setItem("autro_profile_avatar", prof.avatar_url);
-    }
+    localStorage.setItem("autro_profile_avatar", currentUser.avatar);
     return currentUser;
   } catch (_) {
     currentUser = fallback;
     return currentUser;
   }
+}
+
+async function hydrateProfilesMap(userIds) {
+  if (!sbClient || !Array.isArray(userIds) || userIds.length === 0) return;
+  const uniqueIds = Array.from(new Set(userIds.map(String).filter(id => id && !id.startsWith("user_"))));
+  if (!uniqueIds.length) return;
+
+  try {
+    const { data } = await sbClient
+      .from("profiles")
+      .select("*")
+      .in("id", uniqueIds);
+
+    if (Array.isArray(data)) {
+      data.forEach(p => {
+        const pid = String(p.id);
+        const pName = [p.full_name, p.name, p.username].find(v => isMeaningfulName(v));
+        const pAvatar = p.avatar_url || p.avatar || "";
+        if (pName || pAvatar) {
+          const prev = profileCache.get(pid) || {};
+          profileCache.set(pid, {
+            name: isMeaningfulName(pName) ? String(pName).trim() : (prev.name || ""),
+            avatar: (pAvatar && !String(pAvatar).includes("name=User")) ? String(pAvatar).trim() : (prev.avatar || "")
+          });
+        }
+      });
+    }
+  } catch (_) {}
+}
+
+function normalizeDisplayAuthor(rawName, rawAvatar, userId) {
+  const uid = String(userId || "");
+  const cached = profileCache.get(uid);
+  const activeUid = String(currentUser?.id || "");
+  const activeName = isMeaningfulName(currentUser?.name) ? String(currentUser.name).trim() : "Abir";
+  const activeAvatar = (currentUser?.avatar && !String(currentUser.avatar).includes("name=User"))
+    ? String(currentUser.avatar).trim()
+    : makeAvatarFallback(activeName);
+
+  let finalName = "";
+  if (isMeaningfulName(rawName)) {
+    finalName = String(rawName).trim();
+  } else if (cached && isMeaningfulName(cached.name)) {
+    finalName = cached.name;
+  } else if (uid && activeUid && uid === activeUid) {
+    finalName = activeName;
+  } else {
+    finalName = activeName;
+  }
+
+  let finalAvatar = "";
+  if (rawAvatar && !String(rawAvatar).includes("name=User")) {
+    finalAvatar = String(rawAvatar).trim();
+  } else if (cached && cached.avatar && !String(cached.avatar).includes("name=User")) {
+    finalAvatar = cached.avatar;
+  } else if (uid && activeUid && uid === activeUid) {
+    finalAvatar = activeAvatar;
+  } else {
+    finalAvatar = makeAvatarFallback(finalName);
+  }
+
+  return { name: finalName, avatar: finalAvatar };
 }
 
 function readStorageArray(key) {
@@ -1793,31 +1922,39 @@ function getParentItem() {
   };
 
   if (Array.isArray(localStoreComments) && localStoreComments.length && (!Array.isArray(baseObj.comments) || !baseObj.comments.length)) {
-    baseObj.comments = localStoreComments.map(c => ({
-      id: String(c.id),
-      userId: String(c.user_id || c.userId || "user"),
-      userName: c.author || c.userName || "User",
-      img: c.img || `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(c.author || "U")}`,
-      text: c.text || "",
-      imageUrl: c.imageUrl || "",
-      audioUrl: c.voiceUrl || c.audioUrl || "",
-      audioEffect: c.audioEffect || "",
-      time: c.created_at ? new Date(c.created_at).getTime() : (c.time || Date.now()),
-      reactions: c.reactions || {},
-      userVote: c.userVote || {},
-      likesCount: Number(c.like_count || c.likesCount || 0),
-      dislikesCount: Number(c.dislike_count || c.dislikesCount || 0),
-      authorHearted: Boolean(c.authorHearted),
-      replies: Array.isArray(c.replies) ? c.replies.map(r => ({
-        id: String(r.id),
-        userId: String(r.user_id || r.userId || "user"),
-        userName: r.author || r.userName || "User",
-        img: r.img || `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(r.author || "U")}`,
-        text: r.text || "",
-        time: r.created_at ? new Date(r.created_at).getTime() : (r.time || Date.now()),
-        likes: Array.isArray(r.likes) ? r.likes : []
-      })) : []
-    }));
+    baseObj.comments = localStoreComments.map(c => {
+      const uid = String(c.user_id || c.userId || activeUser.id);
+      const disp = normalizeDisplayAuthor(c.author || c.userName, c.img, uid);
+      return {
+        id: String(c.id),
+        userId: uid,
+        userName: disp.name,
+        img: disp.avatar,
+        text: c.text || "",
+        imageUrl: c.imageUrl || "",
+        audioUrl: c.voiceUrl || c.audioUrl || "",
+        audioEffect: c.audioEffect || "",
+        time: c.created_at ? new Date(c.created_at).getTime() : (c.time || Date.now()),
+        reactions: c.reactions || {},
+        userVote: c.userVote || {},
+        likesCount: Number(c.like_count || c.likesCount || 0),
+        dislikesCount: Number(c.dislike_count || c.dislikesCount || 0),
+        authorHearted: Boolean(c.authorHearted),
+        replies: Array.isArray(c.replies) ? c.replies.map(r => {
+          const rUid = String(r.user_id || r.userId || activeUser.id);
+          const rDisp = normalizeDisplayAuthor(r.author || r.userName, r.img, rUid);
+          return {
+            id: String(r.id),
+            userId: rUid,
+            userName: rDisp.name,
+            img: rDisp.avatar,
+            text: r.text || "",
+            time: r.created_at ? new Date(r.created_at).getTime() : (r.time || Date.now()),
+            likes: Array.isArray(r.likes) ? r.likes : []
+          };
+        }) : []
+      };
+    });
   }
 
   return baseObj;
@@ -1900,17 +2037,20 @@ async function syncCommentsWithSupabase() {
 
     if (error || !Array.isArray(rows) || rows.length === 0) return;
 
+    const uids = rows.map(r => r.user_id).filter(Boolean);
+    await hydrateProfilesMap(uids);
+
     const parent = getParentItem();
     const localMap = new Map((parent.comments || []).map(c => [String(c.id), c]));
     rows.forEach(r => {
       const cid = String(r.id);
       if (!localMap.has(cid)) {
-        const nameVal = r.user_name || r.author_name || "User";
+        const disp = normalizeDisplayAuthor(r.user_name || r.author_name, r.user_avatar, r.user_id);
         localMap.set(cid, {
           id: cid,
-          userId: r.user_id || "user",
-          userName: nameVal,
-          img: r.user_avatar || `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(nameVal)}`,
+          userId: r.user_id || currentUser?.id || "member",
+          userName: disp.name,
+          img: disp.avatar,
           text: r.content || r.comment_text || "",
           imageUrl: r.image_url || "",
           audioUrl: r.audio_url || r.voice_url || "",
@@ -1938,6 +2078,7 @@ async function pushCommentToSupabase(commentObj) {
       post_id: String(itemId),
       user_id: String(commentObj.userId),
       author_name: commentObj.userName,
+      user_name: commentObj.userName,
       comment_text: commentObj.text || (commentObj.audioUrl ? "Voice note" : "Attachment"),
       voice_url: commentObj.audioUrl && String(commentObj.audioUrl).startsWith("http") ? commentObj.audioUrl : null
     });
@@ -2057,12 +2198,14 @@ function handleComposerInput(inputEl) {
   const peopleMap = new Map();
 
   (parent.comments || []).forEach(c => {
-    if (c.userName) {
-      peopleMap.set(c.userName.toLowerCase(), { name: c.userName, img: c.img });
+    const disp = normalizeDisplayAuthor(c.userName, c.img, c.userId);
+    if (disp.name) {
+      peopleMap.set(disp.name.toLowerCase(), { name: disp.name, img: disp.avatar });
     }
     (c.replies || []).forEach(r => {
-      if (r.userName) {
-        peopleMap.set(r.userName.toLowerCase(), { name: r.userName, img: r.img });
+      const rDisp = normalizeDisplayAuthor(r.userName, r.img, r.userId);
+      if (rDisp.name) {
+        peopleMap.set(rDisp.name.toLowerCase(), { name: rDisp.name, img: rDisp.avatar });
       }
     });
   });
@@ -2548,11 +2691,13 @@ async function createCommentRecord({ text = "", imageUrl = "", attachmentKind = 
   const parent = getParentItem();
   if (!Array.isArray(parent.comments)) parent.comments = [];
 
+  const disp = normalizeDisplayAuthor(currentUser.name, currentUser.avatar, currentUser.id);
+
   const commentObj = {
     id: "cmt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
     userId: String(currentUser.id),
-    userName: currentUser.name || "User",
-    img: currentUser.avatar || `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(currentUser.name || "U")}`,
+    userName: disp.name,
+    img: disp.avatar,
     text,
     imageUrl,
     attachmentKind,
@@ -2719,12 +2864,14 @@ function sendReply(commentId) {
   const cmt = (parent.comments || []).find(c => String(c.id) === String(commentId));
   if (!cmt) return;
 
+  const disp = normalizeDisplayAuthor(currentUser.name, currentUser.avatar, currentUser.id);
+
   if (!Array.isArray(cmt.replies)) cmt.replies = [];
   cmt.replies.push({
     id: "rep_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
     userId: String(currentUser.id),
-    userName: currentUser.name || "User",
-    img: currentUser.avatar || `https://ui-avatars.com/api/?background=303134&color=fff&name=${encodeURIComponent(currentUser.name || "U")}`,
+    userName: disp.name,
+    img: disp.avatar,
     text,
     time: Date.now(),
     likes: []
@@ -2930,8 +3077,10 @@ function renderAll() {
   const uid = String((currentUser && currentUser.id) || "");
 
   listEl.innerHTML = comments.map(cmt => {
-    const cmtUserId = String(cmt.userId || "user");
-    const cmtUserName = cmt.userName || "User";
+    const cmtUserId = String(cmt.userId || uid || "member");
+    const disp = normalizeDisplayAuthor(cmt.userName, cmt.img, cmtUserId);
+    const cmtUserName = disp.name;
+    const cmtAvatar = disp.avatar;
     const profileUrl = `profile.html?id=${encodeURIComponent(cmtUserId)}`;
     const isCmtAuthor = postAuthorId && cmtUserId === postAuthorId;
     const isOwnComment = Boolean(uid && cmtUserId === uid);
@@ -3022,17 +3171,18 @@ function renderAll() {
     const repliesHtml = repliesArr.length > 0
       ? `<div class="replies-list">
            ${repliesArr.map(rep => {
-             const repUserId = String(rep.userId || "user");
+             const repUserId = String(rep.userId || uid || "member");
+             const repDisp = normalizeDisplayAuthor(rep.userName, rep.img, repUserId);
              const repUrl = `profile.html?id=${encodeURIComponent(repUserId)}`;
              const repLikes = Array.isArray(rep.likes) ? rep.likes : [];
              const repLikedByMe = uid && repLikes.includes(uid);
              const isOwnRep = uid && repUserId === uid;
              return `
                <div class="reply-item">
-                 <a href="${repUrl}"><img class="reply-avatar" src="${escapeHtml(rep.img || "")}" alt="${escapeHtml(rep.userName || "User")}"></a>
+                 <a href="${repUrl}"><img class="reply-avatar" src="${escapeHtml(repDisp.avatar)}" alt="${escapeHtml(repDisp.name)}"></a>
                  <div class="reply-body">
                    <div class="reply-header">
-                     <a class="reply-author" href="${repUrl}">${escapeHtml(rep.userName || "User")}</a>
+                     <a class="reply-author" href="${repUrl}">${escapeHtml(repDisp.name)}</a>
                      <span class="comment-time">${formatTimeAgo(rep.time)}</span>
                    </div>
                    <div class="reply-text">${formatTextWithMentions(rep.text || "")}</div>
@@ -3040,7 +3190,7 @@ function renderAll() {
                      <button type="button" class="reply-mini-btn ${repLikedByMe ? "active" : ""}" onclick="toggleReplyLike('${escapeHtml(cmt.id)}', '${escapeHtml(rep.id)}')">
                        Like${repLikes.length > 0 ? ` (${repLikes.length})` : ""}
                      </button>
-                     <button type="button" class="reply-mini-btn" onclick="toggleReplyBox('${escapeHtml(cmt.id)}', '${escapeHtml(rep.userName || "")}')">
+                     <button type="button" class="reply-mini-btn" onclick="toggleReplyBox('${escapeHtml(cmt.id)}', '${escapeHtml(repDisp.name)}')">
                        Reply
                      </button>
                      ${isOwnRep ? `<button type="button" class="reply-mini-btn danger" onclick="deleteReplyById('${escapeHtml(cmt.id)}', '${escapeHtml(rep.id)}')">Delete</button>` : ""}
@@ -3060,7 +3210,7 @@ function renderAll() {
       <article class="comment-item ${isPinned ? "pinned-comment" : ""}" id="comment-${escapeHtml(cmt.id)}">
         <div class="comment-row">
           <a class="comment-avatar-link" href="${profileUrl}">
-            <img class="comment-avatar" src="${escapeHtml(cmt.img || "")}" alt="${escapeHtml(cmtUserName)}" loading="lazy">
+            <img class="comment-avatar" src="${escapeHtml(cmtAvatar)}" alt="${escapeHtml(cmtUserName)}" loading="lazy">
           </a>
           <div class="comment-main">
             <div class="comment-top-line">
@@ -3190,4 +3340,4 @@ initCommentsPage();
 </script>
 
 </body>
-  </html>
+                                                             </html>
