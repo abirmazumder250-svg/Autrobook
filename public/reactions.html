@@ -2,19 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reactions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Reactions — Autrobook</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/auth.js"></script>
 <style>
   :root {
     --bg-primary: #202124;
     --bg-elevated: #292a2d;
+    --bg-card: #242629;
     --bg-pill: #303134;
     --bg-pill-active: #394457;
     --text-primary: #FFFFFF;
     --text-secondary: #bdc1c6;
     --accent-blue: #8ab4f8;
+    --accent-green: #81c995;
     --dark-green: #1b5e20;
     --dark-green-hover: #2e7d32;
     --border-color: #3c4043;
@@ -25,52 +26,53 @@
     padding: 0;
     box-sizing: border-box;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    padding-bottom: 56px;
+    padding-bottom: 64px;
     min-height: 100vh;
-    visibility: hidden;
-  }
-
-  body.auth-ready {
-    visibility: visible;
   }
 
   .header {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 16px;
+    padding: 14px 18px;
     background-color: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 25;
   }
 
   .back-btn {
     color: var(--text-primary);
     text-decoration: none;
-    font-size: 22px;
+    font-size: 20px;
+    font-weight: 600;
     line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-elevated);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
   .back-btn:hover {
-    background-color: var(--bg-elevated);
+    background-color: var(--bg-pill);
+    border-color: var(--accent-blue);
   }
 
   .header-title {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 19px;
+    font-weight: 700;
     color: var(--text-primary);
   }
 
@@ -78,31 +80,33 @@
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
 
   .icon-btn {
-    background: transparent;
-    border: none;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-color);
     color: var(--text-primary);
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
     width: 34px;
     height: 34px;
-    border-radius: 50%;
+    border-radius: 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
   .icon-btn:hover {
-    background-color: var(--bg-elevated);
+    background-color: var(--bg-pill);
+    border-color: var(--accent-blue);
   }
 
   .search-bar {
     display: none;
-    padding: 8px 16px 12px;
+    padding: 10px 18px 14px;
     background-color: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
   }
@@ -113,24 +117,37 @@
 
   .search-input {
     width: 100%;
-    padding: 9px 14px;
-    border-radius: 20px;
+    max-width: 680px;
+    display: block;
+    margin: 0 auto;
+    padding: 10px 16px;
+    border-radius: 8px;
     border: 1px solid var(--border-color);
     background-color: var(--bg-elevated);
     color: var(--text-primary);
     font-size: 14px;
     outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .search-input:focus {
+    border-color: var(--accent-blue);
+  }
+
+  .tabs-wrap {
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
   }
 
   .tabs {
+    max-width: 720px;
+    margin: 0 auto;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
+    gap: 10px;
+    padding: 12px 16px;
     overflow-x: auto;
     scrollbar-width: none;
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--bg-primary);
   }
 
   .tabs::-webkit-scrollbar {
@@ -140,22 +157,27 @@
   .tab {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
+    gap: 7px;
+    padding: 8px 15px;
     border-radius: 20px;
     background-color: var(--bg-pill);
-    border: 1px solid transparent;
+    border: 1px solid var(--border-color);
     color: var(--text-primary);
     font-size: 14px;
     font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .tab:hover {
+    background-color: var(--bg-elevated);
   }
 
   .tab.active {
     background-color: var(--bg-pill-active);
     color: var(--accent-blue);
-    border-color: rgba(138, 180, 248, 0.35);
+    border-color: rgba(138, 180, 248, 0.45);
     font-weight: 600;
   }
 
@@ -164,32 +186,45 @@
     line-height: 1;
   }
 
+  .page-shell {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
   .info {
-    padding: 18px 16px;
-    font-size: 14px;
+    margin: 14px 16px 6px;
+    padding: 13px 15px;
+    border-radius: 8px;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    font-size: 13.5px;
     line-height: 1.5;
     color: var(--text-secondary);
     text-align: left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .user-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 10px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 14px;
+    margin: 10px 16px;
+    padding: 13px 15px;
+    border-radius: 10px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
   .user-row:hover {
     background-color: var(--bg-elevated);
+    border-color: rgba(138, 180, 248, 0.35);
   }
 
   .user-link {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 13px;
     text-decoration: none;
     color: var(--text-primary);
     flex: 1;
@@ -198,23 +233,24 @@
 
   .avatar-wrap {
     position: relative;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     flex-shrink: 0;
   }
 
   .avatar {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     object-fit: cover;
     background-color: var(--bg-pill);
     display: block;
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   .avatar-fallback {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background-color: var(--bg-pill);
     color: var(--text-primary);
@@ -222,18 +258,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
   }
 
   .reaction-corner-badge {
     position: absolute;
-    right: -2px;
-    bottom: -2px;
-    width: 19px;
-    height: 19px;
+    right: -3px;
+    bottom: -3px;
+    width: 21px;
+    height: 21px;
     border-radius: 50%;
-    background-color: var(--bg-primary);
+    background-color: var(--bg-elevated);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -247,26 +283,43 @@
     min-width: 0;
   }
 
+  .user-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   .user-name {
     font-size: 15px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
+  .you-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-green);
+    background-color: rgba(129, 201, 149, 0.14);
+    border: 1px solid rgba(129, 201, 149, 0.35);
+    padding: 1px 7px;
+    border-radius: 4px;
+  }
+
   .user-sub {
     font-size: 12px;
     color: var(--text-secondary);
-    margin-top: 2px;
+    margin-top: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .action-btn {
-    padding: 7px 14px;
+    padding: 8px 14px;
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;
@@ -277,12 +330,13 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
   .btn-dark-green {
     background-color: var(--dark-green);
     color: var(--text-primary);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.14);
   }
 
   .btn-dark-green:hover {
@@ -296,26 +350,34 @@
   }
 
   .btn-outline {
-    background-color: transparent;
+    background-color: var(--bg-pill);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
   }
 
+  .btn-outline:hover {
+    border-color: var(--accent-blue);
+  }
+
   .empty {
-    padding: 48px 20px;
+    margin: 24px 16px;
+    padding: 44px 20px;
     text-align: center;
     font-size: 14px;
     color: var(--text-secondary);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
   }
 </style>
 </head>
 <body>
 
   <header class="header">
-    <a href="index.html" class="back-btn" aria-label="Back to Home Feed">←</a>
+    <a id="backBtn" href="index.html" class="back-btn" aria-label="Back">&larr;</a>
     <h1 class="header-title">Reactions</h1>
     <div class="header-actions">
-      <button type="button" class="icon-btn" id="searchToggle" aria-label="Search">🔍</button>
+      <button type="button" class="icon-btn" id="searchToggle" aria-label="Search">&#128269;</button>
     </div>
   </header>
 
@@ -329,50 +391,64 @@
     >
   </div>
 
-  <div class="tabs" role="tablist">
-    <button type="button" class="tab active" data-type="all" onclick="selectTab('all', this)">
-      <span>All</span>
-      <span class="count" id="count-all">0</span>
-    </button>
-    <button type="button" class="tab" data-type="love" onclick="selectTab('love', this)">
-      <span class="emoji">❤️</span>
-      <span class="count" id="count-love">0</span>
-    </button>
-    <button type="button" class="tab" data-type="like" onclick="selectTab('like', this)">
-      <span class="emoji">👍</span>
-      <span class="count" id="count-like">0</span>
-    </button>
-    <button type="button" class="tab" data-type="care" onclick="selectTab('care', this)">
-      <span class="emoji">🥰</span>
-      <span class="count" id="count-care">0</span>
-    </button>
-    <button type="button" class="tab" data-type="haha" onclick="selectTab('haha', this)">
-      <span class="emoji">😆</span>
-      <span class="count" id="count-haha">0</span>
-    </button>
-    <button type="button" class="tab" data-type="sad" onclick="selectTab('sad', this)">
-      <span class="emoji">😢</span>
-      <span class="count" id="count-sad">0</span>
-    </button>
-    <button type="button" class="tab" data-type="wow" onclick="selectTab('wow', this)">
-      <span class="emoji">😮</span>
-      <span class="count" id="count-wow">0</span>
-    </button>
-    <button type="button" class="tab" data-type="angry" onclick="selectTab('angry', this)">
-      <span class="emoji">😠</span>
-      <span class="count" id="count-angry">0</span>
-    </button>
+  <div class="tabs-wrap">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-type="all" onclick="selectTab('all', this)">
+        <span>All</span>
+        <span class="count" id="count-all">0</span>
+      </button>
+      <button type="button" class="tab" data-type="love" onclick="selectTab('love', this)">
+        <span class="emoji">&#10084;&#65039;</span>
+        <span class="count" id="count-love">0</span>
+      </button>
+      <button type="button" class="tab" data-type="like" onclick="selectTab('like', this)">
+        <span class="emoji">&#128077;</span>
+        <span class="count" id="count-like">0</span>
+      </button>
+      <button type="button" class="tab" data-type="care" onclick="selectTab('care', this)">
+        <span class="emoji">&#129392;</span>
+        <span class="count" id="count-care">0</span>
+      </button>
+      <button type="button" class="tab" data-type="haha" onclick="selectTab('haha', this)">
+        <span class="emoji">&#128518;</span>
+        <span class="count" id="count-haha">0</span>
+      </button>
+      <button type="button" class="tab" data-type="sad" onclick="selectTab('sad', this)">
+        <span class="emoji">&#128546;</span>
+        <span class="count" id="count-sad">0</span>
+      </button>
+      <button type="button" class="tab" data-type="wow" onclick="selectTab('wow', this)">
+        <span class="emoji">&#128558;</span>
+        <span class="count" id="count-wow">0</span>
+      </button>
+      <button type="button" class="tab" data-type="angry" onclick="selectTab('angry', this)">
+        <span class="emoji">&#128544;</span>
+        <span class="count" id="count-angry">0</span>
+      </button>
+    </div>
   </div>
 
-  <p class="info" id="viewInfo" style="display:none;">
-    You can see the total number of people who reacted to this post, but only the names of friends who have reacted will be shown.
-  </p>
+  <div class="page-shell">
+    <p class="info" id="viewInfo" style="display:none;">
+      You can see the total number of people who reacted to this post, but only the names of friends who have reacted will be shown.
+    </p>
 
-  <main id="reactionList">
-    <div class="empty">Loading reactions...</div>
-  </main>
+    <main id="reactionList">
+      <div class="empty">No reactions yet.</div>
+    </main>
+  </div>
 
 <script>
+const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+
+let sbClient = null;
+try {
+  if (window.supabase && typeof window.supabase.createClient === "function") {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (_) {}
+
 const REACTION_EMOJIS = {
   love: "❤️",
   like: "👍",
@@ -384,7 +460,8 @@ const REACTION_EMOJIS = {
 };
 
 const params = new URLSearchParams(window.location.search);
-const postId = params.get("postId");
+const postId = params.get("postId") || params.get("post") || "123";
+const fromPage = (params.get("from") || params.get("back") || "index.html").toLowerCase();
 
 let currentType = "all";
 let currentPost = null;
@@ -412,15 +489,50 @@ function readList(key) {
 }
 
 function writeList(key, val) {
-  localStorage.setItem(key, JSON.stringify(val));
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch (_) {}
 }
 
-function getCurrentUser() {
+function getOrCreateLocalUser() {
   try {
-    return JSON.parse(localStorage.getItem("currentUser")) || null;
-  } catch (_) {
-    return null;
-  }
+    const existing = JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (existing && existing.id) {
+      return {
+        id: String(existing.id),
+        name: String(existing.name || localStorage.getItem("autro_profile_name") || "Abir").trim(),
+        avatar: String(existing.avatar || localStorage.getItem("autro_profile_avatar") || "").trim()
+      };
+    }
+  } catch (_) {}
+
+  const id = String(localStorage.getItem("autro_user_id") || "user_101");
+  const name = String(localStorage.getItem("autro_profile_name") || "Abir").trim();
+  const avatar = String(localStorage.getItem("autro_profile_avatar") || "").trim();
+  const userObj = { id, name, avatar };
+  writeList("currentUser", userObj);
+  return userObj;
+}
+
+async function resolveSessionUserSilently() {
+  if (!sbClient) return;
+  try {
+    const { data: { session } } = await sbClient.auth.getSession();
+    const authUser = session && session.user ? session.user : null;
+    if (!authUser) return;
+
+    const meta = authUser.user_metadata || {};
+    const resolvedName = String(meta.full_name || meta.name || currentUser?.name || "Abir").trim();
+    const resolvedAvatar = String(meta.avatar_url || meta.picture || currentUser?.avatar || "").trim();
+
+    currentUser = {
+      ...(currentUser || {}),
+      id: String(authUser.id),
+      name: resolvedName,
+      avatar: resolvedAvatar
+    };
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  } catch (_) {}
 }
 
 function getUsersMap() {
@@ -523,50 +635,32 @@ function getInitials(name) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return "•";
+  return "AB";
 }
 
-function syncCurrentUserFromAuth(authResult) {
-  if (!authResult || !authResult.user) return;
-  const authUser = authResult.user;
-  const authProfile = authResult.profile || {};
-  const meta = authUser.user_metadata || {};
+function updateBackLink() {
+  const backEl = document.getElementById("backBtn");
+  const uid = String((currentUser && currentUser.id) || "");
+  const postAuthorId = String((currentPost && (currentPost.authorId || currentPost.userId || currentPost.user_id)) || "");
+  const isOwnPost = Boolean(uid && postAuthorId && uid === postAuthorId);
 
-  const resolvedName = String(
-    authProfile.full_name || authProfile.name || meta.full_name || meta.name || ""
-  ).trim();
-  const resolvedAvatar = String(
-    authProfile.avatar_url || meta.avatar_url || meta.picture || ""
-  ).trim();
-
-  const existing = getCurrentUser() || {};
-  const updatedUser = {
-    ...existing,
-    id: String(authUser.id),
-    name: resolvedName || existing.name || authUser.email || authUser.phone || "User",
-    avatar: resolvedAvatar || existing.avatar || "",
-    email: authUser.email || existing.email || "",
-    phone: authProfile.phone || authUser.phone || existing.phone || ""
-  };
-
-  localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-  currentUser = updatedUser;
+  if (fromPage.includes("profile") || isOwnPost) {
+    backEl.href = "profile.html";
+  } else if (fromPage.includes("comments")) {
+    backEl.href = `comments.html?post=${encodeURIComponent(postId)}&from=${encodeURIComponent(fromPage)}`;
+  } else {
+    backEl.href = "index.html";
+  }
 }
 
 function loadReactions(forceRender = false) {
-  currentUser = getCurrentUser();
+  currentUser = currentUser || getOrCreateLocalUser();
   const listEl = document.getElementById("reactionList");
   const infoEl = document.getElementById("viewInfo");
 
-  if (!postId) {
-    infoEl.style.display = "none";
-    updateCounts([]);
-    listEl.innerHTML = `<div class="empty">No post ID specified.</div>`;
-    return;
-  }
-
   const posts = readList("posts");
   currentPost = posts.find(p => String(p.id) === String(postId)) || null;
+  updateBackLink();
 
   const snapshot = JSON.stringify({
     post: currentPost ? currentPost.reactions : null,
@@ -582,10 +676,10 @@ function loadReactions(forceRender = false) {
   }
   lastSnapshot = snapshot;
 
-  if (!currentPost || !Array.isArray(currentPost.reactions)) {
+  if (!currentPost || !Array.isArray(currentPost.reactions) || currentPost.reactions.length === 0) {
     infoEl.style.display = "none";
     updateCounts([]);
-    listEl.innerHTML = `<div class="empty">No reactions found.</div>`;
+    listEl.innerHTML = `<div class="empty">No reactions on this post yet.</div>`;
     return;
   }
 
@@ -600,7 +694,7 @@ function loadReactions(forceRender = false) {
       const uid = String(r.userId || r.user_id || r.id || "").trim();
       if (!uid) return null;
       const profile = usersMap.get(uid) || {};
-      const displayName = profile.name || r.name || uid;
+      const displayName = profile.name || r.name || "Autrobook Member";
       const avatar = profile.avatar || r.img || "";
       const isSelf = Boolean(currentUser && currentUser.id && uid === String(currentUser.id));
       const alreadyFriend = isSelf || (currentUser && currentUser.id ? isFriend(currentUser.id, uid) : false);
@@ -672,15 +766,15 @@ function renderReactions() {
   }
 
   if (list.length === 0) {
-    listEl.innerHTML = isPostOwnerView
-      ? `<div class="empty">No reactions to show.</div>`
-      : "";
+    listEl.innerHTML = `<div class="empty">${isPostOwnerView ? "No matching reactions to display." : "No friends or self reactions found for this filter."}</div>`;
     return;
   }
 
   listEl.innerHTML = list.map(item => {
     const emoji = REACTION_EMOJIS[item.type] || "👍";
-    const profileUrl = `profile.html?userId=${encodeURIComponent(item.userId)}`;
+    const profileUrl = item.isSelf
+      ? "profile.html"
+      : `profile.html?userId=${encodeURIComponent(item.userId)}`;
     const avatarHtml = item.avatar
       ? `<img class="avatar" src="${escapeHtml(item.avatar)}" alt="${escapeHtml(item.name)}" loading="lazy">`
       : `<div class="avatar-fallback">${escapeHtml(getInitials(item.name))}</div>`;
@@ -708,7 +802,10 @@ function renderReactions() {
             <span class="reaction-corner-badge">${emoji}</span>
           </div>
           <div class="user-meta">
-            <div class="user-name">${escapeHtml(item.name)}</div>
+            <div class="user-name-row">
+              <span class="user-name">${escapeHtml(item.name)}</span>
+              ${item.isSelf ? `<span class="you-tag">You</span>` : ""}
+            </div>
             <div class="user-sub">ID: ${escapeHtml(item.userId)}</div>
           </div>
         </a>
@@ -721,43 +818,22 @@ function renderReactions() {
 window.addEventListener("storage", () => {
   if (pageInitialized) loadReactions(false);
 });
+
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && pageInitialized) loadReactions(false);
 });
 
 async function initReactionsPage() {
-  if (!window.AutroAuth || typeof window.AutroAuth.checkSessionAndProfile !== "function") {
-    window.location.replace("/login.html");
-    return;
-  }
-
-  const authResult = await window.AutroAuth.checkSessionAndProfile({
-    requireCompleteProfile: true
-  });
-
-  if (!authResult || !authResult.user) {
-    return;
-  }
-
-  syncCurrentUserFromAuth(authResult);
-  document.body.classList.add("auth-ready");
+  currentUser = getOrCreateLocalUser();
   pageInitialized = true;
-
   loadReactions(true);
+
+  await resolveSessionUserSilently();
+  loadReactions(true);
+
   setInterval(() => {
     if (pageInitialized) loadReactions(false);
   }, 1500);
-
-  const client = window.AutroAuth.supabase;
-  if (client && client.auth && typeof client.auth.onAuthStateChange === "function") {
-    client.auth.onAuthStateChange((_event, session) => {
-      if (!session || !session.user) {
-        pageInitialized = false;
-        document.body.classList.remove("auth-ready");
-        window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
-      }
-    });
-  }
 }
 
 initReactionsPage();
