@@ -1587,11 +1587,21 @@ try {
   }
 } catch (_) {}
 
+let liveChannel = null;
+try {
+  if (typeof BroadcastChannel !== "undefined") {
+    liveChannel = new BroadcastChannel("autrobook_live_engagement");
+  }
+} catch (_) {}
+
 const REACTION_EMOJIS = {
   love: "❤️",
+  heart: "❤️",
   like: "👍",
+  thumbs_up: "👍",
   care: "🥰",
   haha: "😆",
+  laugh: "😆",
   sad: "😢",
   wow: "😮",
   angry: "😠"
@@ -1701,7 +1711,7 @@ function getOrCreateLocalGuestUser() {
     avatar: bestAvatar
   };
   localStorage.setItem("currentUser", JSON.stringify(userObj));
-  localStorage.setItem("autro_user_id", currentUser?.id || uid);
+  localStorage.setItem("autro_user_id", uid);
   localStorage.setItem("autro_profile_name", bestName);
   localStorage.setItem("autro_profile_avatar", bestAvatar);
   return userObj;
@@ -1870,6 +1880,21 @@ function writeStorageObject(key, obj) {
   } catch (_) {}
 }
 
+function broadcastLiveEngagement(payload) {
+  const eventDetail = {
+    postId: String(itemId),
+    itemType,
+    timestamp: Date.now(),
+    ...(payload || {})
+  };
+  try {
+    window.dispatchEvent(new CustomEvent("autro:post-updated", { detail: eventDetail }));
+  } catch (_) {}
+  try {
+    if (liveChannel) liveChannel.postMessage(eventDetail);
+  } catch (_) {}
+}
+
 function playReactionPopSound() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -1934,20 +1959,105 @@ function formatTextWithMentions(rawText) {
   return escaped.replace(/(^|\s)(@[a-zA-Z0-9_.\u0980-\u09FF]+)/g, '$1<span class="mention-tag">$2</span>');
 }
 
-function getParentItem() {
-  const activeUser = currentUser || getOrCreateLocalGuestUser();
-  const storageKey = itemType === "reel" ? "reels" : "posts";
-  const arr = readStorageArray(storageKey);
-  let found = arr.find(p => String(p.id) === String(itemId));
+function extractReactionsFromExternalStores(pid, baseReactions) {
+  const normalized = [];
+  const seenKeys = new Set();
 
-  if (!found) {
-    const instantPosts = readStorageArray("autro_instant_feed_posts");
-    found = instantPosts.find(p => String(p.id) === String(itemId));
+  function addReactionEntry(typeVal, userVal) {
+    const rType = String(typeVal || "like").toLowerCase().trim() || "like";
+    const rUser = String(userVal || "").trim();
+    const dedupKey = rUser ? `u:${rUser}` : `anon:${normalized.length}:${rType}`;
+    if (seenKeys.has(dedupKey)) return;
+    seenKeys.add(dedupKey);
+    normalized.push({ type: rType, userId: rUser });
   }
 
-  const localStoreComments = readStorageObject("autro_comments_store")[String(itemId)];
-  const baseObj = found || {
-    id: itemId,
+  if (Array.isArray(baseReactions)) {
+    baseReactions.forEach(item => {
+      if (typeof item === "string") {
+        addReactionEntry(item, "");
+      } else if (item && typeof item === "object") {
+        addReactionEntry(item.type || item.reaction || item.emoji || "like", item.userId || item.user_id || item.uid || "");
+      }
+    });
+  } else if (baseReactions && typeof baseReactions === "object") {
+    Object.entries(baseReactions).forEach(([k, v]) => {
+      if (typeof v === "string") {
+        addReactionEntry(v, k);
+      } else if (typeof v === "number" && v > 0) {
+        for (let i = 0; i < v; i++) addReactionEntry(k, "");
+      }
+    });
+  }
+
+  const reactionStoreKeys = ["autro_post_reactions", "postReactions", "autro_reactions_store", "reactions_by_post"];
+  reactionStoreKeys.forEach(storeKey => {
+    const store = readStorageObject(storeKey);
+    const val = store[pid];
+    if (Array.isArray(val)) {
+      val.forEach(item => {
+        if (typeof item === "string") addReactionEntry(item, "");
+        else if (item && typeof item === "object") {
+          addReactionEntry(item.type || item.reaction || item.emoji || "like", item.userId || item.user_id || item.uid || "");
+        }
+      });
+    } else if (val && typeof val === "object") {
+      Object.entries(val).forEach(([k, v]) => {
+        if (typeof v === "string") addReactionEntry(v, k);
+        else if (typeof v === "number" && v > 0) {
+          for (let i = 0; i < v; i++) addReactionEntry(k, "");
+        }
+      });
+    }
+  });
+
+  return normalized;
+}
+
+function extractSharesFromExternalStores(pid, baseObj) {
+  let maxShares = Math.max(
+    Number(baseObj?.shares || 0),
+    Number(baseObj?.share_count || 0),
+    Number(baseObj?.sharesCount || 0)
+  );
+
+  const shareStoreKeys = ["autro_post_shares", "postShares", "autro_shares_store", "shares_by_post"];
+  shareStoreKeys.forEach(storeKey => {
+    const store = readStorageObject(storeKey);
+    const val = store[pid];
+    if (typeof val === "number") {
+      maxShares = Math.max(maxShares, val);
+    } else if (Array.isArray(val)) {
+      maxShares = Math.max(maxShares, val.length);
+    } else if (val && typeof val === "object") {
+      maxShares = Math.max(
+        maxShares,
+        Number(val.count || val.shares || val.share_count || Object.keys(val).length || 0)
+      );
+    }
+  });
+
+  return maxShares;
+}
+
+function getParentItem() {
+  const activeUser = currentUser || getOrCreateLocalGuestUser();
+  const pid = String(itemId);
+  const storageKey = itemType === "reel" ? "reels" : "posts";
+  const primaryArr = readStorageArray(storageKey);
+  const secondaryArr = readStorageArray(storageKey === "reels" ? "posts" : "reels");
+  const instantPosts = readStorageArray("autro_instant_feed_posts");
+  const profilePosts = readStorageArray("autro_profile_posts");
+
+  const found =
+    primaryArr.find(p => String(p.id) === pid) ||
+    instantPosts.find(p => String(p.id) === pid) ||
+    profilePosts.find(p => String(p.id) === pid) ||
+    secondaryArr.find(p => String(p.id) === pid);
+
+  const localStoreComments = readStorageObject("autro_comments_store")[pid];
+  const baseObj = found ? { ...found } : {
+    id: pid,
     authorId: activeUser.id,
     pinnedCommentId: null,
     reactions: [],
@@ -1955,58 +2065,104 @@ function getParentItem() {
     comments: []
   };
 
-  if (Array.isArray(localStoreComments) && localStoreComments.length && (!Array.isArray(baseObj.comments) || !baseObj.comments.length)) {
-    baseObj.comments = localStoreComments.map(c => {
-      const uid = String(c.user_id || c.userId || activeUser.id);
-      const disp = normalizeDisplayAuthor(c.author || c.userName, c.img, uid);
-      return {
-        id: String(c.id),
-        userId: uid,
-        userName: disp.name,
-        img: disp.avatar,
-        text: c.text || "",
-        imageUrl: c.imageUrl || "",
-        audioUrl: c.voiceUrl || c.audioUrl || "",
-        audioEffect: c.audioEffect || "",
-        time: c.created_at ? new Date(c.created_at).getTime() : (c.time || Date.now()),
-        reactions: c.reactions || {},
-        userVote: c.userVote || {},
-        likesCount: Number(c.like_count || c.likesCount || 0),
-        dislikesCount: Number(c.dislike_count || c.dislikesCount || 0),
-        authorHearted: Boolean(c.authorHearted),
-        replies: Array.isArray(c.replies) ? c.replies.map(r => {
-          const rUid = String(r.user_id || r.userId || activeUser.id);
-          const rDisp = normalizeDisplayAuthor(r.author || r.userName, r.img, rUid);
-          return {
-            id: String(r.id),
-            userId: rUid,
-            userName: rDisp.name,
-            img: rDisp.avatar,
-            text: r.text || "",
-            time: r.created_at ? new Date(r.created_at).getTime() : (r.time || Date.now()),
-            likes: Array.isArray(r.likes) ? r.likes : []
-          };
-        }) : []
-      };
-    });
-  }
+  const mergedReactions = extractReactionsFromExternalStores(pid, baseObj.reactions);
+  const explicitReactionCount = Math.max(
+    Number(baseObj.reaction_count || 0),
+    Number(baseObj.reactionsCount || 0),
+    Number(baseObj.likes || 0),
+    Number(baseObj.like_count || 0)
+  );
+  baseObj.reactions = mergedReactions;
+  baseObj.reaction_count = Math.max(mergedReactions.length, explicitReactionCount);
+  baseObj.shares = extractSharesFromExternalStores(pid, baseObj);
+
+  const parsedComments = Array.isArray(baseObj.comments) && baseObj.comments.length
+    ? baseObj.comments
+    : (Array.isArray(localStoreComments) ? localStoreComments : []);
+
+  baseObj.comments = parsedComments.map(c => {
+    const uid = String(c.user_id || c.userId || activeUser.id);
+    const disp = normalizeDisplayAuthor(c.author || c.userName, c.img, uid);
+    return {
+      ...c,
+      id: String(c.id),
+      userId: uid,
+      userName: disp.name,
+      img: disp.avatar,
+      text: c.text || c.comment_text || c.content || "",
+      imageUrl: c.imageUrl || c.image_url || "",
+      audioUrl: c.voiceUrl || c.audioUrl || c.audio_url || "",
+      audioEffect: c.audioEffect || c.audio_effect || "",
+      time: c.created_at ? new Date(c.created_at).getTime() : (c.time || Date.now()),
+      reactions: c.reactions || {},
+      userVote: c.userVote || {},
+      likesCount: Number(c.like_count || c.likesCount || 0),
+      dislikesCount: Number(c.dislike_count || c.dislikesCount || 0),
+      authorHearted: Boolean(c.authorHearted || c.author_hearted),
+      replies: Array.isArray(c.replies) ? c.replies.map(r => {
+        const rUid = String(r.user_id || r.userId || activeUser.id);
+        const rDisp = normalizeDisplayAuthor(r.author || r.userName, r.img, rUid);
+        return {
+          ...r,
+          id: String(r.id),
+          userId: rUid,
+          userName: rDisp.name,
+          img: rDisp.avatar,
+          text: r.text || r.comment_text || r.content || "",
+          time: r.created_at ? new Date(r.created_at).getTime() : (r.time || Date.now()),
+          likes: Array.isArray(r.likes) ? r.likes : []
+        };
+      }) : []
+    };
+  });
 
   return baseObj;
 }
 
 function saveParentItem(updatedItem) {
-  const storageKey = itemType === "reel" ? "reels" : "posts";
-  const arr = readStorageArray(storageKey);
-  const idx = arr.findIndex(p => String(p.id) === String(itemId));
-  if (idx !== -1) {
-    arr[idx] = { ...arr[idx], ...updatedItem, comment_count: (updatedItem.comments || []).length };
-  } else {
-    arr.push({ ...updatedItem, comment_count: (updatedItem.comments || []).length });
+  const pid = String(itemId);
+  const commentList = Array.isArray(updatedItem.comments) ? updatedItem.comments : [];
+  const totalCommentCount = commentList.reduce(
+    (acc, c) => acc + 1 + (Array.isArray(c.replies) ? c.replies.length : 0),
+    0
+  );
+
+  function upsertInArray(arrName) {
+    const arr = readStorageArray(arrName);
+    const idx = arr.findIndex(p => String(p.id) === pid);
+    if (idx !== -1) {
+      arr[idx] = {
+        ...arr[idx],
+        ...updatedItem,
+        comments: commentList,
+        comment_count: totalCommentCount,
+        commentsCount: totalCommentCount
+      };
+      writeStorageArray(arrName, arr);
+      return true;
+    }
+    return false;
   }
-  writeStorageArray(storageKey, arr);
+
+  const storageKey = itemType === "reel" ? "reels" : "posts";
+  const updatedPrimary = upsertInArray(storageKey);
+  upsertInArray("autro_instant_feed_posts");
+  upsertInArray("autro_profile_posts");
+
+  if (!updatedPrimary) {
+    const arr = readStorageArray(storageKey);
+    arr.push({
+      ...updatedItem,
+      id: pid,
+      comments: commentList,
+      comment_count: totalCommentCount,
+      commentsCount: totalCommentCount
+    });
+    writeStorageArray(storageKey, arr);
+  }
 
   const storeObj = readStorageObject("autro_comments_store");
-  storeObj[String(itemId)] = (updatedItem.comments || []).map(c => ({
+  storeObj[pid] = commentList.map(c => ({
     id: c.id,
     user_id: c.userId,
     author: c.userName,
@@ -2032,6 +2188,16 @@ function saveParentItem(updatedItem) {
     }))
   }));
   writeStorageObject("autro_comments_store", storeObj);
+
+  const countsStore = readStorageObject("autro_comment_counts");
+  countsStore[pid] = totalCommentCount;
+  writeStorageObject("autro_comment_counts", countsStore);
+
+  broadcastLiveEngagement({
+    comment_count: totalCommentCount,
+    reaction_count: Number(updatedItem.reaction_count || (updatedItem.reactions || []).length || 0),
+    share_count: Number(updatedItem.shares || 0)
+  });
 }
 
 /* Back arrow returns to profile.html when own profile / own post flow is active, else index.html */
@@ -2062,8 +2228,71 @@ function updateLiveCommentBadge(comments) {
     `${formatCompactCount(totalCount)} ${totalCount === 1 ? "comment" : "comments"}`;
 }
 
+function updateSummaryBarLive(parent) {
+  const postReactions = Array.isArray(parent.reactions) ? parent.reactions : [];
+  const totalReactionNum = Math.max(postReactions.length, Number(parent.reaction_count || 0));
+  const uniqueEmojis = Array.from(
+    new Set(
+      postReactions.map(r => REACTION_EMOJIS[String(r.type || "like").toLowerCase()] || "👍")
+    )
+  ).slice(0, 3);
+
+  document.getElementById("postReactionEmojis").textContent =
+    uniqueEmojis.join("") || (totalReactionNum > 0 ? "👍" : "");
+  document.getElementById("postReactionCount").textContent = formatCompactCount(totalReactionNum);
+
+  const sharesCount = Number(parent.shares || parent.share_count || 0);
+  document.getElementById("postSharesLabel").textContent =
+    `${formatCompactCount(sharesCount)} ${sharesCount === 1 ? "share" : "shares"}`;
+}
+
+async function syncPostEngagementFromSupabase() {
+  if (!sbClient) return;
+  const pid = String(itemId);
+  if (pid.startsWith("local-")) return;
+
+  try {
+    const tableName = itemType === "reel" ? "reels" : "posts";
+    const { data: postRow } = await sbClient
+      .from(tableName)
+      .select("*")
+      .eq("id", pid)
+      .maybeSingle();
+
+    if (!postRow) return;
+
+    const parent = getParentItem();
+    const remoteReactions = Number(postRow.reaction_count || postRow.likes_count || 0);
+    const remoteShares = Number(postRow.share_count || postRow.shares_count || 0);
+    const remoteComments = Number(postRow.comment_count || postRow.comments_count || 0);
+
+    let changed = false;
+    if (remoteReactions > Math.max(Number(parent.reaction_count || 0), (parent.reactions || []).length)) {
+      parent.reaction_count = remoteReactions;
+      if (!Array.isArray(parent.reactions) || parent.reactions.length === 0) {
+        parent.reactions = [{ type: postRow.top_reaction || "like", userId: "remote" }];
+      }
+      changed = true;
+    }
+    if (remoteShares > Number(parent.shares || 0)) {
+      parent.shares = remoteShares;
+      changed = true;
+    }
+    if (changed) {
+      saveParentItem(parent);
+      updateSummaryBarLive(parent);
+    }
+    if (remoteComments > (parent.comments || []).length) {
+      document.getElementById("liveCountBadge").textContent =
+        `${formatCompactCount(remoteComments)} ${remoteComments === 1 ? "comment" : "comments"}`;
+    }
+  } catch (_) {}
+}
+
 async function syncCommentsWithSupabase() {
   if (!commentsInitialized || !sbClient) return;
+  await syncPostEngagementFromSupabase();
+
   try {
     const { data: rows, error } = await sbClient
       .from("post_comments")
@@ -3029,24 +3258,12 @@ function renderAll() {
   updateRestrictionBanner();
   const parent = getParentItem();
   updateBackButtonTarget(parent);
+  updateSummaryBarLive(parent);
+
   const isAuthor = isCurrentUserPostAuthor(parent);
   const pinnedId = parent.pinnedCommentId ? String(parent.pinnedCommentId) : "";
   const postAuthorId = String(parent.authorId || parent.user_id || parent.userId || "");
   const uid = String((currentUser && currentUser.id) || "");
-
-  const postReactions = Array.isArray(parent.reactions) ? parent.reactions : [];
-  const totalReactionNum = Math.max(postReactions.length, Number(parent.reaction_count || 0));
-  const uniqueEmojis = Array.from(
-    new Set(
-      postReactions.map(r => REACTION_EMOJIS[String(r.type || "like").toLowerCase()] || "👍")
-    )
-  ).slice(0, 3);
-
-  document.getElementById("postReactionEmojis").textContent = uniqueEmojis.join("") || (totalReactionNum > 0 ? "👍" : "");
-  document.getElementById("postReactionCount").textContent = formatCompactCount(totalReactionNum);
-
-  const sharesCount = Number(parent.shares || parent.share_count || 0);
-  document.getElementById("postSharesLabel").textContent = `${formatCompactCount(sharesCount)} ${sharesCount === 1 ? "share" : "shares"}`;
 
   const allComments = Array.isArray(parent.comments) ? parent.comments : [];
   updateLiveCommentBadge(allComments);
@@ -3343,6 +3560,47 @@ function highlightTargetCommentFromHash() {
   }, 2600);
 }
 
+function subscribeLiveEngagementUpdates() {
+  if (liveChannel) {
+    liveChannel.onmessage = event => {
+      const data = event?.data || {};
+      if (!data.postId || String(data.postId) === String(itemId)) {
+        renderAll();
+      }
+    };
+  }
+
+  window.addEventListener("autro:post-updated", event => {
+    const data = event?.detail || {};
+    if (!data.postId || String(data.postId) === String(itemId)) {
+      renderAll();
+    }
+  });
+
+  if (sbClient && typeof sbClient.channel === "function") {
+    try {
+      const tableName = itemType === "reel" ? "reels" : "posts";
+      sbClient
+        .channel(`live_post_${itemType}_${itemId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: tableName, filter: `id=eq.${String(itemId)}` },
+          () => {
+            syncPostEngagementFromSupabase();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "post_comments", filter: `post_id=eq.${String(itemId)}` },
+          () => {
+            syncCommentsWithSupabase();
+          }
+        )
+        .subscribe();
+    } catch (_) {}
+  }
+}
+
 document.addEventListener("pointerdown", e => {
   const picker = document.getElementById("longpressPicker");
   if (picker.classList.contains("open") && !picker.contains(e.target) && !e.target.closest(".system-default-btn")) {
@@ -3364,6 +3622,7 @@ setInterval(() => {
     if (ts) el.textContent = formatTimeAgo(ts);
   });
   updateRestrictionBanner();
+  renderAll();
 }, 1000);
 
 window.addEventListener("storage", () => {
@@ -3378,6 +3637,7 @@ async function initCommentsPage() {
 
   updateCharCounter();
   consumeReturnParamsFromSubpages();
+  subscribeLiveEngagementUpdates();
   renderAll();
   highlightTargetCommentFromHash();
 
@@ -3402,4 +3662,4 @@ initCommentsPage();
 </script>
 
 </body>
-    </html>
+  </html>
