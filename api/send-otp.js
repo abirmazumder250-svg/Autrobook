@@ -1,16 +1,17 @@
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const bcrypt = require("bcryptjs");
 const { createClient } = require("@supabase/supabase-js");
 
 const SUPABASE_URL =
-  process.env.SUPABASE_URL || "https://gemyqaniztqrsilayblx.supabase.co";
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "https://gemyqaniztqrsilayblx.supabase.co";
+
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const GMAIL_USER = String(process.env.GMAIL_USER || "").trim();
-const GMAIL_APP_PASSWORD = String(process.env.GMAIL_APP_PASSWORD || "")
-  .replace(/\s+/g, "")
-  .trim();
-const RECAPTCHA_SECRET_KEY = String(process.env.RECAPTCHA_SECRET_KEY || "").trim();
-const OTP_PEPPER = String(process.env.OTP_PEPPER || SUPABASE_SERVICE_ROLE_KEY || "");
+const OTP_PEPPER = String(
+  process.env.OTP_PEPPER || SUPABASE_SERVICE_ROLE_KEY || ""
+);
 
 const ALLOWED_ORIGINS = new Set([
   "https://autrobook.vercel.app",
@@ -19,20 +20,14 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:3000",
 ]);
 
-const BLOCKED_DOMAINS = new Set([
-  "tempmail.com",
-  "10minutemail.com",
-  "guerrillamail.com",
-  "mailinator.com",
-  "yopmail.com",
-  "throwaway.email",
-  "getnada.com",
-  "sharklasers.com",
-  "trashmail.com",
-]);
+const MAX_OTP_ATTEMPTS = 5;
 
-const OTP_TTL_MS = 10 * 60 * 1000;
-const RESEND_COOLDOWN_MS = 45 * 1000;
+const supabase =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null;
 
 function applyCorsHeaders(req, res) {
   const origin = String(req.headers.origin || "").trim();
@@ -41,33 +36,18 @@ function applyCorsHeaders(req, res) {
     res.setHeader("Vary", "Origin");
   }
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[ch]));
-}
-
-function isValidRealEmail(email) {
-  const normalized = String(email || "").trim().toLowerCase();
-  if (!normalized || normalized.length > 160) return false;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  if (!emailRegex.test(normalized)) return false;
-
-  const domain = normalized.split("@")[1];
-  if (!domain || BLOCKED_DOMAINS.has(domain)) return false;
-
-  return true;
-}
-
-function generateSecureOtp() {
-  return String(crypto.randomInt(100000, 1000000));
+function isStrongPassword(pw) {
+  return (
+    typeof pw === "string" &&
+    pw.length >= 8 &&
+    pw.length <= 128 &&
+    /[a-z]/.test(pw) &&
+    /[A-Z]/.test(pw) &&
+    /[\d\W_]/.test(pw)
+  );
 }
 
 function hashOtp(email, otp) {
@@ -77,301 +57,269 @@ function hashOtp(email, otp) {
     .digest("hex");
 }
 
-async function verifyRecaptcha(token) {
-  if (!RECAPTCHA_SECRET_KEY) {
-    console.error("Missing RECAPTCHA_SECRET_KEY environment variable.");
-    return {
-      ok: false,
-      configError: true,
-      errorCodes: ["missing-secret-key"],
-    };
+function safeEqualStrings(a, b) {
+  const s1 = String(a || "");
+  const s2 = String(b || "");
+  if (!s1 || !s2) return false;
+  const buf1 = Buffer.from(s1, "utf8");
+  const buf2 = Buffer.from(s2, "utf8");
+  if (buf1.length !== buf2.length) return false;
+  return crypto.timingSafeEqual(buf1, buf2);
+}
+
+function verifySignedToken(token, expectedEmail) {
+  const secret =
+    process.env.RESET_TOKEN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret || !token) return false;
+
+  const parts = String(token).split(".");
+  if (parts.length !== 2) return false;
+
+  const [payloadB64, sig] = parts;
+  const expectedSig = crypto
+    .createHmac("sha256", secret)
+    .update(payloadB64)
+    .digest("hex");
+
+  if (!safeEqualStrings(sig, expectedSig)) return false;
+
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(payloadB64, "base64url").toString("utf8")
+    );
+    if (
+      !parsed ||
+      String(parsed.email || "").trim().toLowerCase() !== expectedEmail
+    ) {
+      return false;
+    }
+    if (!parsed.exp || Date.now() > Number(parsed.exp)) return false;
+    return true;
+  } catch {
+    return false;
   }
+}
 
-  const cleanToken = String(token || "").trim();
-  if (!cleanToken || cleanToken.length > 4096) {
-    return {
-      ok: false,
-      configError: false,
-      errorCodes: ["missing-input-response"],
-    };
-  }
+async function findSupabaseAuthUserByEmail(supabaseAdmin, email) {
+  let page = 1;
+  const perPage = 200;
 
-  const params = new URLSearchParams();
-  params.append("secret", RECAPTCHA_SECRET_KEY);
-  params.append("response", cleanToken);
-
-  const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
-
-  if (!response.ok) {
-    return {
-      ok: false,
-      configError: false,
-      errorCodes: [`http_${response.status}`],
-    };
-  }
-
-  const data = await response.json();
-  const errorCodes = Array.isArray(data && data["error-codes"])
-    ? data["error-codes"]
-    : [];
-
-  if (!data || data.success !== true) {
-    console.warn("reCAPTCHA siteverify rejected:", {
-      hostname: data && data.hostname,
-      errorCodes,
+  while (page <= 25) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
     });
-    return { ok: false, configError: false, errorCodes };
+    if (error) return null;
+
+    const users = data?.users || [];
+    const matched = users.find(
+      (u) => String(u.email || "").trim().toLowerCase() === email
+    );
+    if (matched) return matched;
+
+    if (users.length < perPage) break;
+    page++;
+  }
+  return null;
+}
+
+async function verifyEmailOtpRecord(supabaseAdmin, cleanEmail, cleanOtp) {
+  const { data: row, error } = await supabaseAdmin
+    .from("email_otps")
+    .select("*")
+    .eq("email", cleanEmail)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !row) {
+    return { ok: false, status: 400, message: "OTP record not found" };
   }
 
-  return { ok: true, configError: false, errorCodes: [] };
+  if (row.verified === true || row.used === true) {
+    return { ok: false, status: 400, message: "OTP already used" };
+  }
+
+  const currentAttempts = Number(row.attempts || 0);
+  if (currentAttempts >= MAX_OTP_ATTEMPTS) {
+    return {
+      ok: false,
+      status: 429,
+      message: "Too many invalid OTP attempts",
+    };
+  }
+
+  if (row.expires_at && Date.now() > new Date(row.expires_at).getTime()) {
+    return { ok: false, status: 400, message: "OTP has expired" };
+  }
+
+  const storedValue = String(row.otp ?? row.code ?? row.otp_code ?? "").trim();
+  const computedHash = hashOtp(cleanEmail, cleanOtp);
+
+  const isMatch =
+    safeEqualStrings(storedValue, computedHash) ||
+    safeEqualStrings(storedValue, cleanOtp);
+
+  if (!isMatch) {
+    const nextAttempts = currentAttempts + 1;
+    const updatePayload = {};
+    if ("attempts" in row) updatePayload.attempts = nextAttempts;
+    if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+      if ("verified" in row) updatePayload.verified = true;
+      if ("used" in row) updatePayload.used = true;
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      await supabaseAdmin
+        .from("email_otps")
+        .update(updatePayload)
+        .eq("id", row.id);
+    }
+
+    return { ok: false, status: 400, message: "Invalid OTP code" };
+  }
+
+  return { ok: true, row };
 }
 
 module.exports = async function handler(req, res) {
   applyCorsHeaders(req, res);
 
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-
+  if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") {
-    return res.status(405).json({
-      ok: false,
-      success: false,
-      error: "Method not allowed. Use POST.",
-    });
+    return res
+      .status(405)
+      .json({ success: false, message: "Method not allowed" });
   }
 
   try {
-    if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
-      console.error("Missing GMAIL_USER or GMAIL_APP_PASSWORD environment variables.");
+    if (!supabase || !OTP_PEPPER) {
       return res.status(500).json({
-        ok: false,
         success: false,
-        error: "Email service is not configured on the server.",
+        message:
+          "SUPABASE_SERVICE_ROLE_KEY or OTP_PEPPER is missing in environment variables",
       });
     }
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-      return res.status(500).json({
-        ok: false,
-        success: false,
-        error: "Database configuration is missing on the server.",
-      });
-    }
-
-    if (!OTP_PEPPER) {
-      console.error("Missing OTP_PEPPER.");
-      return res.status(500).json({
-        ok: false,
-        success: false,
-        error: "OTP security configuration is missing on the server.",
-      });
-    }
-
-    let body = req.body || {};
-    if (typeof req.body === "string") {
+    let body = req.body;
+    if (typeof body === "string") {
       try {
-        body = JSON.parse(req.body || "{}");
-      } catch (_) {
-        return res.status(400).json({
-          ok: false,
-          success: false,
-          error: "Invalid JSON request body.",
-        });
+        body = JSON.parse(body);
+      } catch {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid JSON payload" });
       }
     }
 
-    if (!body || typeof body !== "object") {
+    const { email, resetToken, otp, newPassword, password } = body || {};
+    const cleanEmail = String(email || "").trim().toLowerCase();
+    const cleanPassword = String(newPassword || password || "");
+    const cleanOtp = String(otp || "").trim();
+
+    if (!cleanEmail || !cleanPassword || (!resetToken && !/^\d{6}$/.test(cleanOtp))) {
       return res.status(400).json({
-        ok: false,
         success: false,
-        error: "Request body must be a JSON object.",
+        message:
+          "Missing required fields (email, password, and resetToken or valid 6-digit otp)",
       });
     }
 
-    const email = String(body.email || "").trim().toLowerCase();
-    const purpose = String(body.purpose || "verification").trim().toLowerCase();
-    const recaptchaToken = String(
-      body.recaptchaToken || body.token || body["g-recaptcha-response"] || ""
-    ).trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid email address" });
+    }
 
-    if (!isValidRealEmail(email)) {
+    if (!isStrongPassword(cleanPassword)) {
       return res.status(400).json({
-        ok: false,
         success: false,
-        error: "Please enter a valid, non-temporary email address.",
+        message:
+          "Password must be at least 8 characters with uppercase, lowercase, and a number or symbol",
       });
     }
 
-    const captchaResult = await verifyRecaptcha(recaptchaToken);
-    if (!captchaResult.ok) {
-      if (captchaResult.configError) {
-        return res.status(500).json({
-          ok: false,
-          success: false,
-          error: "reCAPTCHA verification is not configured on the server.",
-        });
+    let otpVerification = null;
+
+    if (resetToken) {
+      if (!verifySignedToken(resetToken, cleanEmail)) {
+        return res
+          .status(403)
+          .json({ success: false, message: "Invalid or expired reset token" });
       }
-
-      return res.status(400).json({
-        ok: false,
-        success: false,
-        error: `reCAPTCHA verification failed${
-          captchaResult.errorCodes.length
-            ? ` (${captchaResult.errorCodes.join(", ")})`
-            : ""
-        }.`,
-        errorCodes: captchaResult.errorCodes,
-      });
-    }
-
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false },
-    });
-
-    if (purpose !== "reset-password") {
-      const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
-        .from("profiles")
-        .select("id, is_locked")
-        .eq("email", email)
-        .maybeSingle();
-
-      if (profileCheckError) {
-        console.error("Failed checking existing profile:", profileCheckError);
-        return res.status(500).json({
-          ok: false,
+    } else {
+      otpVerification = await verifyEmailOtpRecord(supabase, cleanEmail, cleanOtp);
+      if (!otpVerification.ok) {
+        return res.status(otpVerification.status).json({
           success: false,
-          error: "Failed checking account status.",
-        });
-      }
-
-      if (existingProfile) {
-        return res.status(409).json({
-          ok: false,
-          success: false,
-          alreadyExists: true,
-          error: "An account already exists with this email address.",
+          message: otpVerification.message,
         });
       }
     }
 
-    const { data: latestOtp, error: latestOtpError } = await supabaseAdmin
-      .from("email_otps")
-      .select("created_at")
-      .eq("email", email)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+    let updatedAnyAccount = false;
 
-    if (latestOtpError) {
-      console.warn("Failed reading latest OTP:", latestOtpError);
+    const { data: updatedUsers, error: updateError } = await supabase
+      .from("users")
+      .update({ password: hashedPassword })
+      .eq("email", cleanEmail)
+      .select("id");
+
+    if (updateError) {
+      console.error("Supabase users table update warning:", updateError.message || updateError);
+    } else if (Array.isArray(updatedUsers) && updatedUsers.length > 0) {
+      updatedAnyAccount = true;
     }
 
-    if (latestOtp && latestOtp.created_at) {
-      const elapsedMs = Date.now() - new Date(latestOtp.created_at).getTime();
-      if (elapsedMs >= 0 && elapsedMs < RESEND_COOLDOWN_MS) {
-        const waitSeconds = Math.ceil((RESEND_COOLDOWN_MS - elapsedMs) / 1000);
-        return res.status(429).json({
-          ok: false,
-          success: false,
-          error: `Please wait ${waitSeconds}s before requesting another OTP.`,
-          retryAfterSeconds: waitSeconds,
-        });
+    const authUser = await findSupabaseAuthUserByEmail(supabase, cleanEmail);
+    if (authUser) {
+      const { error: authErr } = await supabase.auth.admin.updateUserById(
+        authUser.id,
+        { password: cleanPassword }
+      );
+      if (authErr) {
+        console.error(
+          "Supabase Auth password update error:",
+          authErr.message || authErr
+        );
+      } else {
+        updatedAnyAccount = true;
       }
     }
 
-    const otp = generateSecureOtp();
-    const otpHash = hashOtp(email, otp);
-    const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
-
-    const { data: insertedOtp, error: dbError } = await supabaseAdmin
-      .from("email_otps")
-      .insert({
-        email,
-        otp: otpHash,
-        expires_at: expiresAt,
-        verified: false,
-      })
-      .select("id")
-      .single();
-
-    if (dbError || !insertedOtp?.id) {
-      console.error("Failed to store OTP in email_otps:", dbError);
-      return res.status(500).json({
-        ok: false,
-        success: false,
-        error: "Failed to store OTP in database.",
-      });
+    if (!updatedAnyAccount) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
-    const { error: cleanupError } = await supabaseAdmin
-      .from("email_otps")
-      .delete()
-      .eq("email", email)
-      .neq("id", insertedOtp.id);
+    if (otpVerification && otpVerification.row) {
+      const markUsedPayload = {};
+      if ("verified" in otpVerification.row) markUsedPayload.verified = true;
+      if ("used" in otpVerification.row) markUsedPayload.used = true;
 
-    if (cleanupError) {
-      console.warn("Failed cleaning up old OTPs:", cleanupError);
-    }
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_APP_PASSWORD,
-      },
-    });
-
-    const safeOtp = escapeHtml(otp);
-    const isReset = purpose === "reset-password";
-    const actionText = isReset
-      ? "reset your password"
-      : "complete your verification";
-
-    try {
-      await transporter.sendMail({
-        from: `"Autrobook" <${GMAIL_USER}>`,
-        replyTo: GMAIL_USER,
-        to: email,
-        subject: isReset
-          ? "Your Autrobook Password Reset 6-Digit OTP"
-          : "Your Autrobook 6-Digit Verification OTP",
-        text: `Your Autrobook verification code is ${otp} to ${actionText}. It will expire in 10 minutes.`,
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:420px;margin:auto;padding:20px;border:1px solid #e5e7eb;border-radius:10px;background:#ffffff;">
-            <h2 style="color:#0F5132;margin-top:0;">Autrobook Verification</h2>
-            <p style="color:#202124;">Use the 6-digit OTP below to ${escapeHtml(actionText)}:</p>
-            <div style="font-size:28px;font-weight:700;letter-spacing:6px;background:#f3f4f6;padding:12px 16px;border-radius:8px;text-align:center;color:#202124;">
-              ${safeOtp}
-            </div>
-            <p style="font-size:12px;color:#5F6368;margin-top:14px;">This code is valid for 10 minutes.</p>
-          </div>
-        `,
-      });
-    } catch (mailErr) {
-      await supabaseAdmin.from("email_otps").delete().eq("id", insertedOtp.id);
-      throw mailErr;
+      if (Object.keys(markUsedPayload).length > 0) {
+        await supabase
+          .from("email_otps")
+          .update(markUsedPayload)
+          .eq("id", otpVerification.row.id);
+      } else {
+        await supabase
+          .from("email_otps")
+          .delete()
+          .eq("id", otpVerification.row.id);
+      }
     }
 
     return res.status(200).json({
-      ok: true,
       success: true,
-      message: "OTP sent successfully.",
+      message: "Password updated successfully",
     });
-  } catch (err) {
-    console.error("send-otp unexpected error:", err);
-    return res.status(500).json({
-      ok: false,
-      success: false,
-      error: "Unexpected server error while sending OTP.",
-    });
+  } catch (e) {
+    console.error("Server Internal Error:", e);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
