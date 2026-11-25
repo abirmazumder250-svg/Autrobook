@@ -181,7 +181,6 @@
     line-height: 1.45;
   }
 
-  /* Actions row when locked (Invite friends | Unlock | Learn more) */
   .locked-actions {
     display: none;
     grid-template-columns: repeat(3, 1fr);
@@ -326,9 +325,9 @@
 <div class="page-shell" id="pageShell">
   <div>
     <div class="top-bar">
-      <a href="profile-settings.html" class="back-btn" id="backBtn" aria-label="Back">
+      <button type="button" class="back-btn" id="backBtn" aria-label="Back" onclick="handleBackRedirect()">
         <i class="fa-solid fa-chevron-left"></i>
-      </a>
+      </button>
     </div>
 
     <div class="hero-section">
@@ -395,6 +394,7 @@
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
   const LOCK_STORAGE_KEY = 'autro_profile_locked';
+  const REDIRECT_SESSION_KEY = 'autro_lock_redirect_to';
 
   let supabaseClient = null;
   try {
@@ -404,7 +404,72 @@
   } catch (_) {}
 
   let currentUser = null;
-  let isLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
+  let isLocked = readStoredLockState();
+
+  function readStoredLockState() {
+    try {
+      return localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function writeStoredLockState(locked) {
+    try {
+      localStorage.setItem(LOCK_STORAGE_KEY, String(Boolean(locked)));
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: LOCK_STORAGE_KEY,
+        newValue: String(Boolean(locked))
+      }));
+    } catch (_) {}
+  }
+
+  function getSafeRedirectUrl(fallbackUrl) {
+    const params = new URLSearchParams(window.location.search);
+    const paramTarget = params.get('redirect') || params.get('returnTo') || params.get('next');
+    let sessionTarget = '';
+    try {
+      sessionTarget = sessionStorage.getItem(REDIRECT_SESSION_KEY) || '';
+    } catch (_) {}
+
+    const candidate = (paramTarget || sessionTarget || fallbackUrl || 'profile-settings.html').trim();
+    if (!candidate || /^(https?:|\/\/|javascript:|data:)/i.test(candidate)) {
+      return fallbackUrl || 'profile-settings.html';
+    }
+    return candidate;
+  }
+
+  function captureRedirectFromReferrer() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const explicit = params.get('redirect') || params.get('returnTo') || params.get('next');
+      if (explicit) {
+        sessionStorage.setItem(REDIRECT_SESSION_KEY, explicit);
+        return;
+      }
+      if (document.referrer) {
+        const refUrl = new URL(document.referrer);
+        if (refUrl.origin === window.location.origin) {
+          const refPath = (refUrl.pathname + refUrl.search).replace(/^\/+/, '');
+          if (refPath && !refPath.includes('lock.profile.html') && !refPath.includes('lock-profile.html')) {
+            sessionStorage.setItem(REDIRECT_SESSION_KEY, refPath);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  function redirectAfterAction(defaultTarget) {
+    const target = getSafeRedirectUrl(defaultTarget);
+    setTimeout(() => {
+      window.location.href = target;
+    }, 180);
+  }
+
+  function handleBackRedirect() {
+    const target = getSafeRedirectUrl('profile-settings.html');
+    window.location.href = target;
+  }
 
   function updateUI() {
     const shell = document.getElementById('pageShell');
@@ -437,12 +502,12 @@
     }, 2000);
   }
 
-  async function setLocked(nextLocked) {
-    isLocked = Boolean(nextLocked);
-    try {
-      localStorage.setItem(LOCK_STORAGE_KEY, String(isLocked));
-    } catch (_) {}
+  async function setLocked(nextLocked, options = {}) {
+    const shouldRedirect = Boolean(options.redirect);
+    const redirectTarget = options.redirectTarget || 'profile-settings.html';
 
+    isLocked = Boolean(nextLocked);
+    writeStoredLockState(isLocked);
     updateUI();
     showStatus(isLocked ? 'Profile locked.' : 'Profile unlocked.');
 
@@ -460,18 +525,22 @@
         }
       } catch (_) {}
     }
+
+    if (shouldRedirect) {
+      redirectAfterAction(redirectTarget);
+    }
   }
 
   async function handlePrimaryCta() {
     if (!isLocked) {
-      await setLocked(true);
+      await setLocked(true, { redirect: false });
     } else {
       window.location.href = 'profile.html';
     }
   }
 
   async function handleUnlockProfile() {
-    await setLocked(false);
+    await setLocked(false, { redirect: true, redirectTarget: 'profile-settings.html' });
   }
 
   async function handleInviteFriends() {
@@ -495,8 +564,10 @@
   }
 
   async function initProfileState() {
-    isLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
+    captureRedirectFromReferrer();
+    isLocked = readStoredLockState();
     updateUI();
+
     if (!supabaseClient) return;
 
     try {
@@ -518,7 +589,7 @@
           if (profileRow.avatar_url) applyAvatar(profileRow.avatar_url);
           if (typeof profileRow.is_locked === 'boolean') {
             isLocked = profileRow.is_locked;
-            localStorage.setItem(LOCK_STORAGE_KEY, String(isLocked));
+            writeStoredLockState(isLocked);
             updateUI();
           }
         }
@@ -535,9 +606,9 @@
 
   document.addEventListener('DOMContentLoaded', initProfileState);
   window.addEventListener('pageshow', () => {
-    isLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
+    isLocked = readStoredLockState();
     updateUI();
   });
 </script>
 </body>
-</html>
+  </html>
