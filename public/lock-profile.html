@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock Profile — Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-color: #ffffff;
+    --surface-color: #ffffff;
+    --text-color: #0f172a;
+    --muted-color: #64748b;
+    --border-color: #e2e8f0;
+    --hover-color: rgba(0, 0, 0, 0.05);
+    --dark-green: #14532d;
+    --dark-green-hover: #166534;
+    --dark-green-active: #0f3f22;
+    --link-green: #15803d;
+    --circle-btn-bg: #f1f5f9;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #202124;
+      --surface-color: #202124;
+      --text-color: #f1f5f9;
+      --muted-color: #9aa0a6;
+      --border-color: #3c4043;
+      --hover-color: rgba(255, 255, 255, 0.07);
+      --dark-green: #1b5e20;
+      --dark-green-hover: #2e7d32;
+      --dark-green-active: #144318;
+      --link-green: #4ade80;
+      --circle-btn-bg: #303134;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .page-shell {
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 18px 22px;
+    background-color: var(--surface-color);
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .back-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 19px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+  }
+
+  .back-btn:hover {
+    background-color: var(--hover-color);
+  }
+
+  .hero-section {
+    text-align: center;
+    padding: 10px 0 22px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .badge-pair {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  .shield-badge {
+    position: relative;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background-color: var(--dark-green);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 27px;
+    z-index: 2;
+    border: 3px solid var(--bg-color);
+  }
+
+  .verified-tick {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: #22c55e;
+    color: #ffffff;
+    font-size: 11px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-color);
+  }
+
+  .page-shell.is-locked .verified-tick {
+    display: inline-flex;
+  }
+
+  .avatar-badge {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    margin-left: -12px;
+    overflow: hidden;
+    background-color: var(--circle-btn-bg);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    border: 3px solid var(--bg-color);
+  }
+
+  .avatar-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+
+  .avatar-badge.has-photo img {
+    display: block;
+  }
+
+  .avatar-badge.has-photo .fa-user {
+    display: none;
+  }
+
+  .hero-title {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .hero-subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted-color);
+    line-height: 1.45;
+  }
+
+  /* Actions row when locked (Invite friends | Unlock | Learn more) */
+  .locked-actions {
+    display: none;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .page-shell.is-locked .locked-actions {
+    display: grid;
+  }
+
+  .action-tile {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .action-tile:hover {
+    background-color: var(--hover-color);
+  }
+
+  .action-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background-color: var(--circle-btn-bg);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  #unlockTileBtn .action-circle {
+    background-color: var(--dark-green);
+    color: #ffffff;
+  }
+
+  #unlockTileBtn:hover .action-circle {
+    background-color: var(--dark-green-hover);
+  }
+
+  .benefits-list {
+    padding: 20px 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .benefit-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .benefit-icon {
+    width: 24px;
+    text-align: center;
+    color: var(--muted-color);
+    font-size: 18px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .benefit-text {
+    font-size: 14px;
+    line-height: 1.48;
+    color: var(--text-color);
+  }
+
+  .help-link {
+    display: block;
+    text-align: center;
+    margin-top: 18px;
+    color: var(--link-green);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .page-shell.is-locked .help-link {
+    display: none;
+  }
+
+  .footer-cta {
+    padding-top: 12px;
+  }
+
+  .btn-dark-green {
+    width: 100%;
+    padding: 13px 18px;
+    border: none;
+    border-radius: 10px;
+    background-color: var(--dark-green);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.08s ease;
+  }
+
+  .btn-dark-green:hover {
+    background-color: var(--dark-green-hover);
+  }
+
+  .btn-dark-green:active {
+    background-color: var(--dark-green-active);
+    transform: scale(0.99);
+  }
+
+  .status-text {
+    min-height: 18px;
+    margin-top: 8px;
+    font-size: 12.5px;
+    text-align: center;
+    color: var(--muted-color);
+  }
+</style>
+</head>
+<body>
+
+<div class="page-shell" id="pageShell">
+  <div>
+    <div class="top-bar">
+      <a href="profile-settings.html" class="back-btn" id="backBtn" aria-label="Back">
+        <i class="fa-solid fa-chevron-left"></i>
+      </a>
+    </div>
+
+    <div class="hero-section">
+      <div class="badge-pair">
+        <span class="shield-badge">
+          <i class="fa-solid fa-lock"></i>
+          <span class="verified-tick"><i class="fa-solid fa-check"></i></span>
+        </span>
+        <span class="avatar-badge" id="avatarBadge">
+          <img id="avatarImg" src="" alt="Profile photo">
+          <i class="fa-solid fa-user"></i>
+        </span>
+      </div>
+
+      <h1 class="hero-title" id="heroTitle">Lock your profile</h1>
+      <p class="hero-subtitle" id="heroSubtitle">Make your photos and posts more private in one step.</p>
+    </div>
+
+    <div class="locked-actions">
+      <button type="button" class="action-tile" id="inviteBtn">
+        <span class="action-circle"><i class="fa-solid fa-envelope"></i></span>
+        <span>Invite friends</span>
+      </button>
+
+      <button type="button" class="action-tile" id="unlockTileBtn">
+        <span class="action-circle"><i class="fa-solid fa-lock-open"></i></span>
+        <span>Unlock</span>
+      </button>
+
+      <a href="privacy-center.html" class="action-tile">
+        <span class="action-circle"><i class="fa-solid fa-question"></i></span>
+        <span>Learn more</span>
+      </a>
+    </div>
+
+    <div class="benefits-list">
+      <div class="benefit-row">
+        <i class="fa-solid fa-user-group benefit-icon"></i>
+        <div class="benefit-text">Only friends will see your past and future photos, posts and stories on your profile.</div>
+      </div>
+
+      <div class="benefit-row">
+        <i class="fa-solid fa-id-badge benefit-icon"></i>
+        <div class="benefit-text">Your full resolution profile picture and cover photo will only be shown to friends.</div>
+      </div>
+
+      <div class="benefit-row">
+        <i class="fa-solid fa-globe benefit-icon"></i>
+        <div class="benefit-text">You can make some profile info Public so friends can find you and send friend requests.</div>
+      </div>
+    </div>
+
+    <a href="privacy-center.html" class="help-link">Learn more in the Help Center</a>
+  </div>
+
+  <div class="footer-cta">
+    <button type="button" class="btn-dark-green" id="primaryCtaBtn">Lock your profile</button>
+    <div class="status-text" id="statusText"></div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+  const LOCK_STORAGE_KEY = 'autro_profile_locked';
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  let currentUser = null;
+  let isLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
+
+  function updateUI() {
+    const shell = document.getElementById('pageShell');
+    const titleEl = document.getElementById('heroTitle');
+    const subtitleEl = document.getElementById('heroSubtitle');
+    const ctaBtn = document.getElementById('primaryCtaBtn');
+
+    if (isLocked) {
+      shell.classList.add('is-locked');
+      titleEl.textContent = 'You locked your profile';
+      subtitleEl.textContent = 'Your photos and posts are more private.';
+      ctaBtn.textContent = 'See your profile';
+    } else {
+      shell.classList.remove('is-locked');
+      titleEl.textContent = 'Lock your profile';
+      subtitleEl.textContent = 'Make your photos and posts more private in one step.';
+      ctaBtn.textContent = 'Lock your profile';
+    }
+  }
+
+  async function setLocked(nextLocked) {
+    isLocked = Boolean(nextLocked);
+    localStorage.setItem(LOCK_STORAGE_KEY, String(isLocked));
+    updateUI();
+
+    const statusEl = document.getElementById('statusText');
+    if (statusEl) {
+      statusEl.textContent = isLocked ? 'Profile locked.' : 'Profile unlocked.';
+      setTimeout(() => {
+        if (statusEl) statusEl.textContent = '';
+      }, 1800);
+    }
+
+    if (supabaseClient && currentUser) {
+      try {
+        await supabaseClient
+          .from('profiles')
+          .update({ is_locked: isLocked })
+          .eq('id', currentUser.id);
+      } catch (_) {}
+    }
+  }
+
+  function applyAvatar(url) {
+    if (!url) return;
+    const badge = document.getElementById('avatarBadge');
+    const img = document.getElementById('avatarImg');
+    if (badge && img) {
+      img.src = url;
+      badge.classList.add('has-photo');
+    }
+  }
+
+  async function initProfileState() {
+    updateUI();
+    if (!supabaseClient) return;
+
+    try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const user = authData && authData.user;
+      currentUser = user || null;
+
+      if (user) {
+        const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+        if (metaAvatar) applyAvatar(metaAvatar);
+
+        const { data: profileRow } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profileRow) {
+          if (profileRow.avatar_url) applyAvatar(profileRow.avatar_url);
+          if (typeof profileRow.is_locked === 'boolean') {
+            isLocked = profileRow.is_locked;
+            localStorage.setItem(LOCK_STORAGE_KEY, String(isLocked));
+            updateUI();
+          }
+        }
+      } else {
+        const { data: fallbackRow } = await supabaseClient
+          .from('profiles')
+          .select('avatar_url')
+          .limit(1)
+          .maybeSingle();
+        if (fallbackRow?.avatar_url) applyAvatar(fallbackRow.avatar_url);
+      }
+    } catch (_) {}
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initProfileState();
+
+    document.getElementById('primaryCtaBtn').addEventListener('click', async () => {
+      if (!isLocked) {
+        await setLocked(true);
+      } else {
+        window.location.href = 'profile.html';
+      }
+    });
+
+    document.getElementById('unlockTileBtn').addEventListener('click', async () => {
+      await setLocked(false);
+    });
+
+    document.getElementById('inviteBtn').addEventListener('click', async () => {
+      const shareUrl = window.location.origin + '/profile.html';
+      const statusEl = document.getElementById('statusText');
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        if (statusEl) statusEl.textContent = 'Profile link copied to invite friends!';
+      } catch (_) {
+        if (statusEl) statusEl.textContent = shareUrl;
+      }
+    });
+  });
+</script>
+</body>
+</html>
