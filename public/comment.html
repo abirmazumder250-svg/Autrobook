@@ -12,9 +12,11 @@
     --bg-input: #303134;
     --bg-chip: #3c4043;
     --bg-active-chip: #2d3b52;
+    --bg-own-comment: #232c38;
     --text-primary: #FFFFFF;
     --text-secondary: #bdc1c6;
     --accent-blue: #8ab4f8;
+    --accent-green: #81c995;
     --accent-btn: #2e89ff;
     --send-dark-green: #137333;
     --send-dark-green-hover: #0d5425;
@@ -275,11 +277,21 @@
     display: none;
   }
 
-  /* Comment items */
+  /* Comment items — Your comments vs Other users' comments */
   .comment-item {
     padding: 12px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     transition: background-color 0.35s ease;
+  }
+
+  .comment-item.own-comment {
+    background-color: var(--bg-own-comment);
+    border-left: 3px solid var(--accent-blue);
+  }
+
+  .comment-item.other-comment {
+    background-color: var(--bg-primary);
+    border-left: 3px solid transparent;
   }
 
   .comment-item.pinned-comment {
@@ -352,6 +364,25 @@
     color: var(--text-secondary);
     font-size: 11px;
     font-style: italic;
+  }
+
+  .you-pill {
+    font-size: 11px;
+    color: var(--accent-green);
+    background-color: rgba(129, 201, 149, 0.15);
+    border: 1px solid rgba(129, 201, 149, 0.35);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .other-user-pill {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background-color: var(--bg-chip);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
   }
 
   .author-pill {
@@ -1357,6 +1388,8 @@
   <!-- Category Filter Chips -->
   <div class="category-chips-row" id="categoryChipsRow">
     <button type="button" class="cat-chip active" data-cat="all" onclick="selectCategoryFilter('all')">All</button>
+    <button type="button" class="cat-chip" data-cat="mine" onclick="selectCategoryFilter('mine')">Your Comments</button>
+    <button type="button" class="cat-chip" data-cat="others" onclick="selectCategoryFilter('others')">Others' Comments</button>
     <button type="button" class="cat-chip" data-cat="media" onclick="selectCategoryFilter('media')">Photos &amp; GIFs</button>
     <button type="button" class="cat-chip" data-cat="voice" onclick="selectCategoryFilter('voice')">Voice Notes</button>
     <button type="button" class="cat-chip" data-cat="author_replied" onclick="selectCategoryFilter('author_replied')">Author Replied</button>
@@ -1367,7 +1400,7 @@
 
   <!-- Comments Container -->
   <main id="commentList">
-    <div class="empty-state">Loading comments...</div>
+    <div class="empty-state">No comments yet. Be the first to comment!</div>
   </main>
 
   <!-- Long-press Reaction Picker -->
@@ -1668,6 +1701,7 @@ function getOrCreateLocalGuestUser() {
     avatar: bestAvatar
   };
   localStorage.setItem("currentUser", JSON.stringify(userObj));
+  localStorage.setItem("autro_user_id", currentUser?.id || uid);
   localStorage.setItem("autro_profile_name", bestName);
   localStorage.setItem("autro_profile_avatar", bestAvatar);
   return userObj;
@@ -2000,17 +2034,19 @@ function saveParentItem(updatedItem) {
   writeStorageObject("autro_comments_store", storeObj);
 }
 
-function updateBackButtonTarget() {
+/* Back arrow returns to profile.html when own profile / own post flow is active, else index.html */
+function updateBackButtonTarget(parentObj) {
   const backEl = document.getElementById("backBtn");
-  const sessionBack = sessionStorage.getItem("autro_back_url") || "";
-  if (fromPage.includes("profile")) {
+  const uid = String((currentUser && currentUser.id) || "");
+  const postAuthorId = String((parentObj && (parentObj.authorId || parentObj.user_id || parentObj.userId)) || "");
+  const isOwnPost = Boolean(uid && postAuthorId && uid === postAuthorId);
+
+  if (fromPage.includes("profile") || isOwnPost) {
     backEl.href = "profile.html";
   } else if (fromPage.includes("reels")) {
     backEl.href = "reels.html";
   } else if (fromPage.includes("post-card")) {
     backEl.href = `post-card.html?post=${encodeURIComponent(itemId)}`;
-  } else if (sessionBack && sessionBack.startsWith("/")) {
-    backEl.href = sessionBack;
   } else {
     backEl.href = "index.html";
   }
@@ -2992,10 +3028,11 @@ async function submitAuthorReport() {
 function renderAll() {
   updateRestrictionBanner();
   const parent = getParentItem();
-  updateBackButtonTarget();
+  updateBackButtonTarget(parent);
   const isAuthor = isCurrentUserPostAuthor(parent);
   const pinnedId = parent.pinnedCommentId ? String(parent.pinnedCommentId) : "";
   const postAuthorId = String(parent.authorId || parent.user_id || parent.userId || "");
+  const uid = String((currentUser && currentUser.id) || "");
 
   const postReactions = Array.isArray(parent.reactions) ? parent.reactions : [];
   const totalReactionNum = Math.max(postReactions.length, Number(parent.reaction_count || 0));
@@ -3017,7 +3054,11 @@ function renderAll() {
   let comments = [...allComments];
 
   /* Category chip filter */
-  if (currentCategoryFilter === "media") {
+  if (currentCategoryFilter === "mine") {
+    comments = comments.filter(c => uid && String(c.userId) === uid);
+  } else if (currentCategoryFilter === "others") {
+    comments = comments.filter(c => !uid || String(c.userId) !== uid);
+  } else if (currentCategoryFilter === "media") {
     comments = comments.filter(c => Boolean(c.imageUrl));
   } else if (currentCategoryFilter === "voice") {
     comments = comments.filter(c => Boolean(c.audioUrl));
@@ -3074,16 +3115,16 @@ function renderAll() {
     return;
   }
 
-  const uid = String((currentUser && currentUser.id) || "");
-
   listEl.innerHTML = comments.map(cmt => {
     const cmtUserId = String(cmt.userId || uid || "member");
     const disp = normalizeDisplayAuthor(cmt.userName, cmt.img, cmtUserId);
     const cmtUserName = disp.name;
     const cmtAvatar = disp.avatar;
-    const profileUrl = `profile.html?id=${encodeURIComponent(cmtUserId)}`;
-    const isCmtAuthor = postAuthorId && cmtUserId === postAuthorId;
     const isOwnComment = Boolean(uid && cmtUserId === uid);
+    const profileUrl = isOwnComment
+      ? "profile.html"
+      : `profile.html?id=${encodeURIComponent(cmtUserId)}`;
+    const isCmtAuthor = postAuthorId && cmtUserId === postAuthorId;
     const isPinned = pinnedId && String(cmt.id) === pinnedId;
     const isBad = containsProfanity(cmt.text);
     const rxnMap = cmt.reactions && typeof cmt.reactions === "object" ? cmt.reactions : {};
@@ -3154,7 +3195,7 @@ function renderAll() {
       menuButtons.push(`<button type="button" class="dropdown-item-btn" onclick="startEditComment('${escapeHtml(cmt.id)}')">Edit comment</button>`);
       menuButtons.push(`<button type="button" class="dropdown-item-btn danger" onclick="deleteCommentById('${escapeHtml(cmt.id)}')">Delete comment</button>`);
     }
-    if (cmtUserId !== uid) {
+    if (!isOwnComment) {
       menuButtons.push(`<button type="button" class="dropdown-item-btn danger" onclick="openReportModal('${escapeHtml(cmt.id)}', '${escapeHtml(cmtUserId)}', '${escapeHtml(cmtUserName)}')">Report &amp; restrict</button>`);
     }
 
@@ -3173,10 +3214,12 @@ function renderAll() {
            ${repliesArr.map(rep => {
              const repUserId = String(rep.userId || uid || "member");
              const repDisp = normalizeDisplayAuthor(rep.userName, rep.img, repUserId);
-             const repUrl = `profile.html?id=${encodeURIComponent(repUserId)}`;
+             const isOwnRep = Boolean(uid && repUserId === uid);
+             const repUrl = isOwnRep
+               ? "profile.html"
+               : `profile.html?id=${encodeURIComponent(repUserId)}`;
              const repLikes = Array.isArray(rep.likes) ? rep.likes : [];
              const repLikedByMe = uid && repLikes.includes(uid);
-             const isOwnRep = uid && repUserId === uid;
              return `
                <div class="reply-item">
                  <a href="${repUrl}"><img class="reply-avatar" src="${escapeHtml(repDisp.avatar)}" alt="${escapeHtml(repDisp.name)}"></a>
@@ -3206,8 +3249,12 @@ function renderAll() {
       ? `${REACTION_EMOJIS[myReaction]} ${myReaction.charAt(0).toUpperCase() + myReaction.slice(1)}`
       : "Like";
 
+    const rowClass = isPinned
+      ? "pinned-comment"
+      : (isOwnComment ? "own-comment" : "other-comment");
+
     return `
-      <article class="comment-item ${isPinned ? "pinned-comment" : ""}" id="comment-${escapeHtml(cmt.id)}">
+      <article class="comment-item ${rowClass}" id="comment-${escapeHtml(cmt.id)}">
         <div class="comment-row">
           <a class="comment-avatar-link" href="${profileUrl}">
             <img class="comment-avatar" src="${escapeHtml(cmtAvatar)}" alt="${escapeHtml(cmtUserName)}" loading="lazy">
@@ -3216,8 +3263,9 @@ function renderAll() {
             <div class="comment-top-line">
               <div class="comment-author-wrap">
                 <a class="comment-author" href="${profileUrl}">${escapeHtml(cmtUserName)}</a>
+                ${isOwnComment ? `<span class="you-pill">You</span>` : `<span class="other-user-pill">Member</span>`}
                 ${isPinned ? `<span class="pinned-pill">Pinned</span>` : ""}
-                ${isCmtAuthor ? `<span class="author-pill">Author</span>` : ""}
+                ${isCmtAuthor ? `<span class="author-pill">Post Author</span>` : ""}
                 ${cmt.authorHearted ? `<span class="author-heart-pill">❤️ by Author</span>` : ""}
                 <span class="comment-time" data-ts="${Number(cmt.time || Date.now())}">${formatTimeAgo(cmt.time)}</span>
                 ${cmt.edited ? `<span class="edited-tag">(edited)</span>` : ""}
@@ -3325,19 +3373,33 @@ window.addEventListener("storage", () => {
 });
 
 async function initCommentsPage() {
-  await resolveCurrentUserWithoutAuthJs();
+  currentUser = getOrCreateLocalGuestUser();
   commentsInitialized = true;
 
   updateCharCounter();
   consumeReturnParamsFromSubpages();
   renderAll();
   highlightTargetCommentFromHash();
-  await syncCommentsWithSupabase();
-  highlightTargetCommentFromHash();
+
+  try {
+    await Promise.race([
+      resolveCurrentUserWithoutAuthJs(),
+      new Promise(resolve => setTimeout(resolve, 3000))
+    ]);
+    renderAll();
+  } catch (_) {}
+
+  try {
+    await Promise.race([
+      syncCommentsWithSupabase(),
+      new Promise(resolve => setTimeout(resolve, 4000))
+    ]);
+    highlightTargetCommentFromHash();
+  } catch (_) {}
 }
 
 initCommentsPage();
 </script>
 
 </body>
-                                                             </html>
+    </html>
