@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Vault — Autrobook</title>
+  <link rel="stylesheet" href="/theme.css" />
+  <style>
+    :root {
+      --bg-page: #202124;
+      --bg-surface: #292a2d;
+      --bg-elevated: #303134;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa0a6;
+      --border-subtle: rgba(255, 255, 255, 0.14);
+      --green-deep: #14532d;
+      --green-accent: #1b6b3a;
+      --green-bright: #2e8b57;
+      --green-soft: rgba(46, 139, 87, 0.18);
+      --white: #ffffff;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg-page: #ffffff;
+        --bg-surface: #f8f9fa;
+        --bg-elevated: #f1f3f4;
+        --text-primary: #202124;
+        --text-secondary: #5f6368;
+        --border-subtle: rgba(32, 33, 36, 0.14);
+        --green-deep: #14532d;
+        --green-accent: #1b6b3a;
+        --green-bright: #2e8b57;
+        --green-soft: rgba(20, 83, 45, 0.12);
+      }
+    }
+
+    :root[data-theme="light"] {
+      --bg-page: #ffffff;
+      --bg-surface: #f8f9fa;
+      --bg-elevated: #f1f3f4;
+      --text-primary: #202124;
+      --text-secondary: #5f6368;
+      --border-subtle: rgba(32, 33, 36, 0.14);
+      --green-deep: #14532d;
+      --green-accent: #1b6b3a;
+      --green-bright: #2e8b57;
+      --green-soft: rgba(20, 83, 45, 0.12);
+    }
+
+    :root[data-theme="dark"] {
+      --bg-page: #202124;
+      --bg-surface: #292a2d;
+      --bg-elevated: #303134;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa0a6;
+      --border-subtle: rgba(255, 255, 255, 0.14);
+      --green-deep: #14532d;
+      --green-accent: #1b6b3a;
+      --green-bright: #2e8b57;
+      --green-soft: rgba(46, 139, 87, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+
+    .page-shell {
+      max-width: 760px;
+      margin: 0 auto;
+      padding-bottom: 72px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      background-color: var(--bg-page);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .back-pill-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1.5px solid var(--border-subtle);
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.14s ease, background-color 0.16s ease, border-color 0.16s ease;
+    }
+
+    .back-pill-btn:hover,
+    .back-pill-btn:focus-visible {
+      background-color: var(--bg-elevated);
+      border-color: var(--border-subtle);
+      outline: none;
+    }
+
+    .back-pill-btn:active {
+      transform: scale(0.96);
+    }
+
+    .back-pill-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      line-height: 1.25;
+    }
+
+    .section {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+    }
+
+    .vault-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .field-input,
+    .field-textarea,
+    .field-select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .field-input:focus,
+    .field-textarea:focus,
+    .field-select:focus {
+      outline: none;
+      border-color: var(--green-bright);
+    }
+
+    .field-textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .filter-bar .field-input {
+      flex: 1 1 200px;
+    }
+
+    .filter-bar .field-select {
+      flex: 0 1 170px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .green-btn {
+      padding: 11px 16px;
+      border: none;
+      border-radius: 12px;
+      background-color: var(--green-deep);
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .green-btn:hover,
+    .green-btn:focus-visible {
+      background-color: var(--green-accent);
+      outline: none;
+    }
+
+    .green-btn:active {
+      transform: scale(0.98);
+    }
+
+    .green-btn-sm {
+      padding: 7px 12px;
+      border: none;
+      border-radius: 9px;
+      background-color: var(--green-deep);
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .green-btn-sm:hover {
+      background-color: var(--green-accent);
+    }
+
+    .vault-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .vault-entry {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .vault-entry.pinned {
+      border-color: var(--green-bright);
+    }
+
+    .vault-entry-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .vault-entry-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .vault-badges {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .vault-entry-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background-color: var(--green-soft);
+      color: var(--text-primary);
+    }
+
+    .vault-entry-body {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 8px;
+    }
+
+    .vault-entry-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 22px 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+    }
+
+    .vault-footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .vault-footer svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%) translateY(24px);
+      background: var(--green-deep);
+      color: var(--white);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      z-index: 90;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="topbar-left">
+        <a href="./find-contact.html" id="backBtn" class="back-pill-btn" aria-label="Back">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 12H5"></path>
+            <path d="M11 18l-6-6 6-6"></path>
+          </svg>
+        </a>
+        <h1 class="page-title">Local Vault</h1>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2 class="section-title" id="formSectionTitle">Save private note or key</h2>
+      <p class="section-desc">
+        Store personal notes, recovery codes, or contact reminders locally on this device and sync to your Autrobook profile.
+      </p>
+
+      <form class="vault-card" id="vaultForm">
+        <div class="field-group">
+          <label class="field-label" for="entryTitle">Title</label>
+          <input
+            type="text"
+            id="entryTitle"
+            class="field-input"
+            placeholder="e.g. Backup recovery code or private note"
+            maxlength="80"
+            required
+          />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="entryCategory">Category</label>
+          <select id="entryCategory" class="field-select">
+            <option value="Private Note">Private Note</option>
+            <option value="Recovery Key">Recovery Key</option>
+            <option value="Contact Memo">Contact Memo</option>
+            <option value="Draft Message">Draft Message</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="entrySecret">Content</label>
+          <textarea
+            id="entrySecret"
+            class="field-textarea"
+            placeholder="Write your private note or code here..."
+            maxlength="1200"
+            required
+          ></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="green-btn" id="saveEntryBtn">Save to Local Vault</button>
+          <button type="button" class="green-btn" id="cancelEditBtn" style="display: none;">Cancel edit</button>
+          <button type="button" class="green-btn" id="clearAllBtn">Clear all items</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="section" style="border-bottom: none;">
+      <h2 class="section-title">Saved vault items (<span id="vaultCount">0</span>)</h2>
+      <p class="section-desc">
+        Search, filter by category, pin important items, edit, or copy content quickly.
+      </p>
+
+      <div class="filter-bar">
+        <input
+          type="search"
+          id="searchVaultInput"
+          class="field-input"
+          placeholder="Search title or content..."
+        />
+        <select id="filterCategorySelect" class="field-select" aria-label="Filter by category">
+          <option value="All">All categories</option>
+          <option value="Private Note">Private Note</option>
+          <option value="Recovery Key">Recovery Key</option>
+          <option value="Contact Memo">Contact Memo</option>
+          <option value="Draft Message">Draft Message</option>
+        </select>
+      </div>
+
+      <div class="vault-items-list" id="vaultItemsList"></div>
+
+      <footer class="vault-footer" aria-label="Autrobook local vault">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3" y="10" width="18" height="11" rx="3" fill="#14532d" />
+          <path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3" stroke="#14532d" stroke-width="2.2" stroke-linecap="round" />
+          <circle cx="12" cy="15.5" r="1.6" fill="#ffffff" />
+        </svg>
+        <span>Autrobook local vault</span>
+      </footer>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const VAULT_STORAGE_KEY = 'autrobook_local_vault_items_v2';
+    let vaultItems = [];
+    let editingItemId = null;
+
+    const backBtn = document.getElementById('backBtn');
+    const formSectionTitle = document.getElementById('formSectionTitle');
+    const vaultForm = document.getElementById('vaultForm');
+    const entryTitleInput = document.getElementById('entryTitle');
+    const entryCategorySelect = document.getElementById('entryCategory');
+    const entrySecretTextarea = document.getElementById('entrySecret');
+    const saveEntryBtn = document.getElementById('saveEntryBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const searchVaultInput = document.getElementById('searchVaultInput');
+    const filterCategorySelect = document.getElementById('filterCategorySelect');
+    const vaultItemsList = document.getElementById('vaultItemsList');
+    const vaultCount = document.getElementById('vaultCount');
+    const toast = document.getElementById('toast');
+
+    backBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (document.referrer && document.referrer.includes('find-contact')) {
+        window.location.href = document.referrer;
+      } else {
+        window.location.href = './find-contact.html';
+      }
+    });
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => toast.classList.remove('show'), 2400);
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = String(str ?? '');
+      return div.innerHTML;
+    }
+
+    function copyTextFallback(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text).then(() => true).catch(() => execCopy(text));
+      }
+      return Promise.resolve(execCopy(text));
+    }
+
+    function execCopy(text) {
+      try {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(area);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+
+    function resetFormMode() {
+      editingItemId = null;
+      formSectionTitle.textContent = 'Save private note or key';
+      saveEntryBtn.textContent = 'Save to Local Vault';
+      cancelEditBtn.style.display = 'none';
+      entryTitleInput.value = '';
+      entrySecretTextarea.value = '';
+      entryCategorySelect.value = 'Private Note';
+    }
+
+    async function persistVault(toastText, syncCloud = true) {
+      localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(vaultItems));
+
+      if (syncCloud) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { error } = await supabase
+              .from('profiles')
+              .update({ local_vault_items: vaultItems })
+              .eq('id', user.id);
+
+            if (error) throw error;
+            showToast(toastText || 'Saved and synced to account');
+            return;
+          }
+        } catch (err) {
+          console.warn('Supabase vault sync notice:', err?.message || err);
+        }
+      }
+
+      showToast(toastText || 'Saved to Local Vault');
+    }
+
+    function getFilteredSortedItems() {
+      const query = searchVaultInput.value.trim().toLowerCase();
+      const category = filterCategorySelect.value;
+
+      return [...vaultItems]
+        .filter((item) => {
+          const matchesCategory = category === 'All' || item.category === category;
+          const matchesQuery =
+            !query ||
+            String(item.title || '').toLowerCase().includes(query) ||
+            String(item.secret || '').toLowerCase().includes(query);
+          return matchesCategory && matchesQuery;
+        })
+        .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+    }
+
+    function renderVault() {
+      vaultCount.textContent = String(vaultItems.length);
+      const visibleItems = getFilteredSortedItems();
+
+      if (!visibleItems.length) {
+        vaultItemsList.innerHTML = '<div class="empty-state">No matching items in Local Vault.</div>';
+        return;
+      }
+
+      vaultItemsList.innerHTML = '';
+      visibleItems.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = `vault-entry ${item.pinned ? 'pinned' : ''}`;
+        card.innerHTML = `
+          <div class="vault-entry-top">
+            <span class="vault-entry-title">${escapeHtml(item.title)}</span>
+            <div class="vault-badges">
+              ${item.pinned ? '<span class="vault-entry-tag">Pinned</span>' : ''}
+              <span class="vault-entry-tag">${escapeHtml(item.category || 'Private Note')}</span>
+            </div>
+          </div>
+          <div class="vault-entry-body">${escapeHtml(item.secret)}</div>
+          <div class="vault-entry-meta">
+            <span>${escapeHtml(item.updatedAt || '')}</span>
+            <div class="btn-row" style="margin-top: 0; gap: 6px;">
+              <button type="button" class="green-btn-sm pin-item-btn">${item.pinned ? 'Unpin' : 'Pin'}</button>
+              <button type="button" class="green-btn-sm edit-item-btn">Edit</button>
+              <button type="button" class="green-btn-sm copy-item-btn">Copy</button>
+              <button type="button" class="green-btn-sm delete-item-btn">Delete</button>
+            </div>
+          </div>
+        `;
+
+        card.querySelector('.pin-item-btn').addEventListener('click', async () => {
+          item.pinned = !item.pinned;
+          renderVault();
+          await persistVault(item.pinned ? 'Pinned item to top' : 'Unpinned item');
+        });
+
+        card.querySelector('.edit-item-btn').addEventListener('click', () => {
+          editingItemId = item.id;
+          entryTitleInput.value = item.title;
+          entryCategorySelect.value = item.category || 'Private Note';
+          entrySecretTextarea.value = item.secret;
+          formSectionTitle.textContent = 'Edit vault item';
+          saveEntryBtn.textContent = 'Update item';
+          cancelEditBtn.style.display = 'inline-block';
+          entryTitleInput.focus();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        card.querySelector('.copy-item-btn').addEventListener('click', async () => {
+          const copied = await copyTextFallback(item.secret);
+          showToast(copied ? 'Copied to clipboard' : 'Could not copy item');
+        });
+
+        card.querySelector('.delete-item-btn').addEventListener('click', async () => {
+          if (editingItemId === item.id) resetFormMode();
+          vaultItems = vaultItems.filter((entry) => entry.id !== item.id);
+          renderVault();
+          await persistVault('Removed item from Local Vault');
+        });
+
+        vaultItemsList.appendChild(card);
+      });
+    }
+
+    async function loadVault() {
+      try {
+        const raw = localStorage.getItem(VAULT_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) vaultItems = parsed;
+        }
+      } catch {}
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('local_vault_items')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (Array.isArray(profile?.local_vault_items)) {
+            vaultItems = profile.local_vault_items;
+            localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(vaultItems));
+          }
+        }
+      } catch {}
+
+      renderVault();
+    }
+
+    vaultForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = entryTitleInput.value.trim();
+      const category = entryCategorySelect.value;
+      const secret = entrySecretTextarea.value.trim();
+
+      if (!title || !secret) return;
+
+      if (editingItemId) {
+        const target = vaultItems.find((entry) => entry.id === editingItemId);
+        if (target) {
+          target.title = title;
+          target.category = category;
+          target.secret = secret;
+          target.updatedAt = new Date().toLocaleString();
+        }
+        resetFormMode();
+        renderVault();
+        await persistVault('Updated vault item');
+        return;
+      }
+
+      const newEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        title,
+        category,
+        secret,
+        pinned: false,
+        updatedAt: new Date().toLocaleString(),
+      };
+
+      vaultItems.unshift(newEntry);
+      resetFormMode();
+      renderVault();
+      await persistVault('Added item to Local Vault');
+    });
+
+    cancelEditBtn.addEventListener('click', () => {
+      resetFormMode();
+      showToast('Edit cancelled');
+    });
+
+    clearAllBtn.addEventListener('click', async () => {
+      if (!vaultItems.length) {
+        showToast('Local Vault is already empty');
+        return;
+      }
+      resetFormMode();
+      vaultItems = [];
+      renderVault();
+      await persistVault('Cleared all Local Vault items');
+    });
+
+    searchVaultInput.addEventListener('input', renderVault);
+    filterCategorySelect.addEventListener('change', renderVault);
+
+    loadVault();
+  </script>
+</body>
+  </html>
