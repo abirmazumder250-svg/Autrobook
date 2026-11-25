@@ -403,6 +403,7 @@ let currentType = "all";
 let currentPost = null;
 let currentUser = null;
 let reactorItems = [];
+let supabaseProfilesMap = new Map();
 let lastSnapshot = "";
 let pageInitialized = false;
 
@@ -454,22 +455,100 @@ function broadcastReactionSync() {
   } catch (_) {}
 }
 
-function getOrCreateLocalUser() {
-  try {
-    const existing = JSON.parse(localStorage.getItem("currentUser") || "null");
-    if (existing && existing.id) {
-      return {
-        id: String(existing.id),
-        name: String(existing.name || localStorage.getItem("autro_profile_name") || "Abir").trim(),
-        avatar: String(existing.avatar || localStorage.getItem("autro_profile_avatar") || "").trim()
-      };
+function extractNameFromRow(row) {
+  if (!row || typeof row !== "object") return "";
+  const candidates = [
+    row.full_name,
+    row.fullName,
+    row.user_name,
+    row.userName,
+    row.author_name,
+    row.authorName,
+    row.display_name,
+    row.displayName,
+    row.username,
+    row.name
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim() && c.trim().toLowerCase() !== "autrobook member") {
+      return c.trim();
     }
-  } catch (_) {}
+  }
+  return "";
+}
 
-  const id = String(localStorage.getItem("autro_user_id") || "user_101");
-  const name = String(localStorage.getItem("autro_profile_name") || "Abir").trim();
-  const avatar = String(localStorage.getItem("autro_profile_avatar") || "").trim();
-  const userObj = { id, name, avatar };
+function extractAvatarFromRow(row) {
+  if (!row || typeof row !== "object") return "";
+  const candidates = [
+    row.user_avatar,
+    row.userAvatar,
+    row.avatar_url,
+    row.avatarUrl,
+    row.avatar,
+    row.profile_pic,
+    row.profilePic,
+    row.photo_url,
+    row.photoURL,
+    row.picture,
+    row.img
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim()) {
+      return c.trim();
+    }
+  }
+  return "";
+}
+
+function getOrCreateLocalUser() {
+  const candidateKeys = [
+    "currentUser",
+    "autro_current_user",
+    "autrobook_user",
+    "autro_user",
+    "loggedInUser"
+  ];
+
+  let parsedObj = null;
+  for (const k of candidateKeys) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(k) || "null");
+      if (raw && typeof raw === "object" && (raw.id || raw.user_id || raw.uid || raw.name || raw.full_name)) {
+        parsedObj = raw;
+        break;
+      }
+    } catch (_) {}
+  }
+
+  const fallbackName = String(
+    extractNameFromRow(parsedObj) ||
+    localStorage.getItem("autro_profile_name") ||
+    localStorage.getItem("autro_user_name") ||
+    localStorage.getItem("profileName") ||
+    ""
+  ).trim();
+
+  const fallbackAvatar = String(
+    extractAvatarFromRow(parsedObj) ||
+    localStorage.getItem("autro_profile_avatar") ||
+    localStorage.getItem("autro_user_avatar") ||
+    localStorage.getItem("profileAvatar") ||
+    ""
+  ).trim();
+
+  const fallbackId = String(
+    (parsedObj && (parsedObj.id || parsedObj.user_id || parsedObj.uid)) ||
+    localStorage.getItem("autro_user_id") ||
+    localStorage.getItem("userId") ||
+    "user_101"
+  ).trim();
+
+  const userObj = {
+    id: fallbackId,
+    name: fallbackName || "User",
+    avatar: fallbackAvatar
+  };
+
   try {
     localStorage.setItem("currentUser", JSON.stringify(userObj));
   } catch (_) {}
@@ -484,8 +563,39 @@ async function resolveSessionUserSilently() {
     if (!authUser) return;
 
     const meta = authUser.user_metadata || {};
-    const resolvedName = String(meta.full_name || meta.name || currentUser?.name || "Abir").trim();
-    const resolvedAvatar = String(meta.avatar_url || meta.picture || currentUser?.avatar || "").trim();
+    let profileRow = null;
+
+    for (const tbl of ["profiles", "users"]) {
+      try {
+        const { data, error } = await sbClient
+          .from(tbl)
+          .select("*")
+          .eq("id", authUser.id)
+          .maybeSingle();
+        if (!error && data) {
+          profileRow = data;
+          break;
+        }
+      } catch (_) {}
+    }
+
+    const resolvedName = String(
+      extractNameFromRow(profileRow) ||
+      meta.full_name ||
+      meta.name ||
+      meta.user_name ||
+      (authUser.email ? authUser.email.split("@")[0] : "") ||
+      currentUser?.name ||
+      "User"
+    ).trim();
+
+    const resolvedAvatar = String(
+      extractAvatarFromRow(profileRow) ||
+      meta.avatar_url ||
+      meta.picture ||
+      currentUser?.avatar ||
+      ""
+    ).trim();
 
     currentUser = {
       ...(currentUser || {}),
@@ -493,6 +603,13 @@ async function resolveSessionUserSilently() {
       name: resolvedName,
       avatar: resolvedAvatar
     };
+
+    supabaseProfilesMap.set(String(authUser.id), {
+      id: String(authUser.id),
+      name: resolvedName,
+      avatar: resolvedAvatar
+    });
+
     try {
       localStorage.setItem("currentUser", JSON.stringify(currentUser));
     } catch (_) {}
@@ -501,13 +618,40 @@ async function resolveSessionUserSilently() {
 
 function getUsersMap() {
   const users = readList("users");
+  const profiles = readList("profiles");
   const map = new Map();
-  users.forEach(u => {
-    if (u && u.id) map.set(String(u.id), u);
+
+  [...users, ...profiles].forEach(u => {
+    if (!u || typeof u !== "object") return;
+    const uid = String(u.id || u.user_id || u.uid || "").trim();
+    if (!uid) return;
+    const prev = map.get(uid) || {};
+    map.set(uid, {
+      id: uid,
+      name: extractNameFromRow(u) || prev.name || "",
+      avatar: extractAvatarFromRow(u) || prev.avatar || ""
+    });
   });
+
+  supabaseProfilesMap.forEach((p, uid) => {
+    const prev = map.get(uid) || {};
+    map.set(uid, {
+      id: uid,
+      name: p.name || prev.name || "",
+      avatar: p.avatar || prev.avatar || ""
+    });
+  });
+
   if (currentUser && currentUser.id) {
-    map.set(String(currentUser.id), currentUser);
+    const uid = String(currentUser.id);
+    const prev = map.get(uid) || {};
+    map.set(uid, {
+      id: uid,
+      name: currentUser.name || prev.name || "",
+      avatar: currentUser.avatar || prev.avatar || ""
+    });
   }
+
   return map;
 }
 
@@ -531,8 +675,8 @@ function getMutualFriendsCount(targetUserId) {
   const theirFriends = new Set();
 
   friends.forEach(f => {
-    const a = String(f.userId || "");
-    const b = String(f.friendId || "");
+    const a = String(f.userId || f.user_id || "");
+    const b = String(f.friendId || f.friend_id || "");
     if (a === String(currentUser.id) && b) myFriends.add(b);
     if (b === String(currentUser.id) && a) myFriends.add(a);
     if (a === String(targetUserId) && b) theirFriends.add(b);
@@ -549,10 +693,12 @@ function getMutualFriendsCount(targetUserId) {
 function isFriend(userAId, userBId) {
   if (!userAId || !userBId) return false;
   const friends = readList("friends");
-  return friends.some(f =>
-    (String(f.userId) === String(userAId) && String(f.friendId) === String(userBId)) ||
-    (String(f.userId) === String(userBId) && String(f.friendId) === String(userAId))
-  );
+  return friends.some(f => {
+    const a = String(f.userId || f.user_id || "");
+    const b = String(f.friendId || f.friend_id || "");
+    return (a === String(userAId) && b === String(userBId)) ||
+           (a === String(userBId) && b === String(userAId));
+  });
 }
 
 function getPendingRequest(fromId, toId) {
@@ -560,8 +706,8 @@ function getPendingRequest(fromId, toId) {
   const reqs = readList("friendRequests");
   return reqs.find(r =>
     r.status === "pending" &&
-    String(r.fromId) === String(fromId) &&
-    String(r.toId) === String(toId)
+    String(r.fromId || r.from_id || "") === String(fromId) &&
+    String(r.toId || r.to_id || "") === String(toId)
   ) || null;
 }
 
@@ -611,7 +757,9 @@ function confirmFriendRequest(requesterId) {
   const myId = String(currentUser.id);
   const reqs = readList("friendRequests");
   const updated = reqs.map(r => {
-    if (r.status === "pending" && String(r.fromId) === String(requesterId) && String(r.toId) === myId) {
+    const fId = String(r.fromId || r.from_id || "");
+    const tId = String(r.toId || r.to_id || "");
+    if (r.status === "pending" && fId === String(requesterId) && tId === myId) {
       return { ...r, status: "accepted" };
     }
     return r;
@@ -636,7 +784,7 @@ function getInitials(name) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return "AB";
+  return "U";
 }
 
 function updateBackLink() {
@@ -692,15 +840,53 @@ function collectRawReactionsForPost(pid) {
 
   const byUser = new Map();
   combined.forEach((r, idx) => {
-    const uid = String(r.userId || r.user_id || r.id || "").trim() || `reactor_${idx + 1}`;
+    const uid = String(r.userId || r.user_id || r.author_id || r.id || "").trim() || `reactor_${idx + 1}`;
+    const existing = byUser.get(uid) || {};
     byUser.set(uid, {
+      ...existing,
       ...r,
       userId: uid,
-      type: normalizeType(r.type || r.reaction_type || r.emoji)
+      name: extractNameFromRow(r) || extractNameFromRow(existing) || "",
+      avatar: extractAvatarFromRow(r) || extractAvatarFromRow(existing) || "",
+      type: normalizeType(r.type || r.reaction_type || r.reaction || r.emoji || existing.type)
     });
   });
 
   return Array.from(byUser.values());
+}
+
+async function fetchProfilesForUserIds(userIds) {
+  if (!sbClient) return;
+  const cleanIds = Array.from(
+    new Set(
+      (userIds || [])
+        .map(id => String(id || "").trim())
+        .filter(id => id && !id.startsWith("reactor_") && id !== "user_101")
+    )
+  );
+  if (!cleanIds.length) return;
+
+  for (const tbl of ["profiles", "users"]) {
+    try {
+      const { data, error } = await sbClient
+        .from(tbl)
+        .select("*")
+        .in("id", cleanIds);
+
+      if (!error && Array.isArray(data) && data.length) {
+        data.forEach(row => {
+          const uid = String(row.id || row.user_id || "").trim();
+          if (!uid) return;
+          const prev = supabaseProfilesMap.get(uid) || {};
+          supabaseProfilesMap.set(uid, {
+            id: uid,
+            name: extractNameFromRow(row) || prev.name || "",
+            avatar: extractAvatarFromRow(row) || prev.avatar || ""
+          });
+        });
+      }
+    } catch (_) {}
+  }
 }
 
 async function syncReactionsFromSupabase() {
@@ -714,25 +900,33 @@ async function syncReactionsFromSupabase() {
       .select("*")
       .eq("post_id", pid);
 
-    if (error || !Array.isArray(data) || !data.length) return;
+    if (error || !Array.isArray(data)) return;
+
+    const userIds = data.map(row => String(row.user_id || row.userId || "").trim()).filter(Boolean);
+    await fetchProfilesForUserIds(userIds);
+
+    const formatted = data.map(row => {
+      const uid = String(row.user_id || row.userId || row.id || "").trim();
+      const prof = supabaseProfilesMap.get(uid) || {};
+      return {
+        userId: uid,
+        name: extractNameFromRow(row) || prof.name || "",
+        avatar: extractAvatarFromRow(row) || prof.avatar || "",
+        type: normalizeType(row.reaction_type || row.type || row.reaction)
+      };
+    });
 
     const posts = readList("posts");
     const idx = posts.findIndex(p => String(p.id) === pid);
-    const formatted = data.map(row => ({
-      userId: String(row.user_id || row.id || ""),
-      name: String(row.user_name || row.author_name || "Autrobook Member"),
-      avatar: String(row.user_avatar || ""),
-      type: normalizeType(row.reaction_type || row.type)
-    }));
-
     if (idx !== -1) {
       posts[idx] = { ...posts[idx], reactions: formatted, reaction_count: formatted.length };
       writeList("posts", posts);
-    } else {
-      const store = readObject("autro_post_reactions");
-      store[pid] = formatted;
-      writeObject("autro_post_reactions", store);
     }
+
+    const store = readObject("autro_post_reactions");
+    store[pid] = formatted;
+    writeObject("autro_post_reactions", store);
+
     loadReactions(true);
   } catch (_) {}
 }
@@ -744,9 +938,15 @@ function loadReactions(forceRender = false) {
   const rawReactions = collectRawReactionsForPost(postId);
   updateBackLink();
 
+  const usersMap = getUsersMap();
+  const profilesSignature = Array.from(supabaseProfilesMap.entries())
+    .map(([k, v]) => `${k}:${v.name}:${v.avatar}`)
+    .join("|");
+
   const snapshot = JSON.stringify({
     reactions: rawReactions,
-    me: currentUser ? currentUser.id : "",
+    me: currentUser ? `${currentUser.id}:${currentUser.name}:${currentUser.avatar}` : "",
+    profiles: profilesSignature,
     friends: localStorage.getItem("friends") || "",
     reqs: localStorage.getItem("friendRequests") || "",
     users: localStorage.getItem("users") || ""
@@ -757,18 +957,19 @@ function loadReactions(forceRender = false) {
   }
   lastSnapshot = snapshot;
 
-  const usersMap = getUsersMap();
-
   reactorItems = rawReactions.map(r => {
     const uid = String(r.userId || "").trim();
     const profile = usersMap.get(uid) || {};
     const isSelf = Boolean(currentUser && currentUser.id && uid === String(currentUser.id));
+
     const displayName = isSelf
-      ? (currentUser.name || profile.name || r.name || "Abir")
-      : (profile.name || r.name || "Autrobook Member");
+      ? (currentUser.name || profile.name || r.name || uid || "Member")
+      : (profile.name || r.name || uid || "Member");
+
     const avatar = isSelf
-      ? (currentUser.avatar || profile.avatar || r.img || "")
-      : (profile.avatar || r.img || r.avatar || "");
+      ? (currentUser.avatar || profile.avatar || r.avatar || "")
+      : (profile.avatar || r.avatar || "");
+
     const alreadyFriend = isSelf || (currentUser && currentUser.id ? isFriend(currentUser.id, uid) : false);
     const incomingReq = !isSelf && currentUser && currentUser.id ? getPendingRequest(uid, currentUser.id) : null;
     const mutualCount = isSelf ? 0 : getMutualFriendsCount(uid);
@@ -887,6 +1088,7 @@ function subscribeLiveUpdates() {
     liveChannel.onmessage = event => {
       const data = event?.data || {};
       if (!data.postId || String(data.postId) === String(postId)) {
+        syncReactionsFromSupabase();
         loadReactions(true);
       }
     };
@@ -895,6 +1097,7 @@ function subscribeLiveUpdates() {
   window.addEventListener("autro:post-updated", event => {
     const data = event?.detail || {};
     if (!data.postId || String(data.postId) === String(postId)) {
+      syncReactionsFromSupabase();
       loadReactions(true);
     }
   });
