@@ -9,7 +9,9 @@ const GMAIL_USER = String(process.env.GMAIL_USER || "").trim();
 const GMAIL_APP_PASSWORD = String(process.env.GMAIL_APP_PASSWORD || "")
   .replace(/\s+/g, "")
   .trim();
-const OTP_PEPPER = String(process.env.OTP_PEPPER || SUPABASE_SERVICE_ROLE_KEY || "");
+const OTP_PEPPER = String(
+  process.env.OTP_PEPPER || SUPABASE_SERVICE_ROLE_KEY || ""
+);
 
 const MAX_OTP_ATTEMPTS = 5;
 
@@ -27,7 +29,7 @@ function applyCorsHeaders(req, res) {
     res.setHeader("Vary", "Origin");
   }
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 function esc(value) {
@@ -242,7 +244,10 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (!otpRecord.expires_at || new Date(otpRecord.expires_at).getTime() < Date.now()) {
+    if (
+      !otpRecord.expires_at ||
+      new Date(otpRecord.expires_at).getTime() < Date.now()
+    ) {
       await supabaseAdmin.from("email_otps").delete().eq("id", otpRecord.id);
       return res.status(400).json({
         success: false,
@@ -315,7 +320,9 @@ module.exports = async function handler(req, res) {
           ? profile.full_name.trim().slice(0, 120)
           : "User";
       const cleanDob =
-        profile && typeof profile.dob === "string" && /^\d{4}-\d{2}-\d{2}$/.test(profile.dob)
+        profile &&
+        typeof profile.dob === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(profile.dob)
           ? profile.dob
           : "2000-01-01";
       const cleanLang =
@@ -327,7 +334,9 @@ module.exports = async function handler(req, res) {
           ? profile.faceHash.trim()
           : null;
       const fingerprintHash =
-        profile && typeof profile.fingerprintHash === "string" && profile.fingerprintHash.trim()
+        profile &&
+        typeof profile.fingerprintHash === "string" &&
+        profile.fingerprintHash.trim()
           ? profile.fingerprintHash.trim()
           : null;
 
