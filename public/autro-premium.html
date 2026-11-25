@@ -454,6 +454,89 @@
     font-size: 14px;
   }
 
+  /* Unlock Your Features Section */
+  .unlock-list {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .unlock-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 14px;
+    border-radius: 14px;
+    background-color: var(--surface-elevated);
+    border: 1px solid var(--border-color);
+  }
+
+  .unlock-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .unlock-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .unlock-name {
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+
+  .unlock-tier-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: var(--badge-bg);
+    color: var(--badge-text);
+  }
+
+  .unlock-desc {
+    font-size: 12.5px;
+    color: var(--muted-color);
+    line-height: 1.4;
+  }
+
+  .unlock-action-btn {
+    border: 1px solid var(--cta-bg);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    background-color: var(--cta-bg);
+    color: var(--cta-text);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .unlock-action-btn:hover {
+    background-color: var(--cta-hover);
+  }
+
+  .unlock-action-btn.locked {
+    background-color: var(--soft-btn-bg);
+    color: var(--muted-color);
+    border-color: var(--border-color);
+  }
+
+  .unlock-action-btn.enabled-state {
+    background-color: var(--badge-bg);
+    color: var(--badge-text);
+    border-color: var(--cta-bg);
+  }
+
   /* Highlights Section */
   .section-block {
     padding: 18px 0 8px;
@@ -710,6 +793,56 @@
     </div>
   </section>
 
+  <!-- Unlock Your Features -->
+  <section class="section-block" aria-label="Unlock your features">
+    <h2 class="section-title">Unlock your features</h2>
+    <div class="unlock-list" id="unlockFeaturesList">
+      <div class="unlock-item" data-feature-key="hd_media" data-required-plan="Autro Plus">
+        <div class="unlock-meta">
+          <div class="unlock-title-row">
+            <span class="unlock-name">HD Photo &amp; Video Upload</span>
+            <span class="unlock-tier-pill">Autro Plus</span>
+          </div>
+          <span class="unlock-desc">Upload crisp high-resolution photos and reels without compression loss.</span>
+        </div>
+        <button type="button" class="unlock-action-btn" data-toggle-feature="hd_media">Locked</button>
+      </div>
+
+      <div class="unlock-item" data-feature-key="priority_ai" data-required-plan="Autro Plus">
+        <div class="unlock-meta">
+          <div class="unlock-title-row">
+            <span class="unlock-name">Boosted Autro AI Replies</span>
+            <span class="unlock-tier-pill">Autro Plus</span>
+          </div>
+          <span class="unlock-desc">Higher daily prompt allowance and faster caption/thread summaries.</span>
+        </div>
+        <button type="button" class="unlock-action-btn" data-toggle-feature="priority_ai">Locked</button>
+      </div>
+
+      <div class="unlock-item" data-feature-key="creator_analytics" data-required-plan="Autro Pro">
+        <div class="unlock-meta">
+          <div class="unlock-title-row">
+            <span class="unlock-name">Creator Analytics &amp; Scheduler</span>
+            <span class="unlock-tier-pill">Autro Pro</span>
+          </div>
+          <span class="unlock-desc">Track reach insights and schedule posts ahead of time.</span>
+        </div>
+        <button type="button" class="unlock-action-btn" data-toggle-feature="creator_analytics">Locked</button>
+      </div>
+
+      <div class="unlock-item" data-feature-key="early_access" data-required-plan="Autro Pro">
+        <div class="unlock-meta">
+          <div class="unlock-title-row">
+            <span class="unlock-name">Early Feature Access</span>
+            <span class="unlock-tier-pill">Autro Pro</span>
+          </div>
+          <span class="unlock-desc">Try upcoming tools and experimental modes before general release.</span>
+        </div>
+        <button type="button" class="unlock-action-btn" data-toggle-feature="early_access">Locked</button>
+      </div>
+    </div>
+  </section>
+
   <!-- Key Highlights -->
   <section class="section-block">
     <h2 class="section-title">What you get</h2>
@@ -778,6 +911,13 @@
     const PLAN_STORAGE_KEY = 'autro_premium_plan';
     const CYCLE_STORAGE_KEY = 'autro_premium_cycle';
     const PROMO_STORAGE_KEY = 'autro_premium_promo';
+    const FEATURES_STORAGE_KEY = 'autro_unlocked_features';
+
+    const PLAN_RANK = {
+      Standard: 0,
+      'Autro Plus': 1,
+      'Autro Pro': 2
+    };
 
     const PROMO_CODES = {
       AUTRO15: 0.15,
@@ -794,6 +934,12 @@
     let cycle = 'monthly';
     let currentPlan = 'Standard';
     let promoCode = '';
+    let featureStates = {
+      hd_media: true,
+      priority_ai: true,
+      creator_analytics: true,
+      early_access: true
+    };
 
     try {
       const savedCycle = localStorage.getItem(CYCLE_STORAGE_KEY);
@@ -807,6 +953,10 @@
       const savedPromo = (localStorage.getItem(PROMO_STORAGE_KEY) || '').trim().toUpperCase();
       if (savedPromo && PROMO_CODES[savedPromo]) {
         promoCode = savedPromo;
+      }
+      const savedFeatures = JSON.parse(localStorage.getItem(FEATURES_STORAGE_KEY) || 'null');
+      if (savedFeatures && typeof savedFeatures === 'object') {
+        featureStates = Object.assign(featureStates, savedFeatures);
       }
     } catch (_) {}
 
@@ -843,6 +993,7 @@
       try {
         localStorage.setItem(PLAN_STORAGE_KEY, currentPlan);
         localStorage.setItem(CYCLE_STORAGE_KEY, cycle);
+        localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(featureStates));
         if (promoCode) {
           localStorage.setItem(PROMO_STORAGE_KEY, promoCode);
         } else {
@@ -929,6 +1080,37 @@
       }, 2200);
     }
 
+    function getPlanLink(planName) {
+      if (planName === 'Autro Pro') return 'choose-autro-pro';
+      if (planName === 'Autro Plus') return 'choose-autro-plus';
+      return 'select-standard';
+    }
+
+    function renderUnlockFeatures() {
+      const userRank = PLAN_RANK[currentPlan] ?? 0;
+      document.querySelectorAll('#unlockFeaturesList .unlock-item').forEach((item) => {
+        const key = item.getAttribute('data-feature-key');
+        const reqPlan = item.getAttribute('data-required-plan') || 'Autro Plus';
+        const reqRank = PLAN_RANK[reqPlan] ?? 1;
+        const btn = item.querySelector('[data-toggle-feature]');
+        if (!btn || !key) return;
+
+        const unlocked = userRank >= reqRank;
+        const isActive = unlocked && Boolean(featureStates[key]);
+
+        btn.classList.remove('locked', 'enabled-state');
+        if (!unlocked) {
+          btn.classList.add('locked');
+          btn.innerHTML = '<i class="fa-solid fa-lock"></i><span>Unlock</span>';
+        } else if (isActive) {
+          btn.classList.add('enabled-state');
+          btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Unlocked</span>';
+        } else {
+          btn.innerHTML = '<i class="fa-solid fa-power-off"></i><span>Enable</span>';
+        }
+      });
+    }
+
     function renderBilling() {
       const yearly = cycle === 'yearly';
       if (btnMonthly) btnMonthly.classList.toggle('active', !yearly);
@@ -980,6 +1162,7 @@
       });
 
       renderBilling();
+      renderUnlockFeatures();
     }
 
     if (btnMonthly) {
@@ -1036,7 +1219,29 @@
         saveLocalState();
         renderPlans();
         syncSubscriptionToSupabase();
-        notify(`${chosen} active (${cycle})`);
+        const targetLink = getPlanLink(chosen);
+        notify(`Opening ${targetLink}...`);
+        window.location.href = targetLink;
+      });
+    });
+
+    document.querySelectorAll('[data-toggle-feature]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.getAttribute('data-toggle-feature');
+        const item = btn.closest('.unlock-item');
+        const reqPlan = item?.getAttribute('data-required-plan') || 'Autro Plus';
+        const userRank = PLAN_RANK[currentPlan] ?? 0;
+        const reqRank = PLAN_RANK[reqPlan] ?? 1;
+
+        if (userRank < reqRank) {
+          notify(`Upgrade to ${reqPlan} to unlock this feature`);
+          return;
+        }
+
+        featureStates[key] = !featureStates[key];
+        saveLocalState();
+        renderUnlockFeatures();
+        notify(featureStates[key] ? 'Feature enabled' : 'Feature paused');
       });
     });
 
@@ -1190,4 +1395,4 @@
   })();
 </script>
 </body>
-      </html>
+          </html>
