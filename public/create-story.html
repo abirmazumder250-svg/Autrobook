@@ -476,54 +476,6 @@
     .pri-btn:hover { background: var(--btn-pri-hover); }
     .pri-btn:active { transform: scale(0.96); }
 
-    .saved-stories-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .saved-list {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-    }
-
-    .saved-story-item {
-      min-width: 130px;
-      width: 130px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
-      text-decoration: none;
-      color: var(--text);
-      display: block;
-    }
-
-    .saved-story-item img,
-    .saved-story-item video {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .saved-story-meta {
-      padding: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
     .toast {
       position: fixed;
       left: 50%;
@@ -596,11 +548,6 @@
       <input type="file" id="musicFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style="display:none;">
 
       <main id="galleryGrid" class="media-grid"></main>
-    </section>
-
-    <section id="savedStoriesSection" class="saved-stories-card" style="display:none;">
-      <div style="font-size:14px;font-weight:800;">Recent stories</div>
-      <div id="savedStoriesList" class="saved-list"></div>
     </section>
   </div>
 
@@ -696,7 +643,7 @@
 
       <div class="editor-footer">
         <button type="button" class="sec-btn" onclick="closeEditor()">Cancel</button>
-        <a href="/story-card.html" id="shareToIndexBtn" class="pri-btn" onclick="return handleShareClick(event)">
+        <a href="/index.html" id="shareToIndexBtn" class="pri-btn" onclick="return handleShareClick(event)">
           <i class="fas fa-paper-plane"></i>
           <span>Share</span>
         </a>
@@ -734,7 +681,6 @@
     let currentSticker = '';
     let selectedMusicUrl = '';
     let selectedMusicName = '';
-    let publishedStories = [];
 
     function generateUuid() {
       if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -880,6 +826,8 @@
 
       const resolvedId = storyId || generateUuid();
       const profileUrl = `${PROFILE_PAGE}?tab=stories${ownerId ? `&user=${encodeURIComponent(ownerId)}` : ''}`;
+      const indexUrl = `${HOME_INDEX_PAGE}?tab=stories&story=${encodeURIComponent(resolvedId)}`;
+      const cardUrl = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(resolvedId)}&id=${encodeURIComponent(resolvedId)}`;
 
       return {
         id: resolvedId,
@@ -893,9 +841,12 @@
         author_avatar: authorAvatar,
         profileUrl,
         profile_url: profileUrl,
-        indexUrl: `${HOME_INDEX_PAGE}?tab=stories&story=${encodeURIComponent(resolvedId)}`,
+        indexUrl,
+        index_url: indexUrl,
         cardPage: STORY_CARD_PAGE,
         card_page: STORY_CARD_PAGE,
+        cardUrl,
+        card_url: cardUrl,
         privacy,
         audience: privacy,
         ownerFriends,
@@ -930,12 +881,24 @@
       };
     }
 
-    function storeStoryInAllKeys(payload) {
+    function storeStoryAndRingProfileAndIndex(payload) {
+      const cardLink = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(payload.id)}&id=${encodeURIComponent(payload.id)}`;
+      payload.cardUrl = cardLink;
+      payload.card_url = cardLink;
+
       try {
         sessionStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
         localStorage.setItem('autrobook_active_story_card', JSON.stringify(payload));
         localStorage.setItem('autrobook_active_story_id', payload.id);
         localStorage.setItem('autro_new_story_created', JSON.stringify(payload));
+        localStorage.setItem('autro_story_card_ring', JSON.stringify({
+          type: 'STORY_CARD_TO_PROFILE_AND_INDEX',
+          storyId: payload.id,
+          cardUrl: cardLink,
+          profileUrl: payload.profileUrl,
+          indexUrl: HOME_INDEX_PAGE,
+          ringAt: Date.now()
+        }));
       } catch (e) {}
 
       const storyKeys = [
@@ -965,21 +928,24 @@
             type: 'NEW_STORY_CREATED',
             story: payload,
             storyId: payload.id,
-            targets: ['/story-card.html', '/index.html', '/profile.html']
+            cardUrl: cardLink,
+            profileUrl: payload.profileUrl,
+            indexUrl: HOME_INDEX_PAGE,
+            targets: ['/story-card.html', '/profile.html', '/index.html']
           });
         }
       } catch (_) {}
-    }
 
-    function buildStoryCardUrl(storyObj) {
-      const u = new URL(STORY_CARD_PAGE, window.location.origin);
-      u.searchParams.set('storyId', storyObj.id);
-      u.searchParams.set('id', storyObj.id);
-      if (storyObj.user_id) u.searchParams.set('user_id', storyObj.user_id);
-      u.searchParams.set('profile_url', storyObj.profileUrl || `${PROFILE_PAGE}?tab=stories`);
-      u.searchParams.set('index_url', storyObj.indexUrl || HOME_INDEX_PAGE);
-      u.searchParams.set('from', '/create-story.html');
-      return u.toString();
+      try {
+        window.dispatchEvent(new CustomEvent('autro:story-shared', {
+          detail: {
+            story: payload,
+            cardUrl: cardLink,
+            profileUrl: payload.profileUrl,
+            indexUrl: HOME_INDEX_PAGE
+          }
+        }));
+      } catch (_) {}
     }
 
     function openStoryCardPage(storyObj) {
@@ -988,8 +954,8 @@
         triggerGalleryInput();
         return;
       }
-      storeStoryInAllKeys(payload);
-      window.location.href = buildStoryCardUrl(payload);
+      storeStoryAndRingProfileAndIndex(payload);
+      window.location.href = `${STORY_CARD_PAGE}?storyId=${encodeURIComponent(payload.id)}&id=${encodeURIComponent(payload.id)}`;
     }
 
     function handleCanvasCenterClick(e) {
@@ -1362,32 +1328,10 @@
       }
 
       await persistStoryToSupabase(payload);
-
-      publishedStories = [payload, ...publishedStories.filter(s => s && String(s.id) !== String(payload.id))].slice(0, 25);
-      storeStoryInAllKeys(payload);
-
-      renderSavedStories();
+      storeStoryAndRingProfileAndIndex(payload);
       closeEditor();
-      window.location.href = buildStoryCardUrl(payload);
+      window.location.href = HOME_INDEX_PAGE;
       return false;
-    }
-
-    function renderSavedStories() {
-      const section = document.getElementById('savedStoriesSection');
-      const list = document.getElementById('savedStoriesList');
-      if (!section || !list || !publishedStories.length) return;
-      section.style.display = 'flex';
-      list.innerHTML = publishedStories.map(st => {
-        const href = buildStoryCardUrl(st);
-        return `
-          <a href="${href}" class="saved-story-item" onclick="event.preventDefault();openStoryCardPage(${escapeHtml(JSON.stringify(st))})">
-            ${st.media_type === 'video'
-              ? `<video src="${st.media_url}" muted playsinline></video>`
-              : (st.media_url ? `<img src="${st.media_url}" alt="${escapeHtml(st.title)}">` : `<div style="height:140px;display:flex;align-items:center;justify-content:center;padding:8px;text-align:center;font-weight:700;">${escapeHtml(st.title)}</div>`)}
-            <div class="saved-story-meta">${escapeHtml(st.title)} · ${escapeHtml(st.privacy || 'public')}</div>
-          </a>
-        `;
-      }).join('');
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -1418,18 +1362,10 @@
         }
       } catch (e) {}
 
-      try {
-        const stored = JSON.parse(localStorage.getItem('stories') || localStorage.getItem('autrobook_stories_v1') || '[]') || [];
-        if (Array.isArray(stored) && stored.length) {
-          publishedStories = stored;
-          renderSavedStories();
-        }
-      } catch (e) {}
-
       bindMediaUploads();
       bindMusicUpload();
       renderGallery();
     });
   </script>
 </body>
-            </html>
+  </html>
