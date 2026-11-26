@@ -2,12 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reels - Autrobook</title>
-<link rel="stylesheet" href="/theme.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Reels — Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/auth.js"></script>
 <style>
   :root {
     color-scheme: light dark;
@@ -134,6 +132,16 @@
     border-radius: 999px;
   }
 
+  .slide-counter-badge {
+    background: var(--input-bg);
+    color: var(--muted-color);
+    border: 1px solid var(--border-color);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+  }
+
   .header-right-actions {
     display: flex;
     align-items: center;
@@ -170,7 +178,14 @@
     background: var(--btn-hover-bg);
   }
 
+  .search-sort-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .search-bar-wrap {
+    flex: 1;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -188,6 +203,20 @@
     color: var(--text-color);
     font-size: 13.5px;
     outline: none;
+  }
+
+  .sort-select {
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0 12px;
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
   }
 
   .filter-tabs-row {
@@ -304,20 +333,21 @@
     background: #000000;
   }
 
-  /* Slide Quick-Action Overlay Bar (Comments, Reactions, Profile, Feed, Delete) */
+  /* Slide Quick-Action Overlay Bar */
   .slide-quick-bar {
     position: absolute;
     left: 12px;
-    top: 62px;
+    top: 14px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
     z-index: 18;
-    max-width: calc(100% - 76px);
+    max-width: calc(100% - 24px);
   }
 
   .slide-quick-link,
+  .slide-action-chip,
   .slide-delete-btn {
     padding: 5px 10px;
     border-radius: 999px;
@@ -334,8 +364,15 @@
     backdrop-filter: blur(6px);
   }
 
-  .slide-quick-link:hover {
+  .slide-quick-link:hover,
+  .slide-action-chip:hover {
     background: rgba(255, 255, 255, 0.2);
+  }
+
+  .slide-action-chip.saved {
+    background: #ffffff;
+    color: #202124;
+    border-color: #ffffff;
   }
 
   .slide-delete-btn {
@@ -346,6 +383,36 @@
   .slide-delete-btn:hover {
     background: rgba(220, 38, 38, 0.85);
     color: #ffffff;
+  }
+
+  /* Step Navigation Buttons on Right Edge */
+  .step-nav-stack {
+    position: fixed;
+    right: 16px;
+    bottom: 132px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 22;
+  }
+
+  .step-nav-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: 1px solid var(--btn-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  }
+
+  .step-nav-btn:hover {
+    background: var(--btn-hover-bg);
   }
 
   .floating-create-fab {
@@ -580,6 +647,7 @@
       </a>
       <span class="brand-title">Autrobook</span>
       <span class="reels-pill">Reels</span>
+      <span class="slide-counter-badge" id="slideCounterBadge">0 / 0</span>
     </div>
 
     <div class="header-right-actions">
@@ -591,6 +659,9 @@
         <i class="fa-solid fa-clapperboard"></i>
         <span>Profile Reels</span>
       </a>
+      <button type="button" class="circle-action-btn" id="refreshReelsBtn" title="Refresh Reels">
+        <i class="fa-solid fa-rotate-right" id="refreshReelsIcon"></i>
+      </button>
       <button type="button" class="circle-action-btn" id="toggleGlobalMuteBtn" title="Toggle Sound">
         <i class="fa-solid fa-volume-high" id="globalMuteIcon"></i>
       </button>
@@ -600,9 +671,16 @@
     </div>
   </div>
 
-  <div class="search-bar-wrap">
-    <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="search" id="reelSearchInput" placeholder="Search reels, people...">
+  <div class="search-sort-row">
+    <div class="search-bar-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" id="reelSearchInput" placeholder="Search reels, captions, creators, audio...">
+    </div>
+    <select id="reelSortSelect" class="sort-select" aria-label="Sort reels">
+      <option value="newest">Newest</option>
+      <option value="popular">Most Liked</option>
+      <option value="oldest">Oldest</option>
+    </select>
   </div>
 
   <div class="filter-tabs-row" id="filterTabsRow">
@@ -636,10 +714,19 @@
 
 <main class="reels-feed-scroller" id="reelsFeedScroller">
   <div class="empty-state-box" id="loadingState">
-    <i class="fa-solid fa-clapperboard" style="font-size:28px;color:var(--btn-text);"></i>
+    <i class="fa-solid fa-clapperboard" style="font-size:28px;color:#ffffff;"></i>
     <div style="font-weight:700;font-size:15px;">Loading Reels Feed...</div>
   </div>
 </main>
+
+<div class="step-nav-stack" aria-label="Reel step controls">
+  <button type="button" class="step-nav-btn" id="prevReelBtn" title="Previous Reel (Up Arrow)">
+    <i class="fa-solid fa-chevron-up"></i>
+  </button>
+  <button type="button" class="step-nav-btn" id="nextReelBtn" title="Next Reel (Down Arrow)">
+    <i class="fa-solid fa-chevron-down"></i>
+  </button>
+</div>
 
 <a href="/create-reels.html" class="floating-create-fab create-reel-plus-link" id="floatingCreateReelBtn" title="Create New Reel">
   <i class="fa-solid fa-plus"></i>
@@ -692,9 +779,9 @@
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-  const supabaseClient = (window.AutroAuth && window.AutroAuth.supabase)
-    ? window.AutroAuth.supabase
-    : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
   let reelSyncChannel = null;
   try {
@@ -707,9 +794,11 @@
   let targetUserId = urlParams.get('user_id') || '';
   const focusedReelId = urlParams.get('reel') || urlParams.get('id') || '';
   let activeFilter = 'all';
+  let sortMode = 'newest';
   let searchQuery = '';
   let globalSoundEnabled = true;
   let currentUserId = null;
+  let currentSlideIndex = 0;
   let allReels = [];
   let followingIds = new Set();
   let savedReelIds = new Set();
@@ -717,6 +806,8 @@
 
   const scrollerEl = document.getElementById('reelsFeedScroller');
   const searchInputEl = document.getElementById('reelSearchInput');
+  const sortSelectEl = document.getElementById('reelSortSelect');
+  const slideCounterBadge = document.getElementById('slideCounterBadge');
   const userFilterBanner = document.getElementById('userFilterBanner');
   const userFilterLabel = document.getElementById('userFilterLabel');
   const bottomProfileAvatarSlot = document.getElementById('bottomProfileAvatarSlot');
@@ -732,6 +823,16 @@
     showToast._timer = setTimeout(() => {
       reelToastEl.classList.remove('show');
     }, 2400);
+  }
+
+  function updateSlideCounter(totalCount) {
+    if (!slideCounterBadge) return;
+    if (!totalCount) {
+      slideCounterBadge.textContent = '0 / 0';
+      return;
+    }
+    const clampedIdx = Math.min(Math.max(0, currentSlideIndex), totalCount - 1);
+    slideCounterBadge.textContent = `${clampedIdx + 1} / ${totalCount}`;
   }
 
   function isValidUUID(val) {
@@ -836,7 +937,7 @@
     document.getElementById('chipIndexReelsLink').href = indexReelsHref;
     document.getElementById('navHomeLink').href = indexReelsHref;
 
-    const activeOrFirst = getFilteredReels()[0] || null;
+    const activeOrFirst = getFilteredReels()[currentSlideIndex] || getFilteredReels()[0] || null;
     document.getElementById('headerCommentLink').href = getCommentPageUrl(activeOrFirst);
     document.getElementById('navCommentLink').href = getCommentPageUrl(activeOrFirst);
     document.getElementById('headerReactionsLink').href = getReactionsPageUrl(activeOrFirst);
@@ -861,7 +962,7 @@
     bottomProfileAvatarSlot.innerHTML = `<img src="${escapeAttr(cleanUrl)}" alt="Profile">`;
   }
 
-  async function syncProfileAvatarFromSupabase() {
+  async function resolveStandaloneSessionAndProfile() {
     let localAvatar = '';
     try {
       const savedProfile = JSON.parse(localStorage.getItem('autrobook_profile') || '{}');
@@ -874,19 +975,28 @@
       setBottomProfileAvatar(localAvatar);
     }
 
+    currentUserId = localStorage.getItem('autro_user_id') || '';
+
     if (!supabaseClient) return;
 
     try {
-      const { data } = await supabaseClient.auth.getUser();
-      if (data?.user?.id) {
-        currentUserId = data.user.id;
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      let authUser = sessionData?.session?.user || null;
+
+      if (!authUser) {
+        const { data: userData } = await supabaseClient.auth.getUser();
+        authUser = userData?.user || null;
+      }
+
+      if (authUser?.id) {
+        currentUserId = String(authUser.id);
         localStorage.setItem('autro_user_id', currentUserId);
         syncNavigationLinks();
 
-        const metaAvatar = data.user.user_metadata?.avatar_url || '';
+        const metaAvatar = authUser.user_metadata?.avatar_url || '';
         const { data: prof } = await supabaseClient
           .from('profiles')
-          .select('avatar_url, full_name, name')
+          .select('avatar_url, full_name, name, username')
           .eq('id', currentUserId)
           .maybeSingle();
 
@@ -895,7 +1005,8 @@
         if (resolvedAvatar) {
           localStorage.setItem('autro_profile_avatar', resolvedAvatar);
         }
-        const resolvedName = prof?.full_name || prof?.name || data.user.user_metadata?.full_name || data.user.user_metadata?.name || '';
+
+        const resolvedName = prof?.full_name || prof?.name || prof?.username || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '';
         if (resolvedName) {
           localStorage.setItem('autro_profile_name', resolvedName);
         }
@@ -980,8 +1091,50 @@
 
     try {
       const saved = JSON.parse(localStorage.getItem('autrobook_saved_reels') || '[]');
-      saved.forEach((id) => savedReelIds.add(id));
+      saved.forEach((id) => savedReelIds.add(String(id)));
     } catch (e) {}
+  }
+
+  function toggleSaveReel(reel) {
+    if (!reel || !reel.id) return;
+    const id = String(reel.id);
+    if (savedReelIds.has(id)) {
+      savedReelIds.delete(id);
+      showToast('Removed from Saved Reels');
+    } else {
+      savedReelIds.add(id);
+      showToast('Saved to your Reels');
+    }
+    try {
+      localStorage.setItem('autrobook_saved_reels', JSON.stringify(Array.from(savedReelIds)));
+    } catch (_) {}
+    renderVerticalReelsFeed();
+  }
+
+  async function shareReelLink(reel) {
+    const shareUrl = new URL('/reels.html', window.location.origin);
+    if (reel?.id) shareUrl.searchParams.set('reel', reel.id);
+    const fullUrl = shareUrl.toString();
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: reel?.caption || 'Autrobook Reel',
+          url: fullUrl
+        });
+        showToast('Reel shared');
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      showToast('Reel link copied to clipboard');
+    } catch (_) {
+      showToast(fullUrl);
+    }
   }
 
   async function fetchApiReels() {
@@ -1254,7 +1407,7 @@
     const storedUserId = currentUserId || localStorage.getItem('autro_user_id') || '';
     const deletedSet = getDeletedReelIdsSet();
 
-    return allReels.filter((r) => {
+    const matched = allReels.filter((r) => {
       if (deletedSet.has(String(r.id))) return false;
       if (targetUserId && r.user_id !== targetUserId) {
         return false;
@@ -1263,7 +1416,7 @@
       if (activeFilter === 'following') {
         if (!followingIds.has(r.user_id)) return false;
       } else if (activeFilter === 'saved') {
-        if (!savedReelIds.has(r.id) && !savedReelIds.has(r.media_url)) return false;
+        if (!savedReelIds.has(String(r.id)) && !savedReelIds.has(r.media_url)) return false;
       } else if (activeFilter === 'mine') {
         if (!storedUserId || r.user_id !== storedUserId) return false;
       }
@@ -1275,6 +1428,14 @@
 
       return true;
     });
+
+    if (sortMode === 'popular') {
+      return [...matched].sort((a, b) => Number(b.likes || 0) - Number(a.likes || 0));
+    }
+    if (sortMode === 'oldest') {
+      return [...matched].sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+    }
+    return [...matched].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
   }
 
   function updateUserFilterBanner(filteredList) {
@@ -1287,9 +1448,19 @@
     userFilterBanner.classList.add('show');
   }
 
+  function jumpToSlide(nextIndex) {
+    const slides = scrollerEl.querySelectorAll('.reel-snap-slide');
+    if (!slides.length) return;
+    const bounded = Math.min(Math.max(0, nextIndex), slides.length - 1);
+    currentSlideIndex = bounded;
+    slides[bounded].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    updateSlideCounter(slides.length);
+  }
+
   function renderVerticalReelsFeed() {
     const list = getFilteredReels();
     updateUserFilterBanner(list);
+    updateSlideCounter(list.length);
     syncNavigationLinks();
 
     if (!list.length) {
@@ -1319,27 +1490,36 @@
       const profileReelsHref = getProfileReelsUrl(reel.user_id);
       const indexReelsHref = getIndexReelsUrl(reel.id);
       const showDelete = canDeleteReel(reel);
+      const isSaved = savedReelIds.has(String(reel.id)) || savedReelIds.has(reel.media_url);
 
       return `
         <section class="reel-snap-slide" data-index="${idx}" data-reel-id="${escapeAttr(reel.id)}">
           <div class="reel-card-frame-shell">
             <div class="slide-quick-bar">
-              <a href="${escapeAttr(commentHref)}" class="slide-quick-link" title="Open comment.html">
+              <a href="${escapeAttr(commentHref)}" class="slide-quick-link" title="Open Comments">
                 <i class="fa-regular fa-comment"></i>
-                <span>comment.html</span>
+                <span>Comments</span>
               </a>
-              <a href="${escapeAttr(reactionsHref)}" class="slide-quick-link" title="Open reactions.html">
+              <a href="${escapeAttr(reactionsHref)}" class="slide-quick-link" title="Open Reactions">
                 <i class="fa-regular fa-face-smile"></i>
-                <span>reactions.html</span>
+                <span>Reactions</span>
               </a>
               <a href="${escapeAttr(profileReelsHref)}" class="slide-quick-link" title="Open Profile Reels">
                 <i class="fa-regular fa-user"></i>
                 <span>Profile</span>
               </a>
-              <a href="${escapeAttr(indexReelsHref)}" class="slide-quick-link" title="Open Home">
+              <a href="${escapeAttr(indexReelsHref)}" class="slide-quick-link" title="Open Home Feed">
                 <i class="fa-solid fa-house"></i>
                 <span>Home</span>
               </a>
+              <button type="button" class="slide-action-chip ${isSaved ? 'saved' : ''}" data-save-id="${escapeAttr(reel.id)}" title="${isSaved ? 'Saved' : 'Save Reel'}">
+                <i class="${isSaved ? 'fa-solid' : 'fa-regular'} fa-bookmark"></i>
+                <span>${isSaved ? 'Saved' : 'Save'}</span>
+              </button>
+              <button type="button" class="slide-action-chip" data-share-id="${escapeAttr(reel.id)}" title="Share Reel">
+                <i class="fa-solid fa-share-nodes"></i>
+                <span>Share</span>
+              </button>
               ${showDelete ? `
                 <button type="button" class="slide-delete-btn" data-delete-id="${escapeAttr(reel.id)}" title="Delete Reel">
                   <i class="fa-regular fa-trash-can"></i>
@@ -1359,6 +1539,24 @@
       `;
     }).join('');
 
+    scrollerEl.querySelectorAll('.slide-save-btn, [data-save-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const sid = btn.getAttribute('data-save-id');
+        const found = allReels.find((item) => String(item.id) === String(sid));
+        if (found) toggleSaveReel(found);
+      });
+    });
+
+    scrollerEl.querySelectorAll('[data-share-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const shId = btn.getAttribute('data-share-id');
+        const found = allReels.find((item) => String(item.id) === String(shId)) || { id: shId };
+        shareReelLink(found);
+      });
+    });
+
     scrollerEl.querySelectorAll('.slide-delete-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1371,6 +1569,9 @@
     if (focusedReelId) {
       const targetSlide = scrollerEl.querySelector(`.reel-snap-slide[data-reel-id="${CSS.escape(focusedReelId)}"]`);
       if (targetSlide) {
+        const idxAttr = Number(targetSlide.getAttribute('data-index') || 0);
+        currentSlideIndex = idxAttr;
+        updateSlideCounter(list.length);
         targetSlide.scrollIntoView({ behavior: 'auto', block: 'start' });
       }
     }
@@ -1385,7 +1586,15 @@
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
+          const slideIdx = Number(entry.target.getAttribute('data-index') || 0);
           const iframe = entry.target.querySelector('iframe');
+
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+            currentSlideIndex = slideIdx;
+            updateSlideCounter(slides.length);
+            syncNavigationLinks();
+          }
+
           if (!iframe || !iframe.contentWindow) return;
           try {
             const vid = iframe.contentWindow.document.getElementById('reelVideo');
@@ -1405,6 +1614,44 @@
 
     slides.forEach((s) => observer.observe(s));
   }
+
+  document.getElementById('prevReelBtn').addEventListener('click', () => {
+    jumpToSlide(currentSlideIndex - 1);
+  });
+
+  document.getElementById('nextReelBtn').addEventListener('click', () => {
+    jumpToSlide(currentSlideIndex + 1);
+  });
+
+  document.getElementById('refreshReelsBtn').addEventListener('click', async () => {
+    const icon = document.getElementById('refreshReelsIcon');
+    icon?.classList.add('fa-spin');
+    await resolveStandaloneSessionAndProfile();
+    loadLocalLists();
+    await fetchReelsFromSources();
+    renderVerticalReelsFeed();
+    setTimeout(() => icon?.classList.remove('fa-spin'), 450);
+    showToast('Reels feed refreshed');
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (deleteConfirmModal.classList.contains('open')) {
+      if (e.key === 'Escape') closeDeleteReelModal();
+      return;
+    }
+    const activeTag = document.activeElement?.tagName?.toLowerCase();
+    if (activeTag === 'input' || activeTag === 'select' || activeTag === 'textarea') return;
+
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault();
+      jumpToSlide(currentSlideIndex + 1);
+    } else if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault();
+      jumpToSlide(currentSlideIndex - 1);
+    } else if (e.key === 'm') {
+      document.getElementById('toggleGlobalMuteBtn')?.click();
+    }
+  });
 
   window.addEventListener('message', async (event) => {
     const data = event.data;
@@ -1441,7 +1688,7 @@
 
   window.addEventListener('storage', async (event) => {
     if (event.key === 'autrobook_profile' || event.key === 'autro_profile_avatar') {
-      await syncProfileAvatarFromSupabase();
+      await resolveStandaloneSessionAndProfile();
     }
     if (
       event.key === 'reels' ||
@@ -1469,7 +1716,7 @@
 
   window.addEventListener('pageshow', async () => {
     loadLocalLists();
-    await syncProfileAvatarFromSupabase();
+    await resolveStandaloneSessionAndProfile();
     await fetchReelsFromSources();
     renderVerticalReelsFeed();
   });
@@ -1493,12 +1740,20 @@
       document.querySelectorAll('#filterTabsRow .filter-chip').forEach((c) => c.classList.remove('active'));
       chip.classList.add('active');
       activeFilter = chip.getAttribute('data-filter') || 'all';
+      currentSlideIndex = 0;
       renderVerticalReelsFeed();
     });
   });
 
+  sortSelectEl.addEventListener('change', () => {
+    sortMode = sortSelectEl.value || 'newest';
+    currentSlideIndex = 0;
+    renderVerticalReelsFeed();
+  });
+
   searchInputEl.addEventListener('input', () => {
     searchQuery = searchInputEl.value;
+    currentSlideIndex = 0;
     renderVerticalReelsFeed();
   });
 
@@ -1507,25 +1762,14 @@
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete('user_id');
     window.history.replaceState({}, '', cleanUrl.toString());
+    currentSlideIndex = 0;
     renderVerticalReelsFeed();
   });
 
   document.addEventListener('DOMContentLoaded', async () => {
-    if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
-      const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
-      if (!authResult || !authResult.user) {
-        return;
-      }
-      currentUserId = authResult.user.id;
-      localStorage.setItem('autro_user_id', currentUserId);
-    } else {
-      window.location.replace('/login.html');
-      return;
-    }
-
     syncNavigationLinks();
     loadLocalLists();
-    await syncProfileAvatarFromSupabase();
+    await resolveStandaloneSessionAndProfile();
     await fetchReelsFromSources();
     renderVerticalReelsFeed();
 
@@ -1547,4 +1791,4 @@
   });
 </script>
 </body>
-      </html>
+  </html>
