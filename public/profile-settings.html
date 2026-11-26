@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profile Settings - Autrobook</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -57,7 +58,6 @@
     background-color: var(--surface-color);
   }
 
-  /* Top Header */
   .top-header {
     position: sticky;
     top: 0;
@@ -140,7 +140,6 @@
     display: none;
   }
 
-  /* Settings List */
   .settings-list {
     padding: 6px 0;
   }
@@ -196,8 +195,21 @@
   }
 
   .setting-label {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     line-height: 1.35;
+  }
+
+  .verify-inline-tick {
+    color: #14532d;
+    font-size: 15px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .verify-inline-tick {
+      color: #22c55e;
+    }
   }
 
   .setting-sub {
@@ -213,7 +225,6 @@
     font-size: 13px;
   }
 
-  /* Profile Link Card */
   .link-section {
     padding: 16px;
     border-top: 6px solid var(--border-color);
@@ -303,7 +314,6 @@
     text-align: center;
   }
 
-  /* Lock Profile Modal */
   .lock-modal-backdrop {
     position: fixed;
     inset: 0;
@@ -559,6 +569,18 @@
       <i class="fa-solid fa-chevron-right setting-chevron"></i>
     </a>
 
+    <a href="autro-verify.html" class="setting-row" id="autroVerifyRow">
+      <span class="setting-badge"><i class="fa-solid fa-badge-check"></i></span>
+      <span class="setting-label-wrap">
+        <span class="setting-label">
+          <span>Autro verify</span>
+          <i class="fa-solid fa-circle-check verify-inline-tick" id="autroVerifyTick" style="display:none;"></i>
+        </span>
+        <span class="setting-sub" id="autroVerifySub">Unverified</span>
+      </span>
+      <i class="fa-solid fa-chevron-right setting-chevron"></i>
+    </a>
+
     <a href="autro-account-verified.html" class="setting-row">
       <span class="setting-badge"><i class="fa-solid fa-circle-check"></i></span>
       <span class="setting-label-wrap">
@@ -752,6 +774,7 @@
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
   const LOCK_STORAGE_KEY = 'autro_profile_locked';
+  const VERIFY_STATUS_KEY = 'autro_verify_status';
 
   const supabaseClient = window.supabase
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -759,6 +782,24 @@
 
   let currentAuthUser = null;
   let isProfileLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
+
+  function renderVerifySummary() {
+    const status = localStorage.getItem(VERIFY_STATUS_KEY) || 'unverified';
+    const subEl = document.getElementById('autroVerifySub');
+    const tickEl = document.getElementById('autroVerifyTick');
+    if (!subEl) return;
+
+    if (status === 'verified') {
+      subEl.textContent = 'Verified';
+      if (tickEl) tickEl.style.display = 'inline-block';
+    } else if (status === 'pending') {
+      subEl.textContent = 'Wait for 24 hours for verification';
+      if (tickEl) tickEl.style.display = 'none';
+    } else {
+      subEl.textContent = 'Unverified';
+      if (tickEl) tickEl.style.display = 'none';
+    }
+  }
 
   function setProfileLinkUsername(rawUsername) {
     const clean = (rawUsername || 'username').trim().replace(/^@+/, '') || 'username';
@@ -857,6 +898,7 @@
   async function loadUserProfileData() {
     isProfileLocked = localStorage.getItem(LOCK_STORAGE_KEY) === 'true';
     renderLockState();
+    renderVerifySummary();
     if (!supabaseClient) return;
 
     try {
@@ -890,6 +932,10 @@
             isProfileLocked = profileRow.is_locked;
             localStorage.setItem(LOCK_STORAGE_KEY, String(isProfileLocked));
             renderLockState();
+          }
+          if (profileRow.verification_status) {
+            localStorage.setItem(VERIFY_STATUS_KEY, profileRow.verification_status);
+            renderVerifySummary();
           }
         }
       } else {
@@ -989,6 +1035,9 @@
     if (e.key === LOCK_STORAGE_KEY) {
       isProfileLocked = e.newValue === 'true';
       renderLockState();
+    }
+    if (e.key === VERIFY_STATUS_KEY) {
+      renderVerifySummary();
     }
   });
 </script>
