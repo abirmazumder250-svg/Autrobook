@@ -31,22 +31,22 @@
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg-page: #0b0b0c;
-        --bg-surface: #121214;
-        --bg-card: #1d1e22;
-        --bg-card-hover: #26282d;
-        --bg-tile: #2e3036;
+        --bg-page: #202124;
+        --bg-surface: #202124;
+        --bg-card: #292a2d;
+        --bg-card-hover: #35373b;
+        --bg-tile: #3c4043;
         --bg-user: #ffffff;
-        --bg-ai: #1d1e22;
+        --bg-ai: #292a2d;
         --text-main: #ffffff;
         --text-muted: #b5b8c0;
-        --text-user: #050505;
+        --text-user: #202124;
         --text-ai: #ffffff;
-        --border-color: #2c2e33;
+        --border-color: #3c4043;
         --tick-bg: #ffffff;
-        --tick-color: #050505;
+        --tick-color: #202124;
         --send-ready-bg: #ffffff;
-        --send-ready-color: #050505;
+        --send-ready-color: #202124;
         --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
         --shadow-soft: 0 3px 12px rgba(0, 0, 0, 0.3);
       }
@@ -63,7 +63,6 @@
       height: 100%;
       background-color: var(--bg-page);
       color: var(--text-main);
-      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .app-shell {
@@ -93,7 +92,7 @@
     .topbar-left {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       min-width: 0;
     }
 
@@ -188,7 +187,6 @@
       justify-content: center;
       font-size: 10px;
       flex-shrink: 0;
-      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .topbar-right {
@@ -459,7 +457,7 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="topbar-left">
-        <a href="javascript:history.back()" class="icon-btn" aria-label="Back" title="Back">
+        <a href="/shortcut.html" class="icon-btn" aria-label="Shortcut" title="Shortcut">
           <i class="fa-solid fa-arrow-left"></i>
         </a>
 
@@ -470,7 +468,7 @@
           </div>
           <div class="brand-title-row">
             <span class="brand-title" id="headerTitle">Autro AI Assistant</span>
-            <span class="verified-tick" title="Autro AI Assistant">
+            <span class="verified-tick" title="Verified">
               <i class="fa-solid fa-check"></i>
             </span>
           </div>
@@ -568,22 +566,13 @@
         email: '',
         bio: '',
         location: '',
-        education: ''
+        education: '',
+        role: '',
+        isAdmin: false
       };
 
       function initLogoAutoDetect() {
-        const logoPaths = [
-          '/au.png',
-          'au.png',
-          './au.png',
-          '../au.png',
-          '/images/au.png',
-          'images/au.png',
-          '/assets/au.png',
-          'assets/au.png',
-          '/public/au.png'
-        ];
-
+        const logoPaths = ['/au.png', 'au.png'];
         const imgs = document.querySelectorAll('.autro-logo-img');
         imgs.forEach((img) => {
           let index = 0;
@@ -610,7 +599,7 @@
 
       function saveChatToStorage() {
         try {
-          localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(savedMessages.slice(-100)));
+          localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(savedMessages.slice(-150)));
         } catch (_) {}
       }
 
@@ -633,6 +622,18 @@
         } catch (_) {}
       }
 
+      function detectAdminFlag(obj = {}) {
+        const roleVal = String(obj.role || obj.user_role || obj.account_role || '').toLowerCase().trim();
+        return Boolean(
+          obj.is_admin === true ||
+          obj.isAdmin === true ||
+          obj.admin === true ||
+          roleVal === 'admin' ||
+          roleVal === 'super_admin' ||
+          roleVal === 'owner'
+        );
+      }
+
       function readCachedProfile() {
         const info = {
           userId: '',
@@ -641,7 +642,9 @@
           email: '',
           bio: '',
           location: '',
-          education: ''
+          education: '',
+          role: '',
+          isAdmin: false
         };
         try {
           const keys = [
@@ -665,7 +668,11 @@
             if (!info.bio) info.bio = String(u.bio || u.about || parsed.bio || '').trim();
             if (!info.location) info.location = String(u.location || u.city || u.lives_in || parsed.location || '').trim();
             if (!info.education) info.education = String(u.education || u.school || u.university || parsed.education || '').trim();
-            if (info.fullName) break;
+            if (!info.role) info.role = String(u.role || u.user_role || parsed.role || '').trim();
+            if (detectAdminFlag(u) || detectAdminFlag(parsed)) {
+              info.isAdmin = true;
+              if (!info.role) info.role = 'admin';
+            }
           }
 
           if (!info.fullName) {
@@ -675,6 +682,13 @@
               sessionStorage.getItem('autro_profile_name') ||
               ''
             ).trim();
+          }
+          if (!info.isAdmin) {
+            const adminFlag = localStorage.getItem('autro_is_admin') || localStorage.getItem('is_admin');
+            if (adminFlag === '1' || adminFlag === 'true') {
+              info.isAdmin = true;
+              if (!info.role) info.role = 'admin';
+            }
           }
         } catch (_) {}
         return info;
@@ -699,6 +713,10 @@
               session.user.user_metadata?.username ||
               profileContext.username;
             profileContext.email = session.user.email || profileContext.email;
+            if (detectAdminFlag(session.user.user_metadata || {}) || detectAdminFlag(session.user.app_metadata || {})) {
+              profileContext.isAdmin = true;
+              if (!profileContext.role) profileContext.role = 'admin';
+            }
           }
 
           if (userId) {
@@ -718,6 +736,11 @@
               }
               if (profileRow.education || profileRow.university || profileRow.school) {
                 profileContext.education = String(profileRow.education || profileRow.university || profileRow.school).trim();
+              }
+              if (profileRow.role) profileContext.role = String(profileRow.role).trim();
+              if (detectAdminFlag(profileRow)) {
+                profileContext.isAdmin = true;
+                if (!profileContext.role) profileContext.role = 'admin';
               }
             }
           }
@@ -747,17 +770,6 @@
             settingsRow = data;
           }
 
-          if (!settingsRow && !userId) {
-            const { data: latestRows } = await supabaseClient
-              .from('account_settings')
-              .select('*')
-              .order('updated_at', { ascending: false })
-              .limit(1);
-            if (Array.isArray(latestRows) && latestRows.length > 0) {
-              settingsRow = latestRows[0];
-            }
-          }
-
           if (settingsRow) {
             if (settingsRow.full_name) profileContext.fullName = String(settingsRow.full_name).trim();
             if (settingsRow.bio) profileContext.bio = String(settingsRow.bio).trim();
@@ -766,6 +778,11 @@
             }
             if (settingsRow.education || settingsRow.university || settingsRow.school) {
               profileContext.education = String(settingsRow.education || settingsRow.university || settingsRow.school).trim();
+            }
+            if (settingsRow.role) profileContext.role = String(settingsRow.role).trim();
+            if (detectAdminFlag(settingsRow)) {
+              profileContext.isAdmin = true;
+              if (!profileContext.role) profileContext.role = 'admin';
             }
           }
         } catch (_) {}
@@ -888,7 +905,7 @@
               message: trimmed,
               profileName: activeName,
               userProfile: profileContext,
-              history: conversationHistory.slice(-4)
+              history: conversationHistory.slice(-6)
             })
           });
 
