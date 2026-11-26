@@ -3365,7 +3365,7 @@
             <img id="avatarImg" class="avatar-img" alt="Profile">
             <span class="avatar-fallback-icon" id="avatarFallbackLetter"><i class="fas fa-user"></i></span>
           </div>
-          <span id="avatarGuardShieldOverlay" class="avatar-guard-shield-overlay" title="Profile Guard On">
+          <span id="avatarGuardShieldOverlay" class="avatar-guard-shield-overlay" title="Profile On">
             <i class="fas fa-shield-halved"></i>
           </span>
           <button type="button" id="avatarCamBtn" class="cam-btn avatar-cam" title="Change Profile Photo" onclick="triggerAvatarPicker(event)">
@@ -4759,33 +4759,7 @@
       markNoteDeletedForUser(cleanUid);
       renderThoughtBubbleUI('', { id: cleanUid, note: '', thought: '' });
 
-      if (sb && isPersistableDbId(cleanUid)) {
-        try {
-          if (noteId && isPersistableDbId(noteId)) {
-            await sb.from('notes').delete().eq('id', noteId);
-          } else {
-            await sb.from('notes').delete().eq('user_id', cleanUid);
-          }
-          await sb.from('profiles').update({ note: null, thought: null }).eq('id', cleanUid);
-        } catch (_) {}
-      }
-
-      playUndoSound();
-      showToast('Note deleted');
-    }
-
-    function buildNotePageHref(currentNoteText) {
-      const uid = String(viewedUserId || activeUserId || readRawLocalProfile().id || '').trim();
-      const params = new URLSearchParams();
-      if (uid) params.set('user', uid);
-      params.set('from', 'profile.html');
-      params.set('returnTo', 'profile.html');
-      params.set('audience', 'public');
-      if (currentNoteText) params.set('note', currentNoteText);
-      return `note.html?${params.toString()}`;
-    }
-
-    function handleThoughtBubbleClick(e) {
+      function handleThoughtBubbleClick(e) {
       if (!isViewingOwnProfile()) {
         if (e) e.preventDefault();
         return;
@@ -4797,12 +4771,35 @@
       const bubble = document.getElementById('thoughtBubble');
       const currentText = bubble && !bubble.classList.contains('placeholder-mode') ? bubble.textContent.trim() : '';
       const uid = String(activeUserId || viewedUserId || readRawLocalProfile().id || '').trim();
+
+      // নোট না থাকলে সরাসরি note.html-এ নিয়ে যাবে
+      if (!currentText) {
+        if (bubble) {
+          bubble.href = buildNotePageHref('');
+        }
+        return;
+      }
+
+      if (e) e.preventDefault();
+
+      const authorName =
+        (typeof activeAuthorName !== 'undefined' && activeAuthorName) ||
+        readRawLocalProfile().full_name ||
+        document.getElementById('displayName')?.textContent?.trim() ||
+        'User';
+
+      const avatarSrc =
+        (typeof activeSupabaseAvatarUrl !== 'undefined' && activeSupabaseAvatarUrl) ||
+        readRawLocalProfile().avatar_url ||
+        document.getElementById('avatarImg')?.src ||
+        '';
+
       try {
         const payload = {
           userId: uid,
           user_id: uid,
-          authorName: activeAuthorName || readRawLocalProfile().full_name || 'User',
-          authorAvatar: activeSupabaseAvatarUrl || readRawLocalProfile().avatar_url || '',
+          authorName: authorName,
+          authorAvatar: avatarSrc,
           text: currentText,
           content: currentText,
           note: currentText,
@@ -4814,8 +4811,56 @@
         sessionStorage.setItem('autro_active_note_edit', JSON.stringify(payload));
         localStorage.setItem('autro_active_note_edit', JSON.stringify(payload));
       } catch (_) {}
+
       if (bubble) {
         bubble.href = buildNotePageHref(currentText);
+      }
+
+      if (typeof openNoteStatusSheet === 'function') {
+        openNoteStatusSheet({
+          text: currentText,
+          authorName: authorName,
+          timeAgo: 'Just now',
+          avatarSrc: avatarSrc,
+          onNewStatus: function () {
+            window.location.href = buildNotePageHref(currentText);
+          },
+          onDeleteStatus: async function () {
+            if (typeof deleteNote === 'function') {
+              await deleteNote(uid);
+            }
+            if (bubble) {
+              bubble.textContent = 'Drop a thought...';
+              bubble.classList.add('placeholder-mode');
+            }
+            try {
+              sessionStorage.removeItem('autro_active_note_edit');
+              localStorage.removeItem('autro_active_note_edit');
+            } catch (_) {}
+          }
+        });
+        setTimeout(function () {
+          const sheet =
+            document.querySelector('[data-note-status-sheet]') ||
+            document.querySelector('.note-status-sheet') ||
+            document.querySelector('.note-sheet') ||
+            document.querySelector('.status-sheet') ||
+            document.querySelector('#noteStatusSheet') ||
+            document.querySelector('#noteSheet');
+          if (!sheet) return;
+
+          const textEl =
+            sheet.querySelector('[data-note-text]') ||
+            sheet.querySelector('.note-text') ||
+            sheet.querySelector('.status-text') ||
+            sheet.querySelector('.sheet-note-text') ||
+            sheet.querySelector('p');
+          if (textEl) {
+            textEl.textContent = currentText;
+          }
+        }, 50);
+      } else {
+        window.location.href = buildNotePageHref(currentText);
       }
     }
 
@@ -7001,44 +7046,44 @@
       showToast('Location removed');
     }
 
-    /* ================= PROFILE GUARD & AVATAR TAP ================= */
+    /* ================= PROFILE & AVATAR TAP ================= */
 
     function readProfileGuardState(profileRow) {
-      if (profileRow && typeof profileRow === 'object') {
-        for (const k of ['profile_guard', 'profile_pic_guard', 'is_guarded', 'avatar_guard']) {
-          if (typeof profileRow[k] === 'boolean') return profileRow[k];
-          if (typeof profileRow[k] === 'string') {
-            const cleaned = profileRow[k].trim().toLowerCase();
-            if (cleaned === 'true' || cleaned === '1' || cleaned === 'on' || cleaned === 'enabled') return true;
-            if (cleaned === 'false' || cleaned === '0' || cleaned === 'off' || cleaned === 'disabled') return false;
-          }
-        }
-      }
-
-      if (isViewingOwnProfile()) {
-        for (const storageKey of PROFILE_GUARD_STORAGE_KEYS) {
-          try {
-            const raw = localStorage.getItem(storageKey) ?? sessionStorage.getItem(storageKey);
-            if (raw === null || raw === '') continue;
-            const c = String(raw).trim().toLowerCase();
-            if (c === 'true' || c === '1' || c === 'on' || c === 'enabled') return true;
-            if (c === 'false' || c === '0' || c === 'off' || c === 'disabled') return false;
-            const parsed = JSON.parse(raw);
-            if (typeof parsed === 'boolean') return parsed;
-          } catch (_) {}
-        }
-      }
-      return false;
-    }
-
-    function applyProfileGuardUI(enabled) {
-      isProfileGuardEnabled = Boolean(enabled);
-      const shieldEl = document.getElementById('avatarGuardShieldOverlay');
-      if (shieldEl) {
-        shieldEl.classList.toggle('active', isProfileGuardEnabled);
+  if (profileRow && typeof profileRow === 'object') {
+    for (const k of ['profile_guard', 'profile_pic_guard', 'is_guarded', 'avatar_guard']) {
+      if (typeof profileRow[k] === 'boolean') return profileRow[k];
+      if (typeof profileRow[k] === 'string') {
+        const cleaned = profileRow[k].trim().toLowerCase();
+        if (cleaned === 'true' || cleaned === '1' || cleaned === 'on' || cleaned === 'enabled') return true;
+        if (cleaned === 'false' || cleaned === '0' || cleaned === 'off' || cleaned === 'disabled') return false;
       }
     }
+  }
 
+  if (typeof isViewingOwnProfile === 'function' && isViewingOwnProfile()) {
+    for (const storageKey of PROFILE_GUARD_STORAGE_KEYS) {
+      try {
+        const raw = localStorage.getItem(storageKey) ?? sessionStorage.getItem(storageKey);
+        if (raw === null || raw === '') continue;
+        const c = String(raw).trim().toLowerCase();
+        if (c === 'true' || c === '1' || c === 'on' || c === 'enabled') return true;
+        if (c === 'false' || c === '0' || c === 'off' || c === 'disabled') return false;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed === 'boolean') return parsed;
+      } catch (_) {}
+    }
+  }
+  return false;
+}
+
+function applyProfileGuardUI(enabled) {
+  isProfileGuardEnabled = Boolean(enabled);
+  const shieldEl = document.getElementById('avatarGuardShieldOverlay');
+  if (shieldEl) {
+    shieldEl.classList.toggle('active', isProfileGuardEnabled);
+    shieldEl.style.display = isProfileGuardEnabled ? '' : 'none';
+  }
+      }
     function buildStoryPageHref(storyObj) {
       const uid = String(viewedUserId || activeUserId || '').trim();
       const params = new URLSearchParams();
@@ -9590,4 +9635,4 @@
     document.addEventListener('DOMContentLoaded', initProfilePage);
   </script>
 </body>
-  </html>
+</html>
