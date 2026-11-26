@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/auth.js"></script>
 <style>
   :root {
     --bg-color: #ffffff;
@@ -583,9 +582,9 @@
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-  const supabaseClient = (window.AutroAuth && window.AutroAuth.supabase)
-    ? window.AutroAuth.supabase
-    : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
   let reelSyncChannel = null;
   try {
@@ -605,23 +604,6 @@
     });
   }
 
-  function getDeletedReelIdsSet() {
-    const set = new Set();
-    const keys = ['autro_deleted_reel_ids', 'deleted_reel_ids', 'autrobook_deleted_reels'];
-    keys.forEach((k) => {
-      try {
-        const arr = JSON.parse(localStorage.getItem(k) || '[]');
-        if (Array.isArray(arr)) {
-          arr.forEach((v) => {
-            const id = typeof v === 'string' || typeof v === 'number' ? String(v) : String(v?.id || v?.reel_id || '');
-            if (id.trim()) set.add(id.trim());
-          });
-        }
-      } catch (_) {}
-    });
-    return set;
-  }
-
   function clearDeletedFlagForReel(reelId) {
     const cleanId = String(reelId || '').trim();
     if (!cleanId) return;
@@ -638,6 +620,40 @@
         }
       } catch (_) {}
     });
+  }
+
+  async function resolveCurrentUserAndProfile() {
+    if (!supabaseClient || !supabaseClient.auth) {
+      return { user: null, profile: null };
+    }
+
+    try {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      let user = sessionData?.session?.user || null;
+
+      if (!user && typeof supabaseClient.auth.getUser === 'function') {
+        const { data: userData } = await supabaseClient.auth.getUser();
+        user = userData?.user || null;
+      }
+
+      if (!user) {
+        return { user: null, profile: null };
+      }
+
+      let profile = null;
+      try {
+        const { data: profData } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        profile = profData || null;
+      } catch (_) {}
+
+      return { user, profile };
+    } catch (_) {
+      return { user: null, profile: null };
+    }
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -674,34 +690,32 @@
     let activeTile = null;
     const filesByUrl = new Map();
 
-    // Enforce authentication & onboarding (/login.html, /signup-name.html, /signup-contact.html)
-    if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
-      const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
-      if (!authResult || !authResult.user) {
-        return;
-      }
-      currentUser = authResult.user;
-      currentProfile = authResult.profile || null;
-      try {
-        localStorage.setItem('autro_user_id', currentUser.id);
-        const resolvedName = String(
-          currentProfile?.full_name ||
-          currentProfile?.name ||
-          currentUser.user_metadata?.full_name ||
-          currentUser.user_metadata?.name ||
-          ''
-        ).trim();
-        if (resolvedName) {
-          localStorage.setItem('autro_profile_name', resolvedName);
-        }
-        if (currentProfile?.avatar_url) {
-          localStorage.setItem('autro_profile_avatar', currentProfile.avatar_url);
-        }
-      } catch (e) {}
-    } else {
+    // Check active Supabase session without /auth.js
+    const authResult = await resolveCurrentUserAndProfile();
+    if (!authResult || !authResult.user) {
       window.location.replace('/login.html');
       return;
     }
+
+    currentUser = authResult.user;
+    currentProfile = authResult.profile || null;
+
+    try {
+      localStorage.setItem('autro_user_id', currentUser.id);
+      const resolvedName = String(
+        currentProfile?.full_name ||
+        currentProfile?.name ||
+        currentUser.user_metadata?.full_name ||
+        currentUser.user_metadata?.name ||
+        ''
+      ).trim();
+      if (resolvedName) {
+        localStorage.setItem('autro_profile_name', resolvedName);
+      }
+      if (currentProfile?.avatar_url) {
+        localStorage.setItem('autro_profile_avatar', currentProfile.avatar_url);
+      }
+    } catch (e) {}
 
     if (closeToReelsBtn) {
       closeToReelsBtn.href = returnToParam;
@@ -1164,4 +1178,4 @@
   });
 </script>
 </body>
-  </html>
+    </html>
