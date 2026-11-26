@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="/auth.js"></script>
   <style>
     :root {
       color-scheme: light dark;
@@ -714,9 +713,9 @@
     const HOME_INDEX_PAGE = '/index.html';
     const PROFILE_PAGE = '/profile.html';
 
-    const sb = (window.AutroAuth && window.AutroAuth.supabase)
-      ? window.AutroAuth.supabase
-      : (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+    const sb = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
 
     let storySyncChannel = null;
     try {
@@ -775,6 +774,56 @@
         reader.onerror = () => resolve('');
         reader.readAsDataURL(file);
       });
+    }
+
+    async function resolveSessionAndProfile() {
+      let cachedUser = {};
+      try {
+        cachedUser = JSON.parse(localStorage.getItem('autrobook_current_user') || '{}') || {};
+      } catch (e) {}
+
+      if (!sb) {
+        const fallbackId = cachedUser.id || localStorage.getItem('autro_user_id') || '';
+        return {
+          user: fallbackId ? { id: fallbackId, user_metadata: {} } : null,
+          profile: null
+        };
+      }
+
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        const sessionUser = session?.user || null;
+
+        if (!sessionUser) {
+          const fallbackId = cachedUser.id || localStorage.getItem('autro_user_id') || '';
+          if (!fallbackId) {
+            window.location.replace('/login.html');
+            return { user: null, profile: null };
+          }
+          return {
+            user: { id: fallbackId, user_metadata: cachedUser.user_metadata || {} },
+            profile: null
+          };
+        }
+
+        let profileRow = null;
+        try {
+          const { data } = await sb
+            .from('profiles')
+            .select('*')
+            .eq('id', sessionUser.id)
+            .maybeSingle();
+          profileRow = data || null;
+        } catch (e) {}
+
+        return { user: sessionUser, profile: profileRow };
+      } catch (e) {
+        const fallbackId = cachedUser.id || localStorage.getItem('autro_user_id') || '';
+        return {
+          user: fallbackId ? { id: fallbackId, user_metadata: {} } : null,
+          profile: null
+        };
+      }
     }
 
     function onAudienceSelectChange() {
@@ -1342,33 +1391,32 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      if (window.AutroAuth && typeof window.AutroAuth.checkSessionAndProfile === 'function') {
-        const authResult = await window.AutroAuth.checkSessionAndProfile({ requireCompleteProfile: true });
-        if (!authResult || !authResult.user) {
-          return;
-        }
-        currentUser = authResult.user;
-        currentProfile = authResult.profile || null;
-        try {
-          localStorage.setItem('autro_user_id', currentUser.id);
-          const resolvedName = String(
-            currentProfile?.full_name ||
-            currentProfile?.name ||
-            currentUser.user_metadata?.full_name ||
-            currentUser.user_metadata?.name ||
-            ''
-          ).trim();
-          if (resolvedName) {
-            localStorage.setItem('autro_profile_name', resolvedName);
-          }
-          if (currentProfile?.avatar_url) {
-            localStorage.setItem('autro_profile_avatar', currentProfile.avatar_url);
-          }
-        } catch (e) {}
-      } else {
-        window.location.replace('/login.html');
+      const authResult = await resolveSessionAndProfile();
+      if (!authResult || !authResult.user) {
         return;
       }
+
+      currentUser = authResult.user;
+      currentProfile = authResult.profile || null;
+
+      try {
+        if (currentUser.id) {
+          localStorage.setItem('autro_user_id', currentUser.id);
+        }
+        const resolvedName = String(
+          currentProfile?.full_name ||
+          currentProfile?.name ||
+          currentUser.user_metadata?.full_name ||
+          currentUser.user_metadata?.name ||
+          ''
+        ).trim();
+        if (resolvedName) {
+          localStorage.setItem('autro_profile_name', resolvedName);
+        }
+        if (currentProfile?.avatar_url) {
+          localStorage.setItem('autro_profile_avatar', currentProfile.avatar_url);
+        }
+      } catch (e) {}
 
       try {
         const stored = JSON.parse(localStorage.getItem('stories') || localStorage.getItem('autrobook_stories_v1') || '[]') || [];
@@ -1384,4 +1432,4 @@
     });
   </script>
 </body>
-        </html>
+            </html>
