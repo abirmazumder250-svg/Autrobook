@@ -1162,7 +1162,6 @@
       let selectedReportReason = "";
       let candidateFriends = [];
 
-      // --- Storage & Utility Functions ---
       function readJson(key, fallback) {
         try {
           const raw = localStorage.getItem(key);
@@ -1190,6 +1189,14 @@
         };
         if (includeJson) headers["Content-Type"] = "application/json";
         return headers;
+      }
+
+      function encodeStoragePath(objectPath) {
+        return objectPath
+          .split("/")
+          .filter(Boolean)
+          .map((seg) => encodeURIComponent(seg))
+          .join("/");
       }
 
       function formatTimeAgo(createdAt) {
@@ -1220,7 +1227,6 @@
         }
       }
 
-      // --- Audio & Reaction Effects ---
       function ensureAudio() {
         if (!audioCtx) {
           const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1340,30 +1346,64 @@
         }
       }
 
-      // --- Supabase API Functions ---
-      async function deleteStoryFromSupabase(story) {
-        const cleanId = String(story?.id || "").trim();
-        if (!cleanId) return;
+      // --- Fixed Supabase Delete Function ---
+      async function deleteRowByFilter(queryString) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/stories?${queryString}`, {
+          method: "DELETE",
+          headers: {
+            ...getSupabaseHeaders(false),
+            Prefer: "return=representation"
+          }
+        });
+        const rows = await res.json().catch(() => null);
+        return { ok: res.ok, status: res.status, count: Array.isArray(rows) ? rows.length : 0 };
+      }
 
-        try {
-          await fetch(`${SUPABASE_URL}/rest/v1/stories?id=eq.${encodeURIComponent(cleanId)}`, {
-            method: "DELETE",
-            headers: getSupabaseHeaders(false)
-          });
-        } catch (_) {}
+      async function deleteStoryFromSupabase(story) {
+        const cleanId = String(story?.id || story?.storyId || story?.story_id || "").trim();
+        if (cleanId) {
+          try {
+            let result = await deleteRowByFilter(`id=eq.${encodeURIComponent(cleanId)}`);
+            if (result.ok && result.count === 0) {
+              result = await deleteRowByFilter(`story_id=eq.${encodeURIComponent(cleanId)}`);
+            }
+            console.log("Supabase stories delete result:", result);
+            if (!result.ok || result.count === 0) {
+              console.warn("Supabase DB থেকে রো ডিলিট হয়নি—stories টেবিলের RLS DELETE policy বা id চেক করুন।");
+            }
+          } catch (err) {
+            console.error("Supabase stories delete failed:", err);
+          }
+        }
 
         const rawUrl = String(story?.mediaUrl || story?.media_url || "").trim();
-        const marker = "/storage/v1/object/public/stories/";
-        const idx = rawUrl.indexOf(marker);
-        if (idx !== -1) {
-          const objPath = decodeURIComponent(rawUrl.slice(idx + marker.length).split("?")[0]);
-          if (objPath) {
+        const publicPrefix = "/storage/v1/object/public/stories/";
+        const signPrefix = "/storage/v1/object/sign/stories/";
+        let extractedPath = "";
+
+        if (rawUrl.includes(publicPrefix)) {
+          extractedPath = rawUrl.split(publicPrefix)[1].split("?")[0];
+        } else if (rawUrl.includes(signPrefix)) {
+          extractedPath = rawUrl.split(signPrefix)[1].split("?")[0];
+        }
+
+        if (extractedPath) {
+          const decodedPath = decodeURIComponent(extractedPath);
+          const encodedPath = encodeStoragePath(decodedPath);
+          if (encodedPath) {
             try {
-              await fetch(`${SUPABASE_URL}/storage/v1/object/stories/${encodeURIComponent(objPath)}`, {
-                method: "DELETE",
-                headers: getSupabaseHeaders(false)
-              });
-            } catch (_) {}
+              const stRes = await fetch(
+                `${SUPABASE_URL}/storage/v1/object/stories/${encodedPath}`,
+                {
+                  method: "DELETE",
+                  headers: getSupabaseHeaders(false)
+                }
+              );
+              const stBody = await stRes.text().catch(() => "");
+              console.log("Supabase storage delete status:", stRes.status, stBody);
+            } catch (err) {
+              console.error("Supabase storage delete failed:", err);
+            }
           }
         }
       }
@@ -1496,7 +1536,6 @@
         } catch (_) {}
       }
 
-      // --- Story Data & Visibility Functions ---
       function normalizeStory(raw) {
         if (!raw || typeof raw !== "object") return null;
         const id = String(raw.id || raw.storyId || raw.story_id || "").trim();
@@ -1687,7 +1726,6 @@
         privacyHelperText.textContent = getPrivacyHelperText(privacy, cleanAllowed.length);
       }
 
-      // --- Story Rendering & Progress ---
       function renderProgress() {
         progressTrackGroup.innerHTML = "";
         visibleStories.forEach((_, idx) => {
@@ -1827,7 +1865,7 @@
         activeStory = visibleStories[activeIndex];
 
         if (isExpired(activeStory)) {
-          deleteStoryFromSupabase(activeStory);
+          await deleteStoryFromSupabase(activeStory);
           refreshStories();
           return;
         }
@@ -1911,9 +1949,9 @@
 
       function startTimer() {
         if (timerId) clearInterval(timerId);
-        timerId = setInterval(() => {
+        timerId = setInterval(async () => {
           if (activeStory && isExpired(activeStory)) {
-            deleteStoryFromSupabase(activeStory);
+            await deleteStoryFromSupabase(activeStory);
             refreshStories();
             return;
           }
@@ -1931,7 +1969,6 @@
         }, 100);
       }
 
-      // --- Story Mutations & Messaging ---
       function sendMessageToChat(text) {
         const messageText = (text || "").trim();
         if (!messageText || !activeStory) return;
@@ -2043,13 +2080,20 @@
 
       async function deleteCurrentStory() {
         if (!activeStory) return;
+        if (timerId) {
+          clearInterval(timerId);
+          timerId = null;
+        }
+        ownerDeleteBtn.disabled = true;
+        ownerDeleteBtn.firstElementChild.textContent = "Deleting...";
+
         const targetId = String(activeStory.id);
         await deleteStoryFromSupabase(activeStory);
 
         STORY_LIST_KEYS.forEach((key) => {
           const arr = readJson(key, []);
           if (Array.isArray(arr)) {
-            writeJson(key, arr.filter((s) => String(s?.id || s?.storyId || "") !== targetId));
+            writeJson(key, arr.filter((s) => String(s?.id || s?.storyId || s?.story_id || "") !== targetId));
           }
         });
 
@@ -2066,7 +2110,6 @@
         goToIndexPage();
       }
 
-      // --- User Profile Modal Functions ---
       function renderPostsIntoContainer(container, posts, fallbackEmptyText) {
         container.innerHTML = "";
         if (!Array.isArray(posts) || !posts.length) {
@@ -2201,7 +2244,6 @@
         }
       }
 
-      // --- Specific Friends & Report Functions ---
       async function openSpecificFriendsModal() {
         if (!activeStory) return;
         setPaused(true);
@@ -2326,7 +2368,6 @@
         return res.json().catch(() => ({ ok: true }));
       }
 
-      // --- Event Listeners Binding ---
       function bindProfileEvents() {
         authorProfileLink.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -2410,9 +2451,9 @@
           }, 700);
         });
 
-        ownerDeleteBtn.addEventListener("click", (e) => {
+        ownerDeleteBtn.addEventListener("click", async (e) => {
           e.stopPropagation();
-          deleteCurrentStory();
+          await deleteCurrentStory();
         });
 
         closeViewerMenuBtn.addEventListener("click", (e) => {
@@ -2651,4 +2692,4 @@
     })();
   </script>
 </body>
-  </html>
+          </html>
