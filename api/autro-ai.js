@@ -42,14 +42,13 @@ export default async function handler(req, res) {
       return res.status(200).json({
         reply: 'Please type a message so I can help you.',
         model: 'Autro AI',
-        language: language || 'en'
+        language: language || 'auto'
       });
     }
 
     const groqKey = (process.env.GROQ_API_KEY || '').trim();
     const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
 
-    // Fetch latest language & profile context from Supabase if available (non-blocking fast lookup)
     const syncedContext = await fetchSupabaseContext({
       userId: String(userId || userProfile?.userId || '').trim(),
       accountKey: String(accountKey || '').trim(),
@@ -58,25 +57,12 @@ export default async function handler(req, res) {
       fallbackLang: language
     });
 
-    const systemPrompt = buildMetaStyleSystemPrompt(syncedContext);
+    const systemPrompt = buildMultilingualSystemPrompt(syncedContext, cleanMessage);
     const recentHistory = sanitizeHistory(history);
 
     const tasks = [];
 
-    // 1. Ultra-fast Groq model for instant Meta-like speed
     if (groqKey) {
-      tasks.push(
-        callGroq({
-          apiKey: groqKey,
-          model: 'llama-3.1-8b-instant',
-          systemPrompt,
-          history: recentHistory,
-          message: cleanMessage,
-          timeoutMs: 7000
-        })
-      );
-
-      // 2. High-accuracy Groq model as fast backup
       tasks.push(
         callGroq({
           apiKey: groqKey,
@@ -84,12 +70,21 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 9000
+          timeoutMs: 10000
+        })
+      );
+      tasks.push(
+        callGroq({
+          apiKey: groqKey,
+          model: 'llama-3.1-8b-instant',
+          systemPrompt,
+          history: recentHistory,
+          message: cleanMessage,
+          timeoutMs: 8000
         })
       );
     }
 
-    // 3. Gemini 2.5 Flash for accuracy & multilingual strength
     if (geminiKey) {
       tasks.push(
         callGemini({
@@ -98,14 +93,14 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 9000
+          timeoutMs: 10000
         })
       );
     }
 
     if (tasks.length === 0) {
       return res.status(200).json({
-        reply: buildLocalFallbackReply(cleanMessage, syncedContext),
+        reply: buildSmartDirectFallback(cleanMessage, syncedContext),
         model: 'Autro AI',
         language: syncedContext.language || 'auto'
       });
@@ -118,9 +113,10 @@ export default async function handler(req, res) {
         model: 'Autro AI',
         language: syncedContext.language || 'auto'
       });
-    } catch (_) {
+    } catch (providerErr) {
+      console.warn('All AI providers failed:', providerErr?.errors || providerErr);
       return res.status(200).json({
-        reply: buildLocalFallbackReply(cleanMessage, syncedContext),
+        reply: buildSmartDirectFallback(cleanMessage, syncedContext),
         model: 'Autro AI',
         language: syncedContext.language || 'auto'
       });
@@ -128,7 +124,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Autro AI error:', error);
     return res.status(200).json({
-      reply: 'I am here to help. Please send your message again.',
+      reply: buildSmartDirectFallback(req?.body?.message || '', {}),
       model: 'Autro AI',
       language: 'auto'
     });
@@ -150,17 +146,28 @@ function sanitizeReplyText(text) {
     .trim();
 }
 
-function buildLocalFallbackReply(message, ctx = {}) {
-  const isBengali = /[\u0980-\u09FF]/.test(message);
-  const name = String(ctx?.name || '').trim();
+function buildSmartDirectFallback(message, ctx = {}) {
+  const q = String(message || '').trim();
+  const lower = q.toLowerCase();
+  const isBengali = /[\u0980-\u09FF]/.test(q);
+
   if (isBengali) {
-    return name
-      ? `হ্যালো ${name}, আমি Autro AI Assistant। অনুগ্রহ করে আবার প্রশ্নটি করুন, আমি সাহায্য করছি।`
-      : 'আমি Autro AI Assistant। অনুগ্রহ করে আবার প্রশ্নটি করুন, আমি সাহায্য করছি।';
+    if (/কে তুমি|তুমি কে|পরিচয়|পরিচিতি/.test(q)) {
+      return 'আমি Autro AI Assistant, Autrobook-এর স্মার্ট সহকারী। আপনি যেকোনো প্রশ্ন করলে আমি সরাসরি উত্তর দেওয়ার চেষ্টা করি।';
+    }
+    if (/হাই|হ্যালো|সালাম|কেমন আছ/.test(q)) {
+      return 'হ্যালো! কী জানতে চান বা কোন বিষয়ে সাহায্য লাগবে, সরাসরি বলুন।';
+    }
+    return `"${q}" — এই বিষয়টি নিয়ে সরাসরি উত্তর দিতে এখন সার্ভারে AI API কী সংযুক্ত নেই বা সংযোগে সমস্যা হচ্ছে। Vercel-এ GROQ_API_KEY বা GEMINI_API_KEY সেট করলে সব প্রশ্নের পূর্ণ উত্তর পাবেন।`;
   }
-  return name
-    ? `Hello ${name}, I am Autro AI Assistant. Please ask your question again so I can help.`
-    : 'I am Autro AI Assistant. Please ask your question again so I can help.';
+
+  if (/who are you|your name/.test(lower)) {
+    return 'I am Autro AI Assistant inside Autrobook. Ask me anything and I will answer your question directly.';
+  }
+  if (/^(hi|hello|hey|good morning|good evening)\b/.test(lower)) {
+    return 'Hello! What question or topic would you like help with?';
+  }
+  return `Regarding "${q}": live AI model keys (GROQ_API_KEY or GEMINI_API_KEY) are not configured or reachable right now. Please add a valid API key in your server environment to get full answers in any language.`;
 }
 
 async function fetchSupabaseContext({
@@ -241,7 +248,7 @@ async function fetchSupabaseContext({
   return ctx;
 }
 
-function buildMetaStyleSystemPrompt(ctx) {
+function buildMultilingualSystemPrompt(ctx, userMessage = '') {
   const details = [
     ctx.name ? `User name: ${ctx.name}` : '',
     ctx.location ? `Location: ${ctx.location}` : '',
@@ -251,17 +258,22 @@ function buildMetaStyleSystemPrompt(ctx) {
     .filter(Boolean)
     .join(' | ');
 
-  const langRule = ctx.language
-    ? `Always reply in language code "${ctx.language}" (unless the user explicitly asks for another language in their prompt).`
-    : 'Default language is English. Match the language the user writes in naturally and accurately.';
+  const asksSpecificLanguage =
+    /(in bengali|in bangla|বাংলায়|বাংলা ভাষায়|in english|in hindi|हिन्दी में|in arabic|in spanish|in french|in urdu)/i.test(
+      userMessage
+    );
+
+  const langInstruction = asksSpecificLanguage
+    ? 'Reply in the exact language requested in the user message.'
+    : 'Always reply in the exact same language as the user’s latest message across ALL world languages (Bengali, English, Hindi, Arabic, Spanish, French, Urdu, etc.).';
 
   return [
     'You are Autro AI Assistant inside Autrobook.',
-    'Respond like Meta AI: crisp, natural, well-structured, accurate, and directly useful without fluff.',
-    'Use short paragraphs or clean bullet points when helpful, and keep explanations easy to scan.',
-    'Do not include external URLs or links in responses.',
-    langRule,
-    details ? `User context: ${details}` : ''
+    'Answer ONLY and DIRECTLY what the user asks. Give accurate, clear, and complete answers tailored to every question.',
+    'Never repeat a canned or generic fallback sentence when a real question is asked.',
+    langInstruction,
+    'Keep formatting clean and easy to read. Do not include external URLs or links.',
+    details ? `Optional user profile context (use only when relevant): ${details}` : ''
   ]
     .filter(Boolean)
     .join('\n');
@@ -270,11 +282,11 @@ function buildMetaStyleSystemPrompt(ctx) {
 function sanitizeHistory(history) {
   if (!Array.isArray(history)) return [];
   return history
-    .slice(-4)
+    .slice(-6)
     .filter((item) => item && typeof item.text === 'string' && item.text.trim())
     .map((item) => ({
       role: item.role === 'user' ? 'user' : 'assistant',
-      content: item.text.trim().slice(0, 700)
+      content: item.text.trim().slice(0, 900)
     }));
 }
 
@@ -295,8 +307,8 @@ async function callGroq({ apiKey, model, systemPrompt, history, message, timeout
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.45,
-      max_tokens: 650
+      temperature: 0.5,
+      max_tokens: 1024
     })
   });
 
@@ -344,8 +356,8 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
       },
       contents,
       generationConfig: {
-        temperature: 0.45,
-        maxOutputTokens: 650
+        temperature: 0.5,
+        maxOutputTokens: 1024
       }
     })
   });
@@ -369,4 +381,4 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
     reply,
     model: 'Autro AI'
   };
-}
+                    }
