@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reels Card - Autrobook</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Autrobook Reels</title>
 <link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -17,10 +17,13 @@
     --muted-color: #5f6368;
     --border-color: #e5e7eb;
     --hover-color: rgba(0, 0, 0, 0.06);
-    --accent-color: #111827;
-    --accent-hover: #1f2937;
+    --accent-color: #14532d;
+    --accent-hover: #166534;
     --btn-text: #ffffff;
     --danger-color: #ef4444;
+    --dark-green: #14532d;
+    --dark-green-bright: #166534;
+    --story-ring-green: #15803d;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -33,10 +36,13 @@
       --muted-color: #9aa0a6;
       --border-color: #3c4043;
       --hover-color: rgba(255, 255, 255, 0.08);
-      --accent-color: #e8eaed;
-      --accent-hover: #ffffff;
-      --btn-text: #202124;
+      --accent-color: #166534;
+      --accent-hover: #15803d;
+      --btn-text: #ffffff;
       --danger-color: #f87171;
+      --dark-green: #14532d;
+      --dark-green-bright: #166534;
+      --story-ring-green: #22c55e;
     }
   }
 
@@ -48,27 +54,39 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  html,
   body {
+    height: 100dvh;
+    width: 100vw;
     background: #000000;
     color: #ffffff;
     overflow: hidden;
+    overscroll-behavior: none;
   }
 
-  /* Auth checking overlay so content doesn't flash before redirect */
-  body.auth-checking .reel-container {
-    visibility: hidden;
+  .reel-viewport {
+    height: 100dvh;
+    width: 100vw;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+    will-change: transform, opacity;
   }
 
   .reel-container {
-    height: 100vh;
-    width: 100vw;
-    max-width: 680px;
-    margin: 0 auto;
     position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
     overflow: hidden;
-    background: #000000;
-    touch-action: pan-y;
-    transition: transform 0.22s ease, opacity 0.22s ease;
+    background: #090a0c;
+    border: none;
+    touch-action: none;
   }
 
   video,
@@ -77,62 +95,145 @@
     width: 100%;
     object-fit: cover;
     display: block;
+    background: #050608;
   }
 
   .reel-image {
     display: none;
   }
 
-  /* Top Left Quality Badge */
+  /* Subtle bottom gradient so text & action buttons stay crisp */
+  .reel-bottom-scrim {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 46%;
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.88) 0%,
+      rgba(0, 0, 0, 0.42) 55%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    pointer-events: none;
+    z-index: 8;
+  }
+
+  /* Double-tap heart burst animation */
+  .double-tap-burst {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%) scale(0.4);
+    font-size: 74px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 26;
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.55));
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+  }
+
+  .double-tap-burst.show {
+    opacity: 1;
+    transform: translate(-50%, -58%) scale(1.12);
+  }
+
+  /* Top Header Bar (without "Reels" title) */
+  .reel-top-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+    z-index: 22;
+    transition: opacity 0.2s ease;
+  }
+
+  .top-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .top-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .top-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(32, 33, 36, 0.58);
+    color: #ffffff;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s ease, transform 0.12s ease;
+  }
+
+  .top-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  /* Quality + Sound sub-bar */
   .quality-badge {
     position: absolute;
-    top: 16px;
+    top: 60px;
     left: 14px;
     background: rgba(32, 33, 36, 0.72);
     color: #ffffff;
     border: 1px solid rgba(255, 255, 255, 0.18);
-    padding: 4px 9px;
+    padding: 3px 8px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     z-index: 12;
   }
 
-  /* Top Right Controls */
   .top-right-controls {
     position: absolute;
-    top: 14px;
+    top: 60px;
     right: 14px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     z-index: 15;
   }
 
   .top-pill-btn {
-    height: 36px;
-    min-width: 36px;
-    padding: 0 10px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0 9px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.22);
-    background: rgba(32, 33, 36, 0.75);
+    background: rgba(32, 33, 36, 0.72);
     color: #ffffff;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
     cursor: pointer;
     text-decoration: none;
   }
 
-  /* Three Dots Dropdown Menu */
-  .more-menu {
+  /* Top Three Dots Dropdown Menu */
+  .top-more-menu {
     position: absolute;
     top: 56px;
     right: 14px;
-    width: 255px;
+    width: 245px;
     background: #292a2d;
     border: 1px solid #3c4043;
     border-radius: 14px;
@@ -140,11 +241,11 @@
     display: none;
     flex-direction: column;
     gap: 2px;
-    z-index: 25;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+    z-index: 35;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65);
   }
 
-  .more-menu.open {
+  .top-more-menu.open {
     display: flex;
   }
 
@@ -155,11 +256,11 @@
     border: none;
     background: transparent;
     color: #f1f5f9;
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 11px;
     text-align: left;
     cursor: pointer;
     text-decoration: none;
@@ -169,20 +270,76 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
-  .more-menu-item.danger {
-    color: #f87171;
+  .more-menu-item i {
+    width: 18px;
+    text-align: center;
+    color: #e2e8f0;
+  }
+
+  /* Captions & Clear Mode helpers */
+  .live-caption-box {
+    position: absolute;
+    left: 14px;
+    right: 72px;
+    bottom: 162px;
+    background: rgba(0, 0, 0, 0.76);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    padding: 7px 11px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: #ffffff;
+    display: none;
+    z-index: 16;
+  }
+
+  .live-caption-box.show {
+    display: block;
+  }
+
+  .clear-mode-restore-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 62;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(20, 83, 45, 0.92);
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  body.clear-mode-active .reel-top-header,
+  body.clear-mode-active .quality-badge,
+  body.clear-mode-active .top-right-controls,
+  body.clear-mode-active .actions,
+  body.clear-mode-active .bottom-info,
+  body.clear-mode-active .reel-progress-wrap {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  body.clear-mode-active .clear-mode-restore-btn {
+    display: inline-flex;
   }
 
   /* Right Side Actions */
   .actions {
     position: absolute;
     right: 12px;
-    bottom: 92px;
+    bottom: 34px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     align-items: center;
     z-index: 20;
+    transition: opacity 0.2s ease;
   }
 
   .action-group {
@@ -196,7 +353,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     cursor: pointer;
     user-select: none;
     background: transparent;
@@ -216,34 +373,35 @@
   }
 
   .action-btn .icon {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: rgba(32, 33, 36, 0.68);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(32, 33, 36, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 17px;
     transition: transform 0.15s ease, background-color 0.15s ease;
   }
 
   .action-btn.active .icon {
-    background: rgba(255, 255, 255, 0.28);
-    border-color: rgba(255, 255, 255, 0.55);
-    transform: scale(1.06);
+    background: rgba(20, 83, 45, 0.88);
+    border-color: rgba(255, 255, 255, 0.65);
+    transform: scale(1.05);
   }
 
   .count-trigger {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
     cursor: pointer;
-    padding: 2px 6px;
+    padding: 0 5px;
     border-radius: 8px;
     color: #ffffff;
     text-decoration: none;
     display: inline-block;
+    line-height: 1.25;
   }
 
   .count-trigger:hover {
@@ -253,11 +411,12 @@
   /* Bottom Info */
   .bottom-info {
     position: absolute;
-    bottom: 18px;
+    bottom: 26px;
     left: 14px;
-    right: 74px;
+    right: 64px;
     z-index: 12;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    transition: opacity 0.2s ease;
   }
 
   .profile-header-row {
@@ -277,8 +436,8 @@
   }
 
   .author-avatar {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     object-fit: cover;
     background: #303134;
@@ -286,7 +445,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 700;
     overflow: hidden;
     flex-shrink: 0;
@@ -298,14 +457,19 @@
     object-fit: cover;
   }
 
+  .story-ring-active {
+    border: 2.5px solid var(--story-ring-green) !important;
+    box-shadow: 0 0 0 2px rgba(20, 83, 45, 0.45);
+  }
+
   .username {
     font-weight: 700;
-    font-size: 14.5px;
+    font-size: 14px;
     letter-spacing: 0.1px;
   }
 
   .issue-pill {
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 999px;
@@ -314,23 +478,15 @@
     display: none;
   }
 
-  .small-follow-btn,
-  .small-dm-link {
+  .small-follow-btn {
     padding: 3px 10px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.75);
     background: rgba(32, 33, 36, 0.72);
     color: #ffffff;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .small-follow-btn {
     display: none;
   }
 
@@ -341,8 +497,8 @@
   }
 
   .caption {
-    font-size: 13.5px;
-    margin-bottom: 6px;
+    font-size: 13px;
+    margin-bottom: 5px;
     line-height: 1.35;
     word-break: break-word;
   }
@@ -351,7 +507,7 @@
     display: none;
     flex-direction: column;
     gap: 8px;
-    background: rgba(32, 33, 36, 0.88);
+    background: rgba(32, 33, 36, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 12px;
     padding: 10px;
@@ -364,7 +520,7 @@
 
   .inline-edit-textarea {
     width: 100%;
-    min-height: 68px;
+    min-height: 64px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background: rgba(0, 0, 0, 0.5);
@@ -385,8 +541,8 @@
     padding: 5px 12px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.35);
-    background: #ffffff;
-    color: #202124;
+    background: var(--dark-green);
+    color: #ffffff;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -397,25 +553,25 @@
     color: #ffffff;
   }
 
-  /* Live Audio Pill (Singer + Song) */
+  /* Live Audio Pill */
   .audio-live-bar {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     max-width: 100%;
-    background: rgba(32, 33, 36, 0.62);
+    background: rgba(32, 33, 36, 0.68);
     border: 1px solid rgba(255, 255, 255, 0.16);
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 999px;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     color: #f8fafc;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
   }
 
   .audio-live-dot {
-    width: 7px;
-    height: 7px;
+    width: 6.5px;
+    height: 6.5px;
     border-radius: 50%;
     background: #22c55e;
     flex-shrink: 0;
@@ -435,16 +591,100 @@
   }
 
   .views-line {
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
     opacity: 0.92;
+  }
+
+  /* Video Timeline / Seek Bar at very bottom edge */
+  .reel-progress-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 12px;
+    display: flex;
+    align-items: flex-end;
+    z-index: 18;
+    transition: opacity 0.2s ease;
+  }
+
+  .reel-seek-slider {
+    width: 100%;
+    height: 3.5px;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(255, 255, 255, 0.25);
+    outline: none;
+    cursor: pointer;
+    accent-color: #22c55e;
+  }
+
+  .reel-seek-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    cursor: pointer;
+  }
+
+  /* Floating Mini Player when minimized */
+  .mini-player-dock {
+    position: fixed;
+    right: 14px;
+    bottom: 20px;
+    width: 124px;
+    height: 186px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    background: #111315;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.72);
+    z-index: 42;
+    display: none;
+  }
+
+  .mini-player-dock.show {
+    display: block;
+  }
+
+  .mini-player-dock video,
+  .mini-player-dock img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .mini-player-controls {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 5px;
+  }
+
+  .mini-ctrl-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.72);
+    color: #ffffff;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
   }
 
   /* React Popup */
   .react-popup {
     position: fixed;
-    right: 64px;
-    bottom: 114px;
+    right: 60px;
+    bottom: 104px;
     background: #292a2d;
     border: 1px solid #3c4043;
     padding: 8px 12px;
@@ -479,17 +719,17 @@
     bottom: 0;
     width: 100%;
     max-width: 680px;
-    max-height: 85vh;
+    max-height: 86vh;
     background: var(--surface-color);
     color: var(--text-color);
     border-top-left-radius: 18px;
     border-top-right-radius: 18px;
     border-top: 1px solid var(--border-color);
-    z-index: 40;
+    z-index: 45;
     display: flex;
     flex-direction: column;
     transition: transform 0.24s ease;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
   }
 
   .bottom-sheet.open {
@@ -501,7 +741,7 @@
     height: 4px;
     border-radius: 999px;
     background: var(--border-color);
-    margin: 8px auto 0;
+    margin: 8px auto 2px;
     flex-shrink: 0;
   }
 
@@ -571,71 +811,175 @@
   .sheet-body {
     flex: 1;
     overflow-y: auto;
-    padding: 12px 14px;
+    padding: 12px 14px 18px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
 
-  .create-post-share-card {
+  .reel-opt-group {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .reel-opt-row {
+    width: 100%;
     padding: 12px 14px;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    text-decoration: none;
-    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
   }
 
-  .create-post-share-card:hover {
+  .reel-opt-row:last-child {
+    border-bottom: none;
+  }
+
+  .reel-opt-row:hover {
     background: var(--hover-color);
   }
 
-  .create-post-left {
+  .reel-opt-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 13px;
     min-width: 0;
   }
 
-  .sys-default-a-logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--accent-color);
-    color: var(--btn-text);
-    font-size: 16px;
-    font-weight: 800;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  .reel-opt-icon {
+    width: 26px;
+    text-align: center;
+    font-size: 17px;
+    color: var(--text-color);
     flex-shrink: 0;
   }
 
-  .create-something-title {
-    font-size: 14.5px;
+  .reel-opt-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+
+  .reel-opt-sub {
+    font-size: 12px;
+    color: var(--muted-color);
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+
+  .reel-opt-badge {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #22c55e;
+    white-space: nowrap;
+  }
+
+  .share-composer-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .share-actor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .share-actor-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .share-actor-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .share-actor-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .share-actor-name {
+    font-size: 14px;
     font-weight: 700;
     color: var(--text-color);
   }
 
-  .create-something-sub {
+  .share-privacy-select {
+    background: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 5px 11px;
     font-size: 12px;
-    color: var(--muted-color);
-    margin-top: 2px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
   }
 
-  .create-post-pill {
-    padding: 7px 13px;
-    border-radius: 999px;
-    background: var(--accent-color);
-    color: var(--btn-text);
-    font-size: 12.5px;
+  .share-say-something-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .say-something-link {
+    flex: 1;
+    text-decoration: none;
+    color: var(--muted-color);
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    display: block;
+  }
+
+  .create-post-dark-green-btn {
+    padding: 10px 15px;
+    border-radius: 10px;
+    background: var(--dark-green);
+    color: #ffffff;
+    font-size: 13px;
     font-weight: 700;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
     white-space: nowrap;
-    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .share-section-label {
@@ -720,10 +1064,6 @@
     cursor: pointer;
     padding: 6px 2px;
     border-radius: 12px;
-  }
-
-  .share-dest-btn:hover {
-    background: var(--hover-color);
   }
 
   .share-dest-circle {
@@ -847,7 +1187,7 @@
   .group-checkbox {
     width: 20px;
     height: 20px;
-    accent-color: var(--accent-color);
+    accent-color: var(--dark-green);
     cursor: pointer;
     flex-shrink: 0;
   }
@@ -863,8 +1203,8 @@
     padding: 12px;
     border-radius: 10px;
     border: none;
-    background: var(--accent-color);
-    color: var(--btn-text);
+    background: var(--dark-green);
+    color: #ffffff;
     font-size: 14.5px;
     font-weight: 700;
     cursor: pointer;
@@ -921,9 +1261,9 @@
   }
 
   .comment-name-react-btn.active {
-    background: var(--accent-color);
-    color: var(--btn-text);
-    border-color: var(--accent-color);
+    background: var(--dark-green);
+    color: #ffffff;
+    border-color: var(--dark-green);
   }
 
   .comment-body {
@@ -934,12 +1274,12 @@
 
   .mention-tag {
     font-weight: 700;
-    color: #2563eb;
+    color: #166534;
   }
 
   @media (prefers-color-scheme: dark) {
     .mention-tag {
-      color: #60a5fa;
+      color: #4ade80;
     }
   }
 
@@ -973,9 +1313,9 @@
   }
 
   .c-action-btn.active {
-    background: var(--accent-color);
-    color: var(--btn-text);
-    border-color: var(--accent-color);
+    background: var(--dark-green);
+    color: #ffffff;
+    border-color: var(--dark-green);
   }
 
   .comment-more-wrap {
@@ -1085,10 +1425,6 @@
     border-bottom: none;
   }
 
-  .mention-item:hover {
-    background: var(--hover-color);
-  }
-
   .comment-input-row {
     display: flex;
     align-items: center;
@@ -1125,15 +1461,15 @@
   }
 
   .round-tool-btn.active {
-    background: var(--accent-color);
-    color: var(--btn-text);
-    border-color: var(--accent-color);
+    background: var(--dark-green);
+    color: #ffffff;
+    border-color: var(--dark-green);
   }
 
   .round-tool-btn.primary {
-    background: var(--accent-color);
-    color: var(--btn-text);
-    border-color: var(--accent-color);
+    background: var(--dark-green);
+    color: #ffffff;
+    border-color: var(--dark-green);
   }
 
   .round-tool-btn.recording {
@@ -1199,8 +1535,8 @@
     padding: 11px 14px;
     border-radius: 12px;
     border: none;
-    background: var(--accent-color);
-    color: var(--btn-text);
+    background: var(--dark-green);
+    color: #ffffff;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
@@ -1209,7 +1545,7 @@
   .status-toast {
     position: fixed;
     left: 50%;
-    bottom: 20px;
+    bottom: 24px;
     transform: translateX(-50%);
     z-index: 65;
     background: #292a2d;
@@ -1220,6 +1556,8 @@
     font-size: 12.5px;
     font-weight: 600;
     display: none;
+    max-width: 90vw;
+    text-align: center;
   }
 
   .status-toast.show {
@@ -1227,148 +1565,384 @@
   }
 </style>
 </head>
-<body class="auth-checking">
+<body>
 
-<div class="reel-container" id="reelCard">
-  <video id="reelVideo" loop playsinline></video>
-  <img id="reelImage" class="reel-image" alt="Reel media">
+<button type="button" class="clear-mode-restore-btn" id="exitClearModeBtn" title="Exit Clear mode">
+  <i class="fa-solid fa-compress"></i>
+  <span>Exit Clear mode</span>
+</button>
 
-  <div class="quality-badge" id="quality">HD</div>
-
-  <div class="top-right-controls">
-    <button type="button" class="top-pill-btn" id="soundBtn" title="Mute / Unmute">🔊</button>
-    <button type="button" class="top-pill-btn" id="moreDotsBtn" title="More options" aria-label="More options">
-      <i class="fa-solid fa-ellipsis-vertical"></i>
+<div class="mini-player-dock" id="miniPlayerDock" aria-label="Mini player">
+  <video id="miniReelVideo" loop playsinline muted></video>
+  <img id="miniReelImage" alt="Mini preview" style="display:none;">
+  <div class="mini-player-controls">
+    <button type="button" class="mini-ctrl-btn" id="restoreMiniPlayerBtn" title="Expand reel">
+      <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
     </button>
-    <a href="reels.html" class="top-pill-btn" id="backToFeedBtn" title="Back to Reels"><i class="fa-solid fa-xmark"></i></a>
-  </div>
-
-  <!-- Top-Right Three Dots Menu -->
-  <div class="more-menu" id="moreMenu">
-    <button type="button" class="more-menu-item" id="menuEditCaptionBtn" style="display:none;">
-      <i class="fa-regular fa-pen-to-square"></i>
-      <span>Edit caption</span>
-    </button>
-    <a href="reactions.html" class="more-menu-item" id="menuReactionsPageLink">
-      <i class="fa-regular fa-face-smile"></i>
-      <span>All Reactions (reactions.html)</span>
-    </a>
-    <a href="comment.html" class="more-menu-item" id="menuCommentPageLink">
-      <i class="fa-regular fa-comments"></i>
-      <span>Comments Page (comment.html)</span>
-    </a>
-    <button type="button" class="more-menu-item" id="menuSaveDraftBtn">
-      <i class="fa-regular fa-bookmark"></i>
-      <span>Save drafts</span>
-    </button>
-    <a href="profile.html?tab=reels" class="more-menu-item" id="menuProfileReelsBtn">
-      <i class="fa-solid fa-clapperboard"></i>
-      <span>Profile Reels</span>
-    </a>
-    <a href="index.html" class="more-menu-item" id="menuHomeFeedBtn">
-      <i class="fa-solid fa-house"></i>
-      <span>Home Feed (index.html)</span>
-    </a>
-    <a href="message.html" class="more-menu-item" id="menuDirectMessageBtn">
-      <i class="fa-regular fa-paper-plane"></i>
-      <span>Direct Message (DM)</span>
-    </a>
-    <button type="button" class="more-menu-item" id="menuNotifyBtn">
-      <i class="fa-regular fa-bell"></i>
-      <span id="notifyMenuLabel">Notification on for this reel</span>
-    </button>
-    <button type="button" class="more-menu-item" id="menuShareBtn">
-      <i class="fa-solid fa-share"></i>
-      <span>Share</span>
-    </button>
-    <button type="button" class="more-menu-item danger" id="menuReportBtn">
-      <i class="fa-regular fa-flag"></i>
-      <span>Report</span>
-    </button>
-    <button type="button" class="more-menu-item danger" id="menuDeleteReelBtn" style="display:none;">
-      <i class="fa-regular fa-trash-can"></i>
-      <span>Delete reel from Supabase</span>
-    </button>
-    <button type="button" class="more-menu-item danger" id="menuLogoutBtn">
-      <i class="fa-solid fa-right-from-bracket"></i>
-      <span>Log out</span>
+    <button type="button" class="mini-ctrl-btn" id="closeMiniPlayerBtn" title="Close mini player">
+      <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
+</div>
 
-  <div class="actions">
-    <div class="action-group">
-      <button type="button" class="action-btn" id="likeBtn" title="React">
-        <div class="icon" id="likeIcon">❤️</div>
-      </button>
-      <a href="reactions.html" class="count-trigger" id="likeCount" title="See who reacted">0</a>
-    </div>
+<div class="reel-viewport" id="reelViewport">
+  <div class="reel-container" id="reelCard">
+    <div class="double-tap-burst" id="doubleTapBurst">❤️</div>
 
-    <div class="action-group">
-      <button type="button" class="action-btn" id="dislikeBtn" title="Dislike">
-        <div class="icon" id="dislikeIcon"><i class="fa-regular fa-thumbs-down"></i></div>
-      </button>
-      <a href="reactions.html?tab=dislikes" class="count-trigger" id="dislikeCount" title="See who disliked">0</a>
-    </div>
+    <header class="reel-top-header" id="reelTopHeader">
+      <div class="top-header-left">
+        <a href="shortcut.html" class="top-icon-btn" id="shortcutMenuLink" title="Shortcuts">
+          <i class="fa-solid fa-bars"></i>
+        </a>
+      </div>
 
-    <div class="action-group">
-      <button type="button" class="action-btn" id="commentOpenBtn" title="Comments">
-        <div class="icon"><i class="fa-regular fa-comment"></i></div>
-      </button>
-      <a href="comment.html" class="count-trigger" id="commentCount" title="Open comments page">0</a>
-    </div>
+      <div class="top-header-actions">
+        <button type="button" class="top-icon-btn" id="miniPlayerBtn" title="Mini player" aria-label="Mini player">
+          <i class="fa-regular fa-window-restore"></i>
+        </button>
+        <a href="search-bar.html" class="top-icon-btn" id="searchBarLink" title="Search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </a>
+        <button type="button" class="top-icon-btn" id="topThreeDotsBtn" title="Reels options" aria-label="Reels options">
+          <i class="fa-solid fa-ellipsis"></i>
+        </button>
+      </div>
+    </header>
 
-    <div class="action-group">
-      <button type="button" class="action-btn" id="shareBtn" title="Share">
-        <div class="icon"><i class="fa-solid fa-share"></i></div>
-      </button>
-      <span class="count-trigger" id="shareLabelTrigger">Share</span>
-    </div>
-  </div>
-
-  <div class="react-popup" id="reactPopup">
-    <div class="emoji">❤️</div>
-    <div class="emoji">👍</div>
-    <div class="emoji">😆</div>
-    <div class="emoji">🥰</div>
-    <div class="emoji">😮</div>
-    <div class="emoji">😢</div>
-    <div class="emoji">😠</div>
-  </div>
-
-  <div class="bottom-info">
-    <div class="profile-header-row">
-      <a href="profile.html?tab=reels" class="author-link" id="authorProfileLink">
-        <span class="author-avatar" id="authorAvatar"><i class="fa-regular fa-user"></i></span>
-        <span class="username" id="username"></span>
+    <div class="top-more-menu" id="topMoreMenu">
+      <a href="save.html" class="more-menu-item" id="topMenuSaveLink">
+        <i class="fa-regular fa-bookmark"></i>
+        <span>Save</span>
       </a>
-      <span class="issue-pill" id="creatorIssueBadge">Issue</span>
-      <button type="button" class="small-follow-btn" id="followBtn">Follow</button>
-      <a href="message.html" class="small-dm-link" id="dmCreatorLink" title="Send Direct Message">
-        <i class="fa-regular fa-comment-dots"></i>
-        <span>DM</span>
+      <a href="liked-reels.html" class="more-menu-item" id="topMenuLikedReelsLink">
+        <i class="fa-regular fa-thumbs-up"></i>
+        <span>Liked reels</span>
+      </a>
+      <a href="create-reels.html" class="more-menu-item" id="topMenuShareReelsLink">
+        <i class="fa-solid fa-share"></i>
+        <span>Share reels</span>
+      </a>
+      <a href="watched-reels.html" class="more-menu-item" id="topMenuWatchedReelsLink">
+        <i class="fa-solid fa-play"></i>
+        <span>Watched reels</span>
+      </a>
+      <a href="collab.html" class="more-menu-item" id="topMenuAddCollabLink">
+        <i class="fa-solid fa-user-plus"></i>
+        <span>Add collab</span>
       </a>
     </div>
 
-    <div class="caption" id="caption"></div>
+    <video id="reelVideo" loop playsinline></video>
+    <img id="reelImage" class="reel-image" alt="Reel media">
+    <div class="reel-bottom-scrim"></div>
 
-    <div class="inline-edit-panel" id="inlineEditPanel">
-      <textarea id="inlineEditTextarea" class="inline-edit-textarea" maxlength="500" placeholder="Edit reel caption..."></textarea>
-      <div class="inline-edit-actions">
-        <button type="button" class="inline-edit-btn secondary" id="cancelEditCaptionBtn">Cancel</button>
-        <button type="button" class="inline-edit-btn" id="saveEditCaptionBtn">Save</button>
+    <div class="quality-badge" id="quality">HD</div>
+
+    <div class="top-right-controls">
+      <button type="button" class="top-pill-btn" id="soundBtn" title="Mute / Unmute">🔊</button>
+      <a href="index.html" class="top-pill-btn" id="closeReelsToHomeBtn" title="Close Reels">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+    </div>
+
+    <div class="live-caption-box" id="liveCaptionBox"></div>
+
+    <!-- Right Side Actions -->
+    <div class="actions">
+      <div class="action-group">
+        <button type="button" class="action-btn" id="likeBtn" title="Tap for ❤️, long press for reactions">
+          <div class="icon" id="likeIcon">❤️</div>
+        </button>
+        <a href="reactions.html" class="count-trigger" id="likeCount" title="See who reacted">0</a>
+      </div>
+
+      <div class="action-group">
+        <button type="button" class="action-btn" id="dislikeBtn" title="Dislike">
+          <div class="icon" id="dislikeIcon"><i class="fa-regular fa-thumbs-down"></i></div>
+        </button>
+        <a href="reactions.html?tab=dislikes" class="count-trigger" id="dislikeCount" title="See who disliked">0</a>
+      </div>
+
+      <div class="action-group">
+        <button type="button" class="action-btn" id="commentOpenBtn" title="Comments">
+          <div class="icon"><i class="fa-regular fa-comment"></i></div>
+        </button>
+        <a href="comment.html" class="count-trigger" id="commentCount" title="Open comments page">0</a>
+      </div>
+
+      <div class="action-group">
+        <button type="button" class="action-btn" id="shareBtn" title="Share">
+          <div class="icon"><i class="fa-solid fa-share"></i></div>
+        </button>
+        <span class="count-trigger" id="shareLabelTrigger">Share</span>
+      </div>
+
+      <div class="action-group">
+        <button type="button" class="action-btn" id="saveBtn" title="Tap to save, long press to open save.html">
+          <div class="icon" id="saveIcon"><i class="fa-regular fa-bookmark"></i></div>
+        </button>
+        <a href="save.html" class="count-trigger" id="saveCountTrigger" title="Open saved items">Save</a>
+      </div>
+
+      <div class="action-group">
+        <button type="button" class="action-btn" id="reelBottomMoreBtn" title="More reel options" aria-label="More reel options">
+          <div class="icon"><i class="fa-solid fa-ellipsis"></i></div>
+        </button>
       </div>
     </div>
 
-    <!-- Live Audio Badge with Singer Name & Song Title -->
-    <div class="audio-live-bar" id="audioLiveBar">
-      <span class="audio-live-dot" title="Live Audio"></span>
-      <i class="fa-solid fa-music"></i>
-      <span class="audio-live-text" id="audio">Original Audio</span>
+    <div class="react-popup" id="reactPopup">
+      <div class="emoji">👍</div>
+      <div class="emoji">😆</div>
+      <div class="emoji">🥰</div>
+      <div class="emoji">😮</div>
+      <div class="emoji">😢</div>
+      <div class="emoji">😠</div>
     </div>
 
-    <div class="views-line" id="views">0 views • 0s</div>
+    <!-- Bottom Creator Info -->
+    <div class="bottom-info">
+      <div class="profile-header-row">
+        <a href="profile.html" class="author-link" id="authorProfileLink">
+          <span class="author-avatar" id="authorAvatar"><i class="fa-regular fa-user"></i></span>
+          <span class="username" id="username"></span>
+        </a>
+        <span class="issue-pill" id="creatorIssueBadge">Issue</span>
+        <button type="button" class="small-follow-btn" id="followBtn">Follow</button>
+      </div>
+
+      <div class="caption" id="caption"></div>
+
+      <div class="inline-edit-panel" id="inlineEditPanel">
+        <textarea id="inlineEditTextarea" class="inline-edit-textarea" maxlength="500" placeholder="Edit reel caption..."></textarea>
+        <div class="inline-edit-actions">
+          <button type="button" class="inline-edit-btn secondary" id="cancelEditCaptionBtn">Cancel</button>
+          <button type="button" class="inline-edit-btn" id="saveEditCaptionBtn">Save</button>
+        </div>
+      </div>
+
+      <div class="audio-live-bar" id="audioLiveBar">
+        <span class="audio-live-dot" title="Live Audio"></span>
+        <i class="fa-solid fa-music"></i>
+        <span class="audio-live-text" id="audio">Original Audio</span>
+      </div>
+
+      <div class="views-line" id="views">0 views • 0d</div>
+    </div>
+
+    <!-- Seekable Timeline Bar -->
+    <div class="reel-progress-wrap" id="reelProgressWrap">
+      <input type="range" class="reel-seek-slider" id="reelSeekSlider" min="0" max="100" value="0" step="0.1" aria-label="Seek video">
+    </div>
   </div>
 </div>
+
+<!-- Reel Options Sheet -->
+<aside class="bottom-sheet" id="reelOptionsSheet" aria-label="Reel options">
+  <div class="sheet-drag-bar"></div>
+  <div class="sheet-header">
+    <span class="sheet-title">Reel options</span>
+    <button type="button" class="close-sheet-btn" id="closeReelOptionsBtn"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="reel-opt-group">
+      <button type="button" class="reel-opt-row" id="optInterestedBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-circle-plus"></i></span>
+          <div>
+            <div class="reel-opt-title">Interested</div>
+            <div class="reel-opt-sub">More of your reels will be like this.</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optInterestedBadge"></span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optNotInterestedBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-circle-minus"></i></span>
+          <div>
+            <div class="reel-opt-title">Not interested</div>
+            <div class="reel-opt-sub">Less of your reels will be like this.</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optNotInterestedBadge"></span>
+      </button>
+    </div>
+
+    <div class="reel-opt-group">
+      <button type="button" class="reel-opt-row" id="optPlaybackSpeedBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-gauge-high"></i></span>
+          <div>
+            <div class="reel-opt-title">Playback speed</div>
+            <div class="reel-opt-sub" id="optPlaybackSpeedSub">Current speed: 1x</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optSpeedValue">1x</span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optQualitySettingsBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-closed-captioning"></i></span>
+          <div>
+            <div class="reel-opt-title">Quality settings</div>
+            <div class="reel-opt-sub" id="optQualitySub">Current quality: HD</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optQualityValue">HD</span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optCaptionsBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-regular fa-closed-captioning"></i></span>
+          <div>
+            <div class="reel-opt-title">Captions</div>
+            <div class="reel-opt-sub">Show on-screen reel captions</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optCaptionsStatus">Off</span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optLoopToggleBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-repeat"></i></span>
+          <div>
+            <div class="reel-opt-title">Loop video</div>
+            <div class="reel-opt-sub">Replay reel continuously</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optLoopStatus">On</span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optSleepTimerBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-regular fa-clock"></i></span>
+          <div>
+            <div class="reel-opt-title">Sleep timer</div>
+            <div class="reel-opt-sub">Pause playback automatically after timer</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optSleepTimerStatus">Off</span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optClearModeBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></span>
+          <div>
+            <div class="reel-opt-title">Clear mode</div>
+            <div class="reel-opt-sub">Hide buttons and overlays while watching</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge">Toggle</span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optAutoScrollBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-forward-step"></i></span>
+          <div>
+            <div class="reel-opt-title">Scroll to next reel automatically</div>
+            <div class="reel-opt-sub">Advance to next reel when video ends</div>
+          </div>
+        </div>
+        <span class="reel-opt-badge" id="optAutoScrollStatus">Off</span>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optTranscriptBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-regular fa-file-lines"></i></span>
+          <div>
+            <div class="reel-opt-title">Transcript</div>
+            <div class="reel-opt-sub" id="optTranscriptSub">The creator hasn't uploaded a transcript for this reel</div>
+          </div>
+        </div>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optAudioLanguageBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-language"></i></span>
+          <div>
+            <div class="reel-opt-title">Audio and language</div>
+            <div class="reel-opt-sub" id="optAudioLangSub">Original Audio</div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <div class="reel-opt-group">
+      <button type="button" class="reel-opt-row" id="optSaveReelBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-regular fa-bookmark"></i></span>
+          <div>
+            <div class="reel-opt-title">Save reel</div>
+            <div class="reel-opt-sub">Add this to your saved reels.</div>
+          </div>
+        </div>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optCopyLinkBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-regular fa-copy"></i></span>
+          <div>
+            <div class="reel-opt-title">Copy link</div>
+            <div class="reel-opt-sub">Copy reel link to clipboard</div>
+          </div>
+        </div>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optReportReelBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-circle-exclamation"></i></span>
+          <div>
+            <div class="reel-opt-title">Find support or report reel</div>
+            <div class="reel-opt-sub">I'm concerned about this reel.</div>
+          </div>
+        </div>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optWhySeeingBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-regular fa-circle-question"></i></span>
+          <div>
+            <div class="reel-opt-title">Why am I seeing this reel?</div>
+            <div class="reel-opt-sub">Based on your Autrobook activity and preferences</div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <div class="reel-opt-group">
+      <button type="button" class="reel-opt-row" id="optSomethingWrongBtn">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-solid fa-bug"></i></span>
+          <div>
+            <div class="reel-opt-title">Something went wrong</div>
+            <div class="reel-opt-sub">Reload player or report playback issue</div>
+          </div>
+        </div>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optEditCaptionRow" style="display:none;">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon"><i class="fa-regular fa-pen-to-square"></i></span>
+          <div>
+            <div class="reel-opt-title">Edit caption</div>
+            <div class="reel-opt-sub">Update caption on this reel</div>
+          </div>
+        </div>
+      </button>
+
+      <button type="button" class="reel-opt-row" id="optDeleteReelRow" style="display:none;">
+        <div class="reel-opt-left">
+          <span class="reel-opt-icon" style="color:#f87171;"><i class="fa-regular fa-trash-can"></i></span>
+          <div>
+            <div class="reel-opt-title" style="color:#f87171;">Delete reel from Supabase</div>
+            <div class="reel-opt-sub">Permanently remove this reel</div>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+</aside>
 
 <!-- Share Bottom Sheet -->
 <aside class="bottom-sheet" id="shareSheet" aria-label="Share Reel">
@@ -1378,19 +1952,27 @@
     <button type="button" class="close-sheet-btn" id="closeShareSheetBtn"><i class="fa-solid fa-xmark"></i></button>
   </div>
   <div class="sheet-body">
-    <a href="create-post.html" class="create-post-share-card" id="createSomethingLink">
-      <div class="create-post-left">
-        <span class="sys-default-a-logo" aria-hidden="true">A</span>
-        <div>
-          <div class="create-something-title">Create something</div>
-          <div class="create-something-sub">Share to your Feed on Autrobook</div>
+    <div class="share-composer-box">
+      <div class="share-actor-header">
+        <div class="share-actor-left">
+          <span class="share-actor-avatar" id="shareActorAvatar"><i class="fa-regular fa-user"></i></span>
+          <span class="share-actor-name" id="shareActorName">User</span>
         </div>
+        <select id="shareAudienceSelect" class="share-privacy-select" aria-label="Post audience">
+          <option value="public">Public</option>
+          <option value="friends">Friends</option>
+          <option value="only_me">Only me</option>
+        </select>
       </div>
-      <span class="create-post-pill">Create post</span>
-    </a>
+
+      <div class="share-say-something-row">
+        <a href="create-post.html" class="say-something-link" id="saySomethingLink">Say something...</a>
+        <a href="create-post.html" class="create-post-dark-green-btn" id="createPostBtnLink">Create post</a>
+      </div>
+    </div>
 
     <div>
-      <div class="share-section-label">Send in AutroChat / DM</div>
+      <div class="share-section-label">Friends</div>
       <div class="share-contacts-row" id="shareContactsRow"></div>
     </div>
 
@@ -1410,9 +1992,9 @@
         <span class="share-dest-label">Groups</span>
       </button>
 
-      <a href="message.html" class="share-dest-btn" id="shareDmLink">
-        <span class="share-dest-circle"><i class="fa-regular fa-paper-plane"></i></span>
-        <span class="share-dest-label">DM</span>
+      <a href="save.html" class="share-dest-btn" id="shareSaveLink">
+        <span class="share-dest-circle"><i class="fa-regular fa-bookmark"></i></span>
+        <span class="share-dest-label">Save</span>
       </a>
 
       <a href="profile.html?tab=reels" class="share-dest-btn" id="shareProfileReelsLink">
@@ -1547,125 +2129,13 @@
 
 <div class="status-toast" id="statusToast"></div>
 
-<!-- auth.js - Authentication and onboarding guard for Autrobook -->
 <script>
-(function () {
   const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
 
-  const LOGIN_PAGE = 'login.html';
-  const SIGNUP_NAME_PAGE = 'signup-name.html';
-  const SIGNUP_CONTACT_PAGE = 'signup-contact.html';
-
-  let client = null;
-  if (window.supabase && typeof window.supabase.createClient === 'function') {
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  }
-
-  function resolveTargetUrl(pageName) {
-    try {
-      return new URL(pageName, window.location.href).href;
-    } catch (_) {
-      return pageName;
-    }
-  }
-
-  function getCurrentFileName() {
-    const path = window.location.pathname || '';
-    const parts = path.split('/');
-    return (parts[parts.length - 1] || '').toLowerCase();
-  }
-
-  function redirectIfNeeded(targetPage) {
-    const currentFile = getCurrentFileName();
-    if (currentFile !== targetPage.toLowerCase()) {
-      window.location.replace(resolveTargetUrl(targetPage));
-    }
-  }
-
-  async function checkSessionAndProfile(options = {}) {
-    const {
-      requireCompleteProfile = true,
-      redirectUnauthenticated = true
-    } = options;
-
-    if (!client) {
-      if (redirectUnauthenticated) redirectIfNeeded(LOGIN_PAGE);
-      return null;
-    }
-
-    let session = null;
-    try {
-      const { data, error } = await client.auth.getSession();
-      if (!error && data && data.session && data.session.user) {
-        session = data.session;
-      }
-    } catch (_) {
-      session = null;
-    }
-
-    if (!session || !session.user) {
-      localStorage.removeItem('autrobook_auth_user');
-      if (redirectUnauthenticated) redirectIfNeeded(LOGIN_PAGE);
-      return null;
-    }
-
-    const user = session.user;
-    let profile = null;
-    try {
-      const { data } = await client
-        .from('profiles')
-        .select('id, full_name, name, username, phone, contact, avatar_url, has_issue, is_restricted')
-        .eq('id', user.id)
-        .maybeSingle();
-      profile = data || null;
-    } catch (_) {
-      profile = null;
-    }
-
-    if (!requireCompleteProfile) {
-      return { session, user, profile };
-    }
-
-    const meta = user.user_metadata || {};
-    const fullName = String(
-      profile?.full_name || profile?.name || profile?.username || meta.full_name || meta.name || ''
-    ).trim();
-    const contact = String(
-      profile?.phone || profile?.contact || user.phone || user.email || ''
-    ).trim();
-
-    if (!fullName) {
-      redirectIfNeeded(SIGNUP_NAME_PAGE);
-      return null;
-    }
-
-    if (!contact) {
-      redirectIfNeeded(SIGNUP_CONTACT_PAGE);
-      return null;
-    }
-
-    return { session, user, profile };
-  }
-
-  window.AutroAuth = {
-    supabase: client,
-    checkSessionAndProfile,
-    signOut: async function () {
-      if (client) {
-        try {
-          await client.auth.signOut();
-        } catch (_) {}
-      }
-      localStorage.removeItem('autrobook_auth_user');
-      redirectIfNeeded(LOGIN_PAGE);
-    }
-  };
-})();
-</script>
-
-<script>
-  const supabaseClient = window.AutroAuth ? window.AutroAuth.supabase : null;
+  const supabaseClient = (window.supabase && typeof window.supabase.createClient === 'function')
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    : null;
 
   let reelSyncChannel = null;
   try {
@@ -1676,6 +2146,9 @@
 
   const MAX_VOICE_SECONDS = 30;
   const MAX_GROUP_SHARE = 10;
+  const PLAYBACK_SPEEDS = [0.5, 1, 1.25, 1.5, 2];
+  const QUALITY_MODES = ['AUTO', 'HD', 'SD'];
+  const SLEEP_TIMERS_MIN = [0, 5, 10, 15, 30];
   const urlParams = new URLSearchParams(window.location.search);
 
   function isValidUUID(value) {
@@ -1764,13 +2237,13 @@
           type: 'DELETE_REEL_CARD',
           reelId: cleanId,
           id: cleanId,
-          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+          targets: ['/reels.html', '/index.html', '/profile.html']
         });
         reelSyncChannel.postMessage({
           type: 'REEL_DELETED',
           reelId: cleanId,
           id: cleanId,
-          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+          targets: ['/reels.html', '/index.html', '/profile.html']
         });
       }
     } catch (_) {}
@@ -1782,20 +2255,14 @@
     const rawAudio = String(item.audio_name || item.audio || '').trim();
     const author = String(item.author_name || '').trim();
 
-    if (singer && song) {
-      return `${singer} — ${song}`;
-    }
-    if (song && author && song.toLowerCase() !== 'original audio') {
-      return `${author} — ${song}`;
-    }
+    if (singer && song) return `${singer} — ${song}`;
+    if (song && author && song.toLowerCase() !== 'original audio') return `${author} — ${song}`;
     if (singer) {
       return rawAudio && rawAudio.toLowerCase() !== 'original audio'
         ? `${singer} — ${rawAudio}`
         : `${singer} — Original Audio`;
     }
-    if (rawAudio && rawAudio.toLowerCase() !== 'original audio') {
-      return rawAudio;
-    }
+    if (rawAudio && rawAudio.toLowerCase() !== 'original audio') return rawAudio;
     return author ? `Original Audio • ${author}` : 'Original Audio';
   }
 
@@ -1916,16 +2383,25 @@
   let isFollowing = false;
   let userReelReaction = null;
   let userReelDisliked = false;
+  let isReelSaved = false;
   let composerDraftReaction = null;
   let soundOn = true;
-  let postNotifyEnabled = true;
   let comments = [];
   let reelReactors = [];
   let reelDislikers = [];
   let mentionableUsers = [];
   let userGroups = [];
-  const selectedGroupIds = new Set();
   const profileCache = new Map();
+
+  let preferenceState = null;
+  let playbackSpeed = 1;
+  let qualityMode = reelData.quality || 'HD';
+  let captionsEnabled = false;
+  let loopEnabled = true;
+  let autoScrollNext = false;
+  let sleepTimerMinutes = 0;
+  let sleepTimerTimeout = null;
+  let isSwitchingReel = false;
 
   let mediaRecorder = null;
   let audioChunks = [];
@@ -1941,14 +2417,23 @@
   let reportContext = { targetType: 'reel', targetId: '', targetOwnerId: '', targetOwnerName: '' };
   let activeChannel = null;
 
+  const reelViewportEl = document.getElementById('reelViewport');
   const reelCardEl = document.getElementById('reelCard');
   const videoEl = document.getElementById('reelVideo');
   const imageEl = document.getElementById('reelImage');
+  const miniPlayerDock = document.getElementById('miniPlayerDock');
+  const miniReelVideo = document.getElementById('miniReelVideo');
+  const miniReelImage = document.getElementById('miniReelImage');
+  const doubleTapBurst = document.getElementById('doubleTapBurst');
+  const reelSeekSlider = document.getElementById('reelSeekSlider');
   const soundBtn = document.getElementById('soundBtn');
-  const moreDotsBtn = document.getElementById('moreDotsBtn');
-  const moreMenu = document.getElementById('moreMenu');
+  const topThreeDotsBtn = document.getElementById('topThreeDotsBtn');
+  const topMoreMenu = document.getElementById('topMoreMenu');
+  const reelBottomMoreBtn = document.getElementById('reelBottomMoreBtn');
+  const reelOptionsSheet = document.getElementById('reelOptionsSheet');
+  const liveCaptionBox = document.getElementById('liveCaptionBox');
+  const exitClearModeBtn = document.getElementById('exitClearModeBtn');
   const followBtn = document.getElementById('followBtn');
-  const dmCreatorLink = document.getElementById('dmCreatorLink');
   const likeBtn = document.getElementById('likeBtn');
   const likeIcon = document.getElementById('likeIcon');
   const likeCountEl = document.getElementById('likeCount');
@@ -1957,9 +2442,17 @@
   const dislikeCountEl = document.getElementById('dislikeCount');
   const commentOpenBtn = document.getElementById('commentOpenBtn');
   const commentCountEl = document.getElementById('commentCount');
+  const saveBtn = document.getElementById('saveBtn');
+  const saveIcon = document.getElementById('saveIcon');
+  const saveCountTrigger = document.getElementById('saveCountTrigger');
   const viewsEl = document.getElementById('views');
   const reactPopup = document.getElementById('reactPopup');
   const shareSheet = document.getElementById('shareSheet');
+  const shareActorAvatar = document.getElementById('shareActorAvatar');
+  const shareActorName = document.getElementById('shareActorName');
+  const shareAudienceSelect = document.getElementById('shareAudienceSelect');
+  const saySomethingLink = document.getElementById('saySomethingLink');
+  const createPostBtnLink = document.getElementById('createPostBtnLink');
   const shareContactsRow = document.getElementById('shareContactsRow');
   const groupsShareSheet = document.getElementById('groupsShareSheet');
   const groupsListContainer = document.getElementById('groupsListContainer');
@@ -1983,15 +2476,18 @@
   const statusToast = document.getElementById('statusToast');
   const inlineEditPanel = document.getElementById('inlineEditPanel');
   const inlineEditTextarea = document.getElementById('inlineEditTextarea');
-  const menuEditCaptionBtn = document.getElementById('menuEditCaptionBtn');
-  const menuDeleteReelBtn = document.getElementById('menuDeleteReelBtn');
+  const optEditCaptionRow = document.getElementById('optEditCaptionRow');
+  const optDeleteReelRow = document.getElementById('optDeleteReelRow');
+
+  const selectedGroupIds = new Set();
 
   function getActorId() {
-    return currentUserId || getDeviceVisitorId();
+    return currentUserId || localStorage.getItem('autro_user_id') || getDeviceVisitorId();
   }
 
   function isPostCreator() {
-    const loggedInMatches = Boolean(currentUserId && reelData.user_id && currentUserId === reelData.user_id);
+    const activeUid = currentUserId || localStorage.getItem('autro_user_id') || '';
+    const loggedInMatches = Boolean(activeUid && reelData.user_id && activeUid === reelData.user_id);
     const paramCreatorFlag = urlParams.get('is_owner') === '1' || urlParams.get('owner') === 'me';
     return loggedInMatches || paramCreatorFlag || String(reelData.id || '').startsWith('local-reel-');
   }
@@ -2022,20 +2518,50 @@
     return base.toString();
   }
 
+  function syncSharePostLinks() {
+    const audience = shareAudienceSelect ? shareAudienceSelect.value : 'public';
+    const postUrl = buildDestinationUrl('create-post.html', {
+      audience,
+      shared_text: activeShareExtraText || reelData.caption || '',
+      shared_url: buildShareableReelUrl(),
+      target_feed: 'index.html,profile.html'
+    });
+    if (saySomethingLink) saySomethingLink.href = postUrl;
+    if (createPostBtnLink) createPostBtnLink.href = postUrl;
+
+    try {
+      localStorage.setItem('autrobook_pending_share_post', JSON.stringify({
+        reel_id: reelData.id,
+        user_id: getActorId(),
+        author_name: currentUserProfile.name || reelData.author_name || '',
+        author_avatar: currentUserProfile.avatar || reelData.author_avatar || '',
+        media_url: reelData.media_url || '',
+        media_type: reelData.media_type || 'video',
+        caption: reelData.caption || '',
+        shared_text: activeShareExtraText || '',
+        audience,
+        destinations: ['index.html', 'profile.html'],
+        updated_at: new Date().toISOString()
+      }));
+    } catch (_) {}
+  }
+
   function updatePageLinks() {
     const reactionsHref = buildDestinationUrl('reactions.html');
     const reactionsDislikesHref = buildDestinationUrl('reactions.html', { tab: 'dislikes' });
     const commentsHref = buildDestinationUrl('comment.html');
+    const savedHref = buildDestinationUrl('save.html');
 
-    document.getElementById('menuReactionsPageLink').href = reactionsHref;
-    document.getElementById('menuCommentPageLink').href = commentsHref;
     document.getElementById('openFullReactionsPageLink').href = reactionsHref;
     document.getElementById('openFullCommentsPageLink').href = commentsHref;
     document.getElementById('cMenuCommentLink').href = commentsHref;
+    document.getElementById('shareSaveLink').href = savedHref;
 
     likeCountEl.href = reactionsHref;
     dislikeCountEl.href = reactionsDislikesHref;
     commentCountEl.href = commentsHref;
+    saveCountTrigger.href = savedHref;
+    syncSharePostLinks();
   }
 
   function persistLocalReelState() {
@@ -2065,6 +2591,88 @@
     } catch (e) {}
   }
 
+  function recordWatchedReel(item) {
+    if (!item || !item.id || item.id === 'default_reel') return;
+    try {
+      const watchedList = readStoredList('autrobook_watched_reels');
+      const filtered = watchedList.filter((w) => String(w.reel_id || w.id) !== String(item.id));
+      filtered.unshift({
+        id: 'watched_' + item.id,
+        reel_id: item.id,
+        user_id: item.user_id || '',
+        author_name: item.author_name || '',
+        author_avatar: item.author_avatar || '',
+        media_url: item.media_url || '',
+        media_type: item.media_type || 'video',
+        caption: item.caption || '',
+        audio: formatLiveAudioLabel(item),
+        watched_at: new Date().toISOString()
+      });
+      localStorage.setItem('autrobook_watched_reels', JSON.stringify(filtered.slice(0, 200)));
+    } catch (_) {}
+  }
+
+  function checkIsReelSaved() {
+    const savedList = readStoredList('autrobook_saved_items');
+    return savedList.some((item) => String(item.reel_id || item.id) === String(reelData.id));
+  }
+
+  function updateSaveVisualState() {
+    isReelSaved = checkIsReelSaved();
+    saveBtn.classList.toggle('active', isReelSaved);
+    saveIcon.innerHTML = isReelSaved
+      ? '<i class="fa-solid fa-bookmark"></i>'
+      : '<i class="fa-regular fa-bookmark"></i>';
+    saveCountTrigger.textContent = isReelSaved ? 'Saved' : 'Save';
+  }
+
+  async function toggleSaveReelLive() {
+    const savedList = readStoredList('autrobook_saved_items');
+    const existingIdx = savedList.findIndex((item) => String(item.reel_id || item.id) === String(reelData.id));
+
+    if (existingIdx >= 0) {
+      savedList.splice(existingIdx, 1);
+      localStorage.setItem('autrobook_saved_items', JSON.stringify(savedList));
+      isReelSaved = false;
+      updateSaveVisualState();
+      playEffect('pop');
+      notify('Removed from saved');
+    } else {
+      const entry = {
+        id: 'saved_' + reelData.id,
+        reel_id: reelData.id,
+        user_id: reelData.user_id || '',
+        author_name: reelData.author_name || '',
+        author_avatar: reelData.author_avatar || '',
+        media_url: reelData.media_url || '',
+        media_type: reelData.media_type || 'video',
+        caption: reelData.caption || '',
+        audio: formatLiveAudioLabel(reelData),
+        url: buildShareableReelUrl(),
+        saved_at: new Date().toISOString()
+      };
+      savedList.unshift(entry);
+      localStorage.setItem('autrobook_saved_items', JSON.stringify(savedList.slice(0, 200)));
+      isReelSaved = true;
+      updateSaveVisualState();
+      playEffect('enhance');
+      notify('Saved');
+
+      const actorId = getActorId();
+      if (supabaseClient && isValidUUID(actorId) && isValidUUID(reelData.id)) {
+        try {
+          await supabaseClient.from('saved_items').upsert({
+            user_id: actorId,
+            reel_id: reelData.id,
+            media_url: reelData.media_url || '',
+            caption: reelData.caption || '',
+            saved_at: entry.saved_at
+          }, { onConflict: 'user_id,reel_id' });
+        } catch (_) {}
+      }
+    }
+  }
+
   function loadLocalEngagementForReel() {
     try {
       const savedMap = JSON.parse(localStorage.getItem('autrobook_reel_engagement') || '{}');
@@ -2080,8 +2688,16 @@
         if (Array.isArray(entry.comments)) comments = entry.comments;
         if (Array.isArray(entry.reelReactors)) reelReactors = entry.reelReactors;
         if (Array.isArray(entry.reelDislikers)) reelDislikers = entry.reelDislikers;
+        if (entry.preferenceState !== undefined) preferenceState = entry.preferenceState;
+        if (typeof entry.playbackSpeed === 'number') playbackSpeed = entry.playbackSpeed;
+        if (entry.qualityMode) qualityMode = entry.qualityMode;
+        if (typeof entry.captionsEnabled === 'boolean') captionsEnabled = entry.captionsEnabled;
+        if (typeof entry.loopEnabled === 'boolean') loopEnabled = entry.loopEnabled;
+        if (typeof entry.autoScrollNext === 'boolean') autoScrollNext = entry.autoScrollNext;
       }
     } catch (e) {}
+    updateSaveVisualState();
+    syncOptionsSheetUI();
   }
 
   function saveLocalEngagementForReel() {
@@ -2099,6 +2715,12 @@
         comments: comments.slice(0, 100),
         reelReactors: reelReactors.slice(0, 100),
         reelDislikers: reelDislikers.slice(0, 100),
+        preferenceState,
+        playbackSpeed,
+        qualityMode,
+        captionsEnabled,
+        loopEnabled,
+        autoScrollNext,
         updated_at: new Date().toISOString()
       };
       localStorage.setItem('autrobook_reel_engagement', JSON.stringify(savedMap));
@@ -2127,8 +2749,10 @@
 
     reelData.caption = nextCaption;
     document.getElementById('caption').textContent = nextCaption;
+    updateLiveCaptionOverlay();
     inlineEditPanel.classList.remove('open');
     persistLocalReelState();
+    syncSharePostLinks();
 
     try {
       if (reelSyncChannel) {
@@ -2136,7 +2760,7 @@
           type: 'REEL_UPDATED',
           reelId: reelData.id,
           caption: nextCaption,
-          targets: ['/reels.html', '/index.html', '/profile.html', '/reels-card.html']
+          targets: ['/reels.html', '/index.html', '/profile.html']
         });
       }
     } catch (_) {}
@@ -2193,7 +2817,7 @@
       if (reelPlaylist.length > 0) {
         switchToReelAtIndex(Math.min(currentIndex, reelPlaylist.length - 1), 'down');
       } else {
-        window.location.replace('reels.html');
+        window.location.replace('index.html');
       }
     }, 350);
   }
@@ -2214,20 +2838,20 @@
 
   function formatLiveTime(isoDate) {
     const pastMs = new Date(isoDate || Date.now()).getTime();
-    if (Number.isNaN(pastMs)) return '0s';
+    if (Number.isNaN(pastMs)) return '0d';
     const diffSec = Math.max(0, Math.floor((Date.now() - pastMs) / 1000));
-
-    if (diffSec < 60) return `${diffSec}s`;
+    const diffDay = Math.floor(diffSec / 86400);
+    if (diffDay >= 1) {
+      if (diffDay < 30) return `${diffDay}d`;
+      const diffMonth = Math.floor(diffDay / 30);
+      if (diffMonth < 12) return `${diffMonth}mo`;
+      return `${Math.floor(diffMonth / 12)}y`;
+    }
+    const diffHr = Math.floor(diffSec / 3600);
+    if (diffHr >= 1) return `${diffHr}h`;
     const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h`;
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 30) return `${diffDay}d`;
-    const diffMonth = Math.floor(diffDay / 30);
-    if (diffMonth < 12) return `${diffMonth}mo`;
-    const diffYear = Math.floor(diffMonth / 12);
-    return `${diffYear}y`;
+    if (diffMin >= 1) return `${diffMin}m`;
+    return `${diffSec}s`;
   }
 
   function escapeHtml(str) {
@@ -2275,88 +2899,121 @@
     } catch (e) {}
   }
 
-  async function initAuthSession() {
-    if (!window.AutroAuth) {
-      document.body.classList.remove('auth-checking');
-      return false;
+  function triggerDoubleTapHeartBurst() {
+    doubleTapBurst.classList.remove('show');
+    void doubleTapBurst.offsetWidth;
+    doubleTapBurst.classList.add('show');
+    setTimeout(() => doubleTapBurst.classList.remove('show'), 460);
+  }
+
+  function updateLiveCaptionOverlay() {
+    if (captionsEnabled && reelData.caption) {
+      liveCaptionBox.textContent = reelData.caption;
+      liveCaptionBox.classList.add('show');
+    } else {
+      liveCaptionBox.classList.remove('show');
     }
+  }
 
-    const allowGuest = urlParams.get('guest') === '1';
-    const authResult = await window.AutroAuth.checkSessionAndProfile({
-      requireCompleteProfile: !allowGuest,
-      redirectUnauthenticated: !allowGuest
-    });
+  function syncOptionsSheetUI() {
+    document.getElementById('optInterestedBadge').textContent = preferenceState === 'interested' ? 'Selected' : '';
+    document.getElementById('optNotInterestedBadge').textContent = preferenceState === 'not_interested' ? 'Selected' : '';
+    document.getElementById('optSpeedValue').textContent = `${playbackSpeed}x`;
+    document.getElementById('optPlaybackSpeedSub').textContent = `Current speed: ${playbackSpeed}x`;
+    document.getElementById('optQualityValue').textContent = qualityMode;
+    document.getElementById('optQualitySub').textContent = `Current quality: ${qualityMode}`;
+    document.getElementById('optCaptionsStatus').textContent = captionsEnabled ? 'On' : 'Off';
+    document.getElementById('optLoopStatus').textContent = loopEnabled ? 'On' : 'Off';
+    document.getElementById('optSleepTimerStatus').textContent = sleepTimerMinutes > 0 ? `${sleepTimerMinutes}m` : 'Off';
+    document.getElementById('optAutoScrollStatus').textContent = autoScrollNext ? 'On' : 'Off';
+    document.getElementById('optTranscriptSub').textContent = reelData.caption
+      ? reelData.caption
+      : "The creator hasn't uploaded a transcript for this reel";
+    document.getElementById('optAudioLangSub').textContent = formatLiveAudioLabel(reelData);
+    document.getElementById('quality').textContent = qualityMode;
+    videoEl.loop = loopEnabled && !autoScrollNext;
+    videoEl.playbackRate = playbackSpeed;
+    updateLiveCaptionOverlay();
+  }
 
-    if (!authResult && !allowGuest) {
-      return false;
-    }
+  async function initSessionFromSupabaseAndStorage() {
+    currentUserId = localStorage.getItem('autro_user_id') || '';
+    let localName = localStorage.getItem('autro_profile_name') || '';
+    let localAvatar = localStorage.getItem('autro_profile_avatar') || '';
 
-    document.body.classList.remove('auth-checking');
+    try {
+      const savedProfile = JSON.parse(localStorage.getItem('autrobook_profile') || '{}');
+      localName = savedProfile.full_name || savedProfile.name || savedProfile.username || localName;
+      localAvatar = savedProfile.avatar_url || savedProfile.avatar || localAvatar;
+    } catch (_) {}
 
-    if (authResult && authResult.user) {
-      currentUserId = authResult.user.id;
-      const meta = authResult.user.user_metadata || {};
-      const prof = authResult.profile || {};
-      const resolvedName = String(
-        prof.full_name || prof.name || prof.username || meta.full_name || meta.name || authResult.user.email || ''
-      ).trim();
-      const resolvedAvatar = String(prof.avatar_url || meta.avatar_url || '').trim();
-
-      currentUserProfile = {
-        name: resolvedName,
-        avatar: resolvedAvatar
-      };
-
-      profileCache.set(currentUserId, {
-        name: resolvedName,
-        avatar: resolvedAvatar,
-        hasIssue: Boolean(prof.has_issue || prof.is_restricted)
-      });
-
-      localStorage.setItem('autrobook_auth_user', JSON.stringify({
-        id: currentUserId,
-        name: resolvedName,
-        avatar: resolvedAvatar,
-        email: authResult.user.email || ''
-      }));
-
-      if (!reelData.user_id) {
-        reelData.user_id = currentUserId;
-      }
+    if (localName || localAvatar) {
+      currentUserProfile = { name: localName, avatar: localAvatar };
     }
 
     if (supabaseClient) {
+      try {
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        let authUser = sessionData?.session?.user || null;
+
+        if (!authUser) {
+          const { data: userData } = await supabaseClient.auth.getUser();
+          authUser = userData?.user || null;
+        }
+
+        if (authUser && authUser.id) {
+          currentUserId = String(authUser.id);
+          localStorage.setItem('autro_user_id', currentUserId);
+
+          const meta = authUser.user_metadata || {};
+          const { data: prof } = await supabaseClient
+            .from('profiles')
+            .select('id, full_name, name, username, avatar_url, has_issue, is_restricted')
+            .eq('id', currentUserId)
+            .maybeSingle();
+
+          const resolvedName = String(
+            prof?.full_name || prof?.name || prof?.username || meta.full_name || meta.name || authUser.email || localName || ''
+          ).trim();
+          const resolvedAvatar = String(prof?.avatar_url || meta.avatar_url || localAvatar || '').trim();
+
+          currentUserProfile = { name: resolvedName, avatar: resolvedAvatar };
+          if (resolvedName) localStorage.setItem('autro_profile_name', resolvedName);
+          if (resolvedAvatar) localStorage.setItem('autro_profile_avatar', resolvedAvatar);
+
+          profileCache.set(currentUserId, {
+            name: resolvedName,
+            avatar: resolvedAvatar,
+            hasIssue: Boolean(prof?.has_issue || prof?.is_restricted)
+          });
+
+          if (!reelData.user_id) {
+            reelData.user_id = currentUserId;
+          }
+        }
+      } catch (_) {}
+
       supabaseClient.auth.onAuthStateChange(async (_event, session) => {
         if (session && session.user) {
-          currentUserId = session.user.id;
+          currentUserId = String(session.user.id);
+          localStorage.setItem('autro_user_id', currentUserId);
           const prof = await fetchProfileInfo(
             currentUserId,
             session.user.user_metadata?.full_name || session.user.email || '',
             session.user.user_metadata?.avatar_url || ''
           );
           currentUserProfile = { name: prof.name, avatar: prof.avatar };
-          localStorage.setItem('autrobook_auth_user', JSON.stringify({
-            id: currentUserId,
-            name: currentUserProfile.name,
-            avatar: currentUserProfile.avatar,
-            email: session.user.email || ''
-          }));
-          renderReelInfo();
+          if (prof.name) localStorage.setItem('autro_profile_name', prof.name);
+          if (prof.avatar) localStorage.setItem('autro_profile_avatar', prof.avatar);
+          await renderReelInfo();
+          renderShareHeader();
         } else {
           currentUserId = null;
-          currentUserProfile = { name: '', avatar: '' };
-          localStorage.removeItem('autrobook_auth_user');
-          if (!allowGuest && window.AutroAuth) {
-            await window.AutroAuth.checkSessionAndProfile({
-              requireCompleteProfile: true,
-              redirectUnauthenticated: true
-            });
-          }
+          localStorage.removeItem('autro_user_id');
         }
       });
     }
-
-    return true;
+    renderShareHeader();
   }
 
   async function fetchProfileInfo(userId, fallbackName = '', fallbackAvatar = '') {
@@ -2417,6 +3074,18 @@
       : reelData.author_name;
 
     return await fetchProfileInfo(reelData.user_id, fallback, reelData.author_avatar);
+  }
+
+  function renderShareHeader() {
+    const actorName = currentUserProfile.name || reelData.author_name || 'Account';
+    const actorAvatar = currentUserProfile.avatar || reelData.author_avatar || '';
+    shareActorName.textContent = actorName;
+    if (actorAvatar) {
+      shareActorAvatar.innerHTML = `<img src="${escapeHtml(actorAvatar)}" alt="${escapeHtml(actorName)}">`;
+    } else {
+      shareActorAvatar.innerHTML = `<i class="fa-regular fa-user"></i>`;
+    }
+    syncSharePostLinks();
   }
 
   async function loadLiveFriendsAndUsers() {
@@ -2499,26 +3168,19 @@
   function renderShareContacts() {
     const list = mentionableUsers.slice(0, 15);
     if (!list.length) {
-      const label = reelData.author_name ? `DM ${reelData.author_name}` : 'Send DM';
-      shareContactsRow.innerHTML = `
-        <a href="${escapeHtml(buildDestinationUrl('message.html', { to: reelData.user_id }))}" class="share-contact-item">
-          <span class="share-contact-avatar"><i class="fa-regular fa-paper-plane"></i></span>
-          <span class="share-contact-name">${escapeHtml(label)}</span>
-        </a>
-      `;
+      shareContactsRow.innerHTML = '';
       return;
     }
 
     shareContactsRow.innerHTML = list.map((u) => {
-      const dmUrl = buildDestinationUrl('message.html', {
-        to: u.id,
-        text: activeShareExtraText || reelData.caption || buildShareableReelUrl()
-      });
+      const profileTargetUrl = u.id
+        ? `profile.html?user=${encodeURIComponent(u.id)}`
+        : 'profile.html';
       const av = u.avatar_url
         ? `<img src="${escapeHtml(u.avatar_url)}" alt="${escapeHtml(u.name)}">`
         : `<i class="fa-regular fa-user"></i>`;
       return `
-        <a href="${escapeHtml(dmUrl)}" class="share-contact-item">
+        <a href="${escapeHtml(profileTargetUrl)}" class="share-contact-item">
           <span class="share-contact-avatar">${av}</span>
           <span class="share-contact-name">${escapeHtml(u.name)}</span>
         </a>
@@ -2572,6 +3234,7 @@
 
   async function recordRealUniqueView() {
     if (!reelData.id) return;
+    recordWatchedReel(reelData);
     const viewerId = getActorId();
     const viewSessionKey = `autrobook_viewed_${reelData.id}_${viewerId}`;
 
@@ -2650,6 +3313,7 @@
         reelData.comment_setting = reelRow.comment_setting || reelData.comment_setting;
         reelData.views_count = Number(reelRow.views_count ?? reelData.views_count ?? 0);
         reelData.created_at = reelRow.created_at || reelData.created_at;
+        qualityMode = reelData.quality || qualityMode || 'HD';
       }
 
       await recordRealUniqueView();
@@ -2725,6 +3389,7 @@
       }
 
       updateCounters();
+      syncOptionsSheetUI();
       saveLocalEngagementForReel();
       persistLocalReelState();
     } catch (e) {}
@@ -2746,7 +3411,7 @@
           markReelDeletedLocally(reelData.id);
           broadcastReelDeletion(reelData.id);
           notify('This reel was deleted');
-          setTimeout(() => { window.location.replace('reels.html'); }, 350);
+          setTimeout(() => { window.location.replace('index.html'); }, 350);
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'reels', filter: `id=eq.${reelData.id}` }, async (payload) => {
           const updated = payload.new || {};
@@ -2858,37 +3523,32 @@
     reelData.has_issue = ownerInfo.hasIssue;
 
     updatePageLinks();
+    updateSaveVisualState();
 
-    document.getElementById('quality').textContent = reelData.quality || 'HD';
+    document.getElementById('quality').textContent = qualityMode || reelData.quality || 'HD';
     document.getElementById('caption').textContent = reelData.caption || '';
-
-    // Live audio display with Singer Name + Song Title
     document.getElementById('audio').textContent = formatLiveAudioLabel(reelData);
+    updateLiveCaptionOverlay();
 
-    // Saved Supabase Profile Header Name
     const usernameEl = document.getElementById('username');
     usernameEl.textContent = reelData.author_name;
     usernameEl.style.display = reelData.author_name ? 'inline' : 'none';
 
+    const profileUrl = reelData.user_id
+      ? `profile.html?user=${encodeURIComponent(reelData.user_id)}`
+      : 'profile.html';
     const profileReelsHref = reelData.user_id
       ? `profile.html?user=${encodeURIComponent(reelData.user_id)}&tab=reels`
       : 'profile.html?tab=reels';
-    document.getElementById('authorProfileLink').href = profileReelsHref;
-    document.getElementById('menuProfileReelsBtn').href = profileReelsHref;
-    document.getElementById('shareProfileReelsLink').href = profileReelsHref;
 
-    const dmHref = buildDestinationUrl('message.html', {
-      to: reelData.user_id,
-      name: reelData.author_name
-    });
-    dmCreatorLink.href = dmHref;
-    document.getElementById('menuDirectMessageBtn').href = dmHref;
-    document.getElementById('shareDmLink').href = dmHref;
+    document.getElementById('authorProfileLink').href = profileUrl;
+    document.getElementById('shareProfileReelsLink').href = profileReelsHref;
 
     const issueBadge = document.getElementById('creatorIssueBadge');
     issueBadge.style.display = reelData.has_issue ? 'inline-block' : 'none';
 
     const avatarEl = document.getElementById('authorAvatar');
+    avatarEl.classList.add('story-ring-active');
     if (reelData.author_avatar) {
       avatarEl.innerHTML = `<img src="${escapeHtml(reelData.author_avatar)}" alt="${escapeHtml(reelData.author_name)}">`;
     } else if (reelData.author_name) {
@@ -2898,8 +3558,9 @@
     }
 
     const canManageReel = isPostCreator();
-    menuEditCaptionBtn.style.display = canManageReel ? 'flex' : 'none';
-    menuDeleteReelBtn.style.display = canManageReel ? 'flex' : 'none';
+    optEditCaptionRow.style.display = canManageReel ? 'flex' : 'none';
+    optDeleteReelRow.style.display = canManageReel ? 'flex' : 'none';
+    document.getElementById('optReportReelBtn').style.display = canManageReel ? 'none' : 'flex';
 
     if (reelData.isPublic && reelData.user_id && !canManageReel) {
       followBtn.style.display = 'inline-block';
@@ -2909,24 +3570,35 @@
       followBtn.style.display = 'none';
     }
 
-    const menuReportBtn = document.getElementById('menuReportBtn');
-    menuReportBtn.style.display = canManageReel ? 'none' : 'flex';
-
     if (reelData.media_type === 'image' && reelData.media_url) {
       videoEl.pause();
       videoEl.style.display = 'none';
       imageEl.style.display = 'block';
       imageEl.src = reelData.media_url;
+      miniReelVideo.style.display = 'none';
+      miniReelImage.style.display = 'block';
+      miniReelImage.src = reelData.media_url;
+      reelSeekSlider.value = 0;
     } else {
       imageEl.style.display = 'none';
       videoEl.style.display = 'block';
+      miniReelImage.style.display = 'none';
+      miniReelVideo.style.display = 'block';
       if (reelData.media_url && videoEl.src !== reelData.media_url) {
         videoEl.src = reelData.media_url;
+        miniReelVideo.src = reelData.media_url;
         videoEl.muted = !soundOn;
+        videoEl.loop = loopEnabled && !autoScrollNext;
+        videoEl.playbackRate = playbackSpeed;
         videoEl.play().catch(() => {});
+        miniReelVideo.play().catch(() => {});
+      } else {
+        videoEl.loop = loopEnabled && !autoScrollNext;
+        videoEl.playbackRate = playbackSpeed;
       }
     }
 
+    syncOptionsSheetUI();
     updateCounters();
   }
 
@@ -2942,6 +3614,28 @@
       ? '<i class="fa-solid fa-thumbs-down"></i>'
       : '<i class="fa-regular fa-thumbs-down"></i>';
     dislikeBtn.classList.toggle('active', Boolean(userReelDisliked));
+  }
+
+  function recordLikedReelLocally(reelObj, emoji) {
+    try {
+      const list = readStoredList('autrobook_liked_reels');
+      const filtered = list.filter((x) => String(x.reel_id || x.id) !== String(reelObj.id));
+      if (emoji) {
+        filtered.unshift({
+          id: 'liked_' + reelObj.id,
+          reel_id: reelObj.id,
+          user_id: reelObj.user_id || '',
+          author_name: reelObj.author_name || '',
+          author_avatar: reelObj.author_avatar || '',
+          media_url: reelObj.media_url || '',
+          media_type: reelObj.media_type || 'video',
+          caption: reelObj.caption || '',
+          emoji,
+          liked_at: new Date().toISOString()
+        });
+      }
+      localStorage.setItem('autrobook_liked_reels', JSON.stringify(filtered.slice(0, 200)));
+    } catch (_) {}
   }
 
   async function syncReactionToSupabase(actorId, actorName, actorAvatar, emoji) {
@@ -2975,24 +3669,18 @@
           .eq('reel_id', reelData.id)
           .eq('user_id', actorId);
 
-        const { error: fallbackInsertErr } = await supabaseClient
+        await supabaseClient
           .from('reel_reactions')
           .insert({
             reel_id: reelData.id,
             user_id: actorId,
             emoji
           });
-
-        if (fallbackInsertErr) {
-          console.error('Reaction sync failed:', fallbackInsertErr.message);
-        }
       }
-    } catch (e) {
-      console.error('Reaction sync error:', e);
-    }
+    } catch (e) {}
   }
 
-  async function applyReelReaction(emoji) {
+  async function applyReelReaction(emoji, { forceLike = false } = {}) {
     const actorId = getActorId();
     const actorName = currentUserProfile.name || 'You';
     const actorAvatar = currentUserProfile.avatar || '';
@@ -3003,17 +3691,19 @@
       reelData.dislikes_count = reelDislikers.length;
     }
 
-    if (userReelReaction === emoji) {
+    if (!forceLike && userReelReaction === emoji) {
       userReelReaction = null;
       reelReactors = reelReactors.filter((r) => r.user_id !== actorId);
-      reelData.likes_count = reelReactors.length;
+      reelData.likes_count = Math.max(0, reelReactors.length);
+      recordLikedReelLocally(reelData, null);
       playEffect('pop');
-      notify('Reaction removed');
+      notify('Reaction undone');
       updateCounters();
       saveLocalEngagementForReel();
       persistLocalReelState();
       await syncReactionToSupabase(actorId, actorName, actorAvatar, null);
     } else {
+      const hadPreviousReaction = Boolean(userReelReaction);
       userReelReaction = emoji;
       const nowIso = new Date().toISOString();
       reelReactors = reelReactors.filter((r) => r.user_id !== actorId);
@@ -3025,8 +3715,9 @@
         reacted_at: nowIso
       });
       reelData.likes_count = reelReactors.length;
+      recordLikedReelLocally(reelData, emoji);
       playEffect('enhance');
-      notify(`Reacted with ${emoji}`);
+      notify(hadPreviousReaction ? `Updated reaction to ${emoji}` : `Reacted with ${emoji}`);
       updateCounters();
       saveLocalEngagementForReel();
       persistLocalReelState();
@@ -3043,14 +3734,15 @@
       userReelReaction = null;
       reelReactors = reelReactors.filter((r) => r.user_id !== actorId);
       reelData.likes_count = reelReactors.length;
+      recordLikedReelLocally(reelData, null);
     }
 
     if (userReelDisliked) {
       userReelDisliked = false;
       reelDislikers = reelDislikers.filter((d) => d.user_id !== actorId);
-      reelData.dislikes_count = reelDislikers.length;
+      reelData.dislikes_count = Math.max(0, reelDislikers.length);
       playEffect('pop');
-      notify('Dislike removed');
+      notify('Dislike undone');
       updateCounters();
       saveLocalEngagementForReel();
       persistLocalReelState();
@@ -3079,6 +3771,87 @@
   dislikeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleReelDislike();
+  });
+
+  bindTapAndLongPress(saveBtn, {
+    onTap: () => toggleSaveReelLive(),
+    onLongPress: () => {
+      window.location.href = buildDestinationUrl('save.html');
+    }
+  });
+
+  // Mini player handlers
+  function setMiniPlayerActive(active) {
+    miniPlayerDock.classList.toggle('show', active);
+    reelViewportEl.style.display = active ? 'none' : 'flex';
+    if (active) {
+      if (reelData.media_type === 'image' && reelData.media_url) {
+        miniReelVideo.style.display = 'none';
+        miniReelImage.style.display = 'block';
+        miniReelImage.src = reelData.media_url;
+      } else if (reelData.media_url) {
+        miniReelImage.style.display = 'none';
+        miniReelVideo.style.display = 'block';
+        if (miniReelVideo.src !== reelData.media_url) miniReelVideo.src = reelData.media_url;
+        miniReelVideo.currentTime = videoEl.currentTime || 0;
+        miniReelVideo.play().catch(() => {});
+      }
+      notify('Mini player active');
+    } else {
+      miniReelVideo.pause();
+      if (reelData.media_type !== 'image' && reelData.media_url) {
+        videoEl.currentTime = miniReelVideo.currentTime || videoEl.currentTime || 0;
+        videoEl.play().catch(() => {});
+      }
+    }
+  }
+
+  document.getElementById('miniPlayerBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setMiniPlayerActive(true);
+  });
+
+  document.getElementById('restoreMiniPlayerBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setMiniPlayerActive(false);
+  });
+
+  document.getElementById('closeMiniPlayerBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    miniPlayerDock.classList.remove('show');
+    reelViewportEl.style.display = 'flex';
+    miniReelVideo.pause();
+    videoEl.pause();
+    notify('Mini player closed');
+  });
+
+  // Video progress & seeking
+  videoEl.addEventListener('timeupdate', () => {
+    if (!videoEl.duration || Number.isNaN(videoEl.duration)) return;
+    reelSeekSlider.value = String((videoEl.currentTime / videoEl.duration) * 100);
+  });
+
+  reelSeekSlider.addEventListener('input', () => {
+    if (!videoEl.duration || Number.isNaN(videoEl.duration)) return;
+    const pct = Number(reelSeekSlider.value || 0) / 100;
+    videoEl.currentTime = pct * videoEl.duration;
+  });
+
+  // Double-tap media to like
+  let lastMediaTap = 0;
+  [videoEl, imageEl].forEach((mediaTarget) => {
+    mediaTarget.addEventListener('click', (e) => {
+      if (hasAnySheetOpen()) return;
+      const now = Date.now();
+      if (now - lastMediaTap < 300) {
+        e.stopPropagation();
+        triggerDoubleTapHeartBurst();
+        applyReelReaction(userReelReaction || '❤️', { forceLike: true });
+        lastMediaTap = 0;
+      } else {
+        lastMediaTap = now;
+      }
+    });
   });
 
   async function openReactorsSheet(mode = 'likes') {
@@ -3135,7 +3908,7 @@
   likeCountEl.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    openReactorsSheet('likes');
+    window.location.href = buildDestinationUrl('reactions.html');
   });
 
   dislikeCountEl.addEventListener('click', (e) => {
@@ -3177,13 +3950,8 @@
       }
     });
 
-    el.addEventListener('pointercancel', () => {
-      clearTimeout(pressTimer);
-    });
-
-    el.addEventListener('pointerleave', () => {
-      clearTimeout(pressTimer);
-    });
+    el.addEventListener('pointercancel', () => clearTimeout(pressTimer));
+    el.addEventListener('pointerleave', () => clearTimeout(pressTimer));
 
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -3266,8 +4034,182 @@
     notify(isFollowing ? `Following${targetLabel}` : `Unfollowed${targetLabel}`);
   });
 
-  menuEditCaptionBtn.addEventListener('click', () => {
-    moreMenu.classList.remove('open');
+  reelBottomMoreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    topMoreMenu.classList.remove('open');
+    closeAllSheets();
+    syncOptionsSheetUI();
+    reelOptionsSheet.classList.add('open');
+  });
+
+  document.getElementById('closeReelOptionsBtn').addEventListener('click', () => {
+    reelOptionsSheet.classList.remove('open');
+  });
+
+  document.getElementById('optInterestedBtn').addEventListener('click', () => {
+    preferenceState = preferenceState === 'interested' ? null : 'interested';
+    syncOptionsSheetUI();
+    saveLocalEngagementForReel();
+    notify(preferenceState === 'interested' ? 'Marked Interested — more reels like this' : 'Preference cleared');
+  });
+
+  document.getElementById('optNotInterestedBtn').addEventListener('click', () => {
+    preferenceState = preferenceState === 'not_interested' ? null : 'not_interested';
+    syncOptionsSheetUI();
+    saveLocalEngagementForReel();
+    if (preferenceState === 'not_interested') {
+      notify('Marked Not interested — less reels like this');
+      reelOptionsSheet.classList.remove('open');
+      if (reelPlaylist.length > 1) {
+        setTimeout(() => switchToReelAtIndex((currentIndex + 1) % reelPlaylist.length, 'down'), 250);
+      }
+    } else {
+      notify('Preference cleared');
+    }
+  });
+
+  document.getElementById('optPlaybackSpeedBtn').addEventListener('click', () => {
+    const idx = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
+    playbackSpeed = PLAYBACK_SPEEDS[(idx + 1) % PLAYBACK_SPEEDS.length];
+    syncOptionsSheetUI();
+    saveLocalEngagementForReel();
+    notify(`Playback speed: ${playbackSpeed}x`);
+  });
+
+  document.getElementById('optQualitySettingsBtn').addEventListener('click', () => {
+    const idx = QUALITY_MODES.indexOf(qualityMode);
+    qualityMode = QUALITY_MODES[(idx + 1) % QUALITY_MODES.length];
+    reelData.quality = qualityMode;
+    syncOptionsSheetUI();
+    saveLocalEngagementForReel();
+    persistLocalReelState();
+    notify(`Quality set to ${qualityMode}`);
+  });
+
+  document.getElementById('optCaptionsBtn').addEventListener('click', () => {
+    captionsEnabled = !captionsEnabled;
+    syncOptionsSheetUI();
+    saveLocalEngagementForReel();
+    notify(captionsEnabled ? 'Captions enabled' : 'Captions hidden');
+  });
+
+  document.getElementById('optLoopToggleBtn').addEventListener('click', () => {
+    loopEnabled = !loopEnabled;
+    if (loopEnabled) autoScrollNext = false;
+    syncOptionsSheetUI();
+    saveLocalEngagementForReel();
+    notify(loopEnabled ? 'Loop video ON' : 'Loop video OFF');
+  });
+
+  document.getElementById('optSleepTimerBtn').addEventListener('click', () => {
+    const idx = SLEEP_TIMERS_MIN.indexOf(sleepTimerMinutes);
+    sleepTimerMinutes = SLEEP_TIMERS_MIN[(idx + 1) % SLEEP_TIMERS_MIN.length];
+    if (sleepTimerTimeout) {
+      clearTimeout(sleepTimerTimeout);
+      sleepTimerTimeout = null;
+    }
+    if (sleepTimerMinutes > 0) {
+      sleepTimerTimeout = setTimeout(() => {
+        videoEl.pause();
+        miniReelVideo.pause();
+        sleepTimerMinutes = 0;
+        syncOptionsSheetUI();
+        notify('Sleep timer finished — paused');
+      }, sleepTimerMinutes * 60 * 1000);
+      notify(`Sleep timer set for ${sleepTimerMinutes} min`);
+    } else {
+      notify('Sleep timer OFF');
+    }
+    syncOptionsSheetUI();
+  });
+
+  document.getElementById('optClearModeBtn').addEventListener('click', () => {
+    reelOptionsSheet.classList.remove('open');
+    document.body.classList.add('clear-mode-active');
+    notify('Clear mode ON');
+  });
+
+  exitClearModeBtn.addEventListener('click', () => {
+    document.body.classList.remove('clear-mode-active');
+    notify('Clear mode OFF');
+  });
+
+  document.getElementById('optAutoScrollBtn').addEventListener('click', () => {
+    autoScrollNext = !autoScrollNext;
+    if (autoScrollNext) loopEnabled = false;
+    syncOptionsSheetUI();
+    saveLocalEngagementForReel();
+    notify(autoScrollNext ? 'Auto-scroll to next reel ON' : 'Auto-scroll OFF');
+  });
+
+  videoEl.addEventListener('ended', () => {
+    if (autoScrollNext && reelPlaylist.length > 1) {
+      switchToReelAtIndex((currentIndex + 1) % reelPlaylist.length, 'down');
+    }
+  });
+
+  document.getElementById('optTranscriptBtn').addEventListener('click', () => {
+    const txt = reelData.caption
+      ? `Transcript: ${reelData.caption}`
+      : "The creator hasn't uploaded a transcript for this reel";
+    notify(txt);
+  });
+
+  document.getElementById('optAudioLanguageBtn').addEventListener('click', () => {
+    notify(`Audio: ${formatLiveAudioLabel(reelData)}`);
+  });
+
+  document.getElementById('optSaveReelBtn').addEventListener('click', () => {
+    reelOptionsSheet.classList.remove('open');
+    toggleSaveReelLive();
+  });
+
+  async function copyCurrentReelLink() {
+    const shareUrl = buildShareableReelUrl();
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      notify('Link copied');
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = shareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      notify('Link copied');
+    }
+  }
+
+  document.getElementById('optCopyLinkBtn').addEventListener('click', () => {
+    reelOptionsSheet.classList.remove('open');
+    copyCurrentReelLink();
+  });
+
+  document.getElementById('optReportReelBtn').addEventListener('click', () => {
+    reelOptionsSheet.classList.remove('open');
+    openReportSheet({
+      targetType: 'reel',
+      targetId: reelData.id,
+      targetOwnerId: reelData.user_id,
+      targetOwnerName: reelData.author_name
+    });
+  });
+
+  document.getElementById('optWhySeeingBtn').addEventListener('click', () => {
+    notify('You are seeing this reel based on public feed, friends & activity');
+  });
+
+  document.getElementById('optSomethingWrongBtn').addEventListener('click', () => {
+    reelOptionsSheet.classList.remove('open');
+    if (reelData.media_type !== 'image' && reelData.media_url) {
+      videoEl.load();
+      videoEl.play().catch(() => {});
+    }
+    notify('Player refreshed');
+  });
+
+  optEditCaptionRow.addEventListener('click', () => {
+    reelOptionsSheet.classList.remove('open');
     inlineEditTextarea.value = reelData.caption || '';
     inlineEditPanel.classList.add('open');
     inlineEditTextarea.focus();
@@ -3279,12 +4221,13 @@
 
   document.getElementById('saveEditCaptionBtn').addEventListener('click', saveReelCaptionEdit);
 
-  menuDeleteReelBtn.addEventListener('click', async () => {
-    moreMenu.classList.remove('open');
+  optDeleteReelRow.addEventListener('click', async () => {
+    reelOptionsSheet.classList.remove('open');
     await deleteCurrentReelFromSupabase();
   });
 
   function closeAllSheets() {
+    reelOptionsSheet.classList.remove('open');
     shareSheet.classList.remove('open');
     groupsShareSheet.classList.remove('open');
     commentsSheet.classList.remove('open');
@@ -3297,30 +4240,34 @@
 
   function hasAnySheetOpen() {
     return (
+      reelOptionsSheet.classList.contains('open') ||
       shareSheet.classList.contains('open') ||
       groupsShareSheet.classList.contains('open') ||
       commentsSheet.classList.contains('open') ||
       reactorsSheet.classList.contains('open') ||
       reportSheet.classList.contains('open') ||
-      moreMenu.classList.contains('open')
+      topMoreMenu.classList.contains('open')
     );
   }
 
+  // Bidirectional scrolling: up-down and down-up
   async function switchToReelAtIndex(nextIndex, direction = 'down') {
+    if (isSwitchingReel) return;
     reelPlaylist = loadReelPlaylist();
     if (!reelPlaylist.length || nextIndex < 0 || nextIndex >= reelPlaylist.length) {
-      notify(direction === 'down' ? 'No more reels below' : 'No previous reels');
+      notify(direction === 'down' ? 'No more reels below' : 'No previous reels above');
       return;
     }
 
+    isSwitchingReel = true;
     saveLocalEngagementForReel();
     persistLocalReelState();
 
     currentIndex = nextIndex;
     const nextItem = reelPlaylist[currentIndex];
 
-    reelCardEl.style.transform = direction === 'down' ? 'translateY(-18px)' : 'translateY(18px)';
-    reelCardEl.style.opacity = '0.45';
+    reelViewportEl.style.transform = direction === 'down' ? 'translateY(-24px)' : 'translateY(24px)';
+    reelViewportEl.style.opacity = '0.35';
     inlineEditPanel.classList.remove('open');
 
     Object.assign(reelData, {
@@ -3352,6 +4299,7 @@
     reelDislikers = [];
     userReelReaction = null;
     userReelDisliked = false;
+    qualityMode = reelData.quality || 'HD';
 
     try {
       const nextUrl = new URL(window.location.href);
@@ -3368,9 +4316,12 @@
     }
 
     setTimeout(() => {
-      reelCardEl.style.transform = 'translateY(0)';
-      reelCardEl.style.opacity = '1';
-    }, 60);
+      reelViewportEl.style.transform = 'translateY(0)';
+      reelViewportEl.style.opacity = '1';
+      setTimeout(() => {
+        isSwitchingReel = false;
+      }, 140);
+    }, 65);
   }
 
   let touchStartY = 0;
@@ -3379,7 +4330,9 @@
 
   reelCardEl.addEventListener('touchstart', (e) => {
     if (hasAnySheetOpen()) return;
-    touchStartedOnInteractive = Boolean(e.target.closest('button, a, input, select, textarea, .actions, .bottom-info, .top-right-controls, .react-popup'));
+    touchStartedOnInteractive = Boolean(
+      e.target.closest('button, a, input, select, textarea, .actions, .bottom-info, .reel-top-header, .top-right-controls, .react-popup, .reel-progress-wrap')
+    );
     if (touchStartedOnInteractive) return;
     if (e.touches && e.touches.length === 1) {
       touchStartY = e.touches[0].clientY;
@@ -3393,8 +4346,8 @@
     const deltaY = e.changedTouches[0].clientY - touchStartY;
     const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
 
-    if (Math.abs(deltaY) > 65 && Math.abs(deltaY) > deltaX) {
-      if (deltaY > 0) {
+    if (Math.abs(deltaY) > 55 && Math.abs(deltaY) > deltaX) {
+      if (deltaY < 0) {
         switchToReelAtIndex(currentIndex + 1, 'down');
       } else {
         switchToReelAtIndex(currentIndex - 1, 'up');
@@ -3402,8 +4355,31 @@
     }
   }, { passive: true });
 
+  // Mouse wheel / trackpad up-down & down-up scrolling
+  let wheelLockTimer = null;
+  window.addEventListener('wheel', (e) => {
+    if (hasAnySheetOpen() || isSwitchingReel) return;
+    if (e.target.closest('.sheet-body, .mention-dropdown')) return;
+    if (Math.abs(e.deltaY) < 28) return;
+    e.preventDefault();
+    if (wheelLockTimer) return;
+    if (e.deltaY > 0) {
+      switchToReelAtIndex(currentIndex + 1, 'down');
+    } else {
+      switchToReelAtIndex(currentIndex - 1, 'up');
+    }
+    wheelLockTimer = setTimeout(() => {
+      wheelLockTimer = null;
+    }, 360);
+  }, { passive: false });
+
   document.addEventListener('keydown', (e) => {
-    if (hasAnySheetOpen() || document.activeElement === commentInput || document.activeElement === groupSearchInput || document.activeElement === inlineEditTextarea) {
+    if (
+      hasAnySheetOpen() ||
+      document.activeElement === commentInput ||
+      document.activeElement === groupSearchInput ||
+      document.activeElement === inlineEditTextarea
+    ) {
       return;
     }
     if (e.key === 'ArrowDown') {
@@ -3412,18 +4388,27 @@
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       switchToReelAtIndex(currentIndex - 1, 'up');
+    } else if (e.code === 'Space' && reelData.media_type !== 'image') {
+      e.preventDefault();
+      if (videoEl.paused) {
+        videoEl.play().catch(() => {});
+        notify('Playing');
+      } else {
+        videoEl.pause();
+        notify('Paused');
+      }
     }
   });
 
-  moreDotsBtn.addEventListener('click', (e) => {
+  topThreeDotsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    updatePageLinks();
-    moreMenu.classList.toggle('open');
+    closeAllSheets();
+    topMoreMenu.classList.toggle('open');
   });
 
   document.addEventListener('click', (e) => {
-    if (!moreMenu.contains(e.target) && e.target !== moreDotsBtn) {
-      moreMenu.classList.remove('open');
+    if (!topMoreMenu.contains(e.target) && e.target !== topThreeDotsBtn) {
+      topMoreMenu.classList.remove('open');
     }
     if (!commentDotsMenu.contains(e.target) && !e.target.closest('.comment-dots-btn')) {
       commentDotsMenu.classList.remove('open');
@@ -3436,64 +4421,24 @@
     }
   });
 
-  function saveCurrentReelToDrafts() {
-    try {
-      const existing = readStoredList('autrobook_drafts');
-      existing.unshift({
-        id: 'draft_' + Date.now(),
-        reelId: reelData.id,
-        caption: reelData.caption || 'Saved reel',
-        audio: formatLiveAudioLabel(reelData),
-        items: reelData.media_url ? [{ src: reelData.media_url, type: reelData.media_type, title: reelData.caption || 'Reel' }] : [],
-        savedAt: new Date().toLocaleString()
-      });
-      localStorage.setItem('autrobook_drafts', JSON.stringify(existing.slice(0, 100)));
-    } catch (e) {}
-    saveLocalEngagementForReel();
-    persistLocalReelState();
-    notify('Saved to drafts');
-  }
-
-  document.getElementById('menuSaveDraftBtn').addEventListener('click', () => {
-    moreMenu.classList.remove('open');
-    saveCurrentReelToDrafts();
-    setTimeout(() => { window.location.href = 'draft.html'; }, 350);
-  });
-
-  document.getElementById('menuNotifyBtn').addEventListener('click', () => {
-    moreMenu.classList.remove('open');
-    postNotifyEnabled = !postNotifyEnabled;
-    document.getElementById('notifyMenuLabel').textContent = postNotifyEnabled
-      ? 'Notification on for this reel'
-      : 'Notification off for this reel';
-    notify(postNotifyEnabled ? 'Reel notifications ON' : 'Reel notifications OFF');
-  });
-
-  document.getElementById('menuLogoutBtn').addEventListener('click', async () => {
-    moreMenu.classList.remove('open');
-    if (window.AutroAuth) {
-      await window.AutroAuth.signOut();
-    }
+  shareAudienceSelect.addEventListener('change', () => {
+    syncSharePostLinks();
   });
 
   function openShareBottomSheet(customText = '') {
-    moreMenu.classList.remove('open');
+    topMoreMenu.classList.remove('open');
     closeAllSheets();
     activeShareExtraText = customText || '';
-
-    document.getElementById('createSomethingLink').href = buildDestinationUrl('create-post.html', {
-      shared_text: activeShareExtraText
+    renderShareHeader();
+    document.getElementById('shareYourStoriesLink').href = buildDestinationUrl('create-story.html', {
+      target: 'story-card.html',
+      destinations: 'index.html,profile.html',
+      ring: 'dark-green'
     });
-    document.getElementById('shareYourStoriesLink').href = buildDestinationUrl('create-story.html');
-
     renderShareContacts();
     shareSheet.classList.add('open');
   }
 
-  document.getElementById('menuShareBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    openShareBottomSheet();
-  });
   document.getElementById('shareBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     openShareBottomSheet();
@@ -3549,7 +4494,8 @@
     const groupIdsParam = Array.from(selectedGroupIds).join(',');
     window.location.href = buildDestinationUrl('create-post.html', {
       target: 'groups',
-      group_ids: groupIdsParam
+      group_ids: groupIdsParam,
+      audience: shareAudienceSelect.value
     });
   });
 
@@ -3563,16 +4509,6 @@
     closeAllSheets();
     reportSheet.classList.add('open');
   }
-
-  document.getElementById('menuReportBtn').addEventListener('click', () => {
-    moreMenu.classList.remove('open');
-    openReportSheet({
-      targetType: 'reel',
-      targetId: reelData.id,
-      targetOwnerId: reelData.user_id,
-      targetOwnerName: reelData.author_name
-    });
-  });
 
   document.getElementById('closeReportBtn').addEventListener('click', () => reportSheet.classList.remove('open'));
   document.getElementById('closeReactorsBtn').addEventListener('click', () => reactorsSheet.classList.remove('open'));
@@ -3662,7 +4598,7 @@
   commentOpenBtn.addEventListener('click', openCommentsSheetHandler);
   commentCountEl.addEventListener('click', (e) => {
     e.preventDefault();
-    openCommentsSheetHandler(e);
+    window.location.href = buildDestinationUrl('comment.html');
   });
 
   function updateMentionSuggestions() {
@@ -3805,7 +4741,7 @@
       c.userReaction = null;
       c.likes_count = Math.max(0, c.likes_count - 1);
       playEffect('pop');
-      notify('Comment reaction removed');
+      notify('Comment reaction undone');
     } else {
       if (!c.userReaction) {
         c.likes_count += 1;
@@ -3884,7 +4820,7 @@
 
   document.getElementById('cMenuSaveBtn').addEventListener('click', () => {
     commentDotsMenu.classList.remove('open');
-    saveCurrentReelToDrafts();
+    toggleSaveReelLive();
   });
 
   document.getElementById('cMenuShareBtn').addEventListener('click', (e) => {
@@ -4115,13 +5051,9 @@
             newComment.id = String(minimalRow.id);
             saveLocalEngagementForReel();
             persistLocalReelState();
-          } else if (minimalErr) {
-            console.error('Comment insert failed:', minimalErr.message);
           }
         }
-      } catch (e) {
-        console.error('Comment insert error:', e);
-      }
+      } catch (e) {}
     }
   });
 
@@ -4140,7 +5072,7 @@
         const delId = String(msg.reelId || msg.id);
         markReelDeletedLocally(delId);
         if (String(reelData.id) === delId) {
-          window.location.replace('reels.html');
+          window.location.replace('index.html');
         }
       }
     };
@@ -4161,8 +5093,7 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     updatePageLinks();
-    const canProceed = await initAuthSession();
-    if (!canProceed) return;
+    await initSessionFromSupabaseAndStorage();
 
     loadLocalEngagementForReel();
     updateCounters();
