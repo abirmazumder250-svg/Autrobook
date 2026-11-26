@@ -70,7 +70,7 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 10000
+          timeoutMs: 12000
         })
       );
       tasks.push(
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 8000
+          timeoutMs: 10000
         })
       );
     }
@@ -93,14 +93,17 @@ export default async function handler(req, res) {
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
-          timeoutMs: 10000
+          timeoutMs: 12000
         })
       );
     }
 
     if (tasks.length === 0) {
+      const isBn = /[\u0980-\u09FF]/.test(cleanMessage);
       return res.status(200).json({
-        reply: buildSmartDirectFallback(cleanMessage, syncedContext),
+        reply: isBn
+          ? 'সার্ভারে GROQ_API_KEY বা GEMINI_API_KEY সেট করা নেই। Vercel Environment Variables-এ API key যুক্ত করে Redeploy করুন।'
+          : 'No AI API key (GROQ_API_KEY or GEMINI_API_KEY) is set on the server. Add one in Vercel Environment Variables and redeploy.',
         model: 'Autro AI',
         language: syncedContext.language || 'auto'
       });
@@ -113,18 +116,22 @@ export default async function handler(req, res) {
         model: 'Autro AI',
         language: syncedContext.language || 'auto'
       });
-    } catch (providerErr) {
-      console.warn('All AI providers failed:', providerErr?.errors || providerErr);
+    } catch (aggErr) {
+      const reasons = Array.isArray(aggErr?.errors)
+        ? aggErr.errors.map((e) => e?.message || String(e)).join(' | ')
+        : (aggErr?.message || 'Provider error');
+      const isBn = /[\u0980-\u09FF]/.test(cleanMessage);
       return res.status(200).json({
-        reply: buildSmartDirectFallback(cleanMessage, syncedContext),
+        reply: isBn
+          ? `AI মডেল থেকে উত্তর আনা যায়নি: ${reasons}`
+          : `Could not get response from AI model: ${reasons}`,
         model: 'Autro AI',
         language: syncedContext.language || 'auto'
       });
     }
   } catch (error) {
-    console.error('Autro AI error:', error);
     return res.status(200).json({
-      reply: buildSmartDirectFallback(req?.body?.message || '', {}),
+      reply: `Error: ${error?.message || 'Unknown error'}`,
       model: 'Autro AI',
       language: 'auto'
     });
@@ -144,30 +151,6 @@ function sanitizeReplyText(text) {
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
     .replace(/https?:\/\/[^\s]+/g, '')
     .trim();
-}
-
-function buildSmartDirectFallback(message, ctx = {}) {
-  const q = String(message || '').trim();
-  const lower = q.toLowerCase();
-  const isBengali = /[\u0980-\u09FF]/.test(q);
-
-  if (isBengali) {
-    if (/কে তুমি|তুমি কে|পরিচয়|পরিচিতি/.test(q)) {
-      return 'আমি Autro AI Assistant, Autrobook-এর স্মার্ট সহকারী। আপনি যেকোনো প্রশ্ন করলে আমি সরাসরি উত্তর দেওয়ার চেষ্টা করি।';
-    }
-    if (/হাই|হ্যালো|সালাম|কেমন আছ/.test(q)) {
-      return 'হ্যালো! কী জানতে চান বা কোন বিষয়ে সাহায্য লাগবে, সরাসরি বলুন।';
-    }
-    return `"${q}" — এই বিষয়টি নিয়ে সরাসরি উত্তর দিতে এখন সার্ভারে AI API কী সংযুক্ত নেই বা সংযোগে সমস্যা হচ্ছে। Vercel-এ GROQ_API_KEY বা GEMINI_API_KEY সেট করলে সব প্রশ্নের পূর্ণ উত্তর পাবেন।`;
-  }
-
-  if (/who are you|your name/.test(lower)) {
-    return 'I am Autro AI Assistant inside Autrobook. Ask me anything and I will answer your question directly.';
-  }
-  if (/^(hi|hello|hey|good morning|good evening)\b/.test(lower)) {
-    return 'Hello! What question or topic would you like help with?';
-  }
-  return `Regarding "${q}": live AI model keys (GROQ_API_KEY or GEMINI_API_KEY) are not configured or reachable right now. Please add a valid API key in your server environment to get full answers in any language.`;
 }
 
 async function fetchSupabaseContext({
@@ -265,12 +248,11 @@ function buildMultilingualSystemPrompt(ctx, userMessage = '') {
 
   const langInstruction = asksSpecificLanguage
     ? 'Reply in the exact language requested in the user message.'
-    : 'Always reply in the exact same language as the user’s latest message across ALL world languages (Bengali, English, Hindi, Arabic, Spanish, French, Urdu, etc.).';
+    : 'Always reply in the exact same language as the user’s latest message across ALL world languages.';
 
   return [
     'You are Autro AI Assistant inside Autrobook.',
     'Answer ONLY and DIRECTLY what the user asks. Give accurate, clear, and complete answers tailored to every question.',
-    'Never repeat a canned or generic fallback sentence when a real question is asked.',
     langInstruction,
     'Keep formatting clean and easy to read. Do not include external URLs or links.',
     details ? `Optional user profile context (use only when relevant): ${details}` : ''
@@ -381,4 +363,4 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
     reply,
     model: 'Autro AI'
   };
-                    }
+  }
