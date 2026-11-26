@@ -370,7 +370,9 @@ const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
 
 let sbClient = null;
 try {
-  if (window.supabase && typeof window.supabase.createClient === "function") {
+  if (window.AutroAuth && window.AutroAuth.supabase) {
+    sbClient = window.AutroAuth.supabase;
+  } else if (window.supabase && typeof window.supabase.createClient === "function") {
     sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch (_) {}
@@ -414,6 +416,10 @@ document.getElementById("searchToggle").addEventListener("click", () => {
     document.getElementById("searchInput").focus();
   }
 });
+
+function normId(val) {
+  return String(val || "").trim().toLowerCase();
+}
 
 function readList(key) {
   try {
@@ -520,6 +526,22 @@ function getOrCreateLocalUser() {
     } catch (_) {}
   }
 
+  const storedAuthId = String(
+    localStorage.getItem("autro_user_id") ||
+    localStorage.getItem("userId") ||
+    sessionStorage.getItem("autro_user_id") ||
+    ""
+  ).trim();
+
+  const parsedId = String(
+    (parsedObj && (parsedObj.id || parsedObj.user_id || parsedObj.uid)) || ""
+  ).trim();
+
+  // If a real UUID/userId exists in autro_user_id, prefer it over placeholder "user_101"
+  const fallbackId = (storedAuthId && storedAuthId !== "user_101")
+    ? storedAuthId
+    : (parsedId || storedAuthId || "user_101");
+
   const fallbackName = String(
     extractNameFromRow(parsedObj) ||
     localStorage.getItem("autro_profile_name") ||
@@ -536,13 +558,6 @@ function getOrCreateLocalUser() {
     ""
   ).trim();
 
-  const fallbackId = String(
-    (parsedObj && (parsedObj.id || parsedObj.user_id || parsedObj.uid)) ||
-    localStorage.getItem("autro_user_id") ||
-    localStorage.getItem("userId") ||
-    "user_101"
-  ).trim();
-
   const userObj = {
     id: fallbackId,
     name: fallbackName || "User",
@@ -551,6 +566,9 @@ function getOrCreateLocalUser() {
 
   try {
     localStorage.setItem("currentUser", JSON.stringify(userObj));
+    if (fallbackId && fallbackId !== "user_101") {
+      localStorage.setItem("autro_user_id", fallbackId);
+    }
   } catch (_) {}
   return userObj;
 }
@@ -604,7 +622,7 @@ async function resolveSessionUserSilently() {
       avatar: resolvedAvatar
     };
 
-    supabaseProfilesMap.set(String(authUser.id), {
+    supabaseProfilesMap.set(normId(authUser.id), {
       id: String(authUser.id),
       name: resolvedName,
       avatar: resolvedAvatar
@@ -612,6 +630,7 @@ async function resolveSessionUserSilently() {
 
     try {
       localStorage.setItem("currentUser", JSON.stringify(currentUser));
+      localStorage.setItem("autro_user_id", String(authUser.id));
     } catch (_) {}
   } catch (_) {}
 }
@@ -623,30 +642,31 @@ function getUsersMap() {
 
   [...users, ...profiles].forEach(u => {
     if (!u || typeof u !== "object") return;
-    const uid = String(u.id || u.user_id || u.uid || "").trim();
-    if (!uid) return;
-    const prev = map.get(uid) || {};
-    map.set(uid, {
-      id: uid,
+    const rawUid = String(u.id || u.user_id || u.uid || "").trim();
+    const key = normId(rawUid);
+    if (!key) return;
+    const prev = map.get(key) || {};
+    map.set(key, {
+      id: rawUid,
       name: extractNameFromRow(u) || prev.name || "",
       avatar: extractAvatarFromRow(u) || prev.avatar || ""
     });
   });
 
-  supabaseProfilesMap.forEach((p, uid) => {
-    const prev = map.get(uid) || {};
-    map.set(uid, {
-      id: uid,
+  supabaseProfilesMap.forEach((p, key) => {
+    const prev = map.get(key) || {};
+    map.set(key, {
+      id: p.id || prev.id || key,
       name: p.name || prev.name || "",
       avatar: p.avatar || prev.avatar || ""
     });
   });
 
   if (currentUser && currentUser.id) {
-    const uid = String(currentUser.id);
-    const prev = map.get(uid) || {};
-    map.set(uid, {
-      id: uid,
+    const key = normId(currentUser.id);
+    const prev = map.get(key) || {};
+    map.set(key, {
+      id: currentUser.id,
       name: currentUser.name || prev.name || "",
       avatar: currentUser.avatar || prev.avatar || ""
     });
@@ -656,31 +676,37 @@ function getUsersMap() {
 }
 
 function normalizeType(t) {
-  const k = String(t || "like").toLowerCase();
-  if (k === "heart") return "love";
-  if (k === "thumbs_up") return "like";
-  if (k === "laugh") return "haha";
+  const k = String(t || "like").toLowerCase().trim();
+  if (k === "heart" || k === "❤️" || k === "❤") return "love";
+  if (k === "thumbs_up" || k === "👍") return "like";
+  if (k === "🥰") return "care";
+  if (k === "laugh" || k === "😆" || k === "😂") return "haha";
+  if (k === "😢" || k === "😭") return "sad";
+  if (k === "😮" || k === "😯") return "wow";
+  if (k === "😠" || k === "😡") return "angry";
   return REACTION_EMOJIS[k] ? k : "like";
 }
 
 function getProfileHref(targetUserId, isSelf) {
   if (isSelf) return "profile.html";
-  return `profile.html?userId=${encodeURIComponent(String(targetUserId))}&id=${encodeURIComponent(String(targetUserId))}`;
+  return `profile.html?id=${encodeURIComponent(String(targetUserId))}&userId=${encodeURIComponent(String(targetUserId))}`;
 }
 
 function getMutualFriendsCount(targetUserId) {
   if (!currentUser || !currentUser.id || !targetUserId) return 0;
+  const myKey = normId(currentUser.id);
+  const targetKey = normId(targetUserId);
   const friends = readList("friends");
   const myFriends = new Set();
   const theirFriends = new Set();
 
   friends.forEach(f => {
-    const a = String(f.userId || f.user_id || "");
-    const b = String(f.friendId || f.friend_id || "");
-    if (a === String(currentUser.id) && b) myFriends.add(b);
-    if (b === String(currentUser.id) && a) myFriends.add(a);
-    if (a === String(targetUserId) && b) theirFriends.add(b);
-    if (b === String(targetUserId) && a) theirFriends.add(a);
+    const a = normId(f.userId || f.user_id || "");
+    const b = normId(f.friendId || f.friend_id || "");
+    if (a === myKey && b) myFriends.add(b);
+    if (b === myKey && a) myFriends.add(a);
+    if (a === targetKey && b) theirFriends.add(b);
+    if (b === targetKey && a) theirFriends.add(a);
   });
 
   let mutual = 0;
@@ -692,22 +718,26 @@ function getMutualFriendsCount(targetUserId) {
 
 function isFriend(userAId, userBId) {
   if (!userAId || !userBId) return false;
+  const aKey = normId(userAId);
+  const bKey = normId(userBId);
+  if (!aKey || !bKey || aKey === bKey) return false;
   const friends = readList("friends");
   return friends.some(f => {
-    const a = String(f.userId || f.user_id || "");
-    const b = String(f.friendId || f.friend_id || "");
-    return (a === String(userAId) && b === String(userBId)) ||
-           (a === String(userBId) && b === String(userAId));
+    const fa = normId(f.userId || f.user_id || "");
+    const fb = normId(f.friendId || f.friend_id || "");
+    return (fa === aKey && fb === bKey) || (fa === bKey && fb === aKey);
   });
 }
 
 function getPendingRequest(fromId, toId) {
   if (!fromId || !toId) return null;
+  const fKey = normId(fromId);
+  const tKey = normId(toId);
   const reqs = readList("friendRequests");
   return reqs.find(r =>
     r.status === "pending" &&
-    String(r.fromId || r.from_id || "") === String(fromId) &&
-    String(r.toId || r.to_id || "") === String(toId)
+    normId(r.fromId || r.from_id || "") === fKey &&
+    normId(r.toId || r.to_id || "") === tKey
   ) || null;
 }
 
@@ -717,7 +747,7 @@ function hasIncomingRequestFrom(otherUserId) {
 }
 
 function addFriendPair(userAId, userBId) {
-  if (!userAId || !userBId || String(userAId) === String(userBId)) return;
+  if (!userAId || !userBId || normId(userAId) === normId(userBId)) return;
   const friends = readList("friends");
   if (!isFriend(userAId, userBId)) {
     friends.push({
@@ -732,9 +762,10 @@ function addFriendPair(userAId, userBId) {
 
 function sendFriendRequest(toUserId) {
   if (!currentUser || !currentUser.id) return;
+  if (normId(currentUser.id) === normId(toUserId)) return;
   const fromId = String(currentUser.id);
   const toId = String(toUserId);
-  if (fromId === toId || isFriend(fromId, toId)) return;
+  if (isFriend(fromId, toId)) return;
   if (getPendingRequest(fromId, toId)) return;
 
   const reqs = readList("friendRequests");
@@ -754,19 +785,20 @@ function sendFriendRequest(toUserId) {
 
 function confirmFriendRequest(requesterId) {
   if (!currentUser || !currentUser.id) return;
-  const myId = String(currentUser.id);
+  const myKey = normId(currentUser.id);
+  const reqKey = normId(requesterId);
   const reqs = readList("friendRequests");
   const updated = reqs.map(r => {
-    const fId = String(r.fromId || r.from_id || "");
-    const tId = String(r.toId || r.to_id || "");
-    if (r.status === "pending" && fId === String(requesterId) && tId === myId) {
+    const fId = normId(r.fromId || r.from_id || "");
+    const tId = normId(r.toId || r.to_id || "");
+    if (r.status === "pending" && fId === reqKey && tId === myKey) {
       return { ...r, status: "accepted" };
     }
     return r;
   });
   writeList("friendRequests", updated);
 
-  addFriendPair(myId, requesterId);
+  addFriendPair(currentUser.id, requesterId);
   broadcastReactionSync();
   loadReactions(true);
 }
@@ -789,8 +821,8 @@ function getInitials(name) {
 
 function updateBackLink() {
   const backEl = document.getElementById("backBtn");
-  const uid = String((currentUser && currentUser.id) || "");
-  const postAuthorId = String((currentPost && (currentPost.authorId || currentPost.userId || currentPost.user_id)) || "");
+  const uid = normId((currentUser && currentUser.id) || "");
+  const postAuthorId = normId((currentPost && (currentPost.authorId || currentPost.userId || currentPost.user_id)) || "");
   const isOwnPost = Boolean(uid && postAuthorId && uid === postAuthorId);
 
   if (fromPage.includes("profile") || isOwnPost) {
@@ -840,12 +872,13 @@ function collectRawReactionsForPost(pid) {
 
   const byUser = new Map();
   combined.forEach((r, idx) => {
-    const uid = String(r.userId || r.user_id || r.author_id || r.id || "").trim() || `reactor_${idx + 1}`;
-    const existing = byUser.get(uid) || {};
-    byUser.set(uid, {
+    const rawUid = String(r.userId || r.user_id || r.author_id || r.id || "").trim() || `reactor_${idx + 1}`;
+    const key = normId(rawUid);
+    const existing = byUser.get(key) || {};
+    byUser.set(key, {
       ...existing,
       ...r,
-      userId: uid,
+      userId: rawUid,
       name: extractNameFromRow(r) || extractNameFromRow(existing) || "",
       avatar: extractAvatarFromRow(r) || extractAvatarFromRow(existing) || "",
       type: normalizeType(r.type || r.reaction_type || r.reaction || r.emoji || existing.type)
@@ -861,7 +894,7 @@ async function fetchProfilesForUserIds(userIds) {
     new Set(
       (userIds || [])
         .map(id => String(id || "").trim())
-        .filter(id => id && !id.startsWith("reactor_") && id !== "user_101")
+        .filter(id => id && !normId(id).startsWith("reactor_") && normId(id) !== "user_101")
     )
   );
   if (!cleanIds.length) return;
@@ -875,11 +908,12 @@ async function fetchProfilesForUserIds(userIds) {
 
       if (!error && Array.isArray(data) && data.length) {
         data.forEach(row => {
-          const uid = String(row.id || row.user_id || "").trim();
-          if (!uid) return;
-          const prev = supabaseProfilesMap.get(uid) || {};
-          supabaseProfilesMap.set(uid, {
-            id: uid,
+          const rawUid = String(row.id || row.user_id || "").trim();
+          const key = normId(rawUid);
+          if (!key) return;
+          const prev = supabaseProfilesMap.get(key) || {};
+          supabaseProfilesMap.set(key, {
+            id: rawUid,
             name: extractNameFromRow(row) || prev.name || "",
             avatar: extractAvatarFromRow(row) || prev.avatar || ""
           });
@@ -906,13 +940,13 @@ async function syncReactionsFromSupabase() {
     await fetchProfilesForUserIds(userIds);
 
     const formatted = data.map(row => {
-      const uid = String(row.user_id || row.userId || row.id || "").trim();
-      const prof = supabaseProfilesMap.get(uid) || {};
+      const rawUid = String(row.user_id || row.userId || row.id || "").trim();
+      const prof = supabaseProfilesMap.get(normId(rawUid)) || {};
       return {
-        userId: uid,
+        userId: rawUid,
         name: extractNameFromRow(row) || prof.name || "",
         avatar: extractAvatarFromRow(row) || prof.avatar || "",
-        type: normalizeType(row.reaction_type || row.type || row.reaction)
+        type: normalizeType(row.reaction_type || row.reaction_emoji || row.type || row.reaction)
       };
     });
 
@@ -929,6 +963,21 @@ async function syncReactionsFromSupabase() {
 
     loadReactions(true);
   } catch (_) {}
+}
+
+function checkIsSelfReactor(uid, rName) {
+  const myIdKey = normId(currentUser && currentUser.id);
+  const myNameKey = normId(currentUser && currentUser.name);
+  const targetIdKey = normId(uid);
+  const targetNameKey = normId(rName);
+
+  if (myIdKey && targetIdKey && myIdKey === targetIdKey) {
+    return true;
+  }
+  if (myNameKey && targetNameKey && myNameKey === targetNameKey && targetIdKey.startsWith("reactor_")) {
+    return true;
+  }
+  return false;
 }
 
 function loadReactions(forceRender = false) {
@@ -959,8 +1008,8 @@ function loadReactions(forceRender = false) {
 
   reactorItems = rawReactions.map(r => {
     const uid = String(r.userId || "").trim();
-    const profile = usersMap.get(uid) || {};
-    const isSelf = Boolean(currentUser && currentUser.id && uid === String(currentUser.id));
+    const profile = usersMap.get(normId(uid)) || {};
+    const isSelf = checkIsSelfReactor(uid, profile.name || r.name);
 
     const displayName = isSelf
       ? (currentUser.name || profile.name || r.name || uid || "Member")
@@ -1050,9 +1099,11 @@ function renderReactions() {
       ? `<img class="avatar" src="${escapeHtml(item.avatar)}" alt="${escapeHtml(item.name)}" loading="lazy">`
       : `<div class="avatar-fallback">${escapeHtml(getInitials(item.name))}</div>`;
 
-    const subText = item.mutualCount > 0
-      ? `${item.mutualCount} mutual ${item.mutualCount === 1 ? "friend" : "friends"}`
-      : "";
+    const subText = item.isSelf
+      ? "You"
+      : (item.mutualCount > 0
+          ? `${item.mutualCount} mutual ${item.mutualCount === 1 ? "friend" : "friends"}`
+          : "");
 
     let rightControl = "";
     if (!item.isSelf) {
@@ -1145,4 +1196,4 @@ initReactionsPage();
 </script>
 
 </body>
-  </html>
+</html>
