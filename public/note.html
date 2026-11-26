@@ -751,6 +751,11 @@
       }
     }
 
+    function goToProfilePage(userId) {
+      const targetQuery = userId ? `?user_id=${encodeURIComponent(userId)}` : "";
+      window.location.href = `./profile.html${targetQuery}`;
+    }
+
     function saveDraft() {
       const draft = {
         text: vibeState.text,
@@ -1182,15 +1187,15 @@
     // GIF button -> saves draft and opens gif.html
     document.getElementById("btnGif").addEventListener("click", () => {
       saveDraft();
-      window.location.href = "gif.html";
+      window.location.href = "./gif.html";
     });
 
     // Close (×) -> opens profile.html
     closeBtn.addEventListener("click", () => {
-      window.location.href = "profile.html";
+      goToProfilePage(vibeState.userId);
     });
 
-    // Share -> saves current vibe (including mixed colors) to Supabase & local storage, then opens profile.html
+    // Share -> saves current vibe (including mixed colors) to local storage & Supabase, then opens profile.html
     shareBtn.addEventListener("click", async () => {
       if (!hasAnySelection() || shareBtn.disabled) return;
 
@@ -1217,34 +1222,35 @@
         updated_at: new Date().toISOString()
       };
 
+      safeSetStorage(localStorage, "current_vibe", JSON.stringify(payload));
       try {
-        safeSetStorage(localStorage, "current_vibe", JSON.stringify(payload));
         const allVibes = JSON.parse(localStorage.getItem("all_user_vibes") || "{}");
         allVibes[ownerKey] = payload;
         safeSetStorage(localStorage, "all_user_vibes", JSON.stringify(allVibes));
+      } catch (storageErr) {
+        console.warn("Could not update all_user_vibes:", storageErr);
+      }
 
-        if (vibeState.userId) {
+      if (vibeState.userId) {
+        try {
           const { error } = await supabaseClient
             .from("notes")
             .upsert(payload, { onConflict: "user_id" });
-          if (error) throw error;
+          if (error) {
+            console.warn("Supabase upsert warning:", error.message);
+          }
+        } catch (dbErr) {
+          console.warn("Supabase sync failed:", dbErr);
         }
-
-        sessionStorage.removeItem("selected_gif");
-        sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-
-        const targetQuery =
-          vibeState.userId ? `?user_id=${encodeURIComponent(vibeState.userId)}` : "";
-        window.location.replace(`profile.html${targetQuery}`);
-      } catch (err) {
-        console.warn("Share vibe error:", err);
-        shareBtn.disabled = false;
-        statusToast.textContent = "Could not sync vibe. Please try again.";
       }
+
+      sessionStorage.removeItem("selected_gif");
+      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      goToProfilePage(vibeState.userId);
     });
 
     restoreDraft();
     loadSupabaseProfile().then(hydrateGifFromReturn);
   </script>
 </body>
-                                                  </html>
+            </html>
