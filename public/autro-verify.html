@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify your account - Autrobook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/theme.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-color: #ffffff;
+    --surface-color: #ffffff;
+    --card-bg: #f8fafc;
+    --text-color: #0f172a;
+    --muted-color: #5f6368;
+    --border-color: #e5e7eb;
+    --hover-color: rgba(0, 0, 0, 0.04);
+    --dark-green: #14532d;
+    --dark-green-hover: #166534;
+    --accent-soft: rgba(20, 83, 45, 0.12);
+    --icon-bg: #f1f5f9;
+    --danger-color: #b91c1c;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #202124;
+      --surface-color: #202124;
+      --card-bg: #292a2d;
+      --text-color: #f1f5f9;
+      --muted-color: #9aa0a6;
+      --border-color: #3c4043;
+      --hover-color: rgba(255, 255, 255, 0.06);
+      --dark-green: #22c55e;
+      --dark-green-hover: #16a34a;
+      --accent-soft: rgba(34, 197, 94, 0.16);
+      --icon-bg: #303134;
+      --danger-color: #f87171;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-shell {
+    max-width: 680px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background-color: var(--surface-color);
+    padding-bottom: 36px;
+  }
+
+  .top-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .back-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 18px;
+  }
+
+  .back-btn:hover {
+    background-color: var(--hover-color);
+  }
+
+  .header-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .page-body {
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Title + Dark Green Bold Tick + System-Default Status */
+  .verify-hero-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .verify-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .verify-title-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .verify-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .bold-green-tick {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #14532d;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .bold-green-tick {
+      background-color: #22c55e;
+      color: #0f172a;
+    }
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 700;
+    background-color: var(--icon-bg);
+    color: var(--muted-color);
+    border: 1px solid var(--border-color);
+  }
+
+  .status-pill.is-pending {
+    background-color: var(--accent-soft);
+    color: var(--dark-green);
+    border-color: var(--dark-green);
+  }
+
+  .status-pill.is-verified {
+    background-color: var(--accent-soft);
+    color: var(--dark-green);
+    border-color: var(--dark-green);
+  }
+
+  .verify-desc {
+    margin: 10px 0 0;
+    font-size: 13.5px;
+    color: var(--muted-color);
+    line-height: 1.45;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .field-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .field-input {
+    width: 100%;
+    padding: 11px 13px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    font-size: 14.5px;
+    outline: none;
+  }
+
+  .field-input:focus {
+    border-color: var(--dark-green);
+  }
+
+  /* Live Capture Cards */
+  .capture-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 15px;
+  }
+
+  .capture-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .capture-title {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 700;
+  }
+
+  .capture-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background-color: var(--icon-bg);
+    color: var(--muted-color);
+  }
+
+  .capture-badge.saved {
+    background-color: var(--accent-soft);
+    color: var(--dark-green);
+  }
+
+  .camera-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #111315;
+    border: 1px solid var(--border-color);
+    display: none;
+    margin-bottom: 12px;
+  }
+
+  .camera-stage.active {
+    display: block;
+  }
+
+  .camera-stage video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .camera-stage video.mirrored {
+    transform: scaleX(-1);
+  }
+
+  .preview-box {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: var(--surface-color);
+    border: 1px dashed var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--muted-color);
+    font-size: 13.5px;
+    margin-bottom: 12px;
+  }
+
+  .preview-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+
+  .preview-box.has-image img {
+    display: block;
+  }
+
+  .preview-box.has-image .placeholder-content {
+    display: none;
+  }
+
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .btn-secondary {
+    flex: 1;
+    min-width: 130px;
+    padding: 10px 13px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--hover-color);
+    border-color: var(--dark-green);
+  }
+
+  .btn-save-step {
+    flex: 1;
+    min-width: 130px;
+    padding: 10px 13px;
+    border-radius: 10px;
+    border: none;
+    background-color: #14532d;
+    color: #ffffff;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .btn-save-step:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .step-note {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--dark-green);
+    font-weight: 600;
+    min-height: 18px;
+  }
+
+  /* Dark Green Done Button & 24-Hour Notice */
+  .done-btn {
+    width: 100%;
+    padding: 14px 18px;
+    border: none;
+    border-radius: 12px;
+    background-color: #14532d;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .done-btn:hover:not(:disabled) {
+    background-color: #166534;
+  }
+
+  .done-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .wait-notice {
+    display: none;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background-color: var(--accent-soft);
+    border: 1px solid var(--dark-green);
+    color: var(--text-color);
+    font-size: 14.5px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .wait-notice.visible {
+    display: block;
+  }
+
+  .error-text {
+    color: var(--danger-color);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    min-height: 18px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <header class="top-header">
+    <a href="profile-settings.html" class="back-btn" aria-label="Back to Profile Settings">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <h1 class="header-title">Autro Verify</h1>
+  </header>
+
+  <main class="page-body">
+    <!-- Header with Dark Green Bold Tick + System Default Unverified Status -->
+    <section class="verify-hero-card">
+      <div class="verify-heading-row">
+        <div class="verify-title-group">
+          <h2 class="verify-title">Verify your account</h2>
+          <span class="bold-green-tick" id="heroGreenTick" title="Autro Verified">
+            <i class="fa-solid fa-check"></i>
+          </span>
+        </div>
+
+        <span class="status-pill" id="verifyStatusBadge">Unverified</span>
+      </div>
+
+      <p class="verify-desc" id="verifyStatusDesc">
+        Submit your details along with live photos of your NID Front, NID Back, and a Live Selfie. Once reviewed within 24 hours, your account receives the dark green verified tick.
+      </p>
+    </section>
+
+    <!-- User Info -->
+    <section class="capture-card">
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="fullNameInput">Full Name (as on NID)</label>
+          <input type="text" id="fullNameInput" class="field-input" placeholder="Enter your full name" required>
+        </div>
+
+        <div class="field-group">
+          <label for="nidNumberInput">NID Number</label>
+          <input type="text" id="nidNumberInput" class="field-input" placeholder="Enter your NID number" required>
+        </div>
+
+        <div class="field-group">
+          <label for="notifyEmailInput">Your Email (to receive copy / notification)</label>
+          <input type="email" id="notifyEmailInput" class="field-input" placeholder="name@example.com" required>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. NID Front Live Capture -->
+    <section class="capture-card" data-slot="nid_front">
+      <div class="capture-header">
+        <h3 class="capture-title">1. NID Front (Live Photo)</h3>
+        <span class="capture-badge" id="badge-nid_front">Not saved</span>
+      </div>
+
+      <div class="camera-stage" id="stage-nid_front">
+        <video id="video-nid_front" autoplay playsinline></video>
+      </div>
+
+      <div class="preview-box" id="preview-nid_front">
+        <div class="placeholder-content">
+          <i class="fa-solid fa-id-card fa-2x"></i>
+          <div>Take a live photo of the front of your NID</div>
+        </div>
+        <img id="img-nid_front" src="" alt="NID Front live capture">
+      </div>
+
+      <input type="file" id="fallback-nid_front" accept="image/*" capture="environment" hidden>
+
+      <div class="btn-row">
+        <button type="button" class="btn-secondary" onclick="startLiveCamera('nid_front', 'environment')">
+          <i class="fa-solid fa-camera"></i>
+          <span>Open Live Camera</span>
+        </button>
+        <button type="button" class="btn-secondary" id="snap-nid_front" onclick="captureFromCamera('nid_front')" disabled>
+          <i class="fa-solid fa-circle-dot"></i>
+          <span>Capture</span>
+        </button>
+        <button type="button" class="btn-save-step" id="save-nid_front" onclick="saveCapturedSlot('nid_front')" disabled>
+          <i class="fa-solid fa-check"></i>
+          <span>Save NID Front</span>
+        </button>
+      </div>
+      <div class="step-note" id="note-nid_front"></div>
+    </section>
+
+    <!-- 2. NID Back Live Capture -->
+    <section class="capture-card" data-slot="nid_back">
+      <div class="capture-header">
+        <h3 class="capture-title">2. NID Back (Live Photo)</h3>
+        <span class="capture-badge" id="badge-nid_back">Not saved</span>
+      </div>
+
+      <div class="camera-stage" id="stage-nid_back">
+        <video id="video-nid_back" autoplay playsinline></video>
+      </div>
+
+      <div class="preview-box" id="preview-nid_back">
+        <div class="placeholder-content">
+          <i class="fa-solid fa-address-card fa-2x"></i>
+          <div>Take a live photo of the back of your NID</div>
+        </div>
+        <img id="img-nid_back" src="" alt="NID Back live capture">
+      </div>
+
+      <input type="file" id="fallback-nid_back" accept="image/*" capture="environment" hidden>
+
+      <div class="btn-row">
+        <button type="button" class="btn-secondary" onclick="startLiveCamera('nid_back', 'environment')">
+          <i class="fa-solid fa-camera"></i>
+          <span>Open Live Camera</span>
+        </button>
+        <button type="button" class="btn-secondary" id="snap-nid_back" onclick="captureFromCamera('nid_back')" disabled>
+          <i class="fa-solid fa-circle-dot"></i>
+          <span>Capture</span>
+        </button>
+        <button type="button" class="btn-save-step" id="save-nid_back" onclick="saveCapturedSlot('nid_back')" disabled>
+          <i class="fa-solid fa-check"></i>
+          <span>Save NID Back</span>
+        </button>
+      </div>
+      <div class="step-note" id="note-nid_back"></div>
+    </section>
+
+    <!-- 3. Live Selfie Capture -->
+    <section class="capture-card" data-slot="selfie">
+      <div class="capture-header">
+        <h3 class="capture-title">3. Live Selfie</h3>
+        <span class="capture-badge" id="badge-selfie">Not saved</span>
+      </div>
+
+      <div class="camera-stage" id="stage-selfie">
+        <video id="video-selfie" class="mirrored" autoplay playsinline></video>
+      </div>
+
+      <div class="preview-box" id="preview-selfie">
+        <div class="placeholder-content">
+          <i class="fa-solid fa-user-check fa-2x"></i>
+          <div>Take a clear live selfie of your face</div>
+        </div>
+        <img id="img-selfie" src="" alt="Live selfie capture">
+      </div>
+
+      <input type="file" id="fallback-selfie" accept="image/*" capture="user" hidden>
+
+      <div class="btn-row">
+        <button type="button" class="btn-secondary" onclick="startLiveCamera('selfie', 'user')">
+          <i class="fa-solid fa-camera"></i>
+          <span>Open Live Camera</span>
+        </button>
+        <button type="button" class="btn-secondary" id="snap-selfie" onclick="captureFromCamera('selfie')" disabled>
+          <i class="fa-solid fa-circle-dot"></i>
+          <span>Capture</span>
+        </button>
+        <button type="button" class="btn-save-step" id="save-selfie" onclick="saveCapturedSlot('selfie')" disabled>
+          <i class="fa-solid fa-check"></i>
+          <span>Save Selfie</span>
+        </button>
+      </div>
+      <div class="step-note" id="note-selfie"></div>
+    </section>
+
+    <div class="error-text" id="verifyErrorText"></div>
+
+    <button type="button" class="done-btn" id="doneVerifyBtn" onclick="submitVerification()">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>Done</span>
+    </button>
+
+    <div class="wait-notice" id="wait24HoursNotice">
+      Wait for 24 hours for verification
+    </div>
+  </main>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+  const VERIFY_BUCKET = 'autro-verifications';
+  const VERIFY_EMAIL_ENDPOINT = '/api/send-verification-email';
+  const VERIFY_STATUS_KEY = 'autro_verify_status';
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  const activeStreams = {};
+  const tempCapturedBlobs = {
+    nid_front: null,
+    nid_back: null,
+    selfie: null
+  };
+  const savedCapturedBlobs = {
+    nid_front: null,
+    nid_back: null,
+    selfie: null
+  };
+
+  function applyVerificationStatusUI(status) {
+    const badge = document.getElementById('verifyStatusBadge');
+    const desc = document.getElementById('verifyStatusDesc');
+    const waitNotice = document.getElementById('wait24HoursNotice');
+
+    badge.classList.remove('is-pending', 'is-verified');
+
+    if (status === 'verified') {
+      badge.textContent = 'Verified';
+      badge.classList.add('is-verified');
+      desc.textContent = 'Your account is verified with the dark green tick.';
+      waitNotice.classList.remove('visible');
+    } else if (status === 'pending') {
+      badge.textContent = 'Pending';
+      badge.classList.add('is-pending');
+      desc.textContent = 'Your NID Front, NID Back, and Live Selfie have been submitted.';
+      waitNotice.textContent = 'Wait for 24 hours for verification';
+      waitNotice.classList.add('visible');
+    } else {
+      badge.textContent = 'Unverified';
+      desc.textContent = 'Submit your details along with live photos of your NID Front, NID Back, and a Live Selfie. Once reviewed within 24 hours, your account receives the dark green verified tick.';
+      waitNotice.classList.remove('visible');
+    }
+  }
+
+  function stopSlotCamera(slot) {
+    const stream = activeStreams[slot];
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      delete activeStreams[slot];
+    }
+    const stage = document.getElementById(`stage-${slot}`);
+    const snapBtn = document.getElementById(`snap-${slot}`);
+    if (stage) stage.classList.remove('active');
+    if (snapBtn) snapBtn.disabled = true;
+  }
+
+  async function startLiveCamera(slot, facingMode) {
+    const errorEl = document.getElementById('verifyErrorText');
+    errorEl.textContent = '';
+
+    // Stop other open streams so only one camera runs at a time
+    Object.keys(activeStreams).forEach(stopSlotCamera);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      document.getElementById(`fallback-${slot}`).click();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facingMode } },
+        audio: false
+      });
+
+      activeStreams[slot] = stream;
+      const videoEl = document.getElementById(`video-${slot}`);
+      const stageEl = document.getElementById(`stage-${slot}`);
+      const snapBtn = document.getElementById(`snap-${slot}`);
+
+      videoEl.srcObject = stream;
+      stageEl.classList.add('active');
+      snapBtn.disabled = false;
+    } catch (err) {
+      errorEl.textContent = 'Live camera permission denied or unavailable; using camera picker.';
+      document.getElementById(`fallback-${slot}`).click();
+    }
+  }
+
+  function setPreviewFromBlob(slot, blob) {
+    const url = URL.createObjectURL(blob);
+    const imgEl = document.getElementById(`img-${slot}`);
+    const boxEl = document.getElementById(`preview-${slot}`);
+    const saveBtn = document.getElementById(`save-${slot}`);
+
+    imgEl.src = url;
+    boxEl.classList.add('has-image');
+    tempCapturedBlobs[slot] = blob;
+    saveBtn.disabled = false;
+  }
+
+  function captureFromCamera(slot) {
+    const videoEl = document.getElementById(`video-${slot}`);
+    if (!videoEl || !videoEl.videoWidth) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    const ctx = canvas.getContext('2d');
+
+    if (slot === 'selfie') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    stopSlotCamera(slot);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        setPreviewFromBlob(slot, blob);
+        document.getElementById(`note-${slot}`).textContent = 'Photo captured. Click "Save" to confirm.';
+      }
+    }, 'image/jpeg', 0.9);
+  }
+
+  function saveCapturedSlot(slot) {
+    const blob = tempCapturedBlobs[slot];
+    if (!blob) return;
+
+    savedCapturedBlobs[slot] = blob;
+    const badge = document.getElementById(`badge-${slot}`);
+    const note = document.getElementById(`note-${slot}`);
+
+    badge.textContent = 'Saved';
+    badge.classList.add('saved');
+    note.textContent = 'Saved and ready for submission.';
+    document.getElementById('verifyErrorText').textContent = '';
+  }
+
+  async function uploadSlotToSupabase(userId, slot, blob) {
+    if (!supabaseClient) return null;
+    const filePath = `${userId}/${Date.now()}_${slot}.jpg`;
+
+    const { error } = await supabaseClient.storage
+      .from(VERIFY_BUCKET)
+      .upload(filePath, blob, {
+        contentType: 'image/jpeg',
+        upsert: true
+      });
+
+    if (error) {
+      throw new Error(`Upload failed for ${slot}: ${error.message}`);
+    }
+
+    const { data: signedData } = await supabaseClient.storage
+      .from(VERIFY_BUCKET)
+      .createSignedUrl(filePath, 60 * 60 * 24);
+
+    return {
+      slot,
+      filePath,
+      signedUrl: signedData?.signedUrl || null
+    };
+  }
+
+  async function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function submitVerification() {
+    const fullName = document.getElementById('fullNameInput').value.trim();
+    const nidNumber = document.getElementById('nidNumberInput').value.trim();
+    const notifyEmail = document.getElementById('notifyEmailInput').value.trim();
+    const errorEl = document.getElementById('verifyErrorText');
+    const doneBtn = document.getElementById('doneVerifyBtn');
+    const waitNotice = document.getElementById('wait24HoursNotice');
+
+    errorEl.textContent = '';
+
+    if (!fullName || !nidNumber || !notifyEmail) {
+      errorEl.textContent = 'Please fill in your Full Name, NID Number, and Email.';
+      return;
+    }
+
+    if (!savedCapturedBlobs.nid_front || !savedCapturedBlobs.nid_back || !savedCapturedBlobs.selfie) {
+      errorEl.textContent = 'Please capture and save NID Front, NID Back, and Live Selfie first.';
+      return;
+    }
+
+    doneBtn.disabled = true;
+    doneBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Submitting...</span>';
+
+    try {
+      let userId = 'guest';
+      if (supabaseClient) {
+        const { data: authData } = await supabaseClient.auth.getUser();
+        if (authData?.user?.id) userId = authData.user.id;
+      }
+
+      // 1. Save images to Supabase Storage
+      const uploadedFiles = [];
+      for (const slot of ['nid_front', 'nid_back', 'selfie']) {
+        const uploaded = await uploadSlotToSupabase(userId, slot, savedCapturedBlobs[slot]);
+        if (uploaded) uploadedFiles.push(uploaded);
+      }
+
+      // Optional: record submission row in Supabase if table exists
+      if (supabaseClient) {
+        await supabaseClient.from('account_verifications').insert({
+          user_id: userId === 'guest' ? null : userId,
+          full_name: fullName,
+          nid_number: nidNumber,
+          email: notifyEmail,
+          nid_front_path: uploadedFiles.find(f => f.slot === 'nid_front')?.filePath || null,
+          nid_back_path: uploadedFiles.find(f => f.slot === 'nid_back')?.filePath || null,
+          selfie_path: uploadedFiles.find(f => f.slot === 'selfie')?.filePath || null,
+          status: 'pending'
+        }).then(() => {});
+      }
+
+      // 2. Send images to your email via backend using Google App Password
+      const [nidFrontDataUrl, nidBackDataUrl, selfieDataUrl] = await Promise.all([
+        blobToDataUrl(savedCapturedBlobs.nid_front),
+        blobToDataUrl(savedCapturedBlobs.nid_back),
+        blobToDataUrl(savedCapturedBlobs.selfie)
+      ]);
+
+      const emailRes = await fetch(VERIFY_EMAIL_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          nidNumber,
+          userEmail: notifyEmail,
+          uploadedFiles,
+          images: {
+            nid_front: nidFrontDataUrl,
+            nid_back: nidBackDataUrl,
+            selfie: selfieDataUrl
+          }
+        })
+      });
+
+      if (!emailRes.ok) {
+        throw new Error('Could not send verification email.');
+      }
+
+      localStorage.setItem(VERIFY_STATUS_KEY, 'pending');
+      applyVerificationStatusUI('pending');
+      waitNotice.textContent = 'Wait for 24 hours for verification';
+      waitNotice.classList.add('visible');
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = err.message || 'Submission failed. Please check your connection and backend.';
+    } finally {
+      doneBtn.disabled = false;
+      doneBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i><span>Done</span>';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const savedStatus = localStorage.getItem(VERIFY_STATUS_KEY) || 'unverified';
+    applyVerificationStatusUI(savedStatus);
+
+    ['nid_front', 'nid_back', 'selfie'].forEach((slot) => {
+      const fileInput = document.getElementById(`fallback-${slot}`);
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          setPreviewFromBlob(slot, file);
+          document.getElementById(`note-${slot}`).textContent = 'Photo selected. Click "Save" to confirm.';
+        }
+      });
+    });
+
+    if (supabaseClient) {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      if (authData?.user?.email) {
+        document.getElementById('notifyEmailInput').value = authData.user.email;
+      }
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    Object.keys(activeStreams).forEach(stopSlotCamera);
+  });
+</script>
+</body>
+  </html>
