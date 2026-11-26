@@ -11,6 +11,9 @@ export const config = {
   maxDuration: 30
 };
 
+// Cache active Groq models for 10 minutes per warm serverless instance
+let cachedGroqModels = { models: [], fetchedAt: 0 };
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -46,6 +49,7 @@ export default async function handler(req, res) {
       });
     }
 
+    const isBn = /[\u0980-\u09FF]/.test(cleanMessage);
     const groqKey = (process.env.GROQ_API_KEY || '').trim();
     const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
 
@@ -63,33 +67,27 @@ export default async function handler(req, res) {
     const tasks = [];
 
     if (groqKey) {
-      tasks.push(
-        callGroq({
-          apiKey: groqKey,
-          model: 'llama-3.3-70b-versatile',
-          systemPrompt,
-          history: recentHistory,
-          message: cleanMessage,
-          timeoutMs: 12000
-        })
-      );
-      tasks.push(
-        callGroq({
-          apiKey: groqKey,
-          model: 'llama-3.1-8b-instant',
-          systemPrompt,
-          history: recentHistory,
-          message: cleanMessage,
-          timeoutMs: 10000
-        })
-      );
+      const groqModels = await resolveGroqModels(groqKey);
+      for (const modelId of groqModels.slice(0, 2)) {
+        tasks.push(
+          callGroq({
+            apiKey: groqKey,
+            model: modelId,
+            systemPrompt,
+            history: recentHistory,
+            message: cleanMessage,
+            timeoutMs: 12000
+          })
+        );
+      }
     }
 
     if (geminiKey) {
+      const geminiModel = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
       tasks.push(
         callGemini({
           apiKey: geminiKey,
-          model: 'gemini-2.5-flash',
+          model: geminiModel,
           systemPrompt,
           history: recentHistory,
           message: cleanMessage,
@@ -99,7 +97,6 @@ export default async function handler(req, res) {
     }
 
     if (tasks.length === 0) {
-      const isBn = /[\u0980-\u09FF]/.test(cleanMessage);
       return res.status(200).json({
         reply: isBn
           ? 'সার্ভারে GROQ_API_KEY বা GEMINI_API_KEY সেট করা নেই। Vercel Environment Variables-এ API key যুক্ত করে Redeploy করুন।'
@@ -120,22 +117,70 @@ export default async function handler(req, res) {
       const reasons = Array.isArray(aggErr?.errors)
         ? aggErr.errors.map((e) => e?.message || String(e)).join(' | ')
         : (aggErr?.message || 'Provider error');
-      const isBn = /[\u0980-\u09FF]/.test(cleanMessage);
+
+      // Log detailed error on server only (visible in Vercel -> Logs)
+      console.error('[Autro AI Provider Failure]:', reasons);
+
       return res.status(200).json({
         reply: isBn
-          ? `AI মডেল থেকে উত্তর আনা যায়নি: ${reasons}`
-          : `Could not get response from AI model: ${reasons}`,
+          ? 'AI সার্ভিস সাময়িকভাবে সাড়া দিচ্ছে না। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।'
+          : 'AI service is temporarily unavailable. Please try again in a moment.',
         model: 'Autro AI',
         language: syncedContext.language || 'auto'
       });
     }
   } catch (error) {
+    console.error('[Autro AI Handler Error]:', error);
     return res.status(200).json({
-      reply: `Error: ${error?.message || 'Unknown error'}`,
+      reply: 'Something went wrong while processing your request. Please try again.',
       model: 'Autro AI',
       language: 'auto'
     });
   }
+}
+
+async function resolveGroqModels(apiKey) {
+  const envModel = (process.env.GROQ_MODEL || '').trim();
+  if (envModel) return [envModel];
+
+  const now = Date.now();
+  if (cachedGroqModels.models.length > 0 && now - cachedGroqModels.fetchedAt < 10 * 60 * 1000) {
+    return cachedGroqModels.models;
+  }
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(4000)
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      const ids = (json?.data || [])
+        .map((m) => m?.id)
+        .filter(
+          (id) =>
+            typeof id === 'string' &&
+            !/whisper|guard|tts|embed|vision/i.test(id)
+        );
+
+      // Prefer llama / qwen / gemma / mixtral chat models if present
+      const preferred = ids.filter((id) => /llama|qwen|gemma|mixtral|deepseek/i.test(id));
+      const picked = (preferred.length > 0 ? preferred : ids).slice(0, 2);
+
+      if (picked.length > 0) {
+        cachedGroqModels = { models: picked, fetchedAt: now };
+        return picked;
+      }
+    } else {
+      const errBody = await res.text().catch(() => '');
+      console.error('[Groq Models List Error]:', res.status, errBody);
+    }
+  } catch (err) {
+    console.error('[Groq Models Fetch Exception]:', err?.message || err);
+  }
+
+  return ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 }
 
 function safeJsonParse(str) {
@@ -363,4 +408,4 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
     reply,
     model: 'Autro AI'
   };
-  }
+        }
