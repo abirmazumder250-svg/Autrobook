@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en" data-page="locations.html">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Select location</title>
+  <link rel="canonical" href="/locations.html" />
+  <link rel="stylesheet" href="/theme.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-page: #202124;
+      --bg-surface: #202124;
+      --bg-hover: #2c2e33;
+      --bg-selected: rgba(11, 93, 52, 0.18);
+      --text-primary: #ffffff;
+      --text-secondary: #9aa0a6;
+      --border-color: #3c4043;
+      --accent-green: #0b5d34;
+      --accent-green-light: #22c55e;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-page: #ffffff;
+        --bg-surface: #ffffff;
+        --bg-hover: #f3f4f6;
+        --bg-selected: rgba(11, 93, 52, 0.1);
+        --text-primary: #202124;
+        --text-secondary: #5f6368;
+        --border-color: #dadce0;
+        --accent-green: #0b5d34;
+        --accent-green-light: #0b5d34;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* TOP BAR */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      background: var(--bg-surface);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 19px;
+      flex-shrink: 0;
+      transition: background 0.15s ease, transform 0.12s ease;
+    }
+
+    .back-btn:hover {
+      background: var(--bg-hover);
+    }
+
+    .back-btn:active {
+      transform: scale(0.94);
+    }
+
+    .topbar-title {
+      font-size: 19px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* SEARCH BAR */
+    .search-wrap {
+      position: sticky;
+      top: 56px;
+      z-index: 35;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 8px 16px 10px;
+    }
+
+    .search-row {
+      max-width: 640px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .search-icon {
+      color: var(--text-secondary);
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: 400;
+      outline: none;
+      min-width: 0;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .clear-search-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 15px;
+      padding: 4px;
+      cursor: pointer;
+      display: none;
+    }
+
+    .clear-search-btn.visible {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* LOCATION LIST */
+    .list-container {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 6px 0 36px;
+      flex: 1;
+    }
+
+    .section-label {
+      padding: 8px 16px 4px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .location-item {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      padding: 11px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.14s ease;
+    }
+
+    .location-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .location-item.selected {
+      background: var(--bg-selected);
+    }
+
+    .location-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .location-pin-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(11, 93, 52, 0.14);
+      color: var(--accent-green-light);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .location-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .location-name {
+      font-size: 15.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .location-country {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .location-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: transparent;
+      flex-shrink: 0;
+      transition: all 0.14s ease;
+    }
+
+    .location-item.selected .location-check {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: #ffffff;
+    }
+
+    .status-box {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .status-box.not-found {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .custom-use-btn {
+      margin-top: 14px;
+      background: var(--accent-green);
+      color: #ffffff;
+      border: none;
+      border-radius: 999px;
+      padding: 9px 18px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .searching-pill {
+      padding: 6px 16px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="/travel.html" id="backToTravelLink" class="back-btn" aria-label="Back to travel" title="Back">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <h1 class="topbar-title">Select location</h1>
+    </div>
+  </header>
+
+  <div class="search-wrap">
+    <div class="search-row">
+      <i class="fas fa-magnifying-glass search-icon" aria-hidden="true"></i>
+      <input
+        type="text"
+        id="locationSearchInput"
+        class="search-input"
+        placeholder="Select location"
+        autocomplete="off"
+        oninput="handleLocationSearch()"
+      />
+      <button
+        type="button"
+        id="clearSearchBtn"
+        class="clear-search-btn"
+        aria-label="Clear search"
+        onclick="clearLocationSearch()"
+      >
+        <i class="fas fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
+  <main id="locationsListContainer" class="list-container"></main>
+
+  <script>
+    const LOCATIONS_STORAGE_KEYS = [
+      'autro_selected_location',
+      'autro_locations_selected',
+      'autro_location'
+    ];
+
+    const WORLD_AND_BD_LOCATIONS = [
+      // Bangladesh
+      { name: 'Tongi, Dhaka', country: 'Bangladesh' },
+      { name: 'Dhaka', country: 'Bangladesh' },
+      { name: 'Gazipur', country: 'Bangladesh' },
+      { name: 'Chattogram', country: 'Bangladesh' },
+      { name: 'Cox’s Bazar', country: 'Bangladesh' },
+      { name: 'Sylhet', country: 'Bangladesh' },
+      { name: 'Rajshahi', country: 'Bangladesh' },
+      { name: 'Khulna', country: 'Bangladesh' },
+      { name: 'Narayanganj', country: 'Bangladesh' },
+      { name: 'Cumilla', country: 'Bangladesh' },
+      { name: 'Rangpur', country: 'Bangladesh' },
+      { name: 'Mymensingh', country: 'Bangladesh' },
+      { name: 'Barishal', country: 'Bangladesh' },
+      { name: 'Sreemangal, Sylhet', country: 'Bangladesh' },
+      { name: 'Bandarban', country: 'Bangladesh' },
+      { name: 'Rangamati', country: 'Bangladesh' },
+      { name: 'Saint Martin’s Island', country: 'Bangladesh' },
+      { name: 'Kuakata', country: 'Bangladesh' },
+      { name: 'Sundarbans', country: 'Bangladesh' },
+      { name: 'Bangladesh', country: 'South Asia' },
+
+      // Global Countries & Cities
+      { name: 'India', country: 'Asia' },
+      { name: 'Kolkata, West Bengal', country: 'India' },
+      { name: 'New Delhi', country: 'India' },
+      { name: 'Mumbai', country: 'India' },
+      { name: 'Bengaluru', country: 'India' },
+      { name: 'Nepal', country: 'Asia' },
+      { name: 'Kathmandu', country: 'Nepal' },
+      { name: 'Pokhara', country: 'Nepal' },
+      { name: 'Bhutan', country: 'Asia' },
+      { name: 'Thimphu', country: 'Bhutan' },
+      { name: 'Maldives', country: 'Indian Ocean' },
+      { name: 'Malé', country: 'Maldives' },
+      { name: 'Sri Lanka', country: 'Asia' },
+      { name: 'Colombo', country: 'Sri Lanka' },
+      { name: 'Thailand', country: 'Asia' },
+      { name: 'Bangkok', country: 'Thailand' },
+      { name: 'Phuket', country: 'Thailand' },
+      { name: 'Malaysia', country: 'Asia' },
+      { name: 'Kuala Lumpur', country: 'Malaysia' },
+      { name: 'Singapore', country: 'Singapore' },
+      { name: 'Indonesia', country: 'Asia' },
+      { name: 'Bali', country: 'Indonesia' },
+      { name: 'Japan', country: 'Asia' },
+      { name: 'Tokyo', country: 'Japan' },
+      { name: 'South Korea', country: 'Asia' },
+      { name: 'Seoul', country: 'South Korea' },
+      { name: 'China', country: 'Asia' },
+      { name: 'Beijing', country: 'China' },
+      { name: 'United Arab Emirates', country: 'Middle East' },
+      { name: 'Dubai', country: 'United Arab Emirates' },
+      { name: 'Abu Dhabi', country: 'United Arab Emirates' },
+      { name: 'Saudi Arabia', country: 'Middle East' },
+      { name: 'Riyadh', country: 'Saudi Arabia' },
+      { name: 'Mecca', country: 'Saudi Arabia' },
+      { name: 'Qatar', country: 'Middle East' },
+      { name: 'Doha', country: 'Qatar' },
+      { name: 'Turkey', country: 'Europe / Asia' },
+      { name: 'Istanbul', country: 'Turkey' },
+      { name: 'United Kingdom', country: 'Europe' },
+      { name: 'London', country: 'United Kingdom' },
+      { name: 'France', country: 'Europe' },
+      { name: 'Paris', country: 'France' },
+      { name: 'Germany', country: 'Europe' },
+      { name: 'Berlin', country: 'Germany' },
+      { name: 'Italy', country: 'Europe' },
+      { name: 'Rome', country: 'Italy' },
+      { name: 'Switzerland', country: 'Europe' },
+      { name: 'Zurich', country: 'Switzerland' },
+      { name: 'United States', country: 'North America' },
+      { name: 'New York', country: 'United States' },
+      { name: 'Los Angeles', country: 'United States' },
+      { name: 'Canada', country: 'North America' },
+      { name: 'Toronto', country: 'Canada' },
+      { name: 'Australia', country: 'Oceania' },
+      { name: 'Sydney', country: 'Australia' }
+    ];
+
+    let remoteLocations = [];
+    let selectedLocationLabel = '';
+    let isSearchingRemote = false;
+    let searchDebounceTimer = null;
+
+    function getReturnPagePath() {
+      const params = new URLSearchParams(window.location.search);
+      const from = (params.get('from') || '').trim();
+      const map = {
+        'travel': '/travel.html',
+        'moved': '/moved.html',
+        'places-ive-lived': '/places-ive-lived.html',
+        'hometown': '/hometown.html'
+      };
+      return map[from] || '/travel.html';
+    }
+
+    function safeWriteStore(key, val) {
+      const str = String(val || '');
+      try { sessionStorage.setItem(key, str); } catch (_) {}
+      try { localStorage.setItem(key, str); } catch (_) {}
+      try {
+        let state = {};
+        if (window.name && window.name.startsWith('AUTRO_STATE:')) {
+          state = JSON.parse(window.name.slice('AUTRO_STATE:'.length)) || {};
+        }
+        if (str) state[key] = str;
+        else delete state[key];
+        const nextName = 'AUTRO_STATE:' + JSON.stringify(state);
+        if (nextName.length < 1800000) window.name = nextName;
+      } catch (_) {}
+    }
+
+    function formatFullLocation(item) {
+      if (!item) return '';
+      if (item.country && !item.name.toLowerCase().includes(item.country.toLowerCase())) {
+        return `${item.name}, ${item.country}`;
+      }
+      return item.name;
+    }
+
+    function selectLocationAndReturn(item) {
+      const label = formatFullLocation(item);
+      if (!label) return;
+      selectedLocationLabel = label;
+
+      const payload = JSON.stringify({
+        name: item.name,
+        country: item.country || '',
+        location: label
+      });
+
+      for (const key of LOCATIONS_STORAGE_KEYS) {
+        safeWriteStore(key, payload);
+      }
+
+      renderLocationsList();
+
+      const target = new URL(getReturnPagePath(), window.location.origin);
+      target.searchParams.set('location', label);
+      window.location.href = target.pathname + target.search;
+    }
+
+    async function searchWorldwideLocationsRemote(query) {
+      const trimmed = String(query || '').trim();
+      if (trimmed.length < 2) {
+        remoteLocations = [];
+        isSearchingRemote = false;
+        renderLocationsList();
+        return;
+      }
+
+      isSearchingRemote = true;
+      renderLocationsList();
+
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=12&q=${encodeURIComponent(trimmed)}`;
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows)) {
+            const seen = new Set();
+            remoteLocations = rows
+              .map((r) => {
+                const addr = r.address || {};
+                const city = addr.city || addr.town || addr.village || addr.county || addr.state || r.name || '';
+                const country = addr.country || '';
+                const primary = String(city || (r.display_name || '').split(',')[0] || '').trim();
+                return {
+                  name: primary,
+                  country: String(country).trim()
+                };
+              })
+              .filter((loc) => {
+                if (!loc.name) return false;
+                const key = formatFullLocation(loc).toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              });
+          }
+        }
+      } catch (_) {
+        remoteLocations = [];
+      } finally {
+        isSearchingRemote = false;
+        renderLocationsList();
+      }
+    }
+
+    function renderLocationsList() {
+      const container = document.getElementById('locationsListContainer');
+      const rawQuery = document.getElementById('locationSearchInput').value.trim();
+      const query = rawQuery.toLowerCase();
+
+      const localMatches = query
+        ? WORLD_AND_BD_LOCATIONS.filter(
+            (item) =>
+              item.name.toLowerCase().includes(query) ||
+              item.country.toLowerCase().includes(query) ||
+              formatFullLocation(item).toLowerCase().includes(query)
+          )
+        : WORLD_AND_BD_LOCATIONS;
+
+      const combined = [];
+      const seenKeys = new Set();
+
+      for (const item of localMatches) {
+        const key = formatFullLocation(item).toLowerCase();
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          combined.push(item);
+        }
+      }
+
+      if (query) {
+        for (const item of remoteLocations) {
+          const key = formatFullLocation(item).toLowerCase();
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            combined.push(item);
+          }
+        }
+      }
+
+      container.innerHTML = '';
+
+      if (query && isSearchingRemote) {
+        const pill = document.createElement('div');
+        pill.className = 'searching-pill';
+        pill.textContent = 'Searching locations...';
+        container.appendChild(pill);
+      }
+
+      if (!combined.length) {
+        if (isSearchingRemote) {
+          container.innerHTML = `<div class="status-box">Searching...</div>`;
+          return;
+        }
+
+        const box = document.createElement('div');
+        box.className = 'status-box not-found';
+        box.innerHTML = `<div>Not found</div>`;
+
+        if (rawQuery) {
+          const useBtn = document.createElement('button');
+          useBtn.type = 'button';
+          useBtn.className = 'custom-use-btn';
+          useBtn.textContent = `Use "${rawQuery}"`;
+          useBtn.onclick = () => selectLocationAndReturn({ name: rawQuery, country: '' });
+          box.appendChild(useBtn);
+        }
+
+        container.appendChild(box);
+        return;
+      }
+
+      const labelEl = document.createElement('div');
+      labelEl.className = 'section-label';
+      labelEl.textContent = query ? 'Matching locations' : 'Bangladesh & World locations';
+      container.appendChild(labelEl);
+
+      combined.forEach((item) => {
+        const fullLabel = formatFullLocation(item);
+        const isSelected = selectedLocationLabel === fullLabel;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `location-item${isSelected ? ' selected' : ''}`;
+        btn.onclick = () => selectLocationAndReturn(item);
+
+        const left = document.createElement('div');
+        left.className = 'location-left';
+
+        const pin = document.createElement('div');
+        pin.className = 'location-pin-badge';
+        pin.innerHTML = '<i class="fas fa-location-dot"></i>';
+
+        const meta = document.createElement('div');
+        meta.className = 'location-meta';
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'location-name';
+        nameEl.textContent = item.name;
+        meta.appendChild(nameEl);
+
+        if (item.country) {
+          const countryEl = document.createElement('span');
+          countryEl.className = 'location-country';
+          countryEl.textContent = item.country;
+          meta.appendChild(countryEl);
+        }
+
+        left.appendChild(pin);
+        left.appendChild(meta);
+
+        const check = document.createElement('span');
+        check.className = 'location-check';
+        check.innerHTML = '<i class="fas fa-check"></i>';
+
+        btn.appendChild(left);
+        btn.appendChild(check);
+        container.appendChild(btn);
+      });
+    }
+
+    function handleLocationSearch() {
+      const input = document.getElementById('locationSearchInput');
+      const clearBtn = document.getElementById('clearSearchBtn');
+      const val = input.value;
+
+      if (val.length > 0) {
+        clearBtn.classList.add('visible');
+      } else {
+        clearBtn.classList.remove('visible');
+        remoteLocations = [];
+        isSearchingRemote = false;
+      }
+
+      renderLocationsList();
+
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        searchWorldwideLocationsRemote(val);
+      }, 280);
+    }
+
+    function clearLocationSearch() {
+      const input = document.getElementById('locationSearchInput');
+      input.value = '';
+      remoteLocations = [];
+      isSearchingRemote = false;
+      document.getElementById('clearSearchBtn').classList.remove('visible');
+      renderLocationsList();
+      input.focus();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const backLink = document.getElementById('backToTravelLink');
+      if (backLink) {
+        backLink.href = getReturnPagePath();
+      }
+      renderLocationsList();
+    });
+  </script>
+</body>
+</html>
