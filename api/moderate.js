@@ -6,19 +6,20 @@ export const config = {
   api: { bodyParser: false }
 };
 
-// Keys from Vercel Environment Variables
+// Load keys from Vercel Environment Variables
 const HIVE_ACCESS = process.env.HIVE_ACCESS_KEY;
 const HIVE_SECRET = process.env.HIVE_SECRET_KEY;
 const SIGHT_USER = process.env.SIGHTENGINE_USER;
 const SIGHT_SECRET = process.env.SIGHTENGINE_SECRET;
 const DEEPAI = process.env.DEEPAI_KEY;
 const ZEROGPT = process.env.ZEROGPT_KEY;
-const PERSPECTIVE = process.env.PERSPECTIVE_API_KEY;
+const OPENAI = process.env.OPENAI_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const form = formidable({ multiples: false, maxFileSize: 50 * 1024 * 1024 }); // 50MB
+  const form = formidable({ multiples: false, maxFileSize: 50 * 1024 * 1024 }); // 50MB max
+  
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ error: 'File parse error' });
     
@@ -31,7 +32,7 @@ export default async function handler(req, res) {
     let type = "text";
     let result = "Clean";
 
-    // STEP 1: AI DETECTION - Auto for Image/Video/Text
+    // STEP 1: AI DETECTION - Auto for Image / Video / Text
     if (imageFile) {
       type = "image";
       const imageBuffer = fs.readFileSync(imageFile.filepath);
@@ -52,7 +53,7 @@ export default async function handler(req, res) {
       ai_score = aiResult.ai_score;
     }
 
-    // STEP 2: TOXICITY DETECTION - Only for Text
+    // STEP 2: TOXICITY / ABUSE DETECTION - Only for Text
     if (text && text.length > 3) {
       const toxicResult = await checkToxicity(text);
       toxicity_score = toxicResult.score;
@@ -62,12 +63,12 @@ export default async function handler(req, res) {
     let action = "allow";
     let badge = "";
 
-    // Rule 1: Auto Suspend if Toxic > 80%
+    // Rule 1: Auto Suspend if Toxicity > 80%
     if (toxicity_score > 80) {
       action = "suspend";
       result = `Account Suspended. Toxicity: ${toxicity_score.toFixed(2)}%`;
     }
-    // Rule 2: AI Badge if AI > 70%
+    // Rule 2: AI Badge if AI Score > 70%
     else if (ai_score > 70) {
       action = "badge";
       badge = "AI Generated";
@@ -89,7 +90,8 @@ export default async function handler(req, res) {
   });
 }
 
-// 1. AI IMAGE DETECTION - 3 Layer Fallback
+
+// 1. AI IMAGE DETECTION - 3 Layer Fallback: Hive > Sightengine > DeepAI
 async function detectAIImage(base64) {
   let result = await detectWithHiveImage(base64);
   if (!result || result.ai_score < 1) result = await detectWithSightengine(base64);
@@ -134,23 +136,22 @@ async function detectWithDeepAI(base64) {
   } catch { return null; }
 }
 
+
 // 2. AI VIDEO DETECTION - Hive Only
 async function detectAIVideo(base64) {
   try {
     const res = await fetch('https://api.thehive.ai/api/v2/task/sync', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${HIVE_ACCESS}:${HIVE_SECRET}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        "models": ["ai-generated-content"], 
-        "data": [{ "type": "video", "data": base64 }] 
-      })
+      body: JSON.stringify({ "models": ["ai-generated-content"], "data": [{ "type": "video", "data": base64 }] })
     });
     const data = await res.json();
     return { ai_score: data.response[0].score * 100 };
   } catch { return { ai_score: 0 }; }
 }
 
-// 3. AI TEXT DETECTION - 2 Layer Fallback
+
+// 3. AI TEXT DETECTION - 2 Layer Fallback: Hive > ZeroGPT
 async function detectAIText(text) {
   let result = await detectWithHiveText(text);
   if (!result || result.ai_score < 1) result = await detectWithZeroGPT(text);
@@ -181,19 +182,25 @@ async function detectWithZeroGPT(text) {
   } catch { return null; }
 }
 
-// 4. TOXICITY DETECTION - Google Perspective API
+
+// 4. TOXICITY / ABUSE DETECTION - OpenAI Moderation API
 async function checkToxicity(text) {
   try {
-    const res = await fetch(`https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze?key=${PERSPECTIVE}`, {
+    const res = await fetch('https://api.openai.com/v1/moderations', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        comment: { text: text },
-        requestedAttributes: { TOXICITY: {} }
-      })
+      headers: { 
+        'Authorization': `Bearer ${OPENAI}`,
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({ input: text })
     });
     const data = await res.json();
-    const score = (data.attributeScores.TOXICITY.summaryScore.value || 0) * 100;
-    return { score: score };
-  } catch { return { score: 0 }; }
+    
+    // Get harassment score 0-100
+    const harassmentScore = data.results[0].category_scores['harassment'] * 100;
+    return { score: harassmentScore };
+  } catch (e) { 
+    console.log("Moderation error:", e)
+    return { score: 0 }; 
+  }
       }
