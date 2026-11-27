@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en" data-page="change-icon.html">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Select Icon</title>
+  <link rel="canonical" href="/change-icon.html" />
+  <link rel="stylesheet" href="/theme.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-page: #202124;
+      --bg-surface: #202124;
+      --bg-card: #28292d;
+      --bg-card-hover: #323338;
+      --text-primary: #ffffff;
+      --text-secondary: #9aa0a6;
+      --text-muted: #757a82;
+      --border-color: #3c4043;
+      --icon-color: #9aa0a6;
+      --icon-active-bg: rgba(16, 185, 129, 0.16);
+      --icon-active-border: #10b981;
+      --icon-active-color: #ffffff;
+      --accent-green: #0b5d34;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-page: #ffffff;
+        --bg-surface: #ffffff;
+        --bg-card: #f5f6f8;
+        --bg-card-hover: #eaecf0;
+        --text-primary: #202124;
+        --text-secondary: #5f6368;
+        --text-muted: #80868b;
+        --border-color: #dadce0;
+        --icon-color: #5f6368;
+        --icon-active-bg: rgba(11, 93, 52, 0.12);
+        --icon-active-border: #0b5d34;
+        --icon-active-color: #0b5d34;
+        --accent-green: #0b5d34;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* TOP BAR */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 19px;
+      flex-shrink: 0;
+      transition: background 0.16s ease, transform 0.12s ease;
+    }
+
+    .back-btn:hover {
+      background: var(--bg-card);
+    }
+
+    .back-btn:active {
+      transform: scale(0.94);
+    }
+
+    .topbar-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ICON GRID */
+    .icon-grid-wrap {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 12px 10px 36px;
+    }
+
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .icon-cell {
+      aspect-ratio: 1 / 1;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--icon-color);
+      font-size: 23px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .icon-cell:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    .icon-cell:active {
+      transform: scale(0.93);
+    }
+
+    .icon-cell.selected {
+      background: var(--icon-active-bg);
+      border-color: var(--icon-active-border);
+      color: var(--icon-active-color);
+    }
+
+    .toast {
+      position: fixed;
+      top: 66px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent-green);
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      display: none;
+      z-index: 120;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <a
+        href="create-your-own.html"
+        id="backToEventBtn"
+        class="back-btn"
+        aria-label="Back"
+        title="Back"
+        onclick="handleBackClick(event)"
+      >
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <span class="topbar-title">Select Icon</span>
+    </div>
+  </header>
+
+  <main class="icon-grid-wrap">
+    <div id="iconGrid" class="icon-grid" role="listbox" aria-label="Choose an icon"></div>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const DEFAULT_RETURN_PAGE = 'create-your-own.html';
+    const LIFE_EVENT_HOME_PAGE = 'life-event.html';
+
+    // সব স্ক্রিনশটের লাইফ ইভেন্ট পেজগুলোর তালিকা
+    const ALL_LIFE_EVENT_PAGES = [
+      'life-event.html',
+      'create-your-own.html',
+      'new-job.html',
+      'promotion.html',
+      'left-job.html',
+      'retirement.html',
+      'new-school.html',
+      'graduated.html',
+      'left-school.html',
+      'new-relationship.html',
+      'engagement.html',
+      'marriage.html',
+      'first-met.html',
+      'moved.html',
+      'places-ive-lived.html',
+      'hometown.html',
+      'new-child.html',
+      'parenthood.html',
+      'new-pet.html',
+      'loss-of-a-loved-one.html',
+      'travel.html',
+      'activities.html',
+      'wellness.html',
+      'milestones.html',
+      'remembrance.html'
+    ];
+
+    // প্রথম স্ক্রিনশটের সব আইকন + অতিরিক্ত আইকন
+    const ICON_LIST = [
+      // Row 1 (screenshot)
+      'fas fa-graduation-cap',
+      'fas fa-earth-americas',
+      'fas fa-briefcase',
+      'fas fa-chair',
+      'fas fa-couch',
+      'fas fa-hand-holding-heart',
+
+      // Row 2 (screenshot)
+      'fas fa-shield',
+      'fas fa-shield-halved',
+      'fas fa-anchor',
+      'fas fa-plane',
+      'fas fa-parachute-box',
+      'fas fa-hand',
+
+      // Row 3 (screenshot)
+      'fas fa-heart-circle-plus',
+      'fas fa-ring',
+      'fas fa-heart',
+      'far fa-heart',
+      'fas fa-circle-heart',
+      'fas fa-teddy-bear',
+
+      // Row 4 (screenshot)
+      'fas fa-tree',
+      'fas fa-flag',
+      'fas fa-fire-flame-curved',
+      'fas fa-car',
+      'fas fa-car-side',
+      'fas fa-motorcycle',
+
+      // Row 5 (screenshot)
+      'fas fa-bicycle',
+      'fas fa-paw',
+      'fas fa-dove',
+      'fas fa-cat',
+      'fas fa-dog',
+      'fas fa-fish',
+
+      // Row 6 (screenshot)
+      'fas fa-frog',
+      'fas fa-horse-head',
+      'fas fa-rabbit',
+      'fas fa-otter',
+      'fas fa-turtle',
+      'fas fa-house',
+
+      // Row 7 (screenshot)
+      'fas fa-paintbrush',
+      'fas fa-location-dot',
+      'fas fa-key',
+      'fas fa-apple-whole',
+      'fas fa-bag-shopping',
+      'fas fa-ban',
+
+      // Row 8 (screenshot)
+      'fas fa-smoking-ban',
+      'fas fa-wine-bottle',
+      'fas fa-glasses',
+      'fas fa-bone',
+      'fas fa-tooth',
+      'fas fa-star',
+
+      // Row 9 (screenshot)
+      'fas fa-music',
+      'fas fa-comment-dots',
+      'fas fa-magnifying-glass',
+      'fas fa-heart-crack',
+      'fas fa-id-card',
+      'fas fa-trophy',
+
+      // Row 10 (screenshot)
+      'fas fa-signs-post',
+      'fas fa-medal',
+      'fas fa-person-running',
+      'fas fa-square-check',
+
+      // Extra icons added
+      'fas fa-baby',
+      'fas fa-person-pregnant',
+      'fas fa-users',
+      'fas fa-people-group',
+      'fas fa-champagne-glasses',
+      'fas fa-cake-candles',
+      'fas fa-gift',
+      'fas fa-camera',
+      'fas fa-suitcase',
+      'fas fa-compass',
+      'fas fa-map-location-dot',
+      'fas fa-building',
+      'fas fa-school',
+      'fas fa-book',
+      'fas fa-laptop-code',
+      'fas fa-rocket',
+      'fas fa-award',
+      'fas fa-crown',
+      'fas fa-gem',
+      'fas fa-bullseye',
+      'fas fa-dumbbell',
+      'fas fa-heart-pulse',
+      'fas fa-spa',
+      'fas fa-sun',
+      'fas fa-moon',
+      'fas fa-sparkles',
+      'fas fa-feather',
+      'fas fa-umbrella-beach',
+      'fas fa-mountain',
+      'fas fa-utensils',
+      'fas fa-mug-hot',
+      'fas fa-gamepad',
+      'fas fa-film',
+      'fas fa-microphone',
+      'fas fa-palette',
+      'fas fa-bell'
+    ];
+
+    const ICON_STORAGE_KEYS = [
+      'autro_life_event_icon',
+      'autro_selected_icon',
+      'autro_custom_icon'
+    ];
+
+    let selectedIcon = 'fas fa-flag';
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.style.display = 'block';
+      clearTimeout(window._ciToastTimer);
+      window._ciToastTimer = setTimeout(() => { el.style.display = 'none'; }, 1400);
+    }
+
+    function safeWriteStore(key, val) {
+      const str = String(val || '');
+      try { sessionStorage.setItem(key, str); } catch (_) {}
+      try { localStorage.setItem(key, str); } catch (_) {}
+      try {
+        let state = {};
+        if (window.name && window.name.startsWith('AUTRO_STATE:')) {
+          state = JSON.parse(window.name.slice('AUTRO_STATE:'.length)) || {};
+        }
+        if (str) state[key] = str;
+        else delete state[key];
+        const nextName = 'AUTRO_STATE:' + JSON.stringify(state);
+        if (nextName.length < 1800000) window.name = nextName;
+      } catch (_) {}
+    }
+
+    function safeReadStore(key) {
+      try {
+        const s = sessionStorage.getItem(key);
+        if (s) return s;
+      } catch (_) {}
+      try {
+        const l = localStorage.getItem(key);
+        if (l) return l;
+      } catch (_) {}
+      try {
+        if (window.name && window.name.startsWith('AUTRO_STATE:')) {
+          const state = JSON.parse(window.name.slice('AUTRO_STATE:'.length)) || {};
+          if (state[key]) return String(state[key]);
+        }
+      } catch (_) {}
+      return '';
+    }
+
+    function resolveTargetPage() {
+      const params = new URLSearchParams(window.location.search);
+      const rawFrom = String(params.get('from') || params.get('return') || params.get('page') || '').trim();
+      const normalizedFrom = rawFrom.replace(/^\/+/, '').toLowerCase();
+
+      if (normalizedFrom && ALL_LIFE_EVENT_PAGES.includes(normalizedFrom)) {
+        return normalizedFrom;
+      }
+
+      const storedReturn = String(safeReadStore('autro_icon_return_page') || '').trim().replace(/^\/+/, '').toLowerCase();
+      if (storedReturn && ALL_LIFE_EVENT_PAGES.includes(storedReturn)) {
+        return storedReturn;
+      }
+
+      if (document.referrer) {
+        try {
+          const refPath = new URL(document.referrer).pathname.replace(/^\/+/, '').toLowerCase();
+          if (refPath && ALL_LIFE_EVENT_PAGES.includes(refPath)) {
+            return refPath;
+          }
+        } catch (_) {}
+      }
+
+      return DEFAULT_RETURN_PAGE;
+    }
+
+    function buildReturnUrl(pageName, iconClass = '') {
+      const cleanPage = ALL_LIFE_EVENT_PAGES.includes(pageName) ? pageName : DEFAULT_RETURN_PAGE;
+      if (!iconClass) return cleanPage;
+      return `${cleanPage}?icon=${encodeURIComponent(iconClass)}`;
+    }
+
+    function handleBackClick(event) {
+      if (event) event.preventDefault();
+      const targetPage = resolveTargetPage();
+      window.location.href = buildReturnUrl(targetPage, selectedIcon);
+    }
+
+    function renderIconGrid() {
+      const gridEl = document.getElementById('iconGrid');
+      gridEl.innerHTML = '';
+
+      ICON_LIST.forEach((iconClass) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'icon-cell' + (btn && selectedIcon === iconClass ? ' selected' : '');
+        btn.setAttribute('role', 'option');
+        btn.setAttribute('aria-selected', String(selectedIcon === iconClass));
+        btn.setAttribute('aria-label', iconClass);
+        btn.innerHTML = `<i class="${iconClass}"></i>`;
+
+        btn.addEventListener('click', () => {
+          selectedIcon = iconClass;
+          ICON_STORAGE_KEYS.forEach((k) => safeWriteStore(k, iconClass));
+
+          document.querySelectorAll('.icon-cell').forEach((cell) => {
+            const isMatch = cell.getAttribute('aria-label') === iconClass;
+            cell.classList.toggle('selected', isMatch);
+            cell.setAttribute('aria-selected', String(isMatch));
+          });
+
+          const targetPage = resolveTargetPage();
+          showToast('Icon selected');
+          setTimeout(() => {
+            window.location.href = buildReturnUrl(targetPage, iconClass);
+          }, 140);
+        });
+
+        gridEl.appendChild(btn);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const targetPage = resolveTargetPage();
+      safeWriteStore('autro_icon_return_page', targetPage);
+
+      for (const k of ICON_STORAGE_KEYS) {
+        const saved = safeReadStore(k);
+        if (saved && ICON_LIST.includes(saved)) {
+          selectedIcon = saved;
+          break;
+        }
+      }
+
+      const backBtn = document.getElementById('backToEventBtn');
+      if (backBtn) {
+        backBtn.href = buildReturnUrl(targetPage, selectedIcon);
+      }
+
+      renderIconGrid();
+    });
+  </script>
+</body>
+</html>
