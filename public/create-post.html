@@ -1123,11 +1123,11 @@
     </div>
   </div>
 
-  <!-- UNIVERSAL EDIT LIFE EVENT MODAL (FOR ALL CATEGORIES & EVERYONE) -->
+  <!-- QUICK EDIT LIFE EVENT MODAL (OPTIONAL INLINE EDITOR) -->
   <div id="editLifeEventBackdrop" class="feeling-modal-backdrop" onclick="closeEditLifeEventModal()">
     <div class="feeling-modal-sheet" onclick="event.stopPropagation()">
       <div class="feeling-modal-header">
-        <span class="feeling-modal-title">Edit life event</span>
+        <span class="feeling-modal-title">Quick edit life event</span>
         <button type="button" class="feeling-close-btn" onclick="closeEditLifeEventModal()">Close</button>
       </div>
 
@@ -1157,7 +1157,7 @@
       </div>
 
       <div class="edit-le-actions">
-        <button type="button" class="edit-le-page-btn" onclick="openFullLifeEventPage()">Full Editor</button>
+        <button type="button" class="edit-le-page-btn" onclick="openFullLifeEventPage()">Dedicated Page</button>
         <button type="button" class="edit-le-save-btn" onclick="saveEditedLifeEvent()">Save changes</button>
       </div>
     </div>
@@ -1186,6 +1186,51 @@
         postSyncChannel = new BroadcastChannel('autrobook_posts_sync');
       }
     } catch (_) {}
+
+    /* LIFE EVENT PAGE ROUTE MAPPING FOR EVERY CATEGORY & SUB-EVENT */
+    const LIFE_EVENT_ROUTE_MAP = {
+      // Work
+      'new job': '/new-job.html',
+      'started job': '/new-job.html',
+      'promotion': '/promotion.html',
+      'left job': '/left-job.html',
+      'retirement': '/retirement.html',
+
+      // Education
+      'new school': '/new-school.html',
+      'started school': '/new-school.html',
+      'graduated': '/graduated.html',
+      'left school': '/left-school.html',
+
+      // Relationship
+      'new relationship': '/new-relationship.html',
+      'engagement': '/engagement.html',
+      'engaged': '/engagement.html',
+      'marriage': '/marriage.html',
+      'married': '/marriage.html',
+      'first met': '/first-met.html',
+
+      // Living
+      'moved': '/moved.html',
+      "places i've lived": '/places-ive-lived.html',
+      'places ive lived': '/places-ive-lived.html',
+      'hometown': '/hometown.html',
+
+      // Family
+      'new child': '/new-child.html',
+      'parenthood': '/parenthood.html',
+      'new pet': '/new-pet.html',
+      'loss of a loved one': '/loss-of-a-loved-one.html',
+
+      // Top-level / Other categories
+      'travel': '/travel.html',
+      'activities': '/activities.html',
+      'wellness': '/wellness.html',
+      'milestones': '/milestones.html',
+      'remembrance': '/remembrance.html',
+      'create your own': '/create-your-own.html',
+      'custom': '/create-your-own.html'
+    };
 
     const BACKGROUND_STYLES = [
       { id: 'none', css: '' },
@@ -1478,16 +1523,58 @@
       } catch (_) {}
     }
 
-    /* LIFE EVENT CARD RENDERING, UNIVERSAL EDIT & REMOVE */
+    /* LIFE EVENT CARD RENDERING, DEDICATED PAGE ROUTING & REMOVE */
     function getCategoryIconClass(categoryId, categoryLabel) {
       const key = String(categoryId || categoryLabel || '').toLowerCase();
-      if (key.includes('career') || key.includes('work') || key.includes('job')) return 'fa-briefcase';
+      if (key.includes('career') || key.includes('work') || key.includes('job') || key.includes('promotion') || key.includes('retirement')) return 'fa-briefcase';
       if (key.includes('education') || key.includes('school') || key.includes('graduat')) return 'fa-graduation-cap';
-      if (key.includes('relationship') || key.includes('marri') || key.includes('engag') || key.includes('heart')) return 'fa-heart';
-      if (key.includes('living') || key.includes('home') || key.includes('move')) return 'fa-house';
-      if (key.includes('family') || key.includes('child') || key.includes('parent') || key.includes('pet')) return 'fa-seedling';
+      if (key.includes('relationship') || key.includes('marri') || key.includes('engag') || key.includes('first met') || key.includes('heart')) return 'fa-heart';
+      if (key.includes('living') || key.includes('home') || key.includes('move') || key.includes('hometown') || key.includes('lived')) return 'fa-house';
+      if (key.includes('family') || key.includes('child') || key.includes('parent') || key.includes('pet') || key.includes('loved one')) return 'fa-seedling';
       if (key.includes('travel')) return 'fa-plane';
+      if (key.includes('wellness')) return 'fa-spa';
+      if (key.includes('activities')) return 'fa-bolt';
+      if (key.includes('milestones')) return 'fa-trophy';
+      if (key.includes('remembrance')) return 'fa-ribbon';
       return 'fa-flag';
+    }
+
+    function resolveLifeEventEditorPage(ev) {
+      if (!ev) return '/life-event.html';
+
+      if (ev.editPage && String(ev.editPage).startsWith('/')) {
+        return String(ev.editPage);
+      }
+
+      const candidates = [
+        ev.subCategory,
+        ev.sub_category,
+        ev.eventType,
+        ev.event_type,
+        ev.title,
+        ev.categoryLabel,
+        ev.category_label,
+        ev.categoryId,
+        ev.category_id
+      ]
+        .map(v => String(v || '').trim().toLowerCase())
+        .filter(Boolean);
+
+      for (const c of candidates) {
+        if (LIFE_EVENT_ROUTE_MAP[c]) {
+          return LIFE_EVENT_ROUTE_MAP[c];
+        }
+      }
+
+      for (const c of candidates) {
+        for (const [key, page] of Object.entries(LIFE_EVENT_ROUTE_MAP)) {
+          if (c.includes(key)) {
+            return page;
+          }
+        }
+      }
+
+      return '/life-event.html';
     }
 
     function renderLifeEventCard() {
@@ -1499,17 +1586,18 @@
       }
 
       const ev = selectedLifeEvent;
-      const iconCls = getCategoryIconClass(ev.categoryId, ev.categoryLabel);
-      const titleText = ev.title || ev.subCategory || ev.categoryLabel || 'Life event';
-      const placeText = ev.employer || ev.location || '';
+      const iconCls = getCategoryIconClass(ev.categoryId || ev.category_id, ev.subCategory || ev.categoryLabel || ev.title);
+      const titleText = ev.title || ev.subCategory || ev.sub_category || ev.categoryLabel || ev.category_label || 'Life event';
+      const placeText = ev.employer || ev.organization || ev.school || ev.location || ev.place || '';
       const todayIso = new Date().toISOString().split('T')[0];
       const dateText = (!ev.date || ev.date === todayIso) ? 'Today' : ev.date;
 
       const bannerImg = document.getElementById('lifeEventBannerImg');
       const placeholder = document.getElementById('lifeEventBannerPlaceholder');
 
-      if (ev.photoUrl && isSafeMediaUrl(ev.photoUrl)) {
-        bannerImg.src = ev.photoUrl;
+      const bannerPhoto = ev.photoUrl || ev.photo_url || ev.bannerUrl || ev.image || '';
+      if (bannerPhoto && isSafeMediaUrl(bannerPhoto)) {
+        bannerImg.src = bannerPhoto;
         bannerImg.style.display = 'block';
         placeholder.style.display = 'none';
       } else {
@@ -1517,7 +1605,7 @@
         bannerImg.style.display = 'none';
         placeholder.style.display = 'flex';
         document.getElementById('lifeEventPlaceholderIcon').className = `fas ${iconCls}`;
-        document.getElementById('lifeEventPlaceholderLabel').textContent = ev.subCategory || ev.categoryLabel || 'Life Event';
+        document.getElementById('lifeEventPlaceholderLabel').textContent = titleText;
       }
 
       document.getElementById('lifeEventBadgeIcon').className = `fas ${iconCls}`;
@@ -1534,8 +1622,9 @@
       document.getElementById('lifeEventDateText').textContent = dateText;
 
       const storyEl = document.getElementById('lifeEventStoryText');
-      if (ev.story) {
-        storyEl.textContent = ev.story;
+      const storyText = ev.story || ev.note || ev.description || '';
+      if (storyText) {
+        storyEl.textContent = storyText;
         storyEl.style.display = 'block';
       } else {
         storyEl.style.display = 'none';
@@ -1546,16 +1635,26 @@
     }
 
     function editLifeEvent() {
+      saveComposerDraft();
+      if (selectedLifeEvent) {
+        safeLocalStorageSet('autro_life_event', JSON.stringify(selectedLifeEvent));
+        safeLocalStorageSet('autro_editing_life_event', JSON.stringify(selectedLifeEvent));
+      }
+      const targetPage = resolveLifeEventEditorPage(selectedLifeEvent);
+      window.location.href = targetPage;
+    }
+
+    function openQuickEditModal() {
       if (!selectedLifeEvent) {
-        openFullLifeEventPage();
+        editLifeEvent();
         return;
       }
       const ev = selectedLifeEvent;
       document.getElementById('editLeTitle').value = ev.title || ev.subCategory || ev.categoryLabel || '';
       document.getElementById('editLePlace').value = ev.employer || ev.location || '';
       document.getElementById('editLeDate').value = ev.date || 'Today';
-      document.getElementById('editLePhoto').value = ev.photoUrl || '';
-      document.getElementById('editLeStory').value = ev.story || '';
+      document.getElementById('editLePhoto').value = ev.photoUrl || ev.photo_url || '';
+      document.getElementById('editLeStory').value = ev.story || ev.note || '';
       document.getElementById('editLifeEventBackdrop').classList.add('open');
     }
 
@@ -1590,19 +1689,14 @@
 
     function openFullLifeEventPage() {
       closeEditLifeEventModal();
-      saveComposerDraft();
-      const sub = String(selectedLifeEvent?.subCategory || '').toLowerCase();
-      if (sub.includes('new job') || sub.includes('job')) {
-        window.location.href = '/new-job.html';
-      } else {
-        window.location.href = '/life-event.html';
-      }
+      editLifeEvent();
     }
 
     function removeLifeEvent() {
       selectedLifeEvent = null;
       try {
         localStorage.removeItem('autro_life_event');
+        localStorage.removeItem('autro_editing_life_event');
       } catch (_) {}
       renderLifeEventCard();
     }
@@ -2280,6 +2374,7 @@
           localStorage.removeItem('selectedGif');
           localStorage.removeItem('selectedGifUrl');
           localStorage.removeItem('autro_life_event');
+          localStorage.removeItem('autro_editing_life_event');
         } catch (_) {}
 
         setProgress(100, 'Ready! Opening post settings...');
@@ -2308,4 +2403,4 @@
     });
   </script>
 </body>
-  </html>
+      </html>
