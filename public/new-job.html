@@ -520,6 +520,7 @@
     const NEW_JOB_DRAFT_KEY = 'autro_new_job_draft';
     const CHECKLIST_SELECTED_KEY = 'autro_selected_employer';
     const LIFE_EVENT_SAVED_KEY = 'autro_life_event';
+    const LIFE_EVENT_PHOTO_KEY = 'autro_life_event_photo';
     const POST_DRAFT_KEY = 'autro_create_post_draft';
 
     let selectedEmployer = '';
@@ -538,14 +539,71 @@
       document.getElementById('galleryPhotoInput').click();
     }
 
-    function readImageAsDataUrl(file) {
+    function safeWriteStore(key, val) {
+      const str = String(val || '');
+      try { sessionStorage.setItem(key, str); } catch (_) {}
+      try { localStorage.setItem(key, str); } catch (_) {}
+      try {
+        let state = {};
+        if (window.name && window.name.startsWith('AUTRO_STATE:')) {
+          state = JSON.parse(window.name.slice('AUTRO_STATE:'.length)) || {};
+        }
+        if (str) state[key] = str;
+        else delete state[key];
+        const nextName = 'AUTRO_STATE:' + JSON.stringify(state);
+        if (nextName.length < 1800000) window.name = nextName;
+      } catch (_) {}
+    }
+
+    function safeReadStore(key) {
+      try {
+        const s = sessionStorage.getItem(key);
+        if (s) return s;
+      } catch (_) {}
+      try {
+        const l = localStorage.getItem(key);
+        if (l) return l;
+      } catch (_) {}
+      try {
+        if (window.name && window.name.startsWith('AUTRO_STATE:')) {
+          const state = JSON.parse(window.name.slice('AUTRO_STATE:'.length)) || {};
+          if (state[key]) return String(state[key]);
+        }
+      } catch (_) {}
+      return '';
+    }
+
+    function compressImageFileToDataUrl(file, maxWidth = 960, quality = 0.72) {
       return new Promise((resolve) => {
         if (!file || !file.type.startsWith('image/')) return resolve('');
-        if (file.size > 900000) return resolve('');
-        const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const w = img.naturalWidth || img.width || maxWidth;
+            const h = img.naturalHeight || img.height || maxWidth;
+            const scale = Math.min(1, maxWidth / w);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(w * scale));
+            canvas.height = Math.max(1, Math.round(h * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            URL.revokeObjectURL(objectUrl);
+            resolve(dataUrl);
+          } catch (_) {
+            URL.revokeObjectURL(objectUrl);
+            resolve('');
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        };
+        img.src = objectUrl;
       });
     }
 
@@ -568,20 +626,25 @@
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const dataUrl = await readImageAsDataUrl(file);
+      let dataUrl = await compressImageFileToDataUrl(file, 960, 0.72);
+      if (!dataUrl && file.size <= 1600000) {
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        });
+      }
+
       if (dataUrl) {
         selectedPhotoDataUrl = dataUrl;
         photoRemovedManually = false;
+        safeWriteStore(LIFE_EVENT_PHOTO_KEY, dataUrl);
         renderBannerVisual();
         saveCurrentDraft();
         showToast('Photo selected');
       } else {
-        const tempUrl = URL.createObjectURL(file);
-        selectedPhotoDataUrl = tempUrl;
-        photoRemovedManually = false;
-        renderBannerVisual();
-        saveCurrentDraft();
-        showToast('Photo selected');
+        showToast('Unable to load photo');
       }
     }
 
@@ -589,6 +652,7 @@
       selectedPhotoDataUrl = '';
       photoRemovedManually = true;
       document.getElementById('galleryPhotoInput').value = '';
+      safeWriteStore(LIFE_EVENT_PHOTO_KEY, '');
       renderBannerVisual();
       saveCurrentDraft();
     }
@@ -631,9 +695,10 @@
         photoDataUrl: selectedPhotoDataUrl,
         photoRemovedManually
       };
-      try {
-        sessionStorage.setItem(NEW_JOB_DRAFT_KEY, JSON.stringify(draft));
-      } catch (_) {}
+      safeWriteStore(NEW_JOB_DRAFT_KEY, JSON.stringify(draft));
+      if (selectedPhotoDataUrl) {
+        safeWriteStore(LIFE_EVENT_PHOTO_KEY, selectedPhotoDataUrl);
+      }
     }
 
     function goToChecklistPage() {
@@ -671,7 +736,7 @@
       document.getElementById('dateLabelText').textContent = 'Today';
 
       try {
-        const rawDraft = sessionStorage.getItem(NEW_JOB_DRAFT_KEY);
+        const rawDraft = safeReadStore(NEW_JOB_DRAFT_KEY);
         if (rawDraft) {
           const d = JSON.parse(rawDraft);
           if (typeof d.title === 'string') {
@@ -681,7 +746,7 @@
             document.getElementById('jobDateInput').value = d.date;
             document.getElementById('dateLabelText').textContent = formatDateDisplay(d.date);
           }
-          if (typeof d.photoDataUrl === 'string') {
+          if (typeof d.photoDataUrl === 'string' && d.photoDataUrl) {
             selectedPhotoDataUrl = d.photoDataUrl;
           }
           photoRemovedManually = Boolean(d.photoRemovedManually);
@@ -690,6 +755,11 @@
           }
         }
       } catch (_) {}
+
+      const storedPhoto = safeReadStore(LIFE_EVENT_PHOTO_KEY);
+      if (storedPhoto && !photoRemovedManually) {
+        selectedPhotoDataUrl = storedPhoto;
+      }
 
       const pickedEmployer = extractEmployerFromStorage();
       if (pickedEmployer) {
@@ -710,6 +780,7 @@
       const titleVal = document.getElementById('jobTitleInput').value.trim() || 'Started Job';
       const dateVal = document.getElementById('jobDateInput').value || new Date().toISOString().split('T')[0];
       const dateDisplay = formatDateDisplay(dateVal);
+      const photoToPass = selectedPhotoDataUrl || safeReadStore(LIFE_EVENT_PHOTO_KEY) || '';
 
       const formattedText = `[Work · New Job] ${titleVal} at ${empName} (${dateDisplay})`;
 
@@ -720,29 +791,34 @@
         title: titleVal,
         employer: empName,
         date: dateVal,
-        photoUrl: selectedPhotoDataUrl && !selectedPhotoDataUrl.startsWith('blob:') ? selectedPhotoDataUrl : '',
+        photoUrl: photoToPass,
+        photo_url: photoToPass,
+        bannerUrl: photoToPass,
+        image: photoToPass,
+        photo: photoToPass,
+        editUrl: '/new-job.html',
         formattedText,
         savedAt: Date.now()
       };
 
-      try {
-        localStorage.setItem(LIFE_EVENT_SAVED_KEY, JSON.stringify(lifeEventPayload));
-        sessionStorage.removeItem(NEW_JOB_DRAFT_KEY);
+      safeWriteStore(LIFE_EVENT_SAVED_KEY, JSON.stringify(lifeEventPayload));
+      if (photoToPass) {
+        safeWriteStore(LIFE_EVENT_PHOTO_KEY, photoToPass);
+      }
 
+      try {
+        sessionStorage.removeItem(NEW_JOB_DRAFT_KEY);
         let existingDraft = {};
-        const rawPostDraft = sessionStorage.getItem(POST_DRAFT_KEY);
+        const rawPostDraft = safeReadStore(POST_DRAFT_KEY);
         if (rawPostDraft) {
           existingDraft = JSON.parse(rawPostDraft) || {};
         }
 
         const prevCaption = String(existingDraft.caption || '').trim();
         existingDraft.caption = prevCaption ? `${prevCaption}\n\n${formattedText}` : formattedText;
+        existingDraft.lifeEvent = lifeEventPayload;
 
-        if (lifeEventPayload.photoUrl && !existingDraft.gifUrl) {
-          existingDraft.gifUrl = lifeEventPayload.photoUrl;
-        }
-
-        sessionStorage.setItem(POST_DRAFT_KEY, JSON.stringify(existingDraft));
+        safeWriteStore(POST_DRAFT_KEY, JSON.stringify(existingDraft));
       } catch (_) {}
 
       window.location.href = 'create-post.html';
