@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Post settings</title>
+  <link rel="stylesheet" href="/theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-color: #FFFFFF;
+      --surface-color: #F2F3F5;
+      --card-bg: #F8F9FA;
+      --text-primary: #1C1E21;
+      --text-secondary: #65676B;
+      --border-color: #E4E6EB;
+      --primary-green: #0a7d3b;
+      --dark-green: #0B3D20;
+      --toggle-off-bg: #CED0D4;
+      --toggle-knob: #FFFFFF;
+      --overlay-bg: rgba(0, 0, 0, 0.6);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #202124;
+        --surface-color: #292A2D;
+        --card-bg: #303134;
+        --text-primary: #E8EAED;
+        --text-secondary: #9AA0A6;
+        --border-color: #3C4043;
+        --primary-green: #0a7d3b;
+        --dark-green: #0B3D20;
+        --toggle-off-bg: #5F6368;
+        --toggle-knob: #FFFFFF;
+        --overlay-bg: rgba(0, 0, 0, 0.72);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Header */
+    .top-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-color);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 4px;
+      text-decoration: none;
+    }
+
+    .header-title {
+      font-size: 19px;
+      font-weight: 500;
+      letter-spacing: -0.2px;
+    }
+
+    .share-btn {
+      background-color: var(--primary-green);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .share-btn:active {
+      background-color: var(--dark-green);
+      transform: scale(0.97);
+    }
+
+    /* Settings List */
+    .settings-list {
+      display: flex;
+      flex-direction: column;
+      padding: 6px 0;
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    .setting-item:active {
+      background-color: var(--surface-color);
+    }
+
+    .setting-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      flex: 1;
+      padding-right: 12px;
+    }
+
+    .setting-icon {
+      width: 24px;
+      height: 24px;
+      color: var(--text-primary);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .setting-text {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .setting-title {
+      font-size: 15.5px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .setting-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+
+    .learn-more {
+      color: var(--primary-green);
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    .chevron-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--toggle-off-bg);
+      transition: 0.25s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background-color: var(--toggle-knob);
+      transition: 0.25s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary-green);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Bottom Sheet Modal (Screenshot 2: Choose Audience) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: var(--overlay-bg);
+      z-index: 50;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .bottom-sheet {
+      width: 100%;
+      max-width: 500px;
+      background-color: var(--bg-color);
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      padding: 10px 16px 20px;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-backdrop.active .bottom-sheet {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 38px;
+      height: 4px;
+      background-color: var(--text-secondary);
+      opacity: 0.4;
+      border-radius: 4px;
+      margin: 0 auto 12px;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .sheet-header-spacer {
+      width: 24px;
+    }
+
+    .sheet-title {
+      font-size: 17px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .sheet-dots {
+      color: var(--text-primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+
+    .sheet-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    .audience-card {
+      background-color: var(--surface-color);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .audience-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 14px;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    .audience-option:active {
+      background-color: var(--card-bg);
+    }
+
+    .audience-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .audience-icon {
+      width: 22px;
+      height: 22px;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+
+    .audience-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .audience-name {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .audience-sub {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .audience-sub.green-link {
+      color: var(--primary-green);
+      font-weight: 500;
+    }
+
+    /* Custom Radio Button */
+    .radio-circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .audience-option.selected .radio-circle {
+      border-color: var(--primary-green);
+    }
+
+    .radio-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: var(--primary-green);
+      transform: scale(0);
+      transition: transform 0.2s;
+    }
+
+    .audience-option.selected .radio-dot {
+      transform: scale(1);
+    }
+
+    /* Set as Default Box */
+    .default-box {
+      background-color: var(--surface-color);
+      border-radius: 10px;
+      padding: 13px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      cursor: pointer;
+    }
+
+    .default-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .default-checkbox {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      background-color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--bg-color);
+      transition: background-color 0.2s;
+    }
+
+    .default-box.checked .default-checkbox {
+      background-color: var(--primary-green);
+      color: #FFFFFF;
+    }
+
+    .done-btn {
+      width: 100%;
+      background-color: var(--primary-green);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .done-btn:active {
+      background-color: var(--dark-green);
+    }
+
+    /* Full Screen Overlay (Screenshot 3: Share to your story) */
+    .story-screen {
+      position: fixed;
+      inset: 0;
+      background-color: var(--bg-color);
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+    }
+
+    .story-screen.active {
+      display: flex;
+    }
+
+    .story-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .story-back-btn {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .story-title {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .story-header-spacer {
+      width: 28px;
+    }
+
+    .story-body {
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .story-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .story-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .story-toggle-label {
+      font-size: 15.5px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* Story Toggle Switch */
+    .story-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .story-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .story-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: var(--toggle-off-bg);
+      border-radius: 24px;
+      transition: 0.25s;
+    }
+
+    .story-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #FFFFFF;
+      border-radius: 50%;
+      transition: 0.25s;
+    }
+
+    .story-switch input:checked + .story-slider {
+      background-color: var(--dark-green);
+    }
+
+    .story-switch input:checked + .story-slider:before {
+      transform: translateX(20px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="top-header">
+    <div class="header-left">
+      <a href="create-post.html" class="back-btn" aria-label="Back">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <h1 class="header-title">Post settings</h1>
+    </div>
+    <button id="shareBtn" class="share-btn">SHARE</button>
+  </header>
+
+  <!-- Main Settings List (Screenshot 1) -->
+  <main class="settings-list">
+
+    <!-- 1. Post audience -->
+    <div class="setting-item" id="openAudienceBtn">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="9.5"></circle>
+          <path d="M2.5 12h19M12 2.5a15.3 15.3 0 0 1 4 9.5 15.3 15.3 0 0 1-4 9.5 15.3 15.3 0 0 1-4-9.5 15.3 15.3 0 0 1 4-9.5z"></path>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Post audience</span>
+          <span class="setting-subtitle" id="currentAudienceLabel">Public</span>
+        </div>
+      </div>
+      <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </div>
+
+    <!-- 2. Who can comment -->
+    <a href="who-can-comment.html" class="setting-item">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Who can comment</span>
+          <span class="setting-subtitle" id="commentSettingLabel">Public</span>
+        </div>
+      </div>
+      <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </a>
+
+    <!-- 3. Scheduling options -->
+    <a href="schedule-options.html" class="setting-item">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9.5"></circle>
+          <polyline points="12 7 12 12 15.5 14"></polyline>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Scheduling options</span>
+          <span class="setting-subtitle">Publish now or schedule for later.</span>
+        </div>
+      </div>
+      <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </a>
+
+    <!-- 4. Share to story -->
+    <div class="setting-item" id="openStoryScreenBtn">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9.5" stroke-dasharray="4 3"></circle>
+          <line x1="12" y1="8" x2="12" y2="16"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Share to story</span>
+          <span class="setting-subtitle">Choose to share your post to your story.</span>
+        </div>
+      </div>
+      <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </div>
+
+    <!-- 5. Share to groups -->
+    <a href="share-to-groups.html" class="setting-item">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Share to groups</span>
+          <span class="setting-subtitle">Off</span>
+        </div>
+      </div>
+      <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </a>
+
+    <!-- 6. Add affiliate link -->
+    <a href="affliate-link.html" class="setting-item">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Add affiliate link</span>
+          <span class="setting-subtitle">Include a link to an affiliate product in your post, and you could earn commissions.</span>
+        </div>
+      </div>
+      <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </a>
+
+    <!-- 7. Monetization -->
+    <a href="monetization.html" class="setting-item">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="7" ry="3"></ellipse>
+          <path d="M5 5v6c0 1.66 3.13 3 7 3s7-1.34 7-3V5"></path>
+          <path d="M5 11v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Monetization</span>
+          <span class="setting-subtitle">You aren't eligible to earn.</span>
+        </div>
+      </div>
+      <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </a>
+
+    <!-- 8. Add AI label -->
+    <div class="setting-item" style="cursor: default;">
+      <div class="setting-left">
+        <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18 2l1.2 2.8L22 6l-2.8 1.2L18 10l-1.2-2.8L14 6l2.8-1.2L18 2z"></path>
+        </svg>
+        <div class="setting-text">
+          <span class="setting-title">Add AI label</span>
+          <span class="setting-subtitle">We require you to label certain realistic content that's made with AI. <span class="learn-more">Learn more</span></span>
+        </div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="aiLabelToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+  </main>
+
+  <!-- Screenshot 2: Choose Audience Bottom Sheet -->
+  <div class="modal-backdrop" id="audienceModal">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-header-spacer"></div>
+        <h2 class="sheet-title">Choose audience</h2>
+        <button class="sheet-dots" aria-label="More options">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="19" cy="12" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+
+      <p class="sheet-desc">Your post will show up in Feed, on your profile and in search results.</p>
+
+      <div class="audience-card">
+        <!-- Option 1: Public -->
+        <div class="audience-option selected" data-value="Public" data-action="select">
+          <div class="audience-left">
+            <svg class="audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="9.5"></circle>
+              <path d="M2.5 12h19M12 2.5a15.3 15.3 0 0 1 4 9.5 15.3 15.3 0 0 1-4 9.5 15.3 15.3 0 0 1-4-9.5 15.3 15.3 0 0 1 4-9.5z"></path>
+            </svg>
+            <div class="audience-info">
+              <span class="audience-name">Public</span>
+              <span class="audience-sub">Anyone on or off Autrobook</span>
+            </div>
+          </div>
+          <div class="radio-circle"><div class="radio-dot"></div></div>
+        </div>
+
+        <!-- Option 2: Friends -->
+        <div class="audience-option" data-value="Friends" data-action="select">
+          <div class="audience-left">
+            <svg class="audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <div class="audience-info">
+              <span class="audience-name">Friends</span>
+              <span class="audience-sub">Your Autrobook friends</span>
+            </div>
+          </div>
+          <div class="radio-circle"><div class="radio-dot"></div></div>
+        </div>
+
+        <!-- Option 3: Close Friends (Opens close-friends.html) -->
+        <div class="audience-option" data-value="Close Friends" data-action="close-friends">
+          <div class="audience-left">
+            <svg class="audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9.5"></circle>
+              <polygon points="12 7 13.5 10.2 17 10.7 14.5 13.1 15.1 16.5 12 14.9 8.9 16.5 9.5 13.1 7 10.7 10.5 10.2 12 7"></polygon>
+            </svg>
+            <div class="audience-info">
+              <span class="audience-name">Close Friends</span>
+              <span class="audience-sub green-link">Create your list</span>
+            </div>
+          </div>
+          <div class="radio-circle"><div class="radio-dot"></div></div>
+        </div>
+
+        <!-- Option 4: Don't show to... (Opens close-friends.html) -->
+        <div class="audience-option" data-value="Don't show to..." data-action="close-friends">
+          <div class="audience-left">
+            <svg class="audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7" r="4"></circle>
+              <line x1="18" y1="8" x2="23" y2="13"></line>
+              <line x1="23" y1="8" x2="18" y2="13"></line>
+            </svg>
+            <div class="audience-info">
+              <span class="audience-name">Don't show to...</span>
+              <span class="audience-sub green-link">Select friends</span>
+            </div>
+          </div>
+          <div class="radio-circle"><div class="radio-dot"></div></div>
+        </div>
+
+        <!-- Option 5: Only show to... (Opens close-friends.html) -->
+        <div class="audience-option" data-value="Only show to..." data-action="close-friends">
+          <div class="audience-left">
+            <svg class="audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <div class="audience-info">
+              <span class="audience-name">Only show to...</span>
+              <span class="audience-sub green-link">Select friends</span>
+            </div>
+          </div>
+          <div class="radio-circle"><div class="radio-dot"></div></div>
+        </div>
+
+        <!-- Option 6: Only me -->
+        <div class="audience-option" data-value="Only me" data-action="select">
+          <div class="audience-left">
+            <svg class="audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="11" width="16" height="10" rx="2" ry="2"></rect>
+              <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+            </svg>
+            <div class="audience-info">
+              <span class="audience-name">Only me</span>
+              <span class="audience-sub">Only me</span>
+            </div>
+          </div>
+          <div class="radio-circle"><div class="radio-dot"></div></div>
+        </div>
+      </div>
+
+      <!-- Set as default audience -->
+      <div class="default-box" id="defaultAudienceBox">
+        <span class="default-text">Set as default audience.</span>
+        <div class="default-checkbox">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <button class="done-btn" id="audienceDoneBtn">Done</button>
+    </div>
+  </div>
+
+  <!-- Screenshot 3: Share to your story Screen -->
+  <section class="story-screen" id="storyScreen">
+    <div class="story-header">
+      <a href="post-settings.html" class="story-back-btn" id="closeStoryScreenBtn" aria-label="Back to Post settings">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </a>
+      <h2 class="story-title">Share to your story</h2>
+      <div class="story-header-spacer"></div>
+    </div>
+
+    <div class="story-body">
+      <p class="story-desc">Choose to share your reels and posts to your story.</p>
+      <div class="story-toggle-row">
+        <span class="story-toggle-label">Enable share to story</span>
+        <label class="story-switch">
+          <input type="checkbox" id="enableStoryToggle">
+          <span class="story-slider"></span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Initialize Supabase
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+    const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+    // State Management
+    let selectedAudience = localStorage.getItem('post_audience') || 'Public';
+    let isDefaultAudience = localStorage.getItem('post_default_audience') === 'true';
+    let aiLabelEnabled = localStorage.getItem('post_ai_label') === 'true';
+
+    // Elements
+    const openAudienceBtn = document.getElementById('openAudienceBtn');
+    const audienceModal = document.getElementById('audienceModal');
+    const audienceDoneBtn = document.getElementById('audienceDoneBtn');
+    const currentAudienceLabel = document.getElementById('currentAudienceLabel');
+    const audienceOptions = document.querySelectorAll('.audience-option');
+    const defaultAudienceBox = document.getElementById('defaultAudienceBox');
+
+    const openStoryScreenBtn = document.getElementById('openStoryScreenBtn');
+    const storyScreen = document.getElementById('storyScreen');
+    const closeStoryScreenBtn = document.getElementById('closeStoryScreenBtn');
+    const enableStoryToggle = document.getElementById('enableStoryToggle');
+
+    const aiLabelToggle = document.getElementById('aiLabelToggle');
+    const shareBtn = document.getElementById('shareBtn');
+
+    // Initialize UI from saved settings
+    function initSettings() {
+      currentAudienceLabel.textContent = selectedAudience;
+      audienceOptions.forEach(opt => {
+        if (opt.dataset.value === selectedAudience) {
+          opt.classList.add('selected');
+        } else {
+          opt.classList.remove('selected');
+        }
+      });
+
+      if (isDefaultAudience) {
+        defaultAudienceBox.classList.add('checked');
+      }
+
+      aiLabelToggle.checked = aiLabelEnabled;
+
+      const savedComment = localStorage.getItem('who_can_comment');
+      if (savedComment) {
+        document.getElementById('commentSettingLabel').textContent = savedComment;
+      }
+    }
+
+    initSettings();
+
+    // 1. Audience Modal Handlers (Screenshot 2)
+    openAudienceBtn.addEventListener('click', () => {
+      audienceModal.classList.add('active');
+    });
+
+    audienceModal.addEventListener('click', () => {
+      audienceModal.classList.remove('active');
+    });
+
+    audienceOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        // Update radio selection UI
+        audienceOptions.forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+
+        selectedAudience = option.dataset.value;
+        currentAudienceLabel.textContent = selectedAudience;
+        localStorage.setItem('post_audience', selectedAudience);
+
+        // If option 3, 4, or 5 is clicked, open close-friends.html
+        if (option.dataset.action === 'close-friends') {
+          localStorage.setItem('audience_filter_type', selectedAudience);
+          window.location.href = 'close-friends.html';
+        }
+      });
+    });
+
+    defaultAudienceBox.addEventListener('click', () => {
+      isDefaultAudience = !isDefaultAudience;
+      defaultAudienceBox.classList.toggle('checked', isDefaultAudience);
+      localStorage.setItem('post_default_audience', isDefaultAudience);
+    });
+
+    audienceDoneBtn.addEventListener('click', () => {
+      audienceModal.classList.remove('active');
+    });
+
+    // 2. Share to Story Screen Handlers (Screenshot 3)
+    openStoryScreenBtn.addEventListener('click', () => {
+      storyScreen.classList.add('active');
+    });
+
+    closeStoryScreenBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      storyScreen.classList.remove('active');
+    });
+
+    enableStoryToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        localStorage.setItem('share_to_story', 'true');
+        // Dark green toggle becomes active, then navigates to story-card.html
+        setTimeout(() => {
+          window.location.href = 'story-card.html';
+        }, 280);
+      } else {
+        localStorage.setItem('share_to_story', 'false');
+      }
+    });
+
+    // 3. Add AI Label Toggle Handler
+    aiLabelToggle.addEventListener('change', (e) => {
+      aiLabelEnabled = e.target.checked;
+      localStorage.setItem('post_ai_label', aiLabelEnabled ? 'true' : 'false');
+    });
+
+    // 4. Share Button Handler -> Saves settings & redirects to post-card.html
+    shareBtn.addEventListener('click', async () => {
+      shareBtn.textContent = 'SHARING...';
+      shareBtn.disabled = true;
+
+      const postSettingsPayload = {
+        audience: selectedAudience,
+        is_default_audience: isDefaultAudience,
+        ai_label: aiLabelEnabled,
+        who_can_comment: localStorage.getItem('who_can_comment') || 'Public',
+        updated_at: new Date().toISOString()
+      };
+
+      // Save to localStorage for immediate use in post-card.html
+      localStorage.setItem('active_post_settings', JSON.stringify(postSettingsPayload));
+
+      // Attempt saving to Supabase if table exists
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('post_settings').insert([postSettingsPayload]);
+        } catch (err) {
+          console.warn('Supabase sync skipped or pending table setup:', err);
+        }
+      }
+
+      // Redirect to post-card.html with AI label state
+      const targetUrl = aiLabelEnabled ? 'post-card.html?ai_label=true' : 'post-card.html';
+      window.location.href = targetUrl;
+    });
+  </script>
+</body>
+  </html>
