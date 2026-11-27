@@ -1041,6 +1041,7 @@
       };
       item.media_url = stripVolatileUrl(item.media_url);
       item.image = stripVolatileUrl(item.image);
+      item.gif_url = stripVolatileUrl(item.gif_url);
       item.music_url = stripVolatileUrl(item.music_url);
       item.poster_url = stripVolatileUrl(item.poster_url);
       item.avatar = stripVolatileUrl(item.avatar);
@@ -1180,9 +1181,19 @@
     }
 
     /* GIF & GALLERY PREVIEW */
+    function isSafeMediaUrl(url) {
+      const val = String(url || '').trim();
+      return (
+        val.startsWith('https://') ||
+        val.startsWith('http://') ||
+        val.startsWith('/') ||
+        val.startsWith('data:image/')
+      );
+    }
+
     function setGifPreview(gifUrl) {
       const cleanUrl = String(gifUrl || '').trim();
-      if (!cleanUrl) return;
+      if (!cleanUrl || !isSafeMediaUrl(cleanUrl)) return;
 
       galleryFile = null;
       galleryMediaType = 'image';
@@ -1195,7 +1206,18 @@
 
       const box = document.getElementById('previewBox');
       const content = document.getElementById('previewContent');
-      content.innerHTML = `<img src="${cleanUrl}" alt="Selected GIF" onerror="this.closest('.preview-box').classList.remove('active')">`;
+      content.innerHTML = '';
+
+      const img = document.createElement('img');
+      img.src = cleanUrl;
+      img.alt = 'Selected GIF';
+      img.onerror = () => {
+        selectedGifUrl = '';
+        box.classList.remove('active');
+        updateNextButtonState();
+      };
+
+      content.appendChild(img);
       box.classList.add('active');
       updateNextButtonState();
     }
@@ -1235,9 +1257,21 @@
       const url = URL.createObjectURL(file);
       const box = document.getElementById('previewBox');
       const content = document.getElementById('previewContent');
-      content.innerHTML = galleryMediaType === 'video'
-        ? `<video src="${url}" controls playsinline></video>`
-        : `<img src="${url}" alt="Gallery media">`;
+      content.innerHTML = '';
+
+      if (galleryMediaType === 'video') {
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.playsInline = true;
+        content.appendChild(video);
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Gallery media';
+        content.appendChild(img);
+      }
+
       box.classList.add('active');
       updateNextButtonState();
     }
@@ -1392,7 +1426,6 @@
           document.getElementById('peopleChipLabel').textContent = selectedPeople;
         }
 
-        // Check URL ?gif= or localStorage selectedGifUrl / selectedGif
         const params = new URLSearchParams(window.location.search);
         const urlGif = params.get('gif');
         let storageGif = localStorage.getItem('selectedGifUrl') || '';
@@ -1782,4 +1815,4 @@
     });
   </script>
 </body>
-                     </html>
+  </html>
