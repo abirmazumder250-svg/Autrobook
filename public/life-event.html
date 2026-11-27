@@ -13,6 +13,7 @@
       --bg-surface: #202124;
       --bg-card: #2c2d31;
       --bg-card-hover: #35363b;
+      --bg-sheet: #1d1e22;
       --text-primary: #f1f3f4;
       --text-secondary: #b0b3b8;
       --border-color: #3c4043;
@@ -25,6 +26,7 @@
         --bg-surface: #ffffff;
         --bg-card: #f5f6f8;
         --bg-card-hover: #eaecf0;
+        --bg-sheet: #ffffff;
         --text-primary: #202124;
         --text-secondary: #5f6368;
         --border-color: #dadce0;
@@ -160,6 +162,106 @@
     .full-width-tile {
       width: 100%;
     }
+
+    /* BOTTOM SHEET: SELECT CATEGORY */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.62);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .sheet-backdrop.open {
+      display: flex;
+    }
+
+    .sheet-panel {
+      width: 100%;
+      max-width: 640px;
+      max-height: 68vh;
+      background: var(--bg-sheet);
+      color: var(--text-primary);
+      border-top: 1px solid var(--border-color);
+      border-radius: 18px 18px 0 0;
+      padding: 8px 0 22px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border-color);
+      margin: 0 auto 10px;
+    }
+
+    .sheet-header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 44px;
+      padding: 0 14px;
+      margin-bottom: 6px;
+    }
+
+    .sheet-close-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 19px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .sheet-close-btn:hover {
+      background: var(--bg-card);
+    }
+
+    .sheet-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 16.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      pointer-events: none;
+    }
+
+    .subcat-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .subcat-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 18px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(128, 128, 128, 0.14);
+      transition: background 0.15s ease;
+    }
+
+    .subcat-link:last-child {
+      border-bottom: none;
+    }
+
+    .subcat-link:hover {
+      background: var(--bg-card);
+    }
   </style>
 </head>
 <body>
@@ -174,30 +276,30 @@
     <p class="subtitle">Share and remember important moments from your life.</p>
 
     <div class="grid-two">
-      <a href="work.html" class="event-tile" onclick="openLifeEventPage('work.html', event)">
+      <button type="button" class="event-tile" onclick="openCategorySheet('work')">
         <i class="fas fa-briefcase"></i>
         <span>Work</span>
-      </a>
+      </button>
 
-      <a href="education.html" class="event-tile" onclick="openLifeEventPage('education.html', event)">
+      <button type="button" class="event-tile" onclick="openCategorySheet('education')">
         <i class="fas fa-graduation-cap"></i>
         <span>Education</span>
-      </a>
+      </button>
 
-      <a href="relationship.html" class="event-tile" onclick="openLifeEventPage('relationship.html', event)">
+      <button type="button" class="event-tile" onclick="openCategorySheet('relationship')">
         <i class="fas fa-heart"></i>
         <span>Relationship</span>
-      </a>
+      </button>
 
-      <a href="living.html" class="event-tile" onclick="openLifeEventPage('living.html', event)">
+      <button type="button" class="event-tile" onclick="openCategorySheet('living')">
         <i class="fas fa-house"></i>
         <span>Living</span>
-      </a>
+      </button>
 
-      <a href="family.html" class="event-tile" onclick="openLifeEventPage('family.html', event)">
+      <button type="button" class="event-tile" onclick="openCategorySheet('family')">
         <i class="fas fa-seedling"></i>
         <span>Family</span>
-      </a>
+      </button>
 
       <a href="travel.html" class="event-tile" onclick="openLifeEventPage('travel.html', event)">
         <i class="fas fa-location-dot"></i>
@@ -231,6 +333,19 @@
     </a>
   </main>
 
+  <div id="categorySheetBackdrop" class="sheet-backdrop" onclick="closeCategorySheet()">
+    <div class="sheet-panel" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <button type="button" class="sheet-close-btn" onclick="closeCategorySheet()" aria-label="Close">
+          <i class="fas fa-xmark"></i>
+        </button>
+        <div id="sheetTitle" class="sheet-title">Select category</div>
+      </div>
+      <div id="subcatList" class="subcat-list"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
@@ -243,12 +358,65 @@
       }
     } catch (_) {}
 
+    const SUBCATEGORIES = {
+      work: [
+        { label: 'New Job', page: 'new-job.html' },
+        { label: 'Promotion', page: 'promotion.html' },
+        { label: 'Left Job', page: 'left-job.html' },
+        { label: 'Retirement', page: 'retirement.html' }
+      ],
+      education: [
+        { label: 'New School', page: 'new-school.html' },
+        { label: 'Graduated', page: 'graduated.html' },
+        { label: 'Left school', page: 'left-school.html' }
+      ],
+      relationship: [
+        { label: 'New Relationship', page: 'new-relationship.html' },
+        { label: 'Engagement', page: 'engagement.html' },
+        { label: 'Marriage', page: 'marriage.html' },
+        { label: 'First Met', page: 'first-met.html' }
+      ],
+      living: [
+        { label: 'Moved', page: 'moved.html' },
+        { label: "Places I've lived", page: 'places-ive-lived.html' },
+        { label: 'Hometown', page: 'hometown.html' }
+      ],
+      family: [
+        { label: 'New Child', page: 'new-child.html' },
+        { label: 'Parenthood', page: 'parenthood.html' },
+        { label: 'New Pet', page: 'new-pet.html' },
+        { label: 'Loss of a Loved One', page: 'loss-of-a-loved-one.html' }
+      ]
+    };
+
     function openLifeEventPage(targetPage, event) {
       if (event) event.preventDefault();
       try {
         sessionStorage.setItem('autro_selected_life_event_page', targetPage);
       } catch (_) {}
       window.location.href = targetPage;
+    }
+
+    function openCategorySheet(groupKey) {
+      const items = SUBCATEGORIES[groupKey] || [];
+      const listEl = document.getElementById('subcatList');
+      document.getElementById('sheetTitle').textContent = 'Select category';
+      listEl.innerHTML = '';
+
+      items.forEach((item) => {
+        const link = document.createElement('a');
+        link.href = item.page;
+        link.className = 'subcat-link';
+        link.innerHTML = `<span>${item.label}</span>`;
+        link.onclick = (e) => openLifeEventPage(item.page, e);
+        listEl.appendChild(link);
+      });
+
+      document.getElementById('categorySheetBackdrop').classList.add('open');
+    }
+
+    function closeCategorySheet() {
+      document.getElementById('categorySheetBackdrop').classList.remove('open');
     }
   </script>
 </body>
