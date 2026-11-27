@@ -1351,7 +1351,7 @@
       showToast(`Music selected: ${selectedMusicName}`);
     }
 
-    /* DRAFT & GIF RESTORE */
+    /* DRAFT & TAG/COLLABORATE RESTORE */
     function saveComposerDraft() {
       const draft = {
         caption: document.getElementById('postText').value,
@@ -1371,7 +1371,22 @@
 
     function openPeopleFriendsPage() {
       saveComposerDraft();
-      window.location.href = 'id-friends.html?from=create-post';
+      window.location.href = 'tag-friends.html?from=create-post';
+    }
+
+    function extractNamesFromStorage(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .map(item => typeof item === 'string' ? item : (item?.name || item?.full_name || item?.username || ''))
+          .map(s => String(s).trim())
+          .filter(Boolean);
+      } catch (_) {
+        return [];
+      }
     }
 
     function restoreDraftAndGif() {
@@ -1414,11 +1429,19 @@
           }
         }
 
-        const pickedFriends = sessionStorage.getItem('autro_selected_friends');
-        if (pickedFriends) {
-          sessionStorage.removeItem('autro_selected_friends');
-          const parsed = JSON.parse(pickedFriends);
-          selectedPeople = Array.isArray(parsed) ? parsed.join(', ') : String(parsed || '');
+        const taggedNames = extractNamesFromStorage('taggedFriends');
+        const collabNames = extractNamesFromStorage('invitedCollaborators');
+        const mergedPeople = [...new Set([...taggedNames, ...collabNames])];
+
+        if (mergedPeople.length > 0) {
+          selectedPeople = mergedPeople.join(', ');
+        } else {
+          const pickedFriends = sessionStorage.getItem('autro_selected_friends');
+          if (pickedFriends) {
+            sessionStorage.removeItem('autro_selected_friends');
+            const parsed = JSON.parse(pickedFriends);
+            selectedPeople = Array.isArray(parsed) ? parsed.join(', ') : String(parsed || '');
+          }
         }
 
         if (selectedPeople) {
@@ -1548,6 +1571,10 @@
           text: `with ${selectedPeople}`,
           onClear: () => {
             selectedPeople = '';
+            try {
+              localStorage.removeItem('taggedFriends');
+              localStorage.removeItem('invitedCollaborators');
+            } catch (_) {}
             document.getElementById('peopleChipBtn').classList.remove('active');
             document.getElementById('peopleChipLabel').textContent = 'Tag/collaborate';
             renderMetaBadges();
@@ -1815,4 +1842,4 @@
     });
   </script>
 </body>
-  </html>
+      </html>
