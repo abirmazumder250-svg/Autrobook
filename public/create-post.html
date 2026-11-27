@@ -1258,6 +1258,28 @@
       'create your own': '/create-your-own.html'
     };
 
+    const LIFE_EVENT_STORAGE_KEYS = [
+      'autro_life_event',
+      'autro_editing_life_event',
+      'autro_life_event_draft',
+      'life_event_draft',
+      'selectedLifeEvent',
+      'autro_event_data',
+      'new_job_event',
+      'lifeEvent'
+    ];
+
+    const LIFE_EVENT_PHOTO_STORAGE_KEYS = [
+      'autro_life_event_photo',
+      'autro_life_event_photo_url',
+      'lifeEventPhoto',
+      'selectedLifeEventPhoto',
+      'selectedPhoto',
+      'lifeEventImage',
+      'autro_event_banner',
+      'autro_event_photo'
+    ];
+
     const CACHE_KEYS = [
       'posts',
       'autro_instant_feed_posts',
@@ -1345,6 +1367,9 @@
       const cleanStr = String(valueStr || '');
       if (!cleanStr) return false;
       try {
+        sessionStorage.setItem(key, cleanStr);
+      } catch (_) {}
+      try {
         localStorage.setItem(key, cleanStr);
         return true;
       } catch (_) {
@@ -1356,6 +1381,39 @@
           return false;
         }
       }
+    }
+
+    function readStorageMulti(key) {
+      try {
+        const s = sessionStorage.getItem(key);
+        if (s) return s;
+      } catch (_) {}
+      try {
+        const l = localStorage.getItem(key);
+        if (l) return l;
+      } catch (_) {}
+      try {
+        if (window.name && window.name.startsWith('AUTRO_STATE:')) {
+          const parsedWin = JSON.parse(window.name.slice('AUTRO_STATE:'.length));
+          if (parsedWin && parsedWin[key]) return String(parsedWin[key]);
+        }
+      } catch (_) {}
+      return '';
+    }
+
+    function mirrorToWindowState(key, val) {
+      try {
+        let state = {};
+        if (window.name && window.name.startsWith('AUTRO_STATE:')) {
+          state = JSON.parse(window.name.slice('AUTRO_STATE:'.length)) || {};
+        }
+        if (val) state[key] = val;
+        else delete state[key];
+        const serialized = 'AUTRO_STATE:' + JSON.stringify(state);
+        if (serialized.length < 1800000) {
+          window.name = serialized;
+        }
+      } catch (_) {}
     }
 
     function sanitizePostForCache(post) {
@@ -1514,40 +1572,57 @@
         val.startsWith('https://') ||
         val.startsWith('http://') ||
         val.startsWith('/') ||
+        val.startsWith('./') ||
         val.startsWith('data:image/') ||
         val.startsWith('blob:')
       );
     }
 
-    function extractLifeEventPhoto(ev) {
-      if (!ev || typeof ev !== 'object') {
-        try {
-          const extra = localStorage.getItem('autro_life_event_photo') || sessionStorage.getItem('autro_life_event_photo') || '';
-          return isSafeMediaUrl(extra) ? extra : '';
-        } catch (_) {
-          return '';
+    function readPhotoFromAnyKey() {
+      for (const k of LIFE_EVENT_PHOTO_STORAGE_KEYS) {
+        const val = readStorageMulti(k);
+        if (!val) continue;
+        if (val.startsWith('{')) {
+          try {
+            const obj = JSON.parse(val);
+            const inner = obj?.url || obj?.photoUrl || obj?.photo_url || obj?.dataUrl || obj?.src || '';
+            if (inner && isSafeMediaUrl(inner)) return inner;
+          } catch (_) {}
         }
+        if (isSafeMediaUrl(val)) return val;
       }
-      const candidates = [
-        ev.photoUrl,
-        ev.photo_url,
-        ev.bannerUrl,
-        ev.banner_url,
-        ev.imageUrl,
-        ev.image_url,
-        ev.image,
-        ev.photo
-      ];
-      for (const c of candidates) {
-        if (typeof c === 'string' && c.trim() && isSafeMediaUrl(c.trim())) {
-          return c.trim();
-        }
-      }
-      try {
-        const extra = localStorage.getItem('autro_life_event_photo') || sessionStorage.getItem('autro_life_event_photo') || '';
-        if (extra && isSafeMediaUrl(extra)) return extra;
-      } catch (_) {}
       return '';
+    }
+
+    function extractLifeEventPhoto(ev) {
+      if (ev && typeof ev === 'object') {
+        const candidates = [
+          ev.photoUrl,
+          ev.photo_url,
+          ev.bannerUrl,
+          ev.banner_url,
+          ev.imageUrl,
+          ev.image_url,
+          ev.image,
+          ev.photo,
+          ev.photoDataUrl,
+          ev.dataUrl,
+          ev.coverUrl,
+          ev.cover_url
+        ];
+        for (const c of candidates) {
+          if (typeof c === 'string' && c.trim() && isSafeMediaUrl(c.trim())) {
+            return c.trim();
+          }
+          if (c && typeof c === 'object') {
+            const nested = c.url || c.dataUrl || c.src || c.photoUrl || '';
+            if (typeof nested === 'string' && nested.trim() && isSafeMediaUrl(nested.trim())) {
+              return nested.trim();
+            }
+          }
+        }
+      }
+      return readPhotoFromAnyKey();
     }
 
     function normalizeLifeEventObject(rawEv) {
@@ -1558,7 +1633,8 @@
         photoUrl: resolvedPhoto,
         photo_url: resolvedPhoto,
         bannerUrl: resolvedPhoto,
-        image: resolvedPhoto
+        image: resolvedPhoto,
+        photo: resolvedPhoto
       };
       return normalized;
     }
@@ -1705,13 +1781,14 @@
       const targetPage = resolveLifeEventPageUrl(selectedLifeEvent);
       try {
         if (selectedLifeEvent) {
-          safeLocalStorageSet('autro_life_event', JSON.stringify(selectedLifeEvent));
-          safeLocalStorageSet('autro_editing_life_event', JSON.stringify(selectedLifeEvent));
-          sessionStorage.setItem('autro_editing_life_event', JSON.stringify(selectedLifeEvent));
+          const serializedEv = JSON.stringify(selectedLifeEvent);
+          safeLocalStorageSet('autro_life_event', serializedEv);
+          safeLocalStorageSet('autro_editing_life_event', serializedEv);
+          mirrorToWindowState('autro_life_event', serializedEv);
           const photoVal = extractLifeEventPhoto(selectedLifeEvent);
           if (photoVal) {
             safeLocalStorageSet('autro_life_event_photo', photoVal);
-            sessionStorage.setItem('autro_life_event_photo', photoVal);
+            mirrorToWindowState('autro_life_event_photo', photoVal);
           }
         }
       } catch (_) {}
@@ -1742,17 +1819,22 @@
         photo_url: cleanPhoto,
         bannerUrl: cleanPhoto,
         image: cleanPhoto,
+        photo: cleanPhoto,
         story: storyVal
       });
       delete selectedLifeEvent.formattedText;
 
-      safeLocalStorageSet('autro_life_event', JSON.stringify(selectedLifeEvent));
+      const serializedEv = JSON.stringify(selectedLifeEvent);
+      safeLocalStorageSet('autro_life_event', serializedEv);
+      mirrorToWindowState('autro_life_event', serializedEv);
       if (cleanPhoto) {
         safeLocalStorageSet('autro_life_event_photo', cleanPhoto);
+        mirrorToWindowState('autro_life_event_photo', cleanPhoto);
       } else {
         try {
           localStorage.removeItem('autro_life_event_photo');
           sessionStorage.removeItem('autro_life_event_photo');
+          mirrorToWindowState('autro_life_event_photo', '');
         } catch (_) {}
       }
       saveComposerDraft();
@@ -1769,11 +1851,11 @@
     function removeLifeEvent() {
       selectedLifeEvent = null;
       try {
-        localStorage.removeItem('autro_life_event');
-        localStorage.removeItem('autro_editing_life_event');
-        localStorage.removeItem('autro_life_event_photo');
-        sessionStorage.removeItem('autro_editing_life_event');
-        sessionStorage.removeItem('autro_life_event_photo');
+        for (const k of [...LIFE_EVENT_STORAGE_KEYS, ...LIFE_EVENT_PHOTO_STORAGE_KEYS]) {
+          localStorage.removeItem(k);
+          sessionStorage.removeItem(k);
+          mirrorToWindowState(k, '');
+        }
       } catch (_) {}
       renderLifeEventCard();
     }
@@ -1954,7 +2036,9 @@
         bold: isBoldText
       };
       try {
-        sessionStorage.setItem('autro_create_post_draft', JSON.stringify(draft));
+        const serializedDraft = JSON.stringify(draft);
+        sessionStorage.setItem('autro_create_post_draft', serializedDraft);
+        mirrorToWindowState('autro_create_post_draft', serializedDraft);
       } catch (_) {}
     }
 
@@ -1980,10 +2064,11 @@
 
     function restoreDraftAndGif() {
       try {
-        const raw = sessionStorage.getItem('autro_create_post_draft');
+        const raw = readStorageMulti('autro_create_post_draft');
         if (raw) {
           const d = JSON.parse(raw);
-          sessionStorage.removeItem('autro_create_post_draft');
+          try { sessionStorage.removeItem('autro_create_post_draft'); } catch (_) {}
+          mirrorToWindowState('autro_create_post_draft', '');
           if (d.caption) document.getElementById('postText').value = d.caption;
           if (d.audience) document.getElementById('postAudience').value = d.audience;
           if (d.bold) {
@@ -2021,34 +2106,45 @@
           }
         }
 
-        const rawLifeEvent = localStorage.getItem('autro_life_event');
-        if (rawLifeEvent) {
+        for (const k of LIFE_EVENT_STORAGE_KEYS) {
+          const rawLifeEvent = readStorageMulti(k);
+          if (!rawLifeEvent) continue;
           try {
             const parsedEv = JSON.parse(rawLifeEvent);
             if (parsedEv && typeof parsedEv === 'object') {
-              selectedLifeEvent = normalizeLifeEventObject(parsedEv);
-              if (parsedEv.formattedText) {
-                const currentText = document.getElementById('postText').value;
-                if (currentText.endsWith(parsedEv.formattedText)) {
-                  document.getElementById('postText').value = currentText
-                    .slice(0, currentText.length - parsedEv.formattedText.length)
-                    .replace(/\n+$/, '');
+              const candidateObj = parsedEv.lifeEvent || parsedEv.life_event || parsedEv;
+              if (candidateObj && typeof candidateObj === 'object' && (candidateObj.title || candidateObj.subCategory || candidateObj.sub_category || candidateObj.categoryLabel || candidateObj.category || candidateObj.employer || candidateObj.photoUrl || candidateObj.photo || candidateObj.image)) {
+                selectedLifeEvent = normalizeLifeEventObject({
+                  ...(selectedLifeEvent || {}),
+                  ...candidateObj
+                });
+                if (parsedEv.formattedText) {
+                  const currentText = document.getElementById('postText').value;
+                  if (currentText.endsWith(parsedEv.formattedText)) {
+                    document.getElementById('postText').value = currentText
+                      .slice(0, currentText.length - parsedEv.formattedText.length)
+                      .replace(/\n+$/, '');
+                  }
                 }
+                break;
               }
             }
           } catch (_) {}
         }
 
-        const standalonePhoto = localStorage.getItem('autro_life_event_photo') || sessionStorage.getItem('autro_life_event_photo') || '';
+        const standalonePhoto = readPhotoFromAnyKey();
         if (standalonePhoto && isSafeMediaUrl(standalonePhoto)) {
           selectedLifeEvent = normalizeLifeEventObject({
             ...(selectedLifeEvent || { title: 'Life event', date: 'Today' }),
             photoUrl: standalonePhoto,
             photo_url: standalonePhoto,
             bannerUrl: standalonePhoto,
-            image: standalonePhoto
+            image: standalonePhoto,
+            photo: standalonePhoto
           });
-          safeLocalStorageSet('autro_life_event', JSON.stringify(selectedLifeEvent));
+          const serializedEv = JSON.stringify(selectedLifeEvent);
+          safeLocalStorageSet('autro_life_event', serializedEv);
+          mirrorToWindowState('autro_life_event', serializedEv);
         }
 
         renderLifeEventCard();
@@ -2440,7 +2536,8 @@
             photoUrl: lifeEventPhoto || resolvedMedia,
             photo_url: lifeEventPhoto || resolvedMedia,
             bannerUrl: lifeEventPhoto || resolvedMedia,
-            image: lifeEventPhoto || resolvedMedia
+            image: lifeEventPhoto || resolvedMedia,
+            photo: lifeEventPhoto || resolvedMedia
           }) : null,
           media_url: resolvedMedia,
           image: galleryMediaType === 'video' ? '' : resolvedMedia,
@@ -2459,11 +2556,11 @@
         try {
           localStorage.removeItem('selectedGif');
           localStorage.removeItem('selectedGifUrl');
-          localStorage.removeItem('autro_life_event');
-          localStorage.removeItem('autro_editing_life_event');
-          localStorage.removeItem('autro_life_event_photo');
-          sessionStorage.removeItem('autro_editing_life_event');
-          sessionStorage.removeItem('autro_life_event_photo');
+          for (const k of [...LIFE_EVENT_STORAGE_KEYS, ...LIFE_EVENT_PHOTO_STORAGE_KEYS]) {
+            localStorage.removeItem(k);
+            sessionStorage.removeItem(k);
+            mirrorToWindowState(k, '');
+          }
         } catch (_) {}
 
         setProgress(100, 'Ready! Opening post settings...');
@@ -2487,6 +2584,11 @@
       pruneHeavyLocalKeys();
       await loadSupabaseAccount();
       subscribeRealtimeProfileIdentity();
+      restoreDraftAndGif();
+      updateNextButtonState();
+    });
+
+    window.addEventListener('pageshow', () => {
       restoreDraftAndGif();
       updateNextButtonState();
     });
