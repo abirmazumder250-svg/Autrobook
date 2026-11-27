@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Create reel - Autrobook</title>
 <link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/profile.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/profile.js" defer></script>
 <style>
   :root {
     --bg-color: #ffffff;
@@ -209,6 +211,64 @@
 
   .cover-preview-thumb.visible {
     display: inline-block;
+  }
+
+  /* Direct Reels Moderation Form Box */
+  .quick-upload-panel {
+    margin: 4px 14px 10px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .quick-upload-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .quick-upload-panel input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    padding: 8px 11px;
+    font-size: 13.5px;
+    outline: none;
+  }
+
+  .quick-upload-panel input[type="file"] {
+    font-size: 12.5px;
+    color: var(--muted-color);
+  }
+
+  .quick-upload-btn {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--accent-color);
+    background-color: var(--accent-color);
+    color: var(--btn-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .quick-upload-btn:hover {
+    background-color: var(--accent-hover);
+  }
+
+  #reelsStatus {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted-color);
   }
 
   /* Horizontal Quick Tools Strip */
@@ -486,6 +546,9 @@
     </div>
 
     <div class="top-right">
+      <a href="/profile.html" id="profileLinkBtn" class="icon-btn" title="Profile" aria-label="Profile">
+        <i class="fa-regular fa-user"></i>
+      </a>
       <button type="button" class="share-pill-btn" id="uploadBtn" title="Share / Upload Reel">
         <i class="fa-solid fa-cloud-arrow-up"></i>
         <span>Share</span>
@@ -509,6 +572,16 @@
         </span>
       </div>
     </div>
+  </div>
+
+  <!-- Direct Reels Upload with Moderation -->
+  <div class="quick-upload-panel">
+    <div class="quick-upload-row">
+      <input type="file" id="reelsVideo" accept="video/*">
+      <input type="text" id="reelsCaption" placeholder="Caption">
+      <button type="button" class="quick-upload-btn" onclick="createReels()">Upload Reels</button>
+    </div>
+    <p id="reelsStatus"></p>
   </div>
 
   <!-- Horizontal Quick Tools (Reel Factory) -->
@@ -590,6 +663,12 @@
     }
   } catch (_) {}
 
+  let activeCurrentUser = null;
+  let activeCurrentProfile = null;
+  let activeSelectedAudioName = '';
+  let activeSelectedCoverDataUrl = '';
+  let activeSelectedCoverFile = null;
+
   function generateUuid() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
       return window.crypto.randomUUID();
@@ -653,8 +732,310 @@
     }
   }
 
+  function fileToDataUrl(file, maxBytes = 8 * 1024 * 1024) {
+    return new Promise((resolve) => {
+      if (!file) return resolve('');
+      if (file.size > maxBytes) return resolve('');
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function buildReelsCardUrl(reelRecord) {
+    const cardUrl = new URL('/reels-card.html', window.location.origin);
+    cardUrl.searchParams.set('id', reelRecord.id);
+    cardUrl.searchParams.set('reel', reelRecord.id);
+    if (reelRecord.user_id) cardUrl.searchParams.set('user_id', reelRecord.user_id);
+    if (reelRecord.author_name) cardUrl.searchParams.set('author', reelRecord.author_name);
+    if (reelRecord.author_avatar) cardUrl.searchParams.set('avatar', reelRecord.author_avatar);
+    if (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:')) {
+      cardUrl.searchParams.set('media', reelRecord.media_url);
+    }
+    if (reelRecord.media_type) cardUrl.searchParams.set('type', reelRecord.media_type);
+    if (reelRecord.caption) cardUrl.searchParams.set('caption', reelRecord.caption);
+    if (reelRecord.audio_name) cardUrl.searchParams.set('audio', reelRecord.audio_name);
+    cardUrl.searchParams.set('from', '/create-reels.html');
+    cardUrl.searchParams.set('reels_page', '/reels.html');
+    cardUrl.searchParams.set('profile_page', `/profile.html?tab=reels${reelRecord.user_id ? `&user=${encodeURIComponent(reelRecord.user_id)}` : ''}`);
+    cardUrl.searchParams.set('home_page', '/index.html?tab=reels');
+    return cardUrl.toString();
+  }
+
+  function saveReelEverywhere(reelRecord, fallbackDataUrl = '') {
+    clearDeletedFlagForReel(reelRecord.id);
+
+    const resolvedMedia = (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
+      ? reelRecord.media_url
+      : (fallbackDataUrl || '');
+
+    const portableRecord = {
+      ...reelRecord,
+      media_url: resolvedMedia,
+      video_url: resolvedMedia,
+      video: resolvedMedia,
+      cover_url: activeSelectedCoverDataUrl || reelRecord.cover_url || '',
+      music: reelRecord.audio_name || 'Original Audio',
+      name: reelRecord.author_name || 'Autrobook User',
+      likes: Number(reelRecord.likes ?? reelRecord.reaction_count ?? 0),
+      time: 'Just now',
+      destinations: ['/reels-card.html', '/reels.html', '/profile.html', '/index.html']
+    };
+
+    const feedAndCardKeys = [
+      'reels',
+      'autrobook_live_reels',
+      'autrobook_reels_queue',
+      'autro_reels',
+      'autrobook_reels',
+      'autro_instant_reels',
+      'autrobook_reel_cards',
+      'autro_instant_feed_posts',
+      'autro_post_cards'
+    ];
+
+    const profileKeys = [
+      'autrobook_profile_reels',
+      'autro_profile_reels',
+      'autrobook_user_reels',
+      'autrobook_profile_posts',
+      'autro_profile_posts'
+    ];
+
+    if (portableRecord.user_id) {
+      profileKeys.push(`autrobook_profile_reels_${portableRecord.user_id}`);
+      profileKeys.push(`autrobook_profile_posts_${portableRecord.user_id}`);
+    }
+
+    const writeList = (key, maxLen = 40) => {
+      try {
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        const arr = Array.isArray(existing)
+          ? existing.filter((x) => x && String(x.id) !== String(portableRecord.id))
+          : [];
+        arr.unshift(portableRecord);
+        localStorage.setItem(key, JSON.stringify(arr.slice(0, maxLen)));
+      } catch (e) {
+        try {
+          const slim = {
+            id: portableRecord.id,
+            user_id: portableRecord.user_id || '',
+            author_name: portableRecord.author_name || 'Autrobook User',
+            name: portableRecord.author_name || 'Autrobook User',
+            author_avatar: portableRecord.author_avatar || '',
+            caption: portableRecord.caption || '',
+            is_reel: true,
+            is_video: Boolean(portableRecord.is_video),
+            media_type: portableRecord.media_type || 'video',
+            media_url: String(portableRecord.media_url || '').startsWith('data:') ? '' : (portableRecord.media_url || ''),
+            video_url: String(portableRecord.video_url || '').startsWith('data:') ? '' : (portableRecord.video_url || ''),
+            video: String(portableRecord.video || '').startsWith('data:') ? '' : (portableRecord.video || ''),
+            audio_name: portableRecord.audio_name || 'Original Audio',
+            music: portableRecord.audio_name || 'Original Audio',
+            ai_score: portableRecord.ai_score ?? null,
+            badge: portableRecord.badge ?? null,
+            likes: 0,
+            reaction_count: 0,
+            comment_count: 0,
+            share_count: 0,
+            view_count: 0,
+            time: 'Just now',
+            created_at: portableRecord.created_at
+          };
+          localStorage.setItem(key, JSON.stringify([slim]));
+        } catch (__) {}
+      }
+    };
+
+    [...feedAndCardKeys, ...profileKeys].forEach((k) => writeList(k, 40));
+
+    try {
+      localStorage.setItem('autro_new_reel_created', JSON.stringify(portableRecord));
+      localStorage.setItem('autro_new_post_created', JSON.stringify(portableRecord));
+      localStorage.setItem('autrobook_active_reel_card', JSON.stringify(portableRecord));
+      sessionStorage.setItem('autrobook_active_reel_card', JSON.stringify(portableRecord));
+      window.dispatchEvent(new CustomEvent('autrobook:reel-created', { detail: portableRecord }));
+    } catch (e) {}
+
+    try {
+      if (reelSyncChannel) {
+        reelSyncChannel.postMessage({
+          type: 'NEW_REEL_CREATED',
+          reel: portableRecord,
+          reelId: portableRecord.id,
+          targets: ['/reels-card.html', '/reels.html', '/profile.html', '/index.html']
+        });
+      }
+    } catch (_) {}
+  }
+
+  async function persistReelToBackend(reelRecord, rawFile) {
+    const userId = activeCurrentUser?.id || localStorage.getItem('autro_user_id') || '';
+    const authorName = String(
+      activeCurrentProfile?.full_name ||
+      activeCurrentProfile?.name ||
+      activeCurrentUser?.user_metadata?.full_name ||
+      localStorage.getItem('autro_profile_name') ||
+      'Autrobook User'
+    ).trim();
+    const authorAvatar = String(
+      activeCurrentProfile?.avatar_url ||
+      localStorage.getItem('autro_profile_avatar') ||
+      ''
+    ).trim();
+
+    reelRecord.user_id = userId;
+    reelRecord.author_name = authorName;
+    reelRecord.author_avatar = authorAvatar;
+
+    const dataUrlBackup = rawFile ? await fileToDataUrl(rawFile, 8 * 1024 * 1024) : '';
+
+    if (supabaseClient && rawFile && userId) {
+      try {
+        const ext = (rawFile.name && rawFile.name.split('.').pop()) || (reelRecord.is_video ? 'mp4' : 'jpg');
+        const filePath = `${userId}/${reelRecord.id}.${ext}`;
+        const { error: upErr } = await supabaseClient.storage
+          .from('reels')
+          .upload(filePath, rawFile, { upsert: true });
+        if (!upErr) {
+          const { data: pubData } = supabaseClient.storage.from('reels').getPublicUrl(filePath);
+          if (pubData?.publicUrl) {
+            reelRecord.media_url = pubData.publicUrl;
+            reelRecord.video_url = pubData.publicUrl;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (supabaseClient && activeSelectedCoverFile && userId) {
+      try {
+        const cExt = (activeSelectedCoverFile.name && activeSelectedCoverFile.name.split('.').pop()) || 'jpg';
+        const coverPath = `${userId}/covers/${reelRecord.id}.${cExt}`;
+        const { error: cErr } = await supabaseClient.storage
+          .from('reels')
+          .upload(coverPath, activeSelectedCoverFile, { upsert: true });
+        if (!cErr) {
+          const { data: cPub } = supabaseClient.storage.from('reels').getPublicUrl(coverPath);
+          if (cPub?.publicUrl) {
+            reelRecord.cover_url = cPub.publicUrl;
+          }
+        }
+      } catch (e) {}
+    }
+
+    const finalMediaForDb = (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
+      ? reelRecord.media_url
+      : dataUrlBackup;
+
+    if (supabaseClient && userId) {
+      try {
+        await supabaseClient.from('reels').insert({
+          id: reelRecord.id,
+          user_id: userId,
+          author_name: authorName,
+          author_avatar: authorAvatar,
+          caption: reelRecord.caption,
+          media_url: finalMediaForDb,
+          media_type: reelRecord.media_type,
+          audio_name: reelRecord.audio_name || 'Original Audio',
+          ai_score: reelRecord.ai_score ?? null,
+          badge: reelRecord.badge ?? null,
+          audience: 'public',
+          created_at: reelRecord.created_at
+        });
+      } catch (e) {}
+
+      try {
+        await supabaseClient.from('posts').insert({
+          id: reelRecord.id,
+          user_id: userId,
+          author_name: authorName,
+          author_avatar: authorAvatar,
+          caption: reelRecord.caption,
+          is_reel: true,
+          media_url: finalMediaForDb,
+          media_type: reelRecord.media_type,
+          ai_score: reelRecord.ai_score ?? null,
+          badge: reelRecord.badge ?? null,
+          audience: 'public',
+          created_at: reelRecord.created_at
+        });
+      } catch (e) {}
+    }
+
+    saveReelEverywhere(reelRecord, dataUrlBackup);
+    return reelRecord;
+  }
+
+  async function createReels() {
+    const videoInput = document.getElementById('reelsVideo') || document.getElementById('reelVideo');
+    const captionEl = document.getElementById('reelsCaption');
+    const statusEl = document.getElementById('reelsStatus') || document.getElementById('reelStatus');
+    const videoFile = videoInput && videoInput.files ? videoInput.files[0] : null;
+    const captionText = captionEl ? captionEl.value.trim() : '';
+
+    if (!videoFile && !captionText) {
+      if (statusEl) statusEl.innerText = 'Please select a video or enter a caption.';
+      return;
+    }
+
+    if (statusEl) statusEl.innerText = 'Checking content with moderation...';
+
+    const formData = new FormData();
+    if (videoFile) {
+      formData.append('video', videoFile);
+    }
+    formData.append('text', captionText);
+
+    try {
+      const res = await fetch('/api/moderate', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.action === 'suspend') {
+        if (statusEl) statusEl.innerText = 'Blocked: ' + data.message;
+        return;
+      }
+
+      const blobUrl = videoFile ? URL.createObjectURL(videoFile) : '';
+      const reelRecord = {
+        id: generateUuid(),
+        media_url: blobUrl,
+        video_url: blobUrl,
+        cover_url: activeSelectedCoverDataUrl || '',
+        media_type: 'video',
+        is_video: true,
+        caption: captionText || (videoFile && videoFile.name) || 'New Reel',
+        audio_name: activeSelectedAudioName || 'Original Audio',
+        ai_score: data.ai_score ?? null,
+        badge: data.badge ?? null,
+        is_reel: true,
+        card_page: 'reels-card.html',
+        likes: 0,
+        reaction_count: 0,
+        comment_count: 0,
+        share_count: 0,
+        view_count: 0,
+        created_at: new Date().toISOString()
+      };
+
+      const savedRecord = await persistReelToBackend(reelRecord, videoFile);
+      if (statusEl) {
+        statusEl.innerText = `Uploaded! AI Score: ${data.ai_score ?? 'N/A'} | Badge: ${data.badge ?? 'None'}`;
+      }
+
+      const cardRedirectUrl = buildReelsCardUrl(savedRecord);
+      setTimeout(() => {
+        window.location.href = cardRedirectUrl;
+      }, 300);
+    } catch (err) {
+      if (statusEl) statusEl.innerText = 'Upload failed: ' + (err && err.message ? err.message : 'Network error');
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
     const closeToReelsBtn = document.getElementById('closeToReelsBtn');
+    const profileLinkBtn = document.getElementById('profileLinkBtn');
     const cameraToolBtn = document.getElementById('cameraToolBtn');
     const musicToolBtn = document.getElementById('musicToolBtn');
     const coverToolBtn = document.getElementById('coverToolBtn');
@@ -678,12 +1059,7 @@
     const params = new URLSearchParams(window.location.search);
     const returnToParam = params.get('return_to') || '/reels.html';
 
-    let currentUser = null;
-    let currentProfile = null;
     let isMultiSelect = false;
-    let selectedAudioName = '';
-    let selectedCoverDataUrl = '';
-    let selectedCoverFile = null;
     let activeTile = null;
     const filesByUrl = new Map();
 
@@ -694,23 +1070,27 @@
       return;
     }
 
-    currentUser = authResult.user;
-    currentProfile = authResult.profile || null;
+    activeCurrentUser = authResult.user;
+    activeCurrentProfile = authResult.profile || null;
+
+    if (profileLinkBtn && activeCurrentUser?.id) {
+      profileLinkBtn.href = `/profile.html?tab=reels&user=${encodeURIComponent(activeCurrentUser.id)}`;
+    }
 
     try {
-      localStorage.setItem('autro_user_id', currentUser.id);
+      localStorage.setItem('autro_user_id', activeCurrentUser.id);
       const resolvedName = String(
-        currentProfile?.full_name ||
-        currentProfile?.name ||
-        currentUser.user_metadata?.full_name ||
-        currentUser.user_metadata?.name ||
+        activeCurrentProfile?.full_name ||
+        activeCurrentProfile?.name ||
+        activeCurrentUser.user_metadata?.full_name ||
+        activeCurrentUser.user_metadata?.name ||
         ''
       ).trim();
       if (resolvedName) {
         localStorage.setItem('autro_profile_name', resolvedName);
       }
-      if (currentProfile?.avatar_url) {
-        localStorage.setItem('autro_profile_avatar', currentProfile.avatar_url);
+      if (activeCurrentProfile?.avatar_url) {
+        localStorage.setItem('autro_profile_avatar', activeCurrentProfile.avatar_url);
       }
     } catch (e) {}
 
@@ -733,14 +1113,14 @@
 
     function updateMetaBadges() {
       if (musicStatusBadge) {
-        musicStatusBadge.innerHTML = `<i class="fa-solid fa-music"></i><span>${selectedAudioName || 'No music selected'}</span>`;
+        musicStatusBadge.innerHTML = `<i class="fa-solid fa-music"></i><span>${activeSelectedAudioName || 'No music selected'}</span>`;
       }
       if (coverStatusBadge) {
-        coverStatusBadge.innerHTML = `<i class="fa-regular fa-image"></i><span>${selectedCoverDataUrl ? 'Custom cover' : 'Auto cover'}</span>`;
+        coverStatusBadge.innerHTML = `<i class="fa-regular fa-image"></i><span>${activeSelectedCoverDataUrl ? 'Custom cover' : 'Auto cover'}</span>`;
       }
       if (coverPreviewThumb) {
-        if (selectedCoverDataUrl) {
-          coverPreviewThumb.src = selectedCoverDataUrl;
+        if (activeSelectedCoverDataUrl) {
+          coverPreviewThumb.src = activeSelectedCoverDataUrl;
           coverPreviewThumb.classList.add('visible');
         } else {
           coverPreviewThumb.removeAttribute('src');
@@ -796,236 +1176,6 @@
       syncEmptyState();
     }
 
-    function fileToDataUrl(file, maxBytes = 8 * 1024 * 1024) {
-      return new Promise((resolve) => {
-        if (!file) return resolve('');
-        if (file.size > maxBytes) return resolve('');
-        const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function buildReelsCardUrl(reelRecord) {
-      const cardUrl = new URL('/reels-card.html', window.location.origin);
-      cardUrl.searchParams.set('id', reelRecord.id);
-      cardUrl.searchParams.set('reel', reelRecord.id);
-      if (reelRecord.user_id) cardUrl.searchParams.set('user_id', reelRecord.user_id);
-      if (reelRecord.author_name) cardUrl.searchParams.set('author', reelRecord.author_name);
-      if (reelRecord.author_avatar) cardUrl.searchParams.set('avatar', reelRecord.author_avatar);
-      if (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:')) {
-        cardUrl.searchParams.set('media', reelRecord.media_url);
-      }
-      if (reelRecord.media_type) cardUrl.searchParams.set('type', reelRecord.media_type);
-      if (reelRecord.caption) cardUrl.searchParams.set('caption', reelRecord.caption);
-      if (reelRecord.audio_name) cardUrl.searchParams.set('audio', reelRecord.audio_name);
-      cardUrl.searchParams.set('from', '/create-reels.html');
-      cardUrl.searchParams.set('reels_page', '/reels.html');
-      cardUrl.searchParams.set('profile_page', `/profile.html?tab=reels${reelRecord.user_id ? `&user=${encodeURIComponent(reelRecord.user_id)}` : ''}`);
-      cardUrl.searchParams.set('home_page', '/index.html?tab=reels');
-      return cardUrl.toString();
-    }
-
-    function saveReelEverywhere(reelRecord, fallbackDataUrl = '') {
-      clearDeletedFlagForReel(reelRecord.id);
-
-      const resolvedMedia = (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
-        ? reelRecord.media_url
-        : (fallbackDataUrl || '');
-
-      const portableRecord = {
-        ...reelRecord,
-        media_url: resolvedMedia,
-        video_url: resolvedMedia,
-        video: resolvedMedia,
-        cover_url: selectedCoverDataUrl || reelRecord.cover_url || '',
-        music: reelRecord.audio_name || 'Original Audio',
-        name: reelRecord.author_name || 'Autrobook User',
-        likes: Number(reelRecord.likes ?? reelRecord.reaction_count ?? 0),
-        time: 'Just now',
-        destinations: ['/reels-card.html', '/reels.html', '/profile.html', '/index.html']
-      };
-
-      const feedAndCardKeys = [
-        'reels',
-        'autrobook_live_reels',
-        'autrobook_reels_queue',
-        'autro_reels',
-        'autrobook_reels',
-        'autro_instant_reels',
-        'autrobook_reel_cards',
-        'autro_instant_feed_posts',
-        'autro_post_cards'
-      ];
-
-      const profileKeys = [
-        'autrobook_profile_reels',
-        'autro_profile_reels',
-        'autrobook_user_reels',
-        'autrobook_profile_posts',
-        'autro_profile_posts'
-      ];
-
-      if (portableRecord.user_id) {
-        profileKeys.push(`autrobook_profile_reels_${portableRecord.user_id}`);
-        profileKeys.push(`autrobook_profile_posts_${portableRecord.user_id}`);
-      }
-
-      const writeList = (key, maxLen = 40) => {
-        try {
-          const existing = JSON.parse(localStorage.getItem(key) || '[]');
-          const arr = Array.isArray(existing)
-            ? existing.filter((x) => x && String(x.id) !== String(portableRecord.id))
-            : [];
-          arr.unshift(portableRecord);
-          localStorage.setItem(key, JSON.stringify(arr.slice(0, maxLen)));
-        } catch (e) {
-          try {
-            const slim = {
-              id: portableRecord.id,
-              user_id: portableRecord.user_id || '',
-              author_name: portableRecord.author_name || 'Autrobook User',
-              name: portableRecord.author_name || 'Autrobook User',
-              author_avatar: portableRecord.author_avatar || '',
-              caption: portableRecord.caption || '',
-              is_reel: true,
-              is_video: Boolean(portableRecord.is_video),
-              media_type: portableRecord.media_type || 'video',
-              media_url: String(portableRecord.media_url || '').startsWith('data:') ? '' : (portableRecord.media_url || ''),
-              video_url: String(portableRecord.video_url || '').startsWith('data:') ? '' : (portableRecord.video_url || ''),
-              video: String(portableRecord.video || '').startsWith('data:') ? '' : (portableRecord.video || ''),
-              audio_name: portableRecord.audio_name || 'Original Audio',
-              music: portableRecord.audio_name || 'Original Audio',
-              likes: 0,
-              reaction_count: 0,
-              comment_count: 0,
-              share_count: 0,
-              view_count: 0,
-              time: 'Just now',
-              created_at: portableRecord.created_at
-            };
-            localStorage.setItem(key, JSON.stringify([slim]));
-          } catch (__) {}
-        }
-      };
-
-      [...feedAndCardKeys, ...profileKeys].forEach((k) => writeList(k, 40));
-
-      try {
-        localStorage.setItem('autro_new_reel_created', JSON.stringify(portableRecord));
-        localStorage.setItem('autro_new_post_created', JSON.stringify(portableRecord));
-        localStorage.setItem('autrobook_active_reel_card', JSON.stringify(portableRecord));
-        sessionStorage.setItem('autrobook_active_reel_card', JSON.stringify(portableRecord));
-        window.dispatchEvent(new CustomEvent('autrobook:reel-created', { detail: portableRecord }));
-      } catch (e) {}
-
-      try {
-        if (reelSyncChannel) {
-          reelSyncChannel.postMessage({
-            type: 'NEW_REEL_CREATED',
-            reel: portableRecord,
-            reelId: portableRecord.id,
-            targets: ['/reels-card.html', '/reels.html', '/profile.html', '/index.html']
-          });
-        }
-      } catch (_) {}
-    }
-
-    async function persistReelToBackend(reelRecord, rawFile) {
-      const userId = currentUser?.id || localStorage.getItem('autro_user_id') || '';
-      const authorName = String(
-        currentProfile?.full_name ||
-        currentProfile?.name ||
-        currentUser?.user_metadata?.full_name ||
-        localStorage.getItem('autro_profile_name') ||
-        'Autrobook User'
-      ).trim();
-      const authorAvatar = String(
-        currentProfile?.avatar_url ||
-        localStorage.getItem('autro_profile_avatar') ||
-        ''
-      ).trim();
-
-      reelRecord.user_id = userId;
-      reelRecord.author_name = authorName;
-      reelRecord.author_avatar = authorAvatar;
-
-      const dataUrlBackup = rawFile ? await fileToDataUrl(rawFile, 8 * 1024 * 1024) : '';
-
-      if (supabaseClient && rawFile && userId) {
-        try {
-          const ext = (rawFile.name && rawFile.name.split('.').pop()) || (reelRecord.is_video ? 'mp4' : 'jpg');
-          const filePath = `${userId}/${reelRecord.id}.${ext}`;
-          const { error: upErr } = await supabaseClient.storage
-            .from('reels')
-            .upload(filePath, rawFile, { upsert: true });
-          if (!upErr) {
-            const { data: pubData } = supabaseClient.storage.from('reels').getPublicUrl(filePath);
-            if (pubData?.publicUrl) {
-              reelRecord.media_url = pubData.publicUrl;
-              reelRecord.video_url = pubData.publicUrl;
-            }
-          }
-        } catch (e) {}
-      }
-
-      if (supabaseClient && selectedCoverFile && userId) {
-        try {
-          const cExt = (selectedCoverFile.name && selectedCoverFile.name.split('.').pop()) || 'jpg';
-          const coverPath = `${userId}/covers/${reelRecord.id}.${cExt}`;
-          const { error: cErr } = await supabaseClient.storage
-            .from('reels')
-            .upload(coverPath, selectedCoverFile, { upsert: true });
-          if (!cErr) {
-            const { data: cPub } = supabaseClient.storage.from('reels').getPublicUrl(coverPath);
-            if (cPub?.publicUrl) {
-              reelRecord.cover_url = cPub.publicUrl;
-            }
-          }
-        } catch (e) {}
-      }
-
-      const finalMediaForDb = (reelRecord.media_url && !String(reelRecord.media_url).startsWith('blob:'))
-        ? reelRecord.media_url
-        : dataUrlBackup;
-
-      if (supabaseClient && userId) {
-        try {
-          await supabaseClient.from('reels').insert({
-            id: reelRecord.id,
-            user_id: userId,
-            author_name: authorName,
-            author_avatar: authorAvatar,
-            caption: reelRecord.caption,
-            media_url: finalMediaForDb,
-            media_type: reelRecord.media_type,
-            audio_name: reelRecord.audio_name || 'Original Audio',
-            audience: 'public',
-            created_at: reelRecord.created_at
-          });
-        } catch (e) {}
-
-        try {
-          await supabaseClient.from('posts').insert({
-            id: reelRecord.id,
-            user_id: userId,
-            author_name: authorName,
-            author_avatar: authorAvatar,
-            caption: reelRecord.caption,
-            is_reel: true,
-            media_url: finalMediaForDb,
-            media_type: reelRecord.media_type,
-            audience: 'public',
-            created_at: reelRecord.created_at
-          });
-        } catch (e) {}
-      }
-
-      saveReelEverywhere(reelRecord, dataUrlBackup);
-      return reelRecord;
-    }
-
     uploadBtn.addEventListener('click', async () => {
       const chosenTile = activeTile || mediaGrid.querySelector('.media-tile.selected') || mediaGrid.querySelector('.media-tile');
       const captionText = reelCaptionInput.value.trim();
@@ -1046,11 +1196,11 @@
         id: generateUuid(),
         media_url: blobSrc,
         video_url: blobSrc,
-        cover_url: selectedCoverDataUrl || '',
+        cover_url: activeSelectedCoverDataUrl || '',
         media_type: mediaType,
         is_video: mediaType === 'video',
         caption: captionText || (chosenTile && chosenTile.getAttribute('data-title')) || 'New Reel',
-        audio_name: selectedAudioName || 'Original Audio',
+        audio_name: activeSelectedAudioName || 'Original Audio',
         is_reel: true,
         card_page: 'reels-card.html',
         likes: 0,
@@ -1095,7 +1245,7 @@
     musicFileInput.addEventListener('change', () => {
       const file = musicFileInput.files && musicFileInput.files[0];
       if (!file) return;
-      selectedAudioName = file.name;
+      activeSelectedAudioName = file.name;
       updateMetaBadges();
       notify(`Music added: ${file.name}`);
     });
@@ -1107,8 +1257,8 @@
     coverImageInput.addEventListener('change', async () => {
       const file = coverImageInput.files && coverImageInput.files[0];
       if (!file) return;
-      selectedCoverFile = file;
-      selectedCoverDataUrl = await fileToDataUrl(file, 4 * 1024 * 1024);
+      activeSelectedCoverFile = file;
+      activeSelectedCoverDataUrl = await fileToDataUrl(file, 4 * 1024 * 1024);
       updateMetaBadges();
       notify(`Cover selected: ${file.name}`);
     });
@@ -1145,13 +1295,13 @@
           title: el.getAttribute('data-title')
         }));
 
-        const hasDraftData = selectedItems.length > 0 || Boolean(selectedAudioName) || Boolean(reelCaptionInput.value.trim()) || Boolean(selectedCoverDataUrl);
+        const hasDraftData = selectedItems.length > 0 || Boolean(activeSelectedAudioName) || Boolean(reelCaptionInput.value.trim()) || Boolean(activeSelectedCoverDataUrl);
         if (hasDraftData) {
           const newDraft = {
             id: 'draft_' + Date.now(),
             caption: reelCaptionInput.value.trim(),
-            audio: selectedAudioName,
-            cover: selectedCoverDataUrl,
+            audio: activeSelectedAudioName,
+            cover: activeSelectedCoverDataUrl,
             selectedCount: selectedItems.length,
             items: selectedItems,
             savedAt: new Date().toLocaleString()
