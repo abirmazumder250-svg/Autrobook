@@ -326,7 +326,7 @@
     .life-event-banner {
       position: relative;
       width: 100%;
-      height: 220px;
+      height: 210px;
       background: linear-gradient(135deg, #1b2232 0%, #0e121a 100%);
       display: flex;
       align-items: center;
@@ -775,7 +775,7 @@
       font-size: 20px;
     }
 
-    /* FEELINGS MODAL */
+    /* FEELINGS & EDIT LIFE EVENT MODALS */
     .feeling-modal-backdrop {
       position: fixed;
       inset: 0;
@@ -852,6 +852,73 @@
     .feeling-option-btn.selected {
       background: var(--btn-dark-green);
       color: var(--btn-dark-green-fg);
+    }
+
+    .edit-le-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .edit-le-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .edit-le-input,
+    .edit-le-textarea {
+      width: 100%;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .edit-le-input:focus,
+    .edit-le-textarea:focus {
+      border-color: var(--btn-dark-green);
+    }
+
+    .edit-le-textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+
+    .edit-le-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .edit-le-save-btn {
+      flex: 1;
+      background: var(--btn-dark-green);
+      color: var(--btn-dark-green-fg);
+      border: none;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .edit-le-save-btn:hover {
+      background: var(--btn-dark-green-hover);
+    }
+
+    .edit-le-page-btn {
+      background: var(--bg-chip);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
     }
 
     .toast {
@@ -1030,7 +1097,6 @@
   <!-- HIDDEN FILE INPUTS -->
   <input type="file" id="postImage" accept="image/*,video/*" style="display:none;" onchange="handleGalleryPicked(event)">
   <input type="file" id="phoneMusicInput" accept="audio/*" style="display:none;" onchange="handleMusicPicked(event)">
-  <input type="file" id="lifeEventPhotoInput" accept="image/*" style="display:none;" onchange="handleLifeEventPhotoPicked(event)">
 
   <!-- BACKGROUND STYLE SHEET -->
   <div id="styleSheetBackdrop" class="style-sheet-backdrop" onclick="closeStyleSheet()">
@@ -1057,6 +1123,46 @@
     </div>
   </div>
 
+  <!-- UNIVERSAL EDIT LIFE EVENT MODAL (FOR ALL CATEGORIES & EVERYONE) -->
+  <div id="editLifeEventBackdrop" class="feeling-modal-backdrop" onclick="closeEditLifeEventModal()">
+    <div class="feeling-modal-sheet" onclick="event.stopPropagation()">
+      <div class="feeling-modal-header">
+        <span class="feeling-modal-title">Edit life event</span>
+        <button type="button" class="feeling-close-btn" onclick="closeEditLifeEventModal()">Close</button>
+      </div>
+
+      <div class="edit-le-field">
+        <label for="editLeTitle" class="edit-le-label">Title</label>
+        <input type="text" id="editLeTitle" class="edit-le-input" placeholder="e.g. Started job">
+      </div>
+
+      <div class="edit-le-field">
+        <label for="editLePlace" class="edit-le-label">Organization / Location</label>
+        <input type="text" id="editLePlace" class="edit-le-input" placeholder="e.g. Celebrity Face">
+      </div>
+
+      <div class="edit-le-field">
+        <label for="editLeDate" class="edit-le-label">Date</label>
+        <input type="text" id="editLeDate" class="edit-le-input" placeholder="Today or YYYY-MM-DD">
+      </div>
+
+      <div class="edit-le-field">
+        <label for="editLePhoto" class="edit-le-label">Banner Photo URL</label>
+        <input type="text" id="editLePhoto" class="edit-le-input" placeholder="https://... or image URL">
+      </div>
+
+      <div class="edit-le-field">
+        <label for="editLeStory" class="edit-le-label">Story / Note</label>
+        <textarea id="editLeStory" class="edit-le-textarea" placeholder="Write a short note..."></textarea>
+      </div>
+
+      <div class="edit-le-actions">
+        <button type="button" class="edit-le-page-btn" onclick="openFullLifeEventPage()">Full Editor</button>
+        <button type="button" class="edit-le-save-btn" onclick="saveEditedLifeEvent()">Save changes</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1080,34 +1186,6 @@
         postSyncChannel = new BroadcastChannel('autrobook_posts_sync');
       }
     } catch (_) {}
-
-    const LIFE_EVENT_ROUTES = {
-      'new-job': '/new-job.html',
-      'started-job': '/new-job.html',
-      'promotion': '/promotion.html',
-      'left-job': '/left-job.html',
-      'retirement': '/retirement.html',
-      'new-school': '/new-school.html',
-      'graduated': '/graduated.html',
-      'left-school': '/left-school.html',
-      'new-relationship': '/new-relationship.html',
-      'engagement': '/engagement.html',
-      'marriage': '/marriage.html',
-      'first-met': '/first-met.html',
-      'moved': '/moved.html',
-      'places-ive-lived': '/places-ive-lived.html',
-      'hometown': '/hometown.html',
-      'new-child': '/new-child.html',
-      'parenthood': '/parenthood.html',
-      'new-pet': '/new-pet.html',
-      'loss-of-a-loved-one': '/loss-of-a-loved-one.html',
-      'travel': '/travel.html',
-      'activities': '/activities.html',
-      'wellness': '/wellness.html',
-      'milestones': '/milestones.html',
-      'remembrance': '/remembrance.html',
-      'create-your-own': '/create-your-own.html'
-    };
 
     const BACKGROUND_STYLES = [
       { id: 'none', css: '' },
@@ -1151,6 +1229,35 @@
       { label: 'Motivated', emoji: '💪' }
     ];
 
+    const LIFE_EVENT_ROUTES = {
+      'new job': '/new-job.html',
+      'started job': '/new-job.html',
+      'promotion': '/promotion.html',
+      'left job': '/left-job.html',
+      'retirement': '/retirement.html',
+      'new school': '/new-school.html',
+      'graduated': '/graduated.html',
+      'left school': '/left-school.html',
+      'new relationship': '/new-relationship.html',
+      'engagement': '/engagement.html',
+      'marriage': '/marriage.html',
+      'first met': '/first-met.html',
+      'moved': '/moved.html',
+      "places i've lived": '/places-ive-lived.html',
+      'places ive lived': '/places-ive-lived.html',
+      'hometown': '/hometown.html',
+      'new child': '/new-child.html',
+      'parenthood': '/parenthood.html',
+      'new pet': '/new-pet.html',
+      'loss of a loved one': '/loss-of-a-loved-one.html',
+      'travel': '/travel.html',
+      'activities': '/activities.html',
+      'wellness': '/wellness.html',
+      'milestones': '/milestones.html',
+      'remembrance': '/remembrance.html',
+      'create your own': '/create-your-own.html'
+    };
+
     const CACHE_KEYS = [
       'posts',
       'autro_instant_feed_posts',
@@ -1167,7 +1274,6 @@
     let galleryDataUrl = '';
     let selectedGifUrl = '';
     let selectedLifeEvent = null;
-    let lifeEventPhotoFile = null;
     let musicFile = null;
     let selectedMusicName = '';
     let selectedPeople = '';
@@ -1257,7 +1363,7 @@
       const stripVolatileUrl = (u) => {
         if (typeof u !== 'string') return '';
         if (u.startsWith('blob:')) return '';
-        if (u.startsWith('data:video/') || u.startsWith('data:audio/') || u.length > 260000) return '';
+        if (u.startsWith('data:video/') || u.startsWith('data:audio/') || u.length > 150000) return '';
         return u;
       };
       item.media_url = stripVolatileUrl(item.media_url);
@@ -1401,47 +1507,121 @@
       } catch (_) {}
     }
 
-    /* LIFE EVENT CARD RENDERING, PEN REDIRECT TO SUB-PAGE & PHOTO SYNC */
-    function slugifyLifeEvent(val) {
-      return String(val || '')
-        .toLowerCase()
-        .replace(/\.html$/i, '')
-        .replace(/['’]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+    /* LIFE EVENT CARD RENDERING, UNIVERSAL EDIT & PHOTO SYNC */
+    function isSafeMediaUrl(url) {
+      const val = String(url || '').trim();
+      return (
+        val.startsWith('https://') ||
+        val.startsWith('http://') ||
+        val.startsWith('/') ||
+        val.startsWith('data:image/') ||
+        val.startsWith('blob:')
+      );
     }
 
-    function resolveLifeEventTargetPage(ev) {
+    function extractLifeEventPhoto(ev) {
+      if (!ev || typeof ev !== 'object') {
+        try {
+          const extra = localStorage.getItem('autro_life_event_photo') || sessionStorage.getItem('autro_life_event_photo') || '';
+          return isSafeMediaUrl(extra) ? extra : '';
+        } catch (_) {
+          return '';
+        }
+      }
+      const candidates = [
+        ev.photoUrl,
+        ev.photo_url,
+        ev.bannerUrl,
+        ev.banner_url,
+        ev.imageUrl,
+        ev.image_url,
+        ev.image,
+        ev.photo
+      ];
+      for (const c of candidates) {
+        if (typeof c === 'string' && c.trim() && isSafeMediaUrl(c.trim())) {
+          return c.trim();
+        }
+      }
+      try {
+        const extra = localStorage.getItem('autro_life_event_photo') || sessionStorage.getItem('autro_life_event_photo') || '';
+        if (extra && isSafeMediaUrl(extra)) return extra;
+      } catch (_) {}
+      return '';
+    }
+
+    function normalizeLifeEventObject(rawEv) {
+      if (!rawEv || typeof rawEv !== 'object') return null;
+      const resolvedPhoto = extractLifeEventPhoto(rawEv);
+      const normalized = {
+        ...rawEv,
+        photoUrl: resolvedPhoto,
+        photo_url: resolvedPhoto,
+        bannerUrl: resolvedPhoto,
+        image: resolvedPhoto
+      };
+      return normalized;
+    }
+
+    function resolveLifeEventPageUrl(ev) {
       if (!ev || typeof ev !== 'object') return '/life-event.html';
 
-      const directUrl = String(ev.pageUrl || ev.route || ev.targetUrl || ev.url || '').trim();
-      if (directUrl && (directUrl.startsWith('/') || directUrl.endsWith('.html'))) {
-        return directUrl.startsWith('/') ? directUrl : `/${directUrl}`;
+      if (typeof ev.editUrl === 'string' && ev.editUrl.trim()) {
+        return ev.editUrl.trim();
+      }
+      if (typeof ev.pageUrl === 'string' && ev.pageUrl.trim()) {
+        return ev.pageUrl.trim();
       }
 
-      const candidates = [
-        ev.slug,
-        ev.type,
-        ev.eventType,
-        ev.subCategory,
-        ev.sub_category,
-        ev.title,
-        ev.categoryId,
-        ev.category_id,
-        ev.categoryLabel,
-        ev.category_label
-      ];
+      const subKey = String(ev.subCategory || ev.sub_category || ev.type || ev.eventType || '').trim().toLowerCase();
+      if (LIFE_EVENT_ROUTES[subKey]) {
+        return LIFE_EVENT_ROUTES[subKey];
+      }
 
-      for (const raw of candidates) {
-        const slug = slugifyLifeEvent(raw);
-        if (LIFE_EVENT_ROUTES[slug]) {
-          return LIFE_EVENT_ROUTES[slug];
+      const titleKey = String(ev.title || '').trim().toLowerCase();
+      if (LIFE_EVENT_ROUTES[titleKey]) {
+        return LIFE_EVENT_ROUTES[titleKey];
+      }
+
+      for (const [k, route] of Object.entries(LIFE_EVENT_ROUTES)) {
+        if (subKey.includes(k) || titleKey.includes(k)) {
+          return route;
         }
-        for (const [key, path] of Object.entries(LIFE_EVENT_ROUTES)) {
-          if (slug && (slug.includes(key) || key.includes(slug))) {
-            return path;
-          }
-        }
+      }
+
+      const catKey = String(ev.categoryId || ev.category_id || ev.categoryLabel || ev.category || '').trim().toLowerCase();
+      if (catKey.includes('career') || catKey.includes('work') || catKey.includes('job')) {
+        return '/new-job.html';
+      }
+      if (catKey.includes('education') || catKey.includes('school')) {
+        return '/new-school.html';
+      }
+      if (catKey.includes('relationship') || catKey.includes('love')) {
+        return '/new-relationship.html';
+      }
+      if (catKey.includes('living') || catKey.includes('home') || catKey.includes('move')) {
+        return '/moved.html';
+      }
+      if (catKey.includes('family') || catKey.includes('pet') || catKey.includes('child')) {
+        return '/new-child.html';
+      }
+      if (catKey.includes('travel')) {
+        return '/travel.html';
+      }
+      if (catKey.includes('activit')) {
+        return '/activities.html';
+      }
+      if (catKey.includes('well')) {
+        return '/wellness.html';
+      }
+      if (catKey.includes('milestone')) {
+        return '/milestones.html';
+      }
+      if (catKey.includes('remembran')) {
+        return '/remembrance.html';
+      }
+      if (catKey.includes('own') || catKey.includes('custom')) {
+        return '/create-your-own.html';
       }
 
       return '/life-event.html';
@@ -1449,57 +1629,13 @@
 
     function getCategoryIconClass(categoryId, categoryLabel) {
       const key = String(categoryId || categoryLabel || '').toLowerCase();
-      if (key.includes('career') || key.includes('work') || key.includes('job') || key.includes('promotion') || key.includes('retirement')) return 'fa-briefcase';
+      if (key.includes('career') || key.includes('work') || key.includes('job')) return 'fa-briefcase';
       if (key.includes('education') || key.includes('school') || key.includes('graduat')) return 'fa-graduation-cap';
-      if (key.includes('relationship') || key.includes('marri') || key.includes('engag') || key.includes('heart') || key.includes('first-met') || key.includes('first met')) return 'fa-heart';
-      if (key.includes('living') || key.includes('home') || key.includes('move') || key.includes('hometown') || key.includes('lived')) return 'fa-house';
-      if (key.includes('family') || key.includes('child') || key.includes('parent') || key.includes('pet') || key.includes('loved')) return 'fa-seedling';
+      if (key.includes('relationship') || key.includes('marri') || key.includes('engag') || key.includes('heart')) return 'fa-heart';
+      if (key.includes('living') || key.includes('home') || key.includes('move')) return 'fa-house';
+      if (key.includes('family') || key.includes('child') || key.includes('parent') || key.includes('pet')) return 'fa-seedling';
       if (key.includes('travel')) return 'fa-plane';
       return 'fa-flag';
-    }
-
-    function getLifeEventPhoto(ev) {
-      if (!ev || typeof ev !== 'object') return '';
-      return String(
-        ev.photoUrl ||
-        ev.photo_url ||
-        ev.bannerUrl ||
-        ev.banner_url ||
-        ev.imageUrl ||
-        ev.image_url ||
-        ev.image ||
-        ev.photo ||
-        localStorage.getItem('autro_life_event_photo') ||
-        localStorage.getItem('selectedLifeEventPhoto') ||
-        ''
-      ).trim();
-    }
-
-    function persistLifeEventState(ev) {
-      if (!ev) {
-        try {
-          localStorage.removeItem('autro_life_event');
-          localStorage.removeItem('autro_life_event_photo');
-          localStorage.removeItem('selectedLifeEventPhoto');
-        } catch (_) {}
-        return;
-      }
-
-      const photo = getLifeEventPhoto(ev);
-      const normalized = {
-        ...ev,
-        photoUrl: photo,
-        photo_url: photo
-      };
-      selectedLifeEvent = normalized;
-
-      try {
-        if (photo && isSafeMediaUrl(photo)) {
-          localStorage.setItem('autro_life_event_photo', photo);
-          localStorage.setItem('selectedLifeEventPhoto', photo);
-        }
-        localStorage.setItem('autro_life_event', JSON.stringify(normalized));
-      } catch (_) {}
     }
 
     function renderLifeEventCard() {
@@ -1510,28 +1646,32 @@
         return;
       }
 
+      selectedLifeEvent = normalizeLifeEventObject(selectedLifeEvent);
       const ev = selectedLifeEvent;
-      const iconCls = getCategoryIconClass(ev.categoryId || ev.category_id, ev.categoryLabel || ev.category_label || ev.subCategory || ev.title);
-      const titleText = ev.title || ev.subCategory || ev.sub_category || ev.categoryLabel || ev.category_label || 'Life event';
-      const placeText = ev.employer || ev.company || ev.school || ev.location || ev.place || '';
+      const iconCls = getCategoryIconClass(ev.categoryId || ev.category_id, ev.categoryLabel || ev.category);
+      const titleText = ev.title || ev.subCategory || ev.sub_category || ev.categoryLabel || 'Life event';
+      const placeText = ev.employer || ev.company || ev.organization || ev.location || ev.place || '';
       const todayIso = new Date().toISOString().split('T')[0];
-      const rawDate = ev.date || ev.eventDate || ev.event_date || '';
-      const dateText = (!rawDate || rawDate === todayIso) ? 'Today' : rawDate;
+      const dateText = (!ev.date || ev.date === todayIso) ? 'Today' : ev.date;
 
       const bannerImg = document.getElementById('lifeEventBannerImg');
       const placeholder = document.getElementById('lifeEventBannerPlaceholder');
-      const photoSrc = getLifeEventPhoto(ev);
+      const photoSrc = extractLifeEventPhoto(ev);
 
-      if (photoSrc && isSafeMediaUrl(photoSrc)) {
+      if (photoSrc) {
         bannerImg.src = photoSrc;
         bannerImg.style.display = 'block';
         placeholder.style.display = 'none';
+        bannerImg.onerror = () => {
+          bannerImg.style.display = 'none';
+          placeholder.style.display = 'flex';
+        };
       } else {
         bannerImg.src = '';
         bannerImg.style.display = 'none';
         placeholder.style.display = 'flex';
         document.getElementById('lifeEventPlaceholderIcon').className = `fas ${iconCls}`;
-        document.getElementById('lifeEventPlaceholderLabel').textContent = ev.subCategory || ev.categoryLabel || titleText;
+        document.getElementById('lifeEventPlaceholderLabel').textContent = ev.subCategory || ev.sub_category || ev.categoryLabel || 'Life Event';
       }
 
       document.getElementById('lifeEventBadgeIcon').className = `fas ${iconCls}`;
@@ -1548,7 +1688,7 @@
       document.getElementById('lifeEventDateText').textContent = dateText;
 
       const storyEl = document.getElementById('lifeEventStoryText');
-      const storyVal = ev.story || ev.description || ev.note || '';
+      const storyVal = ev.story || ev.note || ev.description || '';
       if (storyVal) {
         storyEl.textContent = storyVal;
         storyEl.style.display = 'block';
@@ -1562,102 +1702,83 @@
 
     function editLifeEvent() {
       saveComposerDraft();
-      const targetPage = resolveLifeEventTargetPage(selectedLifeEvent);
+      const targetPage = resolveLifeEventPageUrl(selectedLifeEvent);
       try {
-        sessionStorage.setItem('autro_editing_life_event', JSON.stringify(selectedLifeEvent || {}));
+        if (selectedLifeEvent) {
+          safeLocalStorageSet('autro_life_event', JSON.stringify(selectedLifeEvent));
+          safeLocalStorageSet('autro_editing_life_event', JSON.stringify(selectedLifeEvent));
+          sessionStorage.setItem('autro_editing_life_event', JSON.stringify(selectedLifeEvent));
+          const photoVal = extractLifeEventPhoto(selectedLifeEvent);
+          if (photoVal) {
+            safeLocalStorageSet('autro_life_event_photo', photoVal);
+            sessionStorage.setItem('autro_life_event_photo', photoVal);
+          }
+        }
       } catch (_) {}
-      window.location.href = targetPage;
+
+      const sep = targetPage.includes('?') ? '&' : '?';
+      window.location.href = `${targetPage}${sep}edit=1&from=create-post`;
     }
 
-    function openLifeEventPhotoPicker() {
-      document.getElementById('lifeEventPhotoInput').click();
+    function closeEditLifeEventModal() {
+      document.getElementById('editLifeEventBackdrop').classList.remove('open');
     }
 
-    function compressImageDataUrl(file, maxWidth = 1080, quality = 0.82) {
-      return new Promise((resolve) => {
-        if (!file || !file.type.startsWith('image/')) return resolve('');
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const dataUrl = typeof ev.target?.result === 'string' ? ev.target.result : '';
-          if (!dataUrl) return resolve('');
-          const img = new Image();
-          img.onload = () => {
-            try {
-              const scale = img.width > maxWidth ? (maxWidth / img.width) : 1;
-              const canvas = document.createElement('canvas');
-              canvas.width = Math.max(1, Math.round(img.width * scale));
-              canvas.height = Math.max(1, Math.round(img.height * scale));
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-              const compressed = canvas.toDataURL('image/jpeg', quality);
-              resolve(compressed.length < dataUrl.length ? compressed : dataUrl);
-            } catch (_) {
-              resolve(dataUrl);
-            }
-          };
-          img.onerror = () => resolve(dataUrl);
-          img.src = dataUrl;
-        };
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
+    function saveEditedLifeEvent() {
+      const titleVal = document.getElementById('editLeTitle').value.trim();
+      const placeVal = document.getElementById('editLePlace').value.trim();
+      const dateVal = document.getElementById('editLeDate').value.trim() || 'Today';
+      const photoVal = document.getElementById('editLePhoto').value.trim();
+      const storyVal = document.getElementById('editLeStory').value.trim();
+      const cleanPhoto = photoVal && isSafeMediaUrl(photoVal) ? photoVal : '';
+
+      selectedLifeEvent = normalizeLifeEventObject({
+        ...(selectedLifeEvent || {}),
+        title: titleVal || selectedLifeEvent?.title || 'Life event',
+        employer: placeVal,
+        location: placeVal,
+        date: dateVal,
+        photoUrl: cleanPhoto,
+        photo_url: cleanPhoto,
+        bannerUrl: cleanPhoto,
+        image: cleanPhoto,
+        story: storyVal
       });
-    }
+      delete selectedLifeEvent.formattedText;
 
-    async function handleLifeEventPhotoPicked(e) {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      lifeEventPhotoFile = file;
-
-      const localObjUrl = URL.createObjectURL(file);
-      const compressedDataUrl = await compressImageDataUrl(file);
-      const finalPhoto = compressedDataUrl || localObjUrl;
-
-      selectedLifeEvent = {
-        ...(selectedLifeEvent || {
-          title: 'Life event',
-          categoryLabel: 'Life event',
-          date: 'Today'
-        }),
-        photoUrl: finalPhoto,
-        photo_url: finalPhoto
-      };
-
-      persistLifeEventState(selectedLifeEvent);
-      saveComposerDraft();
-      renderLifeEventCard();
-
-      if (postSyncChannel) {
+      safeLocalStorageSet('autro_life_event', JSON.stringify(selectedLifeEvent));
+      if (cleanPhoto) {
+        safeLocalStorageSet('autro_life_event_photo', cleanPhoto);
+      } else {
         try {
-          postSyncChannel.postMessage({
-            type: 'LIFE_EVENT_PHOTO_UPDATED',
-            photoUrl: finalPhoto,
-            lifeEvent: selectedLifeEvent
-          });
+          localStorage.removeItem('autro_life_event_photo');
+          sessionStorage.removeItem('autro_life_event_photo');
         } catch (_) {}
       }
+      saveComposerDraft();
+      renderLifeEventCard();
+      closeEditLifeEventModal();
+      showToast('Life event updated');
+    }
 
-      showToast('Life event photo updated');
+    function openFullLifeEventPage() {
+      closeEditLifeEventModal();
+      editLifeEvent();
     }
 
     function removeLifeEvent() {
       selectedLifeEvent = null;
-      lifeEventPhotoFile = null;
-      persistLifeEventState(null);
+      try {
+        localStorage.removeItem('autro_life_event');
+        localStorage.removeItem('autro_editing_life_event');
+        localStorage.removeItem('autro_life_event_photo');
+        sessionStorage.removeItem('autro_editing_life_event');
+        sessionStorage.removeItem('autro_life_event_photo');
+      } catch (_) {}
       renderLifeEventCard();
     }
 
     /* GIF & GALLERY PREVIEW */
-    function isSafeMediaUrl(url) {
-      const val = String(url || '').trim();
-      return (
-        val.startsWith('https://') ||
-        val.startsWith('http://') ||
-        val.startsWith('/') ||
-        val.startsWith('blob:') ||
-        val.startsWith('data:image/')
-      );
-    }
-
     function setGifPreview(gifUrl) {
       const cleanUrl = String(gifUrl || '').trim();
       if (!cleanUrl || !isSafeMediaUrl(cleanUrl)) return;
@@ -1696,7 +1817,7 @@
     function readFileAsDataUrl(file) {
       return new Promise((resolve) => {
         if (!file || !file.type.startsWith('image/')) return resolve('');
-        if (file.size > 220000) return resolve('');
+        if (file.size > 140000) return resolve('');
         const reader = new FileReader();
         reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
         reader.onerror = () => resolve('');
@@ -1857,44 +1978,6 @@
       }
     }
 
-    function syncLifeEventFromStorage() {
-      try {
-        const rawLifeEvent = localStorage.getItem('autro_life_event');
-        const storedPhoto =
-          localStorage.getItem('autro_life_event_photo') ||
-          localStorage.getItem('selectedLifeEventPhoto') ||
-          '';
-
-        if (rawLifeEvent) {
-          const parsedEv = JSON.parse(rawLifeEvent);
-          if (parsedEv && typeof parsedEv === 'object') {
-            const mergedPhoto = parsedEv.photoUrl || parsedEv.photo_url || parsedEv.image || storedPhoto || '';
-            selectedLifeEvent = {
-              ...parsedEv,
-              photoUrl: mergedPhoto,
-              photo_url: mergedPhoto
-            };
-            if (parsedEv.formattedText) {
-              const currentText = document.getElementById('postText').value;
-              if (currentText.endsWith(parsedEv.formattedText)) {
-                document.getElementById('postText').value = currentText
-                  .slice(0, currentText.length - parsedEv.formattedText.length)
-                  .replace(/\n+$/, '');
-              }
-            }
-          }
-        } else if (selectedLifeEvent && storedPhoto) {
-          selectedLifeEvent = {
-            ...selectedLifeEvent,
-            photoUrl: storedPhoto,
-            photo_url: storedPhoto
-          };
-        }
-      } catch (_) {}
-
-      renderLifeEventCard();
-    }
-
     function restoreDraftAndGif() {
       try {
         const raw = sessionStorage.getItem('autro_create_post_draft');
@@ -1934,11 +2017,41 @@
             selectedGifUrl = d.gifUrl;
           }
           if (d.lifeEvent && typeof d.lifeEvent === 'object') {
-            selectedLifeEvent = d.lifeEvent;
+            selectedLifeEvent = normalizeLifeEventObject(d.lifeEvent);
           }
         }
 
-        syncLifeEventFromStorage();
+        const rawLifeEvent = localStorage.getItem('autro_life_event');
+        if (rawLifeEvent) {
+          try {
+            const parsedEv = JSON.parse(rawLifeEvent);
+            if (parsedEv && typeof parsedEv === 'object') {
+              selectedLifeEvent = normalizeLifeEventObject(parsedEv);
+              if (parsedEv.formattedText) {
+                const currentText = document.getElementById('postText').value;
+                if (currentText.endsWith(parsedEv.formattedText)) {
+                  document.getElementById('postText').value = currentText
+                    .slice(0, currentText.length - parsedEv.formattedText.length)
+                    .replace(/\n+$/, '');
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        const standalonePhoto = localStorage.getItem('autro_life_event_photo') || sessionStorage.getItem('autro_life_event_photo') || '';
+        if (standalonePhoto && isSafeMediaUrl(standalonePhoto)) {
+          selectedLifeEvent = normalizeLifeEventObject({
+            ...(selectedLifeEvent || { title: 'Life event', date: 'Today' }),
+            photoUrl: standalonePhoto,
+            photo_url: standalonePhoto,
+            bannerUrl: standalonePhoto,
+            image: standalonePhoto
+          });
+          safeLocalStorageSet('autro_life_event', JSON.stringify(selectedLifeEvent));
+        }
+
+        renderLifeEventCard();
 
         const taggedNames = extractNamesFromStorage('taggedFriends');
         const collabNames = extractNamesFromStorage('invitedCollaborators');
@@ -2162,7 +2275,7 @@
     function buildLifeEventSummaryText() {
       if (!selectedLifeEvent) return '';
       if (selectedLifeEvent.formattedText) return String(selectedLifeEvent.formattedText).trim();
-      const title = selectedLifeEvent.title || selectedLifeEvent.subCategory || selectedLifeEvent.categoryLabel || 'Life event';
+      const title = selectedLifeEvent.title || selectedLifeEvent.categoryLabel || 'Life event';
       const place = selectedLifeEvent.employer || selectedLifeEvent.location || '';
       const dateStr = selectedLifeEvent.date || '';
       return [title, place ? `at ${place}` : '', dateStr ? `(${dateStr})` : ''].filter(Boolean).join(' ');
@@ -2253,23 +2366,8 @@
           }
         } catch (_) {}
 
-        let lifeEventUploadedPhoto = getLifeEventPhoto(selectedLifeEvent);
-        if (lifeEventPhotoFile) {
-          setProgress(35, 'Uploading life event photo...');
-          try {
-            const uploadedLePhoto = await uploadToStorage(lifeEventPhotoFile, 'life-events');
-            if (uploadedLePhoto) {
-              lifeEventUploadedPhoto = uploadedLePhoto;
-              selectedLifeEvent = {
-                ...selectedLifeEvent,
-                photoUrl: uploadedLePhoto,
-                photo_url: uploadedLePhoto
-              };
-            }
-          } catch (_) {}
-        }
-
-        let mediaUrl = selectedGifUrl || lifeEventUploadedPhoto || '';
+        const lifeEventPhoto = extractLifeEventPhoto(selectedLifeEvent);
+        let mediaUrl = selectedGifUrl || lifeEventPhoto || '';
         if (selectedFile) {
           setProgress(45, 'Uploading media...');
           try {
@@ -2328,7 +2426,7 @@
           }
         }
 
-        const resolvedMedia = mediaUrl || galleryDataUrl || selectedGifUrl || lifeEventUploadedPhoto || '';
+        const resolvedMedia = mediaUrl || galleryDataUrl || selectedGifUrl || lifeEventPhoto || '';
         const postId = savedRow?.id || `local-${Date.now()}`;
         const postObj = {
           id: postId,
@@ -2337,7 +2435,13 @@
           avatar: authorAvatar,
           caption: fullCaption,
           text: fullCaption,
-          life_event: selectedLifeEvent || null,
+          life_event: selectedLifeEvent ? normalizeLifeEventObject({
+            ...selectedLifeEvent,
+            photoUrl: lifeEventPhoto || resolvedMedia,
+            photo_url: lifeEventPhoto || resolvedMedia,
+            bannerUrl: lifeEventPhoto || resolvedMedia,
+            image: lifeEventPhoto || resolvedMedia
+          }) : null,
           media_url: resolvedMedia,
           image: galleryMediaType === 'video' ? '' : resolvedMedia,
           gif_url: selectedGifUrl || '',
@@ -2356,8 +2460,10 @@
           localStorage.removeItem('selectedGif');
           localStorage.removeItem('selectedGifUrl');
           localStorage.removeItem('autro_life_event');
+          localStorage.removeItem('autro_editing_life_event');
           localStorage.removeItem('autro_life_event_photo');
-          localStorage.removeItem('selectedLifeEventPhoto');
+          sessionStorage.removeItem('autro_editing_life_event');
+          sessionStorage.removeItem('autro_life_event_photo');
         } catch (_) {}
 
         setProgress(100, 'Ready! Opening post settings...');
@@ -2377,36 +2483,6 @@
       createPost();
     }
 
-    window.addEventListener('storage', (e) => {
-      if (
-        e.key === 'autro_life_event' ||
-        e.key === 'autro_life_event_photo' ||
-        e.key === 'selectedLifeEventPhoto'
-      ) {
-        syncLifeEventFromStorage();
-      }
-    });
-
-    if (postSyncChannel) {
-      postSyncChannel.onmessage = (event) => {
-        const msg = event?.data || {};
-        if (msg.type === 'LIFE_EVENT_UPDATED' || msg.type === 'LIFE_EVENT_PHOTO_UPDATED') {
-          if (msg.lifeEvent && typeof msg.lifeEvent === 'object') {
-            selectedLifeEvent = msg.lifeEvent;
-            persistLifeEventState(selectedLifeEvent);
-          } else if (msg.photoUrl) {
-            selectedLifeEvent = {
-              ...(selectedLifeEvent || { title: 'Life event', date: 'Today' }),
-              photoUrl: msg.photoUrl,
-              photo_url: msg.photoUrl
-            };
-            persistLifeEventState(selectedLifeEvent);
-          }
-          renderLifeEventCard();
-        }
-      };
-    }
-
     window.addEventListener('DOMContentLoaded', async () => {
       pruneHeavyLocalKeys();
       await loadSupabaseAccount();
@@ -2416,4 +2492,4 @@
     });
   </script>
 </body>
-        </html>
+  </html>
