@@ -205,6 +205,7 @@
       pointer-events: none;
       transition: all 0.2s ease;
       z-index: 200;
+      white-space: nowrap;
     }
 
     .toast.show {
@@ -249,97 +250,100 @@
   <div class="toast" id="toast">Selected GIF! Going to create-post.html...</div>
 
   <script>
-    // Reliable animated fallback scenes for dogs, cats & people if an external CDN blocks a request
-    function fallbackDog(bg1, bg2, fur, ear) {
+    function makeAnimatedCard(label, emoji, bg1, bg2, accent) {
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs>
-          <rect width="400" height="400" fill="url(#g)"/>
-          <g><animateTransform attributeName="transform" type="translate" values="0,0; 0,-12; 0,0" dur="0.8s" repeatCount="indefinite"/>
-            <ellipse cx="195" cy="265" rx="68" ry="48" fill="${fur}"/>
-            <circle cx="235" cy="182" r="50" fill="${fur}"/>
-            <ellipse cx="190" cy="192" rx="16" ry="34" transform="rotate(18 190 192)" fill="${ear}"/>
-            <ellipse cx="272" cy="188" rx="16" ry="32" transform="rotate(-14 272 188)" fill="${ear}"/>
-            <circle cx="222" cy="172" r="6" fill="#18181b"/>
-            <circle cx="252" cy="172" r="6" fill="#18181b"/>
-            <circle cx="268" cy="190" r="7" fill="#18181b"/>
-            <path d="M250 206 Q258 226 266 206 Z" fill="#ff6b8b"/>
+          <defs>
+            <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${bg1}"/>
+              <stop offset="100%" stop-color="${bg2}"/>
+            </linearGradient>
+          </defs>
+          <rect width="400" height="400" fill="url(#bg)"/>
+          <circle cx="200" cy="180" r="86" fill="${accent}" opacity="0.18">
+            <animate attributeName="r" values="78;96;78" dur="1.4s" repeatCount="indefinite"/>
+          </circle>
+          <g>
+            <animateTransform attributeName="transform" type="translate" values="0,0; 0,-12; 0,0" dur="0.9s" repeatCount="indefinite"/>
+            <text x="200" y="198" text-anchor="middle" font-size="96">${emoji}</text>
           </g>
-        </svg>`;
-      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.trim());
-    }
-
-    function fallbackCat(bg1, bg2, coat, stripe) {
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs>
-          <rect width="400" height="400" fill="url(#g)"/>
-          <g><animateTransform attributeName="transform" type="translate" values="0,0; 0,-10; 0,0" dur="1s" repeatCount="indefinite"/>
-            <ellipse cx="200" cy="272" rx="62" ry="48" fill="${coat}"/>
-            <polygon points="154,154 144,100 188,134" fill="${coat}"/>
-            <polygon points="246,134 290,100 280,154" fill="${coat}"/>
-            <circle cx="215" cy="180" r="52" fill="${coat}"/>
-            <line x1="215" y1="132" x2="215" y2="150" stroke="${stripe}" stroke-width="5"/>
-            <circle cx="194" cy="178" r="8" fill="#18181b"/>
-            <circle cx="236" cy="178" r="8" fill="#18181b"/>
-            <polygon points="215,192 208,200 222,200" fill="#ff758f"/>
-          </g>
-        </svg>`;
-      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.trim());
-    }
-
-    function fallbackPerson(bg1, bg2, skin, hair, shirt) {
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs>
-          <rect width="400" height="400" fill="url(#g)"/>
-          <g><animateTransform attributeName="transform" type="translate" values="0,0; 0,-8; 0,0" dur="0.7s" repeatCount="indefinite"/>
-            <path d="M112 355 Q120 255 200 255 Q280 255 288 355 Z" fill="${shirt}"/>
-            <circle cx="200" cy="166" r="58" fill="${hair}"/>
-            <ellipse cx="200" cy="176" rx="46" ry="52" fill="${skin}"/>
-            <circle cx="182" cy="172" r="5.5" fill="#18181b"/>
-            <circle cx="218" cy="172" r="5.5" fill="#18181b"/>
-            <ellipse cx="200" cy="198" rx="12" ry="9" fill="#800f2f"/>
-          </g>
+          <text x="200" y="315" text-anchor="middle" fill="#f5f5f7" font-family="sans-serif" font-size="22" font-weight="700">${label}</text>
         </svg>`;
       return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.trim());
     }
 
     const GIF_LIST = [
-      // Dogs, Cats, Monkey & People GIFs matching your screenshots & more
-      { title: "dancing dog golden retriever funny", url: "https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif", fallback: fallbackDog("#2e2218", "#4d3826", "#e09f5a", "#8c5223") },
-      { title: "sad dog crying looking at phone", url: "https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif", fallback: fallbackDog("#232736", "#373e57", "#e8d5b7", "#9e8b70") },
-      { title: "crying cat looking at phone sad", url: "https://media.giphy.com/media/JIX9t1j0d1JSONuWyG/giphy.gif", fallback: fallbackCat("#1d2436", "#2f3a57", "#f4a261", "#c86d2d") },
-      { title: "monkey lying on floor using phone", url: "https://media.giphy.com/media/lkdH8FmImcGoylv3t3/giphy.gif", fallback: fallbackPerson("#2b241d", "#473b2f", "#c68b59", "#3b2818", "#52b788") },
-      { title: "chihuahua smiling funny dog teeth", url: "https://media.giphy.com/media/4Zo41lhzKt6iZ8xff9/giphy.gif", fallback: fallbackDog("#292421", "#453d38", "#f8f9fa", "#ced4da") },
-      { title: "woman eating snack reaction", url: "https://media.giphy.com/media/guufsF0UyNBoA/giphy.gif", fallback: fallbackPerson("#33221c", "#54372d", "#e0a97d", "#2b1b12", "#ff758f") },
-      { title: "puppy wearing sunglasses cool dog", url: "https://media.giphy.com/media/9G0AdBJvEbNRBoFgVn/giphy.gif", fallback: fallbackDog("#29231e", "#453b32", "#ffffff", "#adb5bd") },
-      { title: "little girl side eye reaction", url: "https://media.giphy.com/media/ANbD1CCdA3iI8/giphy.gif", fallback: fallbackPerson("#222a38", "#354259", "#ffdbac", "#d4a373", "#4cc9f0") },
-      { title: "laughing boy funny reaction", url: "https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif", fallback: fallbackPerson("#33281b", "#54412b", "#f1c29b", "#1c1917", "#ffd166") },
-      { title: "dancing party people groove", url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif", fallback: fallbackPerson("#2e1c38", "#4d2e5e", "#d99b66", "#18181b", "#f72585") },
-      { title: "garfield orange cat belly funny", url: "https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif", fallback: fallbackCat("#332118", "#543526", "#f77f00", "#d62828") },
-      { title: "black cat playing cute kitty", url: "https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif", fallback: fallbackCat("#1f1d2b", "#343047", "#343a40", "#212529") },
-      { title: "two cute cats side by side", url: "https://media.giphy.com/media/od5H3PmEG5EVq/giphy.gif", fallback: fallbackCat("#2b2438", "#463a5c", "#6c757d", "#f8f9fa") },
-      { title: "red hearts floating love gif", url: "https://media.giphy.com/media/c76IJL3wNW8nwSTZGj/giphy.gif", fallback: fallbackPerson("#3b1a26", "#61293d", "#f1c29b", "#2b1d16", "#ff4d6d") },
-      { title: "shocked reaction drama gif", url: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", fallback: fallbackPerson("#381e28", "#5c2e40", "#e0a97d", "#1f1a17", "#ff9f1c") },
-      { title: "funny dog grin smile", url: "https://media.giphy.com/media/m645h29pi4JsU/giphy.gif", fallback: fallbackDog("#26221e", "#403932", "#f8f9fa", "#adb5bd") },
-      { title: "happy cat blink cute", url: "https://media.giphy.com/media/EAqw56L24tCAw/giphy.gif", fallback: fallbackCat("#1e2d29", "#2e4740", "#f4a261", "#e76f51") },
-      { title: "person waving hello friendly", url: "https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif", fallback: fallbackPerson("#1d2b3d", "#2d4463", "#f1c29b", "#2b1d16", "#06d6a0") },
-      { title: "funny fail laugh reaction", url: "https://media.giphy.com/media/ZechFo0yBIQpEVE1Sm/giphy.gif", fallback: fallbackPerson("#38281c", "#5c412c", "#d99b66", "#18181b", "#ffb703") },
-      { title: "confetti party celebration", url: "https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif", fallback: fallbackPerson("#2d1e40", "#492f69", "#f1c29b", "#2b1d16", "#ff5e7e") }
+      {
+        title: "spongebob imagination rainbow meme",
+        url: "https://media.giphy.com/media/BmmfETghGOPrW/giphy.gif",
+        fallback: makeAnimatedCard("IMAGINATION", "🌈", "#16324f", "#274c77", "#ffd166")
+      },
+      {
+        title: "cute kitten confused cat paw",
+        url: "https://media.giphy.com/media/mlvseq9yvZhba/giphy.gif",
+        fallback: makeAnimatedCard("CONFUSED CAT", "🐱", "#2b2438", "#463a5c", "#f4a261")
+      },
+      {
+        title: "confused nick young question marks",
+        url: "https://media.giphy.com/media/3o7aTskHEUdgCQAXde/giphy.gif",
+        fallback: makeAnimatedCard("WHAT?!", "❓", "#222638", "#3a405a", "#4cc9f0")
+      },
+      {
+        title: "anime reaction surprise excited",
+        url: "https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif",
+        fallback: makeAnimatedCard("SURPRISED!", "✨", "#3b1d3a", "#5e2a5c", "#ff758f")
+      },
+      {
+        title: "fireworks night celebration sky",
+        url: "https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif",
+        fallback: makeAnimatedCard("CELEBRATION", "🎆", "#19192b", "#2d2d4e", "#ff5e7e")
+      },
+      {
+        title: "fry squinting suspicious cartoon",
+        url: "https://media.giphy.com/media/ANbD1CCdA3iI8/giphy.gif",
+        fallback: makeAnimatedCard("SUSPICIOUS", "🧐", "#2d2419", "#4f3d28", "#ffb703")
+      },
+      {
+        title: "laughing hard reaction red shirt",
+        url: "https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif",
+        fallback: makeAnimatedCard("HAHAHA!", "😂", "#3a1c1c", "#612b2b", "#ffd166")
+      },
+      {
+        title: "funny office dance reaction group",
+        url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
+        fallback: makeAnimatedCard("DANCE TIME", "💃", "#1c332d", "#2c5248", "#06d6a0")
+      },
+      {
+        title: "dancing dog golden retriever funny",
+        url: "https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif",
+        fallback: makeAnimatedCard("HAPPY DOG", "🐶", "#2e2218", "#4d3826", "#e09f5a")
+      },
+      {
+        title: "orange cat belly funny",
+        url: "https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif",
+        fallback: makeAnimatedCard("CHONKY CAT", "🐈", "#332118", "#543526", "#f77f00")
+      },
+      {
+        title: "hearts love reaction romantic",
+        url: "https://media.giphy.com/media/c76IJL3wNW8nwSTZGj/giphy.gif",
+        fallback: makeAnimatedCard("LOVE IT", "❤️", "#3b1a26", "#61293d", "#ff4d6d")
+      },
+      {
+        title: "shocked drama reaction",
+        url: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif",
+        fallback: makeAnimatedCard("SHOCKED!", "😱", "#381e28", "#5c2e40", "#ff9f1c")
+      }
     ];
 
-    // Expand to 100 items mixing dogs, cats, and people seamlessly
-    const FULL_GIFS = [];
-    for (let i = 0; i < 100; i++) {
+    const FULL_GIFS = Array.from({ length: 100 }, (_, i) => {
       const base = GIF_LIST[i % GIF_LIST.length];
-      FULL_GIFS.push({
+      return {
         id: i + 1,
         title: `${base.title} ${i + 1}`,
         url: base.url,
         fallback: base.fallback
-      });
-    }
+      };
+    });
 
     const gifGrid = document.getElementById("gifGrid");
     const searchInput = document.getElementById("searchInput");
@@ -356,6 +360,13 @@
       setTimeout(() => {
         window.location.href = `create-post.html?gif=${encodeURIComponent(gifUrl)}`;
       }, 150);
+    }
+
+    function applyFallback(img, fallbackSrc) {
+      if (!img.dataset.fallbackApplied) {
+        img.dataset.fallbackApplied = "1";
+        img.src = fallbackSrc;
+      }
     }
 
     function renderGifs() {
@@ -379,9 +390,11 @@
         img.alt = item.title;
         img.loading = "lazy";
 
-        img.addEventListener("error", () => {
-          if (img.src !== item.fallback) {
-            img.src = item.fallback;
+        img.addEventListener("error", () => applyFallback(img, item.fallback));
+        img.addEventListener("load", () => {
+          // Giphy removed/unavailable images often return tiny placeholder dimensions
+          if (!img.dataset.fallbackApplied && (img.naturalWidth < 40 || img.naturalHeight < 40)) {
+            applyFallback(img, item.fallback);
           }
         });
 
