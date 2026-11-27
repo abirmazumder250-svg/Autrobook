@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="new-job.html">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Create life event</title>
+  <title>Create life event - New job</title>
+  <link rel="canonical" href="/new-job.html" />
   <link rel="stylesheet" href="/theme.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
@@ -14,13 +15,13 @@
       --bg-card: #28292d;
       --bg-card-hover: #323338;
       --bg-banner: #d8e7f2;
-      --text-primary: #f1f3f4;
+      --text-primary: #ffffff;
       --text-secondary: #9aa0a6;
       --text-muted: #757a82;
       --border-color: #3c4043;
       --accent-green: #0b5d34;
       --accent-green-hover: #0f7642;
-      --accent-blue: #1877f2;
+      --accent-blue: #0b5d34;
     }
 
     @media (prefers-color-scheme: light) {
@@ -36,7 +37,7 @@
         --border-color: #dadce0;
         --accent-green: #0b5d34;
         --accent-green-hover: #084727;
-        --accent-blue: #1877f2;
+        --accent-blue: #0b5d34;
       }
     }
 
@@ -100,10 +101,11 @@
       transform: scale(0.94);
     }
 
-    .topbar-title {
+    .topbar-title-link {
       font-size: 18px;
       font-weight: 700;
       color: var(--text-primary);
+      text-decoration: none;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -124,12 +126,12 @@
 
     .next-btn.active {
       color: var(--accent-green);
-      background: rgba(11, 93, 52, 0.12);
+      background: rgba(11, 93, 52, 0.14);
       cursor: pointer;
     }
 
     .next-btn.active:hover {
-      background: rgba(11, 93, 52, 0.2);
+      background: rgba(11, 93, 52, 0.22);
     }
 
     .next-btn.active:active {
@@ -393,12 +395,6 @@
       color: var(--text-primary);
     }
 
-    .date-sub {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 2px;
-    }
-
     .date-picker-hidden {
       position: relative;
       margin-top: 4px;
@@ -433,10 +429,10 @@
 <body>
   <header class="topbar">
     <div class="topbar-left">
-      <a href="life-event.html" class="back-btn" aria-label="Back to life event" title="Back">
+      <a href="/life-event.html" class="back-btn" aria-label="Back to life event" title="Back">
         <i class="fas fa-arrow-left"></i>
       </a>
-      <h1 class="topbar-title">Create life event</h1>
+      <a href="/new-job.html" class="topbar-title-link">Create life event</a>
     </div>
 
     <button type="button" id="nextBtn" class="next-btn" onclick="submitNewJobToCreatePost()" disabled>
@@ -494,7 +490,7 @@
 
     <div class="input-card">
       <div class="field-caption">Date:</div>
-      <div id="dateLabelText" class="date-value">Today</div>
+      <div id="dateLabelText" class="date-value">Nov 28, 2026</div>
       <div class="date-picker-hidden">
         <input type="date" id="jobDateInput" onchange="handleDateChange()" />
       </div>
@@ -509,6 +505,8 @@
   <script>
     const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+    const NEW_JOB_PAGE_URL = '/new-job.html';
+    const CREATE_POST_PAGE_URL = '/create-post.html';
 
     let sb = null;
     try {
@@ -657,15 +655,29 @@
       saveCurrentDraft();
     }
 
-    function formatDateDisplay(isoDate) {
-      const todayIso = new Date().toISOString().split('T')[0];
-      if (!isoDate || isoDate === todayIso) return 'Today';
-      return isoDate;
+    function getLiveLocalIsoDate() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatLiveDateLabel(isoDate) {
+      if (!isoDate) return '';
+      const parts = isoDate.split('-').map(Number);
+      if (parts.length !== 3 || parts.some(Number.isNaN)) return isoDate;
+      const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+      return dt.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
     }
 
     function handleDateChange() {
-      const val = document.getElementById('jobDateInput').value;
-      document.getElementById('dateLabelText').textContent = formatDateDisplay(val);
+      const val = document.getElementById('jobDateInput').value || getLiveLocalIsoDate();
+      document.getElementById('dateLabelText').textContent = formatLiveDateLabel(val);
       saveCurrentDraft();
     }
 
@@ -731,20 +743,20 @@
     }
 
     function restoreNewJobState() {
-      const todayIso = new Date().toISOString().split('T')[0];
-      document.getElementById('jobDateInput').value = todayIso;
-      document.getElementById('dateLabelText').textContent = 'Today';
+      const liveIsoDate = getLiveLocalIsoDate();
+      document.getElementById('jobDateInput').value = liveIsoDate;
+      document.getElementById('dateLabelText').textContent = formatLiveDateLabel(liveIsoDate);
 
       try {
         const rawDraft = safeReadStore(NEW_JOB_DRAFT_KEY);
         if (rawDraft) {
           const d = JSON.parse(rawDraft);
-          if (typeof d.title === 'string') {
+          if (typeof d.title === 'string' && d.title.trim()) {
             document.getElementById('jobTitleInput').value = d.title;
           }
           if (typeof d.date === 'string' && d.date) {
             document.getElementById('jobDateInput').value = d.date;
-            document.getElementById('dateLabelText').textContent = formatDateDisplay(d.date);
+            document.getElementById('dateLabelText').textContent = formatLiveDateLabel(d.date);
           }
           if (typeof d.photoDataUrl === 'string' && d.photoDataUrl) {
             selectedPhotoDataUrl = d.photoDataUrl;
@@ -770,7 +782,25 @@
       updateNextButtonState();
     }
 
-    function submitNewJobToCreatePost() {
+    async function syncNewJobToSupabase(payload) {
+      if (!sb) return;
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid) return;
+        await sb.from('life_events').insert({
+          user_id: uid,
+          category: payload.categoryLabel,
+          sub_category: payload.subCategory,
+          title: payload.title,
+          employer: payload.employer,
+          event_date: payload.date,
+          photo_url: payload.photoUrl || null
+        });
+      } catch (_) {}
+    }
+
+    async function submitNewJobToCreatePost() {
       const empName = String(selectedEmployer || '').trim();
       if (!empName) {
         showToast('Please select an employer first');
@@ -778,8 +808,8 @@
       }
 
       const titleVal = document.getElementById('jobTitleInput').value.trim() || 'Started Job';
-      const dateVal = document.getElementById('jobDateInput').value || new Date().toISOString().split('T')[0];
-      const dateDisplay = formatDateDisplay(dateVal);
+      const dateVal = document.getElementById('jobDateInput').value || getLiveLocalIsoDate();
+      const dateDisplay = formatLiveDateLabel(dateVal);
       const photoToPass = selectedPhotoDataUrl || safeReadStore(LIFE_EVENT_PHOTO_KEY) || '';
 
       const formattedText = `[Work · New Job] ${titleVal} at ${empName} (${dateDisplay})`;
@@ -790,13 +820,14 @@
         subCategory: 'New Job',
         title: titleVal,
         employer: empName,
-        date: dateVal,
+        date: dateDisplay,
+        rawDate: dateVal,
         photoUrl: photoToPass,
         photo_url: photoToPass,
         bannerUrl: photoToPass,
         image: photoToPass,
         photo: photoToPass,
-        editUrl: '/new-job.html',
+        editUrl: NEW_JOB_PAGE_URL,
         formattedText,
         savedAt: Date.now()
       };
@@ -821,7 +852,8 @@
         safeWriteStore(POST_DRAFT_KEY, JSON.stringify(existingDraft));
       } catch (_) {}
 
-      window.location.href = 'create-post.html';
+      await syncNewJobToSupabase(lifeEventPayload);
+      window.location.href = CREATE_POST_PAGE_URL;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -829,4 +861,4 @@
     });
   </script>
 </body>
-  </html>
+</html>
