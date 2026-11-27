@@ -11,7 +11,15 @@ export const config = {
   maxDuration: 30
 };
 
-// Cache active Groq models for 10 minutes per warm serverless instance
+const ADMIN_IDENTITY = {
+  founderAndCeo: 'Abir Mazumder',
+  fathersName: 'Babul Mazumder',
+  mothersName: 'Monika Mitra',
+  address: 'Dhaka, Bangladesh',
+  studyIn: 'Bsc Honours in Dhaka Central University',
+  platform: 'Autrobook'
+};
+
 let cachedGroqModels = { models: [], fetchedAt: 0 };
 
 export default async function handler(req, res) {
@@ -44,8 +52,8 @@ export default async function handler(req, res) {
     if (!cleanMessage) {
       return res.status(200).json({
         reply: 'Please type a message so I can help you.',
-        model: 'Autro AI',
-        language: language || 'auto'
+        model: 'Autrobook AI',
+        language: language || 'English'
       });
     }
 
@@ -76,33 +84,35 @@ export default async function handler(req, res) {
             systemPrompt,
             history: recentHistory,
             message: cleanMessage,
-            timeoutMs: 12000
+            timeoutMs: 14000
           })
         );
       }
     }
 
     if (geminiKey) {
-      const geminiModel = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
-      tasks.push(
-        callGemini({
-          apiKey: geminiKey,
-          model: geminiModel,
-          systemPrompt,
-          history: recentHistory,
-          message: cleanMessage,
-          timeoutMs: 12000
-        })
-      );
+      const geminiModels = resolveGeminiModels();
+      for (const gemModel of geminiModels) {
+        tasks.push(
+          callGemini({
+            apiKey: geminiKey,
+            model: gemModel,
+            systemPrompt,
+            history: recentHistory,
+            message: cleanMessage,
+            timeoutMs: 14000
+          })
+        );
+      }
     }
 
     if (tasks.length === 0) {
       return res.status(200).json({
         reply: isBn
-          ? 'সার্ভারে GROQ_API_KEY বা GEMINI_API_KEY সেট করা নেই। Vercel Environment Variables-এ API key যুক্ত করে Redeploy করুন।'
-          : 'No AI API key (GROQ_API_KEY or GEMINI_API_KEY) is set on the server. Add one in Vercel Environment Variables and redeploy.',
-        model: 'Autro AI',
-        language: syncedContext.language || 'auto'
+          ? 'Vercel Environment Variables-এ GROQ_API_KEY বা GEMINI_API_KEY যুক্ত করে Redeploy করুন।'
+          : 'No AI API key (GROQ_API_KEY or GEMINI_API_KEY) is configured on the server. Please add it in Vercel Environment Variables and redeploy.',
+        model: 'Autrobook AI',
+        language: syncedContext.language || 'English'
       });
     }
 
@@ -110,33 +120,39 @@ export default async function handler(req, res) {
       const winner = await Promise.any(tasks);
       return res.status(200).json({
         reply: sanitizeReplyText(winner.reply),
-        model: 'Autro AI',
-        language: syncedContext.language || 'auto'
+        model: 'Autrobook AI',
+        provider: winner.provider || 'AI',
+        language: syncedContext.language || 'English'
       });
     } catch (aggErr) {
       const reasons = Array.isArray(aggErr?.errors)
         ? aggErr.errors.map((e) => e?.message || String(e)).join(' | ')
         : (aggErr?.message || 'Provider error');
 
-      // Log detailed error on server only (visible in Vercel -> Logs)
       console.error('[Autro AI Provider Failure]:', reasons);
 
       return res.status(200).json({
         reply: isBn
-          ? 'AI সার্ভিস সাময়িকভাবে সাড়া দিচ্ছে না। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।'
-          : 'AI service is temporarily unavailable. Please try again in a moment.',
-        model: 'Autro AI',
-        language: syncedContext.language || 'auto'
+          ? 'AI সার্ভিস সাময়িকভাবে ব্যস্ত আছে। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।'
+          : 'AI service is temporarily busy. Please try again in a moment.',
+        model: 'Autrobook AI',
+        language: syncedContext.language || 'English'
       });
     }
   } catch (error) {
     console.error('[Autro AI Handler Error]:', error);
     return res.status(200).json({
       reply: 'Something went wrong while processing your request. Please try again.',
-      model: 'Autro AI',
-      language: 'auto'
+      model: 'Autrobook AI',
+      language: 'English'
     });
   }
+}
+
+function resolveGeminiModels() {
+  const envModel = (process.env.GEMINI_MODEL || '').trim();
+  if (envModel) return [envModel, 'gemini-2.5-flash'];
+  return ['gemini-2.5-flash', 'gemini-1.5-flash'];
 }
 
 async function resolveGroqModels(apiKey) {
@@ -164,7 +180,6 @@ async function resolveGroqModels(apiKey) {
             !/whisper|guard|tts|embed|vision/i.test(id)
         );
 
-      // Prefer llama / qwen / gemma / mixtral chat models if present
       const preferred = ids.filter((id) => /llama|qwen|gemma|mixtral|deepseek/i.test(id));
       const picked = (preferred.length > 0 ? preferred : ids).slice(0, 2);
 
@@ -194,7 +209,6 @@ function safeJsonParse(str) {
 function sanitizeReplyText(text) {
   return String(text || '')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
-    .replace(/https?:\/\/[^\s]+/g, '')
     .trim();
 }
 
@@ -216,7 +230,7 @@ async function fetchSupabaseContext({
     location: String(fallbackProfile?.location || fallbackProfile?.city || '').trim(),
     education: String(fallbackProfile?.education || fallbackProfile?.school || '').trim(),
     bio: String(fallbackProfile?.bio || '').trim(),
-    language: String(fallbackLang || fallbackProfile?.language || '').trim()
+    language: String(fallbackLang || fallbackProfile?.language || 'English').trim()
   };
 
   try {
@@ -278,13 +292,22 @@ async function fetchSupabaseContext({
 
 function buildMultilingualSystemPrompt(ctx, userMessage = '') {
   const details = [
-    ctx.name ? `User name: ${ctx.name}` : '',
-    ctx.location ? `Location: ${ctx.location}` : '',
-    ctx.education ? `Education: ${ctx.education}` : '',
-    ctx.bio ? `Bio: ${ctx.bio}` : ''
+    ctx.name ? `User display name: ${ctx.name}` : '',
+    ctx.location ? `User location: ${ctx.location}` : '',
+    ctx.education ? `User education: ${ctx.education}` : '',
+    ctx.bio ? `User bio: ${ctx.bio}` : ''
   ]
     .filter(Boolean)
     .join(' | ');
+
+  const adminInfo = [
+    `Platform: ${ADMIN_IDENTITY.platform}`,
+    `Founder & CEO: ${ADMIN_IDENTITY.founderAndCeo}`,
+    `Father's name: ${ADMIN_IDENTITY.fathersName}`,
+    `Mother's name: ${ADMIN_IDENTITY.mothersName}`,
+    `Address: ${ADMIN_IDENTITY.address}`,
+    `Study in: ${ADMIN_IDENTITY.studyIn}`
+  ].join(' | ');
 
   const asksSpecificLanguage =
     /(in bengali|in bangla|বাংলায়|বাংলা ভাষায়|in english|in hindi|हिन्दी में|in arabic|in spanish|in french|in urdu)/i.test(
@@ -293,14 +316,15 @@ function buildMultilingualSystemPrompt(ctx, userMessage = '') {
 
   const langInstruction = asksSpecificLanguage
     ? 'Reply in the exact language requested in the user message.'
-    : 'Always reply in the exact same language as the user’s latest message across ALL world languages.';
+    : 'Default language is English when unclear, otherwise always reply fluently in the exact same language as the user’s message across ALL world languages.';
 
   return [
-    'You are Autro AI Assistant inside Autrobook.',
-    'Answer ONLY and DIRECTLY what the user asks. Give accurate, clear, and complete answers tailored to every question.',
+    'You are Autrobook AI Assistant inside Autrobook.',
+    'Answer any topic or question clearly, accurately, and naturally. You can be helpful, friendly, casual, or humorous/witty depending on the conversation.',
+    'When the user has a profile name, address the user naturally by their name.',
     langInstruction,
-    'Keep formatting clean and easy to read. Do not include external URLs or links.',
-    details ? `Optional user profile context (use only when relevant): ${details}` : ''
+    `Official Admin & Platform Identity (provide when asked about founder/CEO/admin/platform details): ${adminInfo}.`,
+    details ? `Current user context: ${details}` : ''
   ]
     .filter(Boolean)
     .join('\n');
@@ -309,11 +333,11 @@ function buildMultilingualSystemPrompt(ctx, userMessage = '') {
 function sanitizeHistory(history) {
   if (!Array.isArray(history)) return [];
   return history
-    .slice(-6)
+    .slice(-8)
     .filter((item) => item && typeof item.text === 'string' && item.text.trim())
     .map((item) => ({
       role: item.role === 'user' ? 'user' : 'assistant',
-      content: item.text.trim().slice(0, 900)
+      content: item.text.trim().slice(0, 1200)
     }));
 }
 
@@ -334,8 +358,8 @@ async function callGroq({ apiKey, model, systemPrompt, history, message, timeout
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.5,
-      max_tokens: 1024
+      temperature: 0.7,
+      max_tokens: 1500
     })
   });
 
@@ -353,7 +377,8 @@ async function callGroq({ apiKey, model, systemPrompt, history, message, timeout
 
   return {
     reply,
-    model: 'Autro AI'
+    provider: 'Groq',
+    model: 'Autrobook AI'
   };
 }
 
@@ -383,8 +408,8 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
       },
       contents,
       generationConfig: {
-        temperature: 0.5,
-        maxOutputTokens: 1024
+        temperature: 0.7,
+        maxOutputTokens: 1500
       }
     })
   });
@@ -406,6 +431,7 @@ async function callGemini({ apiKey, model, systemPrompt, history, message, timeo
 
   return {
     reply,
-    model: 'Autro AI'
+    provider: 'Gemini',
+    model: 'Autrobook AI'
   };
-        }
+    }
