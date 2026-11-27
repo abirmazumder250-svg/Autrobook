@@ -6,7 +6,7 @@ export const config = {
   api: { bodyParser: false }
 };
 
-// Load keys from Vercel Environment Variables
+// Load all API Keys from Vercel Environment Variables
 const HIVE_ACCESS = process.env.HIVE_ACCESS_KEY;
 const HIVE_SECRET = process.env.HIVE_SECRET_KEY;
 const SIGHT_USER = process.env.SIGHTENGINE_USER;
@@ -16,7 +16,9 @@ const ZEROGPT = process.env.ZEROGPT_KEY;
 const OPENAI = process.env.OPENAI_KEY;
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const form = formidable({ multiples: false, maxFileSize: 50 * 1024 * 1024 }); // 50MB max
   
@@ -53,10 +55,10 @@ export default async function handler(req, res) {
       ai_score = aiResult.ai_score;
     }
 
-    // STEP 2: TOXICITY / ABUSE DETECTION - Only for Text
+    // STEP 2: TOXICITY / ABUSE DETECTION - For Text, Comments, Posts
     if (text && text.length > 3) {
       const toxicResult = await checkToxicity(text);
-      toxicity_score = toxicResult.score;
+      toxicity_score = toxicResult.score; // This is now the MAX of all bad categories
     }
 
     // STEP 3: AUTO DECISION LOGIC
@@ -64,9 +66,10 @@ export default async function handler(req, res) {
     let badge = "";
 
     // Rule 1: Auto Suspend if Toxicity > 80%
+    // This covers: harassment, hate, sexual, violence, self-harm
     if (toxicity_score > 80) {
       action = "suspend";
-      result = `Account Suspended. Toxicity: ${toxicity_score.toFixed(2)}%`;
+      result = `Account Suspended. Risk Score: ${toxicity_score.toFixed(2)}%`;
     }
     // Rule 2: AI Badge if AI Score > 70%
     else if (ai_score > 70) {
@@ -76,7 +79,7 @@ export default async function handler(req, res) {
     }
     // Rule 3: Clean Post
     else {
-      result = `${type} Posted Successfully. AI: ${ai_score.toFixed(2)}% | Toxic: ${toxicity_score.toFixed(2)}%`;
+      result = `${type} Posted Successfully. AI: ${ai_score.toFixed(2)}% | Risk: ${toxicity_score.toFixed(2)}%`;
     }
 
     return res.status(200).json({
@@ -89,7 +92,6 @@ export default async function handler(req, res) {
     });
   });
 }
-
 
 // 1. AI IMAGE DETECTION - 3 Layer Fallback: Hive > Sightengine > DeepAI
 async function detectAIImage(base64) {
@@ -136,7 +138,6 @@ async function detectWithDeepAI(base64) {
   } catch { return null; }
 }
 
-
 // 2. AI VIDEO DETECTION - Hive Only
 async function detectAIVideo(base64) {
   try {
@@ -149,7 +150,6 @@ async function detectAIVideo(base64) {
     return { ai_score: data.response[0].score * 100 };
   } catch { return { ai_score: 0 }; }
 }
-
 
 // 3. AI TEXT DETECTION - 2 Layer Fallback: Hive > ZeroGPT
 async function detectAIText(text) {
@@ -182,8 +182,8 @@ async function detectWithZeroGPT(text) {
   } catch { return null; }
 }
 
-
-// 4. TOXICITY / ABUSE DETECTION - OpenAI Moderation API
+// 4. TOXICITY / ABUSE DETECTION - OpenAI Moderation API v2
+// This now checks: Harassment, Hate, Sexual, Violence, Self-Harm
 async function checkToxicity(text) {
   try {
     const res = await fetch('https://api.openai.com/v1/moderations', {
@@ -196,11 +196,26 @@ async function checkToxicity(text) {
     });
     const data = await res.json();
     
-    // Get harassment score 0-100
-    const harassmentScore = data.results[0].category_scores['harassment'] * 100;
-    return { score: harassmentScore };
+    const scores = data.results[0].category_scores;
+    
+    // Get the highest risk score from all dangerous categories
+    const riskScores = [
+      scores.harassment * 100,        // Gali, Abuse
+      scores['harassment/threatening'] * 100,
+      scores.hate * 100,              // Hate Speech
+      scores['hate/threatening'] * 100,
+      scores.sexual * 100,            // 18+ Content
+      scores['sexual/minors'] * 100,
+      scores.violence * 100,          // Violence
+      scores['violence/graphic'] * 100,
+      scores['self-harm'] * 100
+    ];
+    
+    const maxScore = Math.max(...riskScores);
+    return { score: maxScore };
+    
   } catch (e) { 
-    console.log("Moderation error:", e)
+    console.log("Moderation error:", e);
     return { score: 0 }; 
   }
       }
