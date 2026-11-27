@@ -21,6 +21,7 @@
       --border-color: #3c4043;
       --accent-green: #0b5d34;
       --accent-green-hover: #0f7642;
+      --accent-link: #10b981;
       --accent-badge: #0b5d34;
     }
 
@@ -37,6 +38,7 @@
         --border-color: #dadce0;
         --accent-green: #0b5d34;
         --accent-green-hover: #084727;
+        --accent-link: #0b5d34;
         --accent-badge: #0b5d34;
       }
     }
@@ -277,10 +279,17 @@
       transform: scale(0.94);
     }
 
-    .center-badge {
+    .icon-picker-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: -24px auto 12px;
       position: relative;
-      margin: -24px auto 14px;
       z-index: 10;
+      gap: 6px;
+    }
+
+    .center-badge-btn {
       width: 48px;
       height: 48px;
       border-radius: 50%;
@@ -288,10 +297,38 @@
       border: 3px solid var(--bg-page);
       color: #ffffff;
       font-size: 19px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      transition: background 0.16s ease, transform 0.12s ease;
+    }
+
+    .center-badge-btn:hover {
+      background: var(--accent-green-hover);
+    }
+
+    .center-badge-btn:active {
+      transform: scale(0.94);
+    }
+
+    .select-icon-link {
+      background: transparent;
+      border: none;
+      color: var(--accent-link);
+      font-size: 13.5px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: background 0.15s ease;
+    }
+
+    .select-icon-link:hover {
+      background: rgba(11, 93, 52, 0.12);
+      text-decoration: underline;
     }
 
     /* FORM FIELDS */
@@ -427,8 +464,20 @@
       <img id="customBannerImg" class="custom-photo" alt="Selected new pet photo" style="display:none;" />
     </div>
 
-    <div class="center-badge" aria-hidden="true">
-      <i class="fas fa-paw"></i>
+    <div class="icon-picker-block">
+      <button
+        type="button"
+        id="centerIconBtn"
+        class="center-badge-btn"
+        aria-label="Select icon"
+        title="Select Icon"
+        onclick="openSelectIconPage(event)"
+      >
+        <i id="selectedIconEl" class="fas fa-paw"></i>
+      </button>
+      <a href="change-icon.html?from=new-pet.html" class="select-icon-link" onclick="openSelectIconPage(event)">
+        Select Icon
+      </a>
     </div>
   </div>
 
@@ -466,6 +515,7 @@
     const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
     const NEW_PET_PAGE_URL = '/new-pet.html';
+    const CHANGE_ICON_PAGE_URL = 'change-icon.html?from=new-pet.html';
     const CREATE_POST_PAGE_URL = '/create-post.html';
 
     let sb = null;
@@ -476,10 +526,17 @@
     } catch (_) {}
 
     const NEW_PET_DRAFT_KEY = 'autro_new_pet_draft';
+    const SELECTED_ICON_KEYS = [
+      'autro_life_event_icon',
+      'autro_selected_icon',
+      'autro_custom_icon'
+    ];
     const LIFE_EVENT_SAVED_KEY = 'autro_life_event';
     const LIFE_EVENT_PHOTO_KEY = 'autro_life_event_photo';
     const POST_DRAFT_KEY = 'autro_create_post_draft';
 
+    const DEFAULT_ICON_CLASS = 'fas fa-paw';
+    let selectedIconClass = DEFAULT_ICON_CLASS;
     let selectedPhotoDataUrl = '';
     let photoRemovedManually = false;
 
@@ -527,6 +584,41 @@
         }
       } catch (_) {}
       return '';
+    }
+
+    function openSelectIconPage(event) {
+      if (event) event.preventDefault();
+      saveCurrentDraft();
+      safeWriteStore('autro_icon_return_page', 'new-pet.html');
+      window.location.href = CHANGE_ICON_PAGE_URL;
+    }
+
+    function normalizeIconClass(raw) {
+      const clean = String(raw || '').trim();
+      if (!clean) return DEFAULT_ICON_CLASS;
+      if (/^fa[srlbd]?\s+fa-/i.test(clean)) return clean;
+      if (/^fa-[a-z0-9-]+$/i.test(clean)) return `fas ${clean}`;
+      return DEFAULT_ICON_CLASS;
+    }
+
+    function renderSelectedIcon() {
+      const el = document.getElementById('selectedIconEl');
+      if (el) el.className = normalizeIconClass(selectedIconClass);
+    }
+
+    function extractIconFromUrlOrStorage() {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get('icon') || params.get('iconClass');
+      if (fromUrl && fromUrl.trim()) {
+        const normalized = normalizeIconClass(fromUrl);
+        safeWriteStore(SELECTED_ICON_KEYS[0], normalized);
+        return normalized;
+      }
+      for (const key of SELECTED_ICON_KEYS) {
+        const val = safeReadStore(key);
+        if (val) return normalizeIconClass(val);
+      }
+      return DEFAULT_ICON_CLASS;
     }
 
     function compressImageFileToDataUrl(file, maxWidth = 960, quality = 0.72) {
@@ -642,11 +734,13 @@
     function saveCurrentDraft() {
       const draft = {
         title: document.getElementById('newPetTitleInput').value,
+        iconClass: selectedIconClass,
         date: document.getElementById('newPetDateInput').value,
         photoDataUrl: selectedPhotoDataUrl,
         photoRemovedManually
       };
       safeWriteStore(NEW_PET_DRAFT_KEY, JSON.stringify(draft));
+      safeWriteStore(SELECTED_ICON_KEYS[0], selectedIconClass);
       if (selectedPhotoDataUrl) {
         safeWriteStore(LIFE_EVENT_PHOTO_KEY, selectedPhotoDataUrl);
       }
@@ -664,6 +758,9 @@
           if (typeof d.title === 'string' && d.title.trim()) {
             document.getElementById('newPetTitleInput').value = d.title;
           }
+          if (typeof d.iconClass === 'string' && d.iconClass) {
+            selectedIconClass = normalizeIconClass(d.iconClass);
+          }
           if (typeof d.date === 'string' && d.date) {
             document.getElementById('newPetDateInput').value = d.date;
             document.getElementById('dateLabelText').textContent = formatLiveDateLabel(d.date);
@@ -674,6 +771,9 @@
           photoRemovedManually = Boolean(d.photoRemovedManually);
         }
       } catch (_) {}
+
+      selectedIconClass = extractIconFromUrlOrStorage();
+      renderSelectedIcon();
 
       const storedPhoto = safeReadStore(LIFE_EVENT_PHOTO_KEY);
       if (storedPhoto && !photoRemovedManually) {
@@ -694,6 +794,7 @@
           category: payload.categoryLabel,
           sub_category: payload.subCategory,
           title: payload.title,
+          icon_class: payload.iconClass,
           event_date: payload.date,
           photo_url: payload.photoUrl || null
         });
@@ -706,6 +807,7 @@
       const dateVal = document.getElementById('newPetDateInput').value || getLiveLocalIsoDate();
       const dateDisplay = formatLiveDateLabel(dateVal);
       const photoToPass = selectedPhotoDataUrl || safeReadStore(LIFE_EVENT_PHOTO_KEY) || '';
+      const iconToPass = normalizeIconClass(selectedIconClass);
 
       const formattedText = `[Family · New Pet] ${titleVal} (${dateDisplay})`;
 
@@ -714,6 +816,7 @@
         categoryLabel: 'Family',
         subCategory: 'New Pet',
         title: titleVal,
+        iconClass: iconToPass,
         date: dateDisplay,
         rawDate: dateVal,
         photoUrl: photoToPass,
@@ -755,4 +858,4 @@
     });
   </script>
 </body>
-  </html>
+</html>
