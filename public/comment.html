@@ -40,6 +40,10 @@
     min-height: 100vh;
   }
 
+  .hidden {
+    display: none !important;
+  }
+
   /* Top Header */
   .header {
     display: flex;
@@ -246,11 +250,15 @@
     display: none;
   }
 
-  /* Comment items */
+  /* Comment items & AI content badge styles */
   .comment-item {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+    align-items: flex-start;
     padding: 14px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    transition: background-color 0.25s ease;
+    transition: background-color 0.25s ease, transform 0.2s ease;
   }
 
   .comment-item.own-comment {
@@ -276,6 +284,7 @@
     display: flex;
     gap: 11px;
     align-items: flex-start;
+    width: 100%;
   }
 
   .comment-avatar-link {
@@ -284,13 +293,49 @@
   }
 
   .comment-avatar {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
     background-color: var(--bg-chip);
     border: 1px solid var(--border-color);
     display: block;
+    flex-shrink: 0;
+  }
+
+  .comment-row .comment-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .comment-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .comment-username {
+    font-weight: 600;
+    font-size: 13px;
+    margin: 0;
+    display: inline;
+    color: var(--text-primary);
+  }
+
+  .comment-ai-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background-color: rgba(69, 153, 255, 0.14);
+    border: 1px solid rgba(69, 153, 255, 0.3);
+    padding: 1px 8px;
+    border-radius: 999px;
+    margin: 0 0 0 6px;
+    display: inline-flex;
+    align-items: center;
+    font-weight: 600;
+  }
+
+  .comment-ai-label::before {
+    content: "🤖 ";
   }
 
   .comment-main {
@@ -476,6 +521,7 @@
     font-size: 14.5px;
     line-height: 1.48;
     color: var(--text-primary);
+    margin: 2px 0 0 0;
     word-break: break-word;
     white-space: pre-line;
   }
@@ -1389,6 +1435,16 @@
 
   <!-- Comments Container -->
   <main id="commentList">
+    <div class="comment-item" id="commentTemplateSkeleton" style="display:none;">
+      <img class="comment-avatar" src="" alt="User avatar">
+      <div class="comment-body">
+        <div>
+          <p class="comment-username"></p>
+          <p class="comment-ai-label hidden">AI content</p>
+        </div>
+        <p class="comment-text"></p>
+      </div>
+    </div>
     <div class="empty-state">No comments yet. Be the first to comment!</div>
   </main>
 
@@ -2121,6 +2177,7 @@ function getParentItem() {
       imageUrl: c.imageUrl || c.image_url || "",
       audioUrl: c.voiceUrl || c.audioUrl || c.audio_url || "",
       audioEffect: c.audioEffect || c.audio_effect || "",
+      badge: Boolean(c.badge || c.aiBadge || c.is_ai || c.ai_content),
       time: c.created_at ? new Date(c.created_at).getTime() : (c.time || Date.now()),
       reactions: c.reactions || {},
       userVote: c.userVote || {},
@@ -2200,6 +2257,7 @@ function saveParentItem(updatedItem) {
     imageUrl: c.imageUrl || "",
     voiceUrl: c.audioUrl || "",
     audioEffect: c.audioEffect || "",
+    badge: Boolean(c.badge),
     created_at: new Date(c.time || Date.now()).toISOString(),
     like_count: Number(c.likesCount || 0),
     dislike_count: Number(c.dislikesCount || 0),
@@ -2260,7 +2318,6 @@ function updateSummaryBarLive(parent) {
   const postReactions = Array.isArray(parent.reactions) ? parent.reactions : [];
   const totalReactionNum = Math.max(postReactions.length, Number(parent.reaction_count || 0));
 
-  // Count frequency of each reaction type to show top 3 emojis accurately
   const freqMap = new Map();
   postReactions.forEach(r => {
     const emoji = REACTION_EMOJIS[String(r.type || r.reaction_type || "like").toLowerCase()] || "👍";
@@ -2290,7 +2347,6 @@ async function syncPostEngagementFromSupabase() {
     const parent = getParentItem();
     let changed = false;
 
-    // 1. Fetch live reactions rows from Supabase (post_reactions / reactions)
     const reactionTables = ["post_reactions", "reactions"];
     for (const rTable of reactionTables) {
       try {
@@ -2307,7 +2363,6 @@ async function syncPostEngagementFromSupabase() {
           parent.reactions = normalizedRx;
           parent.reaction_count = Math.max(normalizedRx.length, Number(parent.reaction_count || 0));
 
-          // Persist to local reaction store so reactions.html & feed stay synced
           const store = readStorageObject("autro_post_reactions");
           store[pid] = normalizedRx;
           writeStorageObject("autro_post_reactions", store);
@@ -2317,7 +2372,6 @@ async function syncPostEngagementFromSupabase() {
       } catch (_) {}
     }
 
-    // 2. Fetch parent post/reel row for aggregate counts & shares
     const tableName = itemType === "reel" ? "reels" : "posts";
     const { data: postRow } = await sbClient
       .from(tableName)
@@ -2405,6 +2459,7 @@ async function syncCommentsWithSupabase() {
         imageUrl: r.image_url || "",
         audioUrl: r.audio_url || r.voice_url || "",
         audioEffect: r.audio_effect || "",
+        badge: Boolean(r.badge || r.ai_badge || r.is_ai),
         time: rTime,
         reactions: r.reactions || {},
         userVote: {},
@@ -3031,6 +3086,56 @@ async function sendVoiceComment() {
   }
 }
 
+/* Required Function: addCommentToDOM */
+function addCommentToDOM(data, username, userAvatar) {
+  const payload = data && typeof data === "object" ? data : { text: String(data || "") };
+
+  // 1. Auto Block: Gali, 18+, Harassment
+  if (payload.action === "suspend") {
+    alert("Blocked: " + (payload.message || "Content violates safety rules."));
+    return;
+  }
+
+  const safeUsername = escapeHtml(
+    username ||
+    payload.username ||
+    payload.userName ||
+    payload.author ||
+    (currentUser && currentUser.name) ||
+    "Abir"
+  );
+  const safeAvatar = escapeHtml(
+    userAvatar ||
+    payload.userAvatar ||
+    payload.img ||
+    (currentUser && currentUser.avatar) ||
+    makeAvatarFallback(safeUsername)
+  );
+  const safeText = escapeHtml(payload.text || payload.comment_text || payload.content || "");
+
+  // 2. AI Badge Show/Hide
+  const aiClass = payload.badge ? "" : "hidden";
+
+  const html = `
+  <div class="comment-item other-comment">
+    <img class="comment-avatar" src="${safeAvatar}" alt="${safeUsername}">
+    <div class="comment-body">
+      <div>
+        <p class="comment-username">${safeUsername}</p>
+        <p class="comment-ai-label ${aiClass}">AI content</p>
+      </div>
+      <p class="comment-text">${safeText}</p>
+    </div>
+  </div>`;
+
+  const commentListEl = document.getElementById("commentList");
+  if (commentListEl) {
+    const emptyEl = commentListEl.querySelector(".empty-state");
+    if (emptyEl) emptyEl.remove();
+    commentListEl.innerHTML = html + commentListEl.innerHTML;
+  }
+}
+
 async function submitComment() {
   if (isSubmittingComment) return;
   if (!currentUser || !currentUser.id) return;
@@ -3069,7 +3174,7 @@ async function submitComment() {
   }
 }
 
-async function createCommentRecord({ text = "", imageUrl = "", attachmentKind = "", audioUrl = "", audioEffect = "" }) {
+async function createCommentRecord({ text = "", imageUrl = "", attachmentKind = "", audioUrl = "", audioEffect = "", badge = false }) {
   if (!currentUser || !currentUser.id) return null;
   const parent = getParentItem();
   if (!Array.isArray(parent.comments)) parent.comments = [];
@@ -3086,6 +3191,7 @@ async function createCommentRecord({ text = "", imageUrl = "", attachmentKind = 
     attachmentKind,
     audioUrl,
     audioEffect,
+    badge: Boolean(badge),
     time: Date.now(),
     reactions: {},
     userVote: {},
@@ -3448,6 +3554,7 @@ function renderAll() {
     const isCmtAuthor = postAuthorId && cmtUserId === postAuthorId;
     const isPinned = pinnedId && String(cmt.id) === pinnedId;
     const isBad = containsProfanity(cmt.text);
+    const aiBadgeClass = cmt.badge ? "" : "hidden";
     const rxnMap = cmt.reactions && typeof cmt.reactions === "object" ? cmt.reactions : {};
     const myReaction = uid ? (rxnMap[uid] || "") : "";
     const myVote = uid ? ((cmt.userVote && cmt.userVote[uid]) || "") : "";
@@ -3585,6 +3692,7 @@ function renderAll() {
               <div class="comment-top-line">
                 <div class="comment-author-wrap">
                   <a class="comment-author" href="${profileUrl}">${escapeHtml(cmtUserName)}</a>
+                  <p class="comment-ai-label ${aiBadgeClass}">AI content</p>
                   ${isOwnComment ? `<span class="you-pill">You</span>` : `<span class="other-user-pill">Member</span>`}
                   ${isPinned ? `<span class="pinned-pill">Pinned</span>` : ""}
                   ${isCmtAuthor ? `<span class="author-pill">Post Author</span>` : ""}
