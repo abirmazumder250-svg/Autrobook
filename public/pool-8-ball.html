@@ -1,0 +1,2596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Pool Association - Championship 8-Ball</title>
+  <style>
+    /* ========================================================================
+       1. APA DESIGN TOKENS & SYSTEM LIGHT / DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --apa-forest: #0B3D20;
+      --apa-emerald-deep: #0a7d3b;
+      --apa-emerald: #10b981;
+      --apa-gold: #f59e0b;
+      --apa-amber: #fbbf24;
+
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --hud-bg: rgba(255, 255, 255, 0.94);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --hud-bg: rgba(255, 255, 255, 0.94);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04140b;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #apaArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% 18%, #0a7d3b 0%, #0B3D20 58%, #031008 100%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP BAR, FRAME SCOREBOARD, PLAYER CARDS & LIVE SHOT RADAR
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 720px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-circle-btn {
+      width: 33px;
+      height: 33px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13.5px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .icon-circle-btn:hover {
+      border-color: var(--apa-amber);
+    }
+
+    .icon-circle-btn:active {
+      transform: scale(0.92);
+    }
+
+    .scoreboard-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 13px;
+      flex: 1;
+      max-width: 360px;
+      border-color: rgba(251, 191, 36, 0.55);
+    }
+
+    .score-main-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .apa-mini-crest {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .frame-score-pill {
+      padding: 1px 7px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(16, 185, 129, 0.55);
+      color: var(--apa-amber);
+      font-size: 12.5px;
+    }
+
+    .turn-status-row {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .players-radar-row {
+      width: 100%;
+      max-width: 720px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 6px;
+      align-items: center;
+      z-index: 16;
+    }
+
+    .player-panel {
+      padding: 5px 8px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      min-width: 0;
+      border-width: 1.5px;
+    }
+
+    .player-panel.active-turn {
+      border-color: var(--apa-amber);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.3);
+    }
+
+    .p-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .p-name-line {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-num {
+      padding: 1px 5px;
+      border-radius: 6px;
+      font-size: 8.8px;
+      font-weight: 900;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      flex-shrink: 0;
+    }
+
+    .p-group-line {
+      font-size: 8.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .frames-badge {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: var(--apa-amber);
+      font-size: 9px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    .radar-box {
+      padding: 4px 9px;
+      border-radius: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-color: rgba(251, 191, 36, 0.48);
+      min-width: 118px;
+    }
+
+    .radar-lbl {
+      font-size: 7.8px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--apa-amber);
+    }
+
+    .radar-val {
+      font-size: 11px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .radar-sub {
+      font-size: 8px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-sub);
+    }
+
+    /* ========================================================================
+       3. CENTER HIGH-DPI POOL TABLE & CUE CONTROLS
+       ======================================================================== */
+    .table-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 720px;
+      max-height: 51dvh;
+      margin: 2px 0;
+    }
+
+    canvas#poolTableCanvas {
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .bottom-cue-deck {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 18;
+    }
+
+    .power-gauge-bar {
+      padding: 5px 10px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gauge-title {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--apa-amber);
+      white-space: nowrap;
+    }
+
+    .gauge-track {
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+
+    .gauge-fill {
+      height: 100%;
+      width: 48%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24, #ef4444);
+      transition: width 0.05s ease;
+    }
+
+    .power-slider-inp {
+      width: 86px;
+      accent-color: #f59e0b;
+      cursor: pointer;
+    }
+
+    .gauge-pct {
+      font-size: 9.2px;
+      font-weight: 900;
+      color: var(--apa-amber);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .power-presets-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .pwr-preset-btn {
+      padding: 5px 4px;
+      border-radius: 9px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.2px solid var(--hud-border);
+      font-size: 8.8px;
+      font-weight: 900;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .pwr-preset-btn.active {
+      background: rgba(245, 158, 11, 0.24);
+      border-color: var(--apa-amber);
+      color: var(--apa-amber);
+    }
+
+    .cue-action-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+
+    .cue-btn {
+      padding: 7px 4px;
+      border-radius: 10px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .cue-btn.strike-primary {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--apa-amber);
+      color: #ffffff;
+    }
+
+    .cue-btn:active:not(:disabled) {
+      transform: scale(0.95);
+      border-color: var(--apa-amber);
+    }
+
+    .cue-btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK POOL ASSOCIATION (APA) INTRO SCREEN
+       ======================================================================== */
+    #apaIntroScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #apaIntroScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spot-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-left {
+      left: 10%;
+      animation: raySwingL 2.8s ease-in-out infinite alternate;
+    }
+
+    .ray-right {
+      right: 10%;
+      animation: raySwingR 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes raySwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes raySwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 355px;
+      width: 100%;
+    }
+
+    .apa-crest-badge {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--apa-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--apa-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-title {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-sub {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-progress-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE, CHAMPIONSHIP SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 465px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 18px 16px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-head {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .modal-h2 {
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .setup-box {
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 8px;
+    }
+
+    .setup-label {
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--apa-amber);
+      margin-bottom: 5px;
+    }
+
+    .grid-3-row {
+      display: grid;
+      grid-template-columns: 1fr 112px 56px;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .text-inp, .sel-inp {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.24);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .sel-inp option {
+      background: #072213;
+      color: #ffffff;
+    }
+
+    .star-chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .star-chip {
+      padding: 4px 7px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--text-main);
+      font-size: 9px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .pills-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .pills-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .choice-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 9.8px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--apa-amber);
+      color: #ffffff;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--apa-amber);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .stats-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .shot-preview-img {
+      width: 100%;
+      max-height: 50dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--apa-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--apa-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="apaArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">AUTROBOOK 8-BALL</div>
+
+    <!-- TOP BAR WITH BACK LINK TO pool-8-ball.html -->
+    <header class="top-bar">
+      <div class="btn-group">
+        <a href="pool-8-ball.html" class="icon-circle-btn glass-hud" title="Back to Pool Hub" aria-label="Back to Pool Hub">&larr;</a>
+      </div>
+
+      <div class="scoreboard-center glass-hud">
+        <div class="score-main-row">
+          <svg class="apa-mini-crest" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+            <circle cx="12" cy="12" r="4" fill="#fbbf24"/>
+          </svg>
+          <span>Autrobook Pool Association</span>
+          <span id="frameScoreBadge" class="frame-score-pill">0 - 0</span>
+        </div>
+        <div id="turnBannerText" class="turn-status-row">RACE TO 3 FRAMES &bull; AI CLUB &bull; AIMING</div>
+      </div>
+
+      <div class="btn-group">
+        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="setupOpenBtn" type="button" class="icon-circle-btn glass-hud" title="Match Setup" aria-label="Match Setup">&#9998;</button>
+        <button id="muteBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- PLAYER PANELS & LIVE SHOT SPEED RADAR -->
+    <section class="players-radar-row">
+      <div id="p1Card" class="player-panel glass-hud active-turn">
+        <div class="p-meta">
+          <div class="p-name-line">
+            <span id="p1BadgeNum" class="badge-num" style="background:#0a7d3b;">#01</span>
+            <span id="p1DisplayName">SHAON CUE</span>
+          </div>
+          <span id="p1GroupSub" class="p-group-line">BAN &bull; OPEN GROUP</span>
+        </div>
+        <span id="p1FramesTag" class="frames-badge">0F</span>
+      </div>
+
+      <div class="radar-box glass-hud">
+        <span class="radar-lbl">CUE RADAR</span>
+        <span id="radarKmhText" class="radar-val">0.0 KM/H</span>
+        <span id="radarMphPeakText" class="radar-sub">0.0 MPH &bull; PK 0</span>
+      </div>
+
+      <div id="p2Card" class="player-panel glass-hud">
+        <div class="p-meta">
+          <div class="p-name-line">
+            <span id="p2BadgeNum" class="badge-num" style="background:#b91c1c;">#08</span>
+            <span id="p2DisplayName">MARK SELBY</span>
+          </div>
+          <span id="p2GroupSub" class="p-group-line">ENG &bull; OPEN GROUP</span>
+        </div>
+        <span id="p2FramesTag" class="frames-badge">0F</span>
+      </div>
+    </section>
+
+    <!-- CENTER HIGH-DPI 8-BALL POOL TABLE CANVAS -->
+    <div id="tableStage" class="table-stage">
+      <canvas id="poolTableCanvas"></canvas>
+    </div>
+
+    <!-- POWER GAUGE, PRESETS & AIM / STRIKE CONTROLS -->
+    <div class="bottom-cue-deck">
+      <div class="power-gauge-bar glass-hud">
+        <span class="gauge-title">Cue Power</span>
+        <div class="gauge-track">
+          <div id="powerGaugeFill" class="gauge-fill" style="width:48%;"></div>
+        </div>
+        <input id="powerSlider" type="range" min="15" max="100" value="48" class="power-slider-inp" aria-label="Cue Power Slider" />
+        <span id="powerGaugePct" class="gauge-pct">48%</span>
+      </div>
+
+      <div id="powerPresetsRow" class="power-presets-bar">
+        <button type="button" class="pwr-preset-btn" data-pwr="0.25">Soft (25%)</button>
+        <button type="button" class="pwr-preset-btn active" data-pwr="0.48">Medium (48%)</button>
+        <button type="button" class="pwr-preset-btn" data-pwr="0.74">Power (74%)</button>
+        <button type="button" class="pwr-preset-btn" data-pwr="0.98">Max (98%)</button>
+      </div>
+
+      <div class="cue-action-grid">
+        <button id="aimLeftBtn" type="button" class="cue-btn">&larr; Aim</button>
+        <button id="aimRightBtn" type="button" class="cue-btn">Aim &rarr;</button>
+        <button id="ballInHandBtn" type="button" class="cue-btn">Ball Hand</button>
+        <button id="rerackBtn" type="button" class="cue-btn">Re-Rack</button>
+        <button id="strikeCueBtn" type="button" class="cue-btn strike-primary">&#127921; Strike</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK POOL ASSOCIATION (APA) INTRO SCREEN
+         ====================================================================== -->
+    <section id="apaIntroScreen">
+      <div class="spot-ray ray-left"></div>
+      <div class="spot-ray ray-right"></div>
+
+      <div class="intro-center">
+        <div class="apa-crest-badge">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <circle cx="32" cy="32" r="13" fill="#0f172a" stroke="#ffffff" stroke-width="2"/>
+            <circle cx="32" cy="32" r="6.5" fill="#ffffff"/>
+            <text x="32" y="34.5" text-anchor="middle" fill="#0f172a" font-size="8.5" font-weight="900">8</text>
+          </svg>
+        </div>
+
+        <div class="intro-kicker">OFFICIAL BILLIARDS CIRCUIT</div>
+        <h1 class="intro-title">Autrobook Pool Association</h1>
+        <p class="intro-sub">CHAMPIONSHIP 8-BALL SERIES</p>
+
+        <div class="intro-progress-track">
+          <div id="introBarFill" class="intro-progress-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. MATCH SETUP MODAL (10 NATIONS, STARS, FORMATS & BAIZE STYLES)
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2 class="modal-h2">APA 8-Ball Setup</h2>
+          <p class="modal-sub">10 Nations &bull; Cue Stars &bull; Match Format &bull; Table Baize</p>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Game Mode &amp; AI Skill</div>
+          <div id="modeGroup" class="pills-4">
+            <button type="button" class="choice-btn" data-mode="AI_CASUAL">1P vs AI (Casual)</button>
+            <button type="button" class="choice-btn selected" data-mode="AI_CLUB">1P vs AI (Club)</button>
+            <button type="button" class="choice-btn" data-mode="AI_PRO">1P vs AI (Pro)</button>
+            <button type="button" class="choice-btn" data-mode="LOCAL_2P">2P Local</button>
+          </div>
+        </div>
+
+        <!-- Player 1 Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Player 1 Roster</div>
+          <div class="grid-3-row">
+            <input id="p1NameInp" type="text" maxlength="14" value="SHAON CUE" class="text-inp" />
+            <select id="p1NationSel" class="sel-inp"></select>
+            <input id="p1BadgeInp" type="number" min="1" max="99" value="1" class="text-inp" />
+          </div>
+          <div id="p1StarRow" class="star-chips"></div>
+        </div>
+
+        <!-- Player 2 Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Player 2 / AI Opponent Roster</div>
+          <div class="grid-3-row">
+            <input id="p2NameInp" type="text" maxlength="14" value="MARK SELBY" class="text-inp" />
+            <select id="p2NationSel" class="sel-inp"></select>
+            <input id="p2BadgeInp" type="number" min="1" max="99" value="8" class="text-inp" />
+          </div>
+          <div id="p2StarRow" class="star-chips"></div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Match Format</div>
+          <div id="formatGroup" class="pills-4">
+            <button type="button" class="choice-btn selected" data-fmt="RACE_3">Race to 3 Frames</button>
+            <button type="button" class="choice-btn" data-fmt="RACE_5">Race to 5 Frames</button>
+            <button type="button" class="choice-btn" data-fmt="SINGLE_1">Single Championship Frame</button>
+            <button type="button" class="choice-btn" data-fmt="SHOOTOUT">Quick Shootout</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Table Baize Style</div>
+          <div id="baizeGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-baize="EMERALD">Tournament Emerald</button>
+            <button type="button" class="choice-btn" data-baize="CHAMPIONSHIP">Championship Green</button>
+            <button type="button" class="choice-btn" data-baize="MIDNIGHT">Midnight Baize</button>
+          </div>
+        </div>
+
+        <button id="startMatchBtn" type="button" class="btn-primary">
+          Break &amp; Start Match
+        </button>
+
+        <div class="btn-stack" style="margin-top:6px;">
+          <a href="pool-8-ball.html" class="btn-secondary">&larr; Back to Pool Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Table Screenshot</h2>
+          <p class="modal-sub">Autrobook Pool Association</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="8-Ball Pool Screenshot" />
+        <div class="btn-stack">
+          <a id="downloadShotBtn" download="Autrobook-Pool-8-Ball.png" class="btn-primary">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Resume Match</button>
+          <a href="pool-8-ball.html" class="btn-secondary">&larr; Back to Pool Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:325px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Match Paused</h2>
+          <p class="modal-sub">Autrobook Pool Association</p>
+        </div>
+        <div class="btn-stack">
+          <button id="resumeBtn" type="button" class="btn-primary">Resume Match</button>
+          <button id="restartFrameBtn" type="button" class="btn-secondary">Restart Frame</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Match Setup</button>
+          <a href="pool-8-ball.html" class="btn-secondary">&larr; Back to Pool Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. CHAMPIONSHIP SUMMARY MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:355px;text-align:center;">
+        <div style="font-size:42px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="winnerTitle" class="modal-h2">CHAMPIONSHIP WINNER!</h2>
+        <p id="winnerSub" class="modal-sub">Autrobook Pool Association</p>
+
+        <div class="stats-box">
+          <div class="stats-row">
+            <span>Frames Won</span>
+            <span id="sumFramesText" style="font-weight:900;color:var(--apa-amber);">0 - 0</span>
+          </div>
+          <div class="stats-row">
+            <span>Peak Shot Speed</span>
+            <span id="sumPeakSpeed" style="font-weight:900;color:var(--apa-emerald);">0.0 KM/H</span>
+          </div>
+          <div class="stats-row">
+            <span>Total Shots</span>
+            <span id="sumTotalShots" style="font-weight:900;">0</span>
+          </div>
+          <div class="stats-row">
+            <span>Matches Played / Won</span>
+            <span id="sumCareerStats" style="font-weight:900;color:var(--apa-amber);">0 / 0</span>
+          </div>
+        </div>
+
+        <div class="btn-stack">
+          <button id="playAgainBtn" type="button" class="btn-primary">Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
+          <a href="pool-8-ball.html" class="btn-secondary">&larr; Back to Pool Hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       10 NATIONS ROSTER, STAR PRESETS, MATCH FORMATS & BAIZE STYLES
+       ======================================================================== */
+    const APA_NATIONS_10 = [
+      { code: 'BAN', name: 'Bangladesh', kit: '#0a7d3b' },
+      { code: 'ENG', name: 'England', kit: '#b91c1c' },
+      { code: 'USA', name: 'United States', kit: '#1d4ed8' },
+      { code: 'CHN', name: 'China', kit: '#dc2626' },
+      { code: 'PHI', name: 'Philippines', kit: '#2563eb' },
+      { code: 'GER', name: 'Germany', kit: '#0f172a' },
+      { code: 'JPN', name: 'Japan', kit: '#059669' },
+      { code: 'IND', name: 'India', kit: '#ea580c' },
+      { code: 'CAN', name: 'Canada', kit: '#e11d48' },
+      { code: 'AUS', name: 'Australia', kit: '#15803d' }
+    ];
+
+    const APA_STAR_PRESETS = [
+      { name: 'SHAON CUE', nation: 'BAN', badge: 1 },
+      { name: 'MARK SELBY', nation: 'ENG', badge: 8 },
+      { name: 'SHANE VB', nation: 'USA', badge: 7 },
+      { name: 'DING JUN', nation: 'CHN', badge: 14 },
+      { name: 'CARLO BIADO', nation: 'PHI', badge: 9 },
+      { name: 'JOSH FILLER', nation: 'GER', badge: 19 }
+    ];
+
+    const BAIZE_THEMES = {
+      EMERALD: {
+        clothTop: '#128546',
+        clothBot: '#095c2f',
+        railWood: '#6b3a1e',
+        cushionRim: '#064e28',
+        markColor: 'rgba(255, 255, 255, 0.28)'
+      },
+      CHAMPIONSHIP: {
+        clothTop: '#15803d',
+        clothBot: '#0B3D20',
+        railWood: '#5c3118',
+        cushionRim: '#063219',
+        markColor: 'rgba(254, 240, 138, 0.34)'
+      },
+      MIDNIGHT: {
+        clothTop: '#0d5c3b',
+        clothBot: '#063622',
+        railWood: '#4a2612',
+        cushionRim: '#042618',
+        markColor: 'rgba(167, 243, 208, 0.26)'
+      }
+    };
+
+    const SOLID_COLORS = {
+      1: '#facc15',
+      2: '#2563eb',
+      3: '#dc2626',
+      4: '#7e22ce',
+      5: '#ea580c',
+      6: '#15803d',
+      7: '#881337'
+    };
+
+    const APA_STATS_KEY = 'apa_8ball_championship_stats_v1';
+
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class APAAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playClick() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(640, now);
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playCueStrike(powerRatio = 0.5) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(290 + powerRatio * 220, now);
+        osc.frequency.exponentialRampToValueAtTime(85, now + 0.085);
+        g.gain.setValueAtTime(Math.min(0.24, 0.09 + powerRatio * 0.14), now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.095);
+      }
+
+      playBallClack(speedPx = 200) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const norm = Math.min(1, speedPx / 700);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880 + norm * 420, now);
+        osc.frequency.exponentialRampToValueAtTime(240, now + 0.045);
+        g.gain.setValueAtTime(Math.max(0.03, norm * 0.2), now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playRailBounce() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(175, now);
+        osc.frequency.exponentialRampToValueAtTime(75, now + 0.07);
+        g.gain.setValueAtTime(0.12, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      playPocketDrop(isEight = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = isEight ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25, 783.99];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.065;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.14, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.21);
+        });
+      }
+
+      playFoulBuzz() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.linearRampToValueAtTime(115, now + 0.24);
+        g.gain.setValueAtTime(0.16, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      }
+
+      playWinFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.1;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.16, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.32);
+        });
+        this.playApplauseBurst(now + 0.25);
+      }
+
+      playApplauseBurst(startTime) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const duration = 0.65;
+          const sampleCount = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, sampleCount, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < sampleCount; i++) {
+            const env = Math.sin((i / sampleCount) * Math.PI);
+            data[i] = (Math.random() * 2 - 1) * env * 0.2;
+          }
+          const src = this.ctx.createBufferSource();
+          src.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1600, startTime);
+          filter.Q.setValueAtTime(0.7, startTime);
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.16, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          src.start(startTime);
+        } catch (_e) {}
+      }
+    }
+
+    /* ========================================================================
+       APA 8-BALL CHAMPIONSHIP ENGINE (DETERMINISTIC TURN-STATE MACHINE)
+       ======================================================================== */
+    class APA8BallEngine {
+      constructor() {
+        this.canvas = document.getElementById('poolTableCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new APAAudioSynth();
+
+        this.mode = 'AI_CLUB'; // AI_CASUAL, AI_CLUB, AI_PRO, LOCAL_2P
+        this.formatKey = 'RACE_3'; // RACE_3, RACE_5, SINGLE_1, SHOOTOUT
+        this.baizeKey = 'EMERALD'; // EMERALD, CHAMPIONSHIP, MIDNIGHT
+
+        const saved = this.loadStats();
+        this.matchesPlayed = saved.played || 0;
+        this.matchesWon = saved.won || 0;
+        this.countedMatch = false;
+
+        this.p1 = {
+          name: 'SHAON CUE',
+          nation: APA_NATIONS_10[0],
+          badge: 1,
+          frames: 0,
+          group: null // 'SOLIDS' or 'STRIPES'
+        };
+
+        this.p2 = {
+          name: 'MARK SELBY',
+          nation: APA_NATIONS_10[1],
+          badge: 8,
+          frames: 0,
+          group: null
+        };
+
+        // Turn state machine: 'AIMING' | 'SIMULATING' | 'AI_THINKING' | 'GAME_OVER'
+        this.turnState = 'AIMING';
+        this.currentPlayer = 0; // 0 = P1, 1 = P2/AI
+        this.ballInHand = false;
+        this.scratchedThisTurn = false;
+        this.pottedThisTurn = [];
+        this.totalShots = 0;
+        this.shotActive = false;
+        this.aiTimer = null;
+
+        this.speedKmh = 0;
+        this.peakKmh = 0;
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = false;
+
+        this.canvasW = 540;
+        this.canvasH = 290;
+        this.dpr = 1;
+        this.playfield = { left: 32, right: 508, top: 32, bottom: 258 };
+        this.pockets = [];
+        this.balls = [];
+        this.lastFrameTime = 0;
+
+        this.aimAngle = 0;
+        this.powerRatio = 0.48;
+        this.aimKeys = { left: false, right: false };
+        this.draggingAim = false;
+        this.cueRecoilAnim = 0;
+
+        this.syncThemeIcon();
+        this.populateSetupUI();
+        this.bindEvents();
+        this.resizeTable();
+        this.rackBalls();
+        this.syncPowerGauge();
+        this.refreshHUD();
+        this.startIntro();
+      }
+
+      clearAITimer() {
+        if (this.aiTimer) {
+          clearTimeout(this.aiTimer);
+          this.aiTimer = null;
+        }
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(APA_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(APA_STATS_KEY, JSON.stringify({
+            played: this.matchesPlayed,
+            won: this.matchesWon
+          }));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.renderTable();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1450);
+      }
+
+      getFramesToWin() {
+        if (this.formatKey === 'SINGLE_1' || this.formatKey === 'SHOOTOUT') return 1;
+        if (this.formatKey === 'RACE_5') return 5;
+        return 3;
+      }
+
+      /* ======================================================================
+         ROSTER SETUP UI (10 NATIONS & STAR PRESETS)
+         ====================================================================== */
+      populateSetupUI() {
+        const s1 = document.getElementById('p1NationSel');
+        const s2 = document.getElementById('p2NationSel');
+        s1.innerHTML = '';
+        s2.innerHTML = '';
+
+        APA_NATIONS_10.forEach((nat, idx) => {
+          const o1 = document.createElement('option');
+          o1.value = nat.code;
+          o1.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 0) o1.selected = true;
+          s1.appendChild(o1);
+
+          const o2 = document.createElement('option');
+          o2.value = nat.code;
+          o2.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 1) o2.selected = true;
+          s2.appendChild(o2);
+        });
+
+        const buildStarRow = (containerId, isP1) => {
+          const wrap = document.getElementById(containerId);
+          wrap.innerHTML = '';
+          APA_STAR_PRESETS.forEach((st) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'star-chip';
+            btn.textContent = `${st.name} (${st.nation})`;
+            btn.addEventListener('click', () => {
+              if (isP1) {
+                document.getElementById('p1NameInp').value = st.name;
+                document.getElementById('p1NationSel').value = st.nation;
+                document.getElementById('p1BadgeInp').value = String(st.badge);
+              } else {
+                document.getElementById('p2NameInp').value = st.name;
+                document.getElementById('p2NationSel').value = st.nation;
+                document.getElementById('p2BadgeInp').value = String(st.badge);
+              }
+              this.audio.playClick();
+            });
+            wrap.appendChild(btn);
+          });
+        };
+
+        buildStarRow('p1StarRow', true);
+        buildStarRow('p2StarRow', false);
+      }
+
+      getNation(code) {
+        return APA_NATIONS_10.find((n) => n.code === code) || APA_NATIONS_10[0];
+      }
+
+      /* ======================================================================
+         TABLE GEOMETRY, POCKETS & RACK (CUE + 15 OBJECT BALLS)
+         ====================================================================== */
+      resizeTable() {
+        const stage = document.getElementById('tableStage').getBoundingClientRect();
+        const w = Math.floor(Math.max(300, stage.width - 6));
+        const h = Math.floor(Math.max(185, stage.height - 6));
+        const prevW = this.canvasW || w;
+        const prevH = this.canvasH || h;
+
+        this.canvasW = w;
+        this.canvasH = h;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${w}px`;
+        this.canvas.style.height = `${h}px`;
+        this.canvas.width = Math.floor(w * this.dpr);
+        this.canvas.height = Math.floor(h * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        const railPad = Math.max(24, Math.min(w, h) * 0.115);
+        this.playfield = {
+          left: railPad,
+          right: w - railPad,
+          top: railPad,
+          bottom: h - railPad
+        };
+
+        const pocketR = Math.max(11, Math.min(w, h) * 0.044);
+        const midX = (this.playfield.left + this.playfield.right) * 0.5;
+        this.pockets = [
+          { x: this.playfield.left + 2, y: this.playfield.top + 2, r: pocketR },
+          { x: midX, y: this.playfield.top - 1, r: pocketR * 0.94 },
+          { x: this.playfield.right - 2, y: this.playfield.top + 2, r: pocketR },
+          { x: this.playfield.left + 2, y: this.playfield.bottom - 2, r: pocketR },
+          { x: midX, y: this.playfield.bottom + 1, r: pocketR * 0.94 },
+          { x: this.playfield.right - 2, y: this.playfield.bottom - 2, r: pocketR }
+        ];
+
+        const ballR = Math.max(6.2, Math.min(w, h) * 0.0255);
+        const sx = w / prevW;
+        const sy = h / prevH;
+
+        this.balls.forEach((b) => {
+          b.x = Math.max(this.playfield.left + ballR + 1, Math.min(this.playfield.right - ballR - 1, b.x * sx));
+          b.y = Math.max(this.playfield.top + ballR + 1, Math.min(this.playfield.bottom - ballR - 1, b.y * sy));
+          b.vx *= sx;
+          b.vy *= sy;
+          b.r = ballR;
+        });
+
+        this.renderTable();
+      }
+
+      rackBalls() {
+        this.clearAITimer();
+        const pf = this.playfield;
+        const spanX = pf.right - pf.left;
+        const midY = (pf.top + pf.bottom) * 0.5;
+        const r = Math.max(6.2, Math.min(this.canvasW, this.canvasH) * 0.0255);
+
+        this.balls = [];
+        this.pottedThisTurn = [];
+        this.scratchedThisTurn = false;
+        this.shotActive = false;
+        this.ballInHand = false;
+        this.turnState = 'AIMING';
+        this.speedKmh = 0;
+
+        // Cue ball (id 0) at head string
+        this.balls.push({
+          id: 0,
+          kind: 'CUE',
+          x: pf.left + spanX * 0.25,
+          y: midY,
+          vx: 0,
+          vy: 0,
+          r,
+          potted: false
+        });
+
+        // Standard 15-ball triangle with 8-ball at center (row 3, col 2)
+        const rackIds = [1, 9, 2, 10, 8, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15];
+        const apexX = pf.left + spanX * 0.66;
+        const dx = r * Math.sqrt(3) * 1.03;
+        const dy = r * 2.06;
+
+        let idx = 0;
+        for (let row = 0; row < 5; row++) {
+          const countInRow = row + 1;
+          const startY = midY - ((countInRow - 1) * dy) * 0.5;
+          for (let col = 0; col < countInRow; col++) {
+            const id = rackIds[idx++] || (idx + 1);
+            const kind = id === 8 ? 'EIGHT' : (id <= 7 ? 'SOLID' : 'STRIPE');
+            this.balls.push({
+              id,
+              kind,
+              x: apexX + row * dx,
+              y: startY + col * dy,
+              vx: 0,
+              vy: 0,
+              r,
+              potted: false
+            });
+          }
+        }
+
+        this.aimAngle = 0;
+        this.renderTable();
+        this.scheduleAITurnIfNeeded();
+      }
+
+      getCueBall() {
+        return this.balls.find((b) => b.id === 0) || null;
+      }
+
+      areBallsMoving() {
+        return this.balls.some((b) => !b.potted && Math.hypot(b.vx, b.vy) > 0.1);
+      }
+
+      placeCueBallSafely(px, py) {
+        const cue = this.getCueBall();
+        if (!cue) return;
+        const pf = this.playfield;
+        const margin = cue.r + 4;
+        let nx = Math.max(pf.left + margin, Math.min(pf.right - margin, px));
+        let ny = Math.max(pf.top + margin, Math.min(pf.bottom - margin, py));
+
+        // Push clear of any pocket mouth
+        for (const pk of this.pockets) {
+          const d = Math.hypot(nx - pk.x, ny - pk.y);
+          const minClear = pk.r + cue.r + 5;
+          if (d < minClear) {
+            const ang = Math.atan2(ny - pk.y, nx - pk.x) || 0.4;
+            nx = Math.max(pf.left + margin, Math.min(pf.right - margin, pk.x + Math.cos(ang) * minClear));
+            ny = Math.max(pf.top + margin, Math.min(pf.bottom - margin, pk.y + Math.sin(ang) * minClear));
+          }
+        }
+
+        // Push clear of overlapping object balls
+        for (const b of this.balls) {
+          if (b.id === 0 || b.potted) continue;
+          const d = Math.hypot(nx - b.x, ny - b.y);
+          const minSep = cue.r + b.r + 3;
+          if (d < minSep) {
+            const ang = Math.atan2(ny - b.y, nx - b.x) || 0.2;
+            nx = Math.max(pf.left + margin, Math.min(pf.right - margin, b.x + Math.cos(ang) * minSep));
+            ny = Math.max(pf.top + margin, Math.min(pf.bottom - margin, b.y + Math.sin(ang) * minSep));
+          }
+        }
+
+        cue.potted = false;
+        cue.x = nx;
+        cue.y = ny;
+        cue.vx = 0;
+        cue.vy = 0;
+      }
+
+      /* ======================================================================
+         STRIKE, SUB-STEPPED PHYSICS & DETERMINISTIC TURN RESOLUTION
+         ====================================================================== */
+      strikeCueBall(customAngle = null, customPower = null) {
+        if (this.paused || this.turnState === 'GAME_OVER' || this.areBallsMoving()) return;
+        const cue = this.getCueBall();
+        if (!cue) return;
+
+        if (cue.potted || this.ballInHand) {
+          this.placeCueBallSafely(
+            this.playfield.left + (this.playfield.right - this.playfield.left) * 0.25,
+            (this.playfield.top + this.playfield.bottom) * 0.5
+          );
+          this.ballInHand = false;
+        }
+
+        const ang = customAngle !== null ? customAngle : this.aimAngle;
+        const pwr = customPower !== null ? customPower : this.powerRatio;
+        const maxSpeed = this.canvasW * 2.15;
+        const speed = Math.max(this.canvasW * 0.28, pwr * maxSpeed);
+
+        cue.vx = Math.cos(ang) * speed;
+        cue.vy = Math.sin(ang) * speed;
+        this.totalShots++;
+        this.shotActive = true;
+        this.scratchedThisTurn = false;
+        this.pottedThisTurn = [];
+        this.turnState = 'SIMULATING';
+        this.cueRecoilAnim = 1.0;
+
+        this.audio.playCueStrike(pwr);
+        this.refreshHUD();
+      }
+
+      stepBallPhysics(dt) {
+        const subSteps = 4;
+        const subDt = dt / subSteps;
+        for (let s = 0; s < subSteps; s++) {
+          this.stepSingleSubstep(subDt);
+        }
+
+        const activeBalls = this.balls.filter((b) => !b.potted);
+        let maxSp = 0;
+        for (const b of activeBalls) {
+          const sp = Math.hypot(b.vx, b.vy);
+          if (sp > maxSp) maxSp = sp;
+        }
+
+        this.speedKmh = Math.min(115, (maxSp / Math.max(180, this.canvasW)) * 58);
+        if (this.speedKmh > this.peakKmh) {
+          this.peakKmh = this.speedKmh;
+        }
+
+        if (this.shotActive && !this.areBallsMoving()) {
+          this.shotActive = false;
+          this.resolveTurnEnd();
+        }
+      }
+
+      stepSingleSubstep(dt) {
+        const pf = this.playfield;
+        const friction = Math.pow(0.42, dt);
+
+        for (let i = 0; i < this.balls.length; i++) {
+          const b = this.balls[i];
+          if (b.potted) continue;
+
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+          b.vx *= friction;
+          b.vy *= friction;
+
+          if (Math.hypot(b.vx, b.vy) < 1.8) {
+            b.vx = 0;
+            b.vy = 0;
+          }
+
+          // Clamp & bounce safely inside cushions
+          const minX = pf.left + b.r;
+          const maxX = pf.right - b.r;
+          const minY = pf.top + b.r;
+          const maxY = pf.bottom - b.r;
+
+          if (b.x < minX) {
+            b.x = minX;
+            b.vx = Math.abs(b.vx) * 0.84;
+            if (Math.abs(b.vx) > 25) this.audio.playRailBounce();
+          } else if (b.x > maxX) {
+            b.x = maxX;
+            b.vx = -Math.abs(b.vx) * 0.84;
+            if (Math.abs(b.vx) > 25) this.audio.playRailBounce();
+          }
+
+          if (b.y < minY) {
+            b.y = minY;
+            b.vy = Math.abs(b.vy) * 0.84;
+            if (Math.abs(b.vy) > 25) this.audio.playRailBounce();
+          } else if (b.y > maxY) {
+            b.y = maxY;
+            b.vy = -Math.abs(b.vy) * 0.84;
+            if (Math.abs(b.vy) > 25) this.audio.playRailBounce();
+          }
+
+          // Pocket detection
+          for (const pk of this.pockets) {
+            if (Math.hypot(b.x - pk.x, b.y - pk.y) <= pk.r * 0.94) {
+              b.potted = true;
+              b.vx = 0;
+              b.vy = 0;
+              if (b.id === 0) {
+                this.scratchedThisTurn = true;
+                this.audio.playFoulBuzz();
+              } else {
+                this.pottedThisTurn.push(b);
+                this.audio.playPocketDrop(b.id === 8);
+              }
+              break;
+            }
+          }
+        }
+
+        // Circle-circle collisions
+        for (let i = 0; i < this.balls.length; i++) {
+          const a = this.balls[i];
+          if (a.potted) continue;
+          for (let j = i + 1; j < this.balls.length; j++) {
+            const b = this.balls[j];
+            if (b.potted) continue;
+
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = a.r + b.r;
+
+            if (dist > 0 && dist < minDist) {
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const overlap = (minDist - dist) * 0.5;
+              a.x -= nx * overlap;
+              a.y -= ny * overlap;
+              b.x += nx * overlap;
+              b.y += ny * overlap;
+
+              const rvx = b.vx - a.vx;
+              const rvy = b.vy - a.vy;
+              const velAlongNormal = rvx * nx + rvy * ny;
+              if (velAlongNormal < 0) {
+                const restitution = 0.93;
+                const imp = -(1 + restitution) * velAlongNormal * 0.5;
+                a.vx -= imp * nx;
+                a.vy -= imp * ny;
+                b.vx += imp * nx;
+                b.vy += imp * ny;
+                this.audio.playBallClack(Math.abs(velAlongNormal));
+              }
+            }
+          }
+        }
+      }
+
+      resolveTurnEnd() {
+        const activePlayerObj = this.currentPlayer === 0 ? this.p1 : this.p2;
+        const otherPlayerObj = this.currentPlayer === 0 ? this.p2 : this.p1;
+        const otherPlayerIdx = this.currentPlayer === 0 ? 1 : 0;
+
+        const pottedEight = this.pottedThisTurn.find((b) => b.id === 8);
+        const ownGroup = activePlayerObj.group;
+        const remainingOwnBeforePot = ownGroup
+          ? this.balls.filter((b) => !b.potted && ((ownGroup === 'SOLIDS' && b.kind === 'SOLID') || (ownGroup === 'STRIPES' && b.kind === 'STRIPE')))
+          : [];
+
+        // 1. Check 8-ball potting conditions
+        if (pottedEight) {
+          if (this.scratchedThisTurn || (ownGroup && remainingOwnBeforePot.length > 0)) {
+            this.showToast('FOUL ON 8-BALL! FRAME TO OPPONENT');
+            this.awardFrameTo(otherPlayerIdx);
+            return;
+          } else {
+            this.showToast('LEGAL 8-BALL! FRAME WON');
+            this.awardFrameTo(this.currentPlayer);
+            return;
+          }
+        }
+
+        // 2. Assign SOLIDS / STRIPES if open table and non-8 ball potted without scratch
+        if (!ownGroup && !this.scratchedThisTurn && this.pottedThisTurn.length > 0) {
+          const firstBall = this.pottedThisTurn[0];
+          if (firstBall.kind === 'SOLID') {
+            activePlayerObj.group = 'SOLIDS';
+            otherPlayerObj.group = 'STRIPES';
+            this.showToast(`${activePlayerObj.name} TAKES SOLIDS`);
+          } else if (firstBall.kind === 'STRIPE') {
+            activePlayerObj.group = 'STRIPES';
+            otherPlayerObj.group = 'SOLIDS';
+            this.showToast(`${activePlayerObj.name} TAKES STRIPES`);
+          }
+        }
+
+        // 3. Check if active player legally potted at least one of their group balls
+        const currentGroup = activePlayerObj.group;
+        const pottedOwnBall = this.pottedThisTurn.some((b) =>
+          (currentGroup === 'SOLIDS' && b.kind === 'SOLID') ||
+          (currentGroup === 'STRIPES' && b.kind === 'STRIPE') ||
+          (!currentGroup && (b.kind === 'SOLID' || b.kind === 'STRIPE'))
+        );
+
+        if (this.scratchedThisTurn) {
+          this.ballInHand = true;
+          this.currentPlayer = otherPlayerIdx;
+          this.showToast(`SCRATCH! ${otherPlayerObj.name} BALL IN HAND`);
+        } else if (pottedOwnBall) {
+          this.ballInHand = false;
+          this.showToast(`POTTED! ${activePlayerObj.name} CONTINUES`);
+        } else {
+          this.ballInHand = false;
+          this.currentPlayer = otherPlayerIdx;
+        }
+
+        // Restore cue ball if potted
+        const cue = this.getCueBall();
+        if (cue && cue.potted) {
+          this.placeCueBallSafely(
+            this.playfield.left + (this.playfield.right - this.playfield.left) * 0.25,
+            (this.playfield.top + this.playfield.bottom) * 0.5
+          );
+        }
+
+        this.turnState = 'AIMING';
+        this.refreshHUD();
+        this.scheduleAITurnIfNeeded();
+      }
+
+      awardFrameTo(winnerIdx) {
+        this.clearAITimer();
+        const winner = winnerIdx === 0 ? this.p1 : this.p2;
+        winner.frames++;
+        const needed = this.getFramesToWin();
+        this.refreshHUD();
+
+        if (winner.frames >= needed) {
+          this.concludeChampionship(winnerIdx);
+        } else {
+          this.currentPlayer = winnerIdx === 0 ? 1 : 0;
+          this.p1.group = null;
+          this.p2.group = null;
+          this.rackBalls();
+          this.refreshHUD();
+        }
+      }
+
+      concludeChampionship(winnerIdx) {
+        this.clearAITimer();
+        this.turnState = 'GAME_OVER';
+        const winner = winnerIdx === 0 ? this.p1 : this.p2;
+        const p1Won = winnerIdx === 0;
+        this.audio.playWinFanfare();
+
+        if (!this.countedMatch) {
+          this.countedMatch = true;
+          this.matchesPlayed++;
+          if (p1Won) this.matchesWon++;
+          this.saveStats();
+        }
+
+        document.getElementById('winnerTitle').textContent = `${winner.name} (${winner.nation.code}) WINS!`;
+        document.getElementById('winnerSub').textContent = 'Autrobook Pool Association Champion';
+        document.getElementById('sumFramesText').textContent = `${this.p1.frames} - ${this.p2.frames}`;
+        document.getElementById('sumPeakSpeed').textContent = `${this.peakKmh.toFixed(1)} KM/H`;
+        document.getElementById('sumTotalShots').textContent = String(this.totalShots);
+        document.getElementById('sumCareerStats').textContent = `${this.matchesWon} / ${this.matchesPlayed}`;
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         DETERMINISTIC AI TURN SCHEDULER (NEVER GETS STUCK)
+         ====================================================================== */
+      scheduleAITurnIfNeeded() {
+        this.clearAITimer();
+        if (this.paused || this.turnState === 'GAME_OVER' || this.mode === 'LOCAL_2P' || this.currentPlayer !== 1) {
+          return;
+        }
+
+        this.turnState = 'AI_THINKING';
+        this.refreshHUD();
+
+        const delayMs = this.mode === 'AI_PRO' ? 680 : this.mode === 'AI_CLUB' ? 820 : 960;
+        this.aiTimer = setTimeout(() => {
+          this.aiTimer = null;
+          if (this.paused || this.turnState === 'GAME_OVER' || this.currentPlayer !== 1) return;
+          this.executeAIShot();
+        }, delayMs);
+      }
+
+      executeAIShot() {
+        const cue = this.getCueBall();
+        if (!cue) return;
+
+        if (this.ballInHand || cue.potted) {
+          this.placeCueBallSafely(
+            this.playfield.left + (this.playfield.right - this.playfield.left) * 0.25,
+            (this.playfield.top + this.playfield.bottom) * 0.5
+          );
+          this.ballInHand = false;
+        }
+
+        const p2Group = this.p2.group;
+        let candidates = this.balls.filter((b) => {
+          if (b.potted || b.id === 0 || b.id === 8) return false;
+          if (!p2Group) return true;
+          return p2Group === 'SOLIDS' ? b.kind === 'SOLID' : b.kind === 'STRIPE';
+        });
+
+        if (candidates.length === 0) {
+          const eightBall = this.balls.find((b) => b.id === 8 && !b.potted);
+          candidates = eightBall ? [eightBall] : this.balls.filter((b) => !b.potted && b.id !== 0);
+        }
+
+        const target = candidates[Math.floor(Math.random() * candidates.length)] || cue;
+        const baseAngle = Math.atan2(target.y - cue.y, target.x - cue.x);
+        const spreadRad = this.mode === 'AI_PRO' ? 0.045 : this.mode === 'AI_CLUB' ? 0.11 : 0.22;
+        const finalAngle = baseAngle + (Math.random() - 0.5) * spreadRad * 2;
+        const aiPower = Math.min(0.88, Math.max(0.36, 0.46 + Math.random() * 0.34));
+
+        this.aimAngle = finalAngle;
+        this.powerRatio = aiPower;
+        this.syncPowerGauge();
+        this.strikeCueBall(finalAngle, aiPower);
+      }
+
+      /* ======================================================================
+         HUD, SCREENSHOT & INPUT EVENTS
+         ====================================================================== */
+      syncPowerGauge() {
+        const pct = Math.round(this.powerRatio * 100);
+        document.getElementById('powerGaugeFill').style.width = `${pct}%`;
+        document.getElementById('powerGaugePct').textContent = `${pct}%`;
+        const slider = document.getElementById('powerSlider');
+        if (slider) slider.value = String(pct);
+      }
+
+      refreshHUD() {
+        document.getElementById('frameScoreBadge').textContent = `${this.p1.frames} - ${this.p2.frames}`;
+
+        const fmtMap = {
+          RACE_3: 'RACE TO 3',
+          RACE_5: 'RACE TO 5',
+          SINGLE_1: 'SINGLE FRAME',
+          SHOOTOUT: 'SHOOTOUT'
+        };
+        const modeMap = {
+          AI_CASUAL: 'AI CASUAL',
+          AI_CLUB: 'AI CLUB',
+          AI_PRO: 'AI PRO',
+          LOCAL_2P: '2P LOCAL'
+        };
+        const activeName = this.currentPlayer === 0 ? this.p1.name : this.p2.name;
+        const stateTag = this.ballInHand ? 'BALL IN HAND' : this.turnState;
+        document.getElementById('turnBannerText').textContent =
+          `${fmtMap[this.formatKey] || 'RACE TO 3'} • ${modeMap[this.mode] || 'AI'} • ${activeName} (${stateTag})`;
+
+        document.getElementById('p1DisplayName').textContent = this.p1.name;
+        document.getElementById('p2DisplayName').textContent = this.p2.name;
+
+        const b1 = document.getElementById('p1BadgeNum');
+        b1.textContent = `#${String(this.p1.badge).padStart(2, '0')}`;
+        b1.style.background = this.p1.nation.kit;
+
+        const b2 = document.getElementById('p2BadgeNum');
+        b2.textContent = `#${String(this.p2.badge).padStart(2, '0')}`;
+        b2.style.background = this.p2.nation.kit;
+
+        document.getElementById('p1GroupSub').textContent = `${this.p1.nation.code} • ${this.p1.group || 'OPEN GROUP'}`;
+        document.getElementById('p2GroupSub').textContent = `${this.p2.nation.code} • ${this.p2.group || 'OPEN GROUP'}`;
+
+        document.getElementById('p1FramesTag').textContent = `${this.p1.frames}F`;
+        document.getElementById('p2FramesTag').textContent = `${this.p2.frames}F`;
+
+        document.getElementById('p1Card').classList.toggle('active-turn', this.currentPlayer === 0);
+        document.getElementById('p2Card').classList.toggle('active-turn', this.currentPlayer === 1);
+
+        const mph = this.speedKmh * 0.621371;
+        const peakMph = this.peakKmh * 0.621371;
+        document.getElementById('radarKmhText').textContent = `${this.speedKmh.toFixed(1)} KM/H`;
+        document.getElementById('radarMphPeakText').textContent = `${mph.toFixed(1)} MPH • PK ${peakMph.toFixed(0)}`;
+
+        const humanCanAct = !this.areBallsMoving() && this.turnState !== 'GAME_OVER' &&
+          (this.mode === 'LOCAL_2P' || this.currentPlayer === 0);
+        document.getElementById('strikeCueBtn').disabled = !humanCanAct;
+        document.getElementById('ballInHandBtn').disabled = !humanCanAct;
+      }
+
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playClick();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderTable();
+        try {
+          const url = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotModalOpen = true;
+          this.clearAITimer();
+          document.getElementById('screenshotImg').src = url;
+          const link = document.getElementById('downloadShotBtn');
+          link.href = url;
+          link.download = `Autrobook-Pool-8-Ball-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_e) {}
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeTable());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.renderTable();
+            }
+          });
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#modeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.mode = btn.dataset.mode;
+            document.querySelectorAll('#modeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#formatGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.formatKey = btn.dataset.fmt;
+            document.querySelectorAll('#formatGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#baizeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.baizeKey = btn.dataset.baize;
+            document.querySelectorAll('#baizeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.renderTable();
+          });
+        });
+
+        document.querySelectorAll('#powerPresetsRow .pwr-preset-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.powerRatio = parseFloat(btn.dataset.pwr) || 0.48;
+            document.querySelectorAll('#powerPresetsRow .pwr-preset-btn').forEach((b) => {
+              b.classList.toggle('active', b === btn);
+            });
+            this.syncPowerGauge();
+            this.audio.playClick();
+          });
+        });
+
+        const slider = document.getElementById('powerSlider');
+        slider.addEventListener('input', (e) => {
+          this.powerRatio = Math.max(0.15, Math.min(1.0, (parseInt(e.target.value, 10) || 48) / 100));
+          document.querySelectorAll('#powerPresetsRow .pwr-preset-btn').forEach((b) => b.classList.remove('active'));
+          this.syncPowerGauge();
+        });
+
+        document.getElementById('setupOpenBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetupModal();
+        });
+
+        document.getElementById('startMatchBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const n1 = (document.getElementById('p1NameInp').value || '').trim().toUpperCase();
+          const n2 = (document.getElementById('p2NameInp').value || '').trim().toUpperCase();
+          this.p1.name = (n1 || 'SHAON CUE').slice(0, 14);
+          this.p2.name = (n2 || 'MARK SELBY').slice(0, 14);
+          this.p1.nation = this.getNation(document.getElementById('p1NationSel').value);
+          this.p2.nation = this.getNation(document.getElementById('p2NationSel').value);
+          this.p1.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p1BadgeInp').value, 10) || 1));
+          this.p2.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p2BadgeInp').value, 10) || 8));
+
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.startNewChampionship();
+        });
+
+        document.getElementById('ballInHandBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          if (this.areBallsMoving() || this.turnState === 'GAME_OVER') return;
+          this.ballInHand = !this.ballInHand;
+          this.showToast(this.ballInHand ? 'TAP TABLE TO PLACE CUE BALL' : 'BALL IN HAND OFF');
+          this.refreshHUD();
+        });
+
+        document.getElementById('rerackBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          if (this.areBallsMoving()) return;
+          this.p1.group = null;
+          this.p2.group = null;
+          this.rackBalls();
+          this.refreshHUD();
+          this.showToast('TABLE RE-RACKED');
+        });
+
+        document.getElementById('strikeCueBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.strikeCueBall();
+        });
+
+        const bindAimHold = (btnId, key) => {
+          const btn = document.getElementById(btnId);
+          btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            this.audio.unlock();
+            this.aimKeys[key] = true;
+          });
+          btn.addEventListener('pointerup', () => { this.aimKeys[key] = false; });
+          btn.addEventListener('pointerleave', () => { this.aimKeys[key] = false; });
+          btn.addEventListener('pointercancel', () => { this.aimKeys[key] = false; });
+        };
+        bindAimHold('aimLeftBtn', 'left');
+        bindAimHold('aimRightBtn', 'right');
+
+        document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotModalOpen = false;
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+          this.scheduleAITurnIfNeeded();
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen || this.turnState === 'GAME_OVER') return;
+          this.paused = true;
+          this.clearAITimer();
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+          this.scheduleAITurnIfNeeded();
+        });
+
+        document.getElementById('restartFrameBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.p1.group = null;
+          this.p2.group = null;
+          this.rackBalls();
+          this.refreshHUD();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSetupModal();
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.startNewChampionship();
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.openSetupModal();
+        });
+
+        // Canvas pointer aiming & ball-in-hand placement
+        this.canvas.addEventListener('pointerdown', (e) => {
+          this.audio.unlock();
+          if (this.paused || this.turnState === 'GAME_OVER' || this.areBallsMoving()) return;
+          if (this.mode !== 'LOCAL_2P' && this.currentPlayer !== 0) return;
+
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          const cue = this.getCueBall();
+          if (!cue) return;
+
+          if (this.ballInHand) {
+            this.placeCueBallSafely(px, py);
+            this.ballInHand = false;
+            this.showToast('CUE BALL PLACED');
+            this.refreshHUD();
+            this.renderTable();
+            return;
+          }
+
+          this.draggingAim = true;
+          this.aimAngle = Math.atan2(py - cue.y, px - cue.x);
+          this.renderTable();
+        });
+
+        this.canvas.addEventListener('pointermove', (e) => {
+          if (!this.draggingAim || this.areBallsMoving()) return;
+          const cue = this.getCueBall();
+          if (!cue) return;
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          this.aimAngle = Math.atan2(py - cue.y, px - cue.x);
+          this.renderTable();
+        });
+
+        window.addEventListener('pointerup', () => {
+          this.draggingAim = false;
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.aimKeys.left = true;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.aimKeys.right = true;
+          if (e.code === 'Space' || e.code === 'Enter') {
+            if (!this.introActive && !this.setupOpen && !this.shotModalOpen && !this.paused && this.turnState !== 'GAME_OVER') {
+              e.preventDefault();
+              this.audio.unlock();
+              if (this.mode === 'LOCAL_2P' || this.currentPlayer === 0) {
+                this.strikeCueBall();
+              }
+            }
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.aimKeys.left = false;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.aimKeys.right = false;
+        });
+      }
+
+      openSetupModal() {
+        this.setupOpen = true;
+        this.paused = true;
+        this.clearAITimer();
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      startNewChampionship() {
+        this.p1.frames = 0;
+        this.p2.frames = 0;
+        this.p1.group = null;
+        this.p2.group = null;
+        this.currentPlayer = 0;
+        this.totalShots = 0;
+        this.peakKmh = 0;
+        this.countedMatch = false;
+        this.rackBalls();
+        this.refreshHUD();
+      }
+
+      /* ======================================================================
+         INTRO & HIGH-DPI POOL TABLE RENDERER
+         ====================================================================== */
+      startIntro() {
+        const dur = 2200;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('apaIntroScreen').classList.add('hidden');
+        this.openSetupModal();
+      }
+
+      renderTable() {
+        const ctx = this.ctx;
+        const w = this.canvasW;
+        const h = this.canvasH;
+        const pf = this.playfield;
+        const pal = BAIZE_THEMES[this.baizeKey] || BAIZE_THEMES.EMERALD;
+        const spanX = pf.right - pf.left;
+        const spanY = pf.bottom - pf.top;
+        const midY = (pf.top + pf.bottom) * 0.5;
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. Brushed Hardwood Outer Rails & Gold Trim
+        const railGrad = ctx.createLinearGradient(0, 0, w, h);
+        railGrad.addColorStop(0, pal.railWood);
+        railGrad.addColorStop(0.5, '#3b1d0b');
+        railGrad.addColorStop(1, pal.railWood);
+        ctx.fillStyle = railGrad;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, w, h, 16);
+        ctx.fill();
+
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(4, 4, w - 8, h - 8, 13);
+        ctx.stroke();
+
+        // 2. Baize Playing Surface & Felt Grain
+        const clothGrad = ctx.createLinearGradient(0, pf.top, 0, pf.bottom);
+        clothGrad.addColorStop(0, pal.clothTop);
+        clothGrad.addColorStop(1, pal.clothBot);
+        ctx.fillStyle = clothGrad;
+        ctx.beginPath();
+        ctx.roundRect(pf.left, pf.top, spanX, spanY, 8);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
+        for (let fx = pf.left + 8; fx < pf.right - 6; fx += 14) {
+          for (let fy = pf.top + 8; fy < pf.bottom - 6; fy += 14) {
+            ctx.fillRect(fx, fy, 1.5, 1.5);
+          }
+        }
+
+        ctx.strokeStyle = pal.cushionRim;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(pf.left, pf.top, spanX, spanY);
+
+        // 3. Head String & Foot Spot Markings + Diamond Sights
+        ctx.strokeStyle = pal.markColor;
+        ctx.lineWidth = 1.4;
+        const headX = pf.left + spanX * 0.25;
+        ctx.beginPath();
+        ctx.moveTo(headX, pf.top + 4);
+        ctx.lineTo(headX, pf.bottom - 4);
+        ctx.stroke();
+
+        ctx.fillStyle = pal.markColor;
+        ctx.beginPath();
+        ctx.arc(pf.left + spanX * 0.72, midY, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Gold diamond sights along rails
+        ctx.fillStyle = '#fbbf24';
+        const dPositions = [0.25, 0.5, 0.75];
+        dPositions.forEach((frac) => {
+          const dx = pf.left + spanX * frac;
+          ctx.beginPath();
+          ctx.arc(dx, pf.top * 0.45, 2.2, 0, Math.PI * 2);
+          ctx.arc(dx, h - pf.top * 0.45, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        [0.33, 0.67].forEach((frac) => {
+          const dy = pf.top + spanY * frac;
+          ctx.beginPath();
+          ctx.arc(pf.left * 0.45, dy, 2.2, 0, Math.PI * 2);
+          ctx.arc(w - pf.left * 0.45, dy, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // 4. Six Engraved Brass/Gold Pockets
+        for (const pk of this.pockets) {
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(pk.x, pk.y, pk.r + 3.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#92400e';
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+
+          ctx.fillStyle = '#040c07';
+          ctx.beginPath();
+          ctx.arc(pk.x, pk.y, pk.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 5. Balls (Cue, Solids 1-7, 8-Ball, Stripes 9-15)
+        for (const b of this.balls) {
+          if (b.potted) continue;
+
+          // Shadow
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
+          ctx.beginPath();
+          ctx.arc(b.x + 2, b.y + 2.5, b.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (b.kind === 'CUE') {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = this.ballInHand ? '#fbbf24' : '#cbd5e1';
+            ctx.lineWidth = this.ballInHand ? 2.2 : 1.2;
+            ctx.stroke();
+          } else if (b.kind === 'EIGHT') {
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r * 0.48, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = `900 ${Math.max(6.5, Math.round(b.r * 0.72))}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('8', b.x, b.y + 0.4);
+          } else {
+            const baseColor = SOLID_COLORS[((b.id - 1) % 7) + 1] || '#f59e0b';
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.clip();
+
+            if (b.kind === 'SOLID') {
+              ctx.fillStyle = baseColor;
+              ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+            } else {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+              ctx.fillStyle = baseColor;
+              ctx.fillRect(b.x - b.r, b.y - b.r * 0.52, b.r * 2, b.r * 1.04);
+            }
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = `900 ${Math.max(6, Math.round(b.r * 0.65))}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(b.id), b.x, b.y + 0.4);
+            ctx.restore();
+
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // 6. Aim Line & Cue Stick when balls are stationary
+        const cue = this.getCueBall();
+        if (cue && !cue.potted && !this.areBallsMoving() && this.turnState !== 'GAME_OVER') {
+          const dx = Math.cos(this.aimAngle);
+          const dy = Math.sin(this.aimAngle);
+          const guideLen = Math.min(w, h) * (0.28 + this.powerRatio * 0.52);
+
+          ctx.save();
+          ctx.setLineDash([6, 6]);
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(cue.x, cue.y);
+          ctx.lineTo(cue.x + dx * guideLen, cue.y + dy * guideLen);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const recoil = this.cueRecoilAnim * 18;
+          const pullBack = 14 + this.powerRatio * 24 + recoil;
+          const tipX = cue.x - dx * pullBack;
+          const tipY = cue.y - dy * pullBack;
+          const buttX = cue.x - dx * (pullBack + 96);
+          const buttY = cue.y - dy * (pullBack + 96);
+
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(buttX, buttY);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#fef3c7';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(tipX - dx * 12, tipY - dy * 12);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      loop(now) {
+        if (!this.lastFrameTime) this.lastFrameTime = now;
+        const dt = Math.min(0.04, (now - this.lastFrameTime) / 1000);
+        this.lastFrameTime = now;
+
+        if (!this.paused) {
+          this.cueRecoilAnim = Math.max(0, this.cueRecoilAnim - dt * 4.5);
+
+          if (!this.areBallsMoving() && this.turnState !== 'GAME_OVER') {
+            const aimRate = 1.65;
+            if (this.aimKeys.left) this.aimAngle -= aimRate * dt;
+            if (this.aimKeys.right) this.aimAngle += aimRate * dt;
+          }
+
+          if (this.areBallsMoving() || this.shotActive) {
+            this.stepBallPhysics(dt);
+          }
+
+          this.refreshHUD();
+          this.renderTable();
+        }
+
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const app = new APA8BallEngine();
+      requestAnimationFrame((t) => app.loop(t));
+    });
+  </script>
+</body>
+</html>
