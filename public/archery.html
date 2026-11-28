@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Archery Association - Championship Range</title>
+  <style>
+    /* ========================================================================
+       1. AAA DESIGN TOKENS & SYSTEM LIGHT / DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --aaa-forest: #0B3D20;
+      --aaa-emerald-deep: #0a7d3b;
+      --aaa-emerald: #10b981;
+      --aaa-gold: #f59e0b;
+      --aaa-amber: #fbbf24;
+
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --hud-bg: rgba(255, 255, 255, 0.94);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --hud-bg: rgba(255, 255, 255, 0.94);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04140b;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #aaaArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% 18%, #0a7d3b 0%, #0B3D20 58%, #031008 100%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP BAR, ROUND SCOREBOARD, ARCHER CARDS & ARROW SPEED RADAR
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 740px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-circle-btn {
+      width: 33px;
+      height: 33px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13.5px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .icon-circle-btn:hover {
+      border-color: var(--aaa-amber);
+    }
+
+    .icon-circle-btn:active {
+      transform: scale(0.92);
+    }
+
+    .scoreboard-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 13px;
+      flex: 1;
+      max-width: 375px;
+      border-color: rgba(251, 191, 36, 0.55);
+    }
+
+    .score-main-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .aaa-mini-crest {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .score-pill {
+      padding: 1px 7px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(16, 185, 129, 0.55);
+      color: var(--aaa-amber);
+      font-size: 12px;
+    }
+
+    .turn-status-row {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .archers-radar-row {
+      width: 100%;
+      max-width: 740px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 6px;
+      align-items: center;
+      z-index: 16;
+    }
+
+    .archer-panel {
+      padding: 5px 8px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      min-width: 0;
+      border-width: 1.5px;
+    }
+
+    .archer-panel.active-turn {
+      border-color: var(--aaa-amber);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.3);
+    }
+
+    .a-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .a-name-line {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-num {
+      padding: 1px 5px;
+      border-radius: 6px;
+      font-size: 8.8px;
+      font-weight: 900;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      flex-shrink: 0;
+    }
+
+    .a-sub-line {
+      font-size: 8.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pts-badge {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: var(--aaa-amber);
+      font-size: 9.5px;
+      font-weight: 900;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .radar-box {
+      padding: 4px 9px;
+      border-radius: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-color: rgba(251, 191, 36, 0.48);
+      min-width: 118px;
+    }
+
+    .radar-lbl {
+      font-size: 7.8px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--aaa-amber);
+    }
+
+    .radar-val {
+      font-size: 11px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .radar-sub {
+      font-size: 8px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-sub);
+    }
+
+    /* ========================================================================
+       3. CENTER 2.5D ARCHERY RANGE CANVAS & DRAW / AIM CONTROLS
+       ======================================================================== */
+    .range-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 740px;
+      max-height: 53dvh;
+      margin: 2px 0;
+    }
+
+    canvas#archeryCanvas {
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .bottom-bow-deck {
+      width: 100%;
+      max-width: 740px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 18;
+    }
+
+    .draw-gauge-bar {
+      padding: 5px 10px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gauge-title {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--aaa-amber);
+      white-space: nowrap;
+    }
+
+    .gauge-track {
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+
+    .gauge-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24, #ef4444);
+      transition: width 0.05s ease;
+    }
+
+    .gauge-pct {
+      font-size: 9.2px;
+      font-weight: 900;
+      color: var(--aaa-amber);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bow-action-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+
+    .bow-btn {
+      padding: 7px 4px;
+      border-radius: 10px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .bow-btn.draw-primary {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--aaa-amber);
+      color: #ffffff;
+    }
+
+    .bow-btn:active:not(:disabled) {
+      transform: scale(0.95);
+      border-color: var(--aaa-amber);
+    }
+
+    .bow-btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK ARCHERY ASSOCIATION (AAA) INTRO SCREEN
+       ======================================================================== */
+    #aaaIntroScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #aaaIntroScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spot-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-left {
+      left: 10%;
+      animation: raySwingL 2.8s ease-in-out infinite alternate;
+    }
+
+    .ray-right {
+      right: 10%;
+      animation: raySwingR 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes raySwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes raySwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 365px;
+      width: 100%;
+    }
+
+    .aaa-crest-badge {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--aaa-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--aaa-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-title {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-sub {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-progress-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE, CHAMPIONSHIP SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 470px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 18px 16px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-head {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .modal-h2 {
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .setup-box {
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 8px;
+    }
+
+    .setup-label {
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--aaa-amber);
+      margin-bottom: 5px;
+    }
+
+    .grid-3-row {
+      display: grid;
+      grid-template-columns: 1fr 124px 56px;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .text-inp, .sel-inp {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.24);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .sel-inp option {
+      background: #072213;
+      color: #ffffff;
+    }
+
+    .star-chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .star-chip {
+      padding: 4px 7px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--text-main);
+      font-size: 9px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .pills-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .pills-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .choice-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 9.8px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--aaa-amber);
+      color: #ffffff;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--aaa-amber);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .stats-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .shot-preview-img {
+      width: 100%;
+      max-height: 50dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--aaa-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--aaa-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="aaaArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">AUTROBOOK ARCHERY</div>
+
+    <!-- TOP BAR WITH BACK LINK TO archery.html -->
+    <header class="top-bar">
+      <div class="btn-group">
+        <a href="archery.html" class="icon-circle-btn glass-hud" title="Back to Archery Hub" aria-label="Back to Archery Hub">&larr;</a>
+      </div>
+
+      <div class="scoreboard-center glass-hud">
+        <div class="score-main-row">
+          <svg class="aaa-mini-crest" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+            <circle cx="12" cy="12" r="4.5" fill="#fbbf24"/>
+            <circle cx="12" cy="12" r="1.6" fill="#0B3D20"/>
+          </svg>
+          <span>Autrobook Archery Association</span>
+          <span id="roundScoreBadge" class="score-pill">0 - 0</span>
+        </div>
+        <div id="statusBannerText" class="turn-status-row">END 1/3 &bull; ARROW 1/3 &bull; AI CLUB</div>
+      </div>
+
+      <div class="btn-group">
+        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="setupOpenBtn" type="button" class="icon-circle-btn glass-hud" title="Match Setup" aria-label="Match Setup">&#9998;</button>
+        <button id="muteBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- ARCHER CARDS & LIVE ARROW RADAR -->
+    <section class="archers-radar-row">
+      <div id="a1Card" class="archer-panel glass-hud active-turn">
+        <div class="a-meta">
+          <div class="a-name-line">
+            <span id="a1BadgeNum" class="badge-num" style="background:#0a7d3b;">#01</span>
+            <span id="a1DisplayName">ROMAN SANA</span>
+          </div>
+          <span id="a1SubLine" class="a-sub-line">BAN &bull; END 0</span>
+        </div>
+        <span id="a1TotalTag" class="pts-badge">0 PTS</span>
+      </div>
+
+      <div class="radar-box glass-hud">
+        <span class="radar-lbl">ARROW RADAR</span>
+        <span id="radarKmhText" class="radar-val">0.0 KM/H</span>
+        <span id="radarMphPeakText" class="radar-sub">0.0 MPH &bull; PK 0</span>
+      </div>
+
+      <div id="a2Card" class="archer-panel glass-hud">
+        <div class="a-meta">
+          <div class="a-name-line">
+            <span id="a2BadgeNum" class="badge-num" style="background:#1d4ed8;">#07</span>
+            <span id="a2DisplayName">KIM WOOJIN</span>
+          </div>
+          <span id="a2SubLine" class="a-sub-line">KOR &bull; END 0</span>
+        </div>
+        <span id="a2TotalTag" class="pts-badge">0 PTS</span>
+      </div>
+    </section>
+
+    <!-- CENTER 2.5D ARCHERY RANGE CANVAS -->
+    <div id="rangeStage" class="range-stage">
+      <canvas id="archeryCanvas"></canvas>
+    </div>
+
+    <!-- DRAW GAUGE & BOW CONTROLS -->
+    <div class="bottom-bow-deck">
+      <div class="draw-gauge-bar glass-hud">
+        <span class="gauge-title">Bow Draw</span>
+        <div class="gauge-track">
+          <div id="drawGaugeFill" class="gauge-fill"></div>
+        </div>
+        <span id="drawGaugePct" class="gauge-pct">0%</span>
+      </div>
+
+      <div class="bow-action-grid">
+        <button id="aimUpBtn" type="button" class="bow-btn">&uarr; Elev</button>
+        <button id="aimDownBtn" type="button" class="bow-btn">&darr; Elev</button>
+        <button id="aimLeftBtn" type="button" class="bow-btn">&larr; Wind/Aim</button>
+        <button id="aimRightBtn" type="button" class="bow-btn">Wind/Aim &rarr;</button>
+        <button id="drawLooseBtn" type="button" class="bow-btn draw-primary">&#127993; Hold/Loose</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK ARCHERY ASSOCIATION (AAA) INTRO SCREEN
+         ====================================================================== -->
+    <section id="aaaIntroScreen">
+      <div class="spot-ray ray-left"></div>
+      <div class="spot-ray ray-right"></div>
+
+      <div class="intro-center">
+        <div class="aaa-crest-badge">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <circle cx="32" cy="32" r="14" fill="#ffffff"/>
+            <circle cx="32" cy="32" r="10.5" fill="#0f172a"/>
+            <circle cx="32" cy="32" r="7" fill="#2563eb"/>
+            <circle cx="32" cy="32" r="4" fill="#dc2626"/>
+            <circle cx="32" cy="32" r="1.8" fill="#fbbf24"/>
+          </svg>
+        </div>
+
+        <div class="intro-kicker">OFFICIAL TARGET CIRCUIT</div>
+        <h1 class="intro-title">Autrobook Archery Association</h1>
+        <p class="intro-sub">CHAMPIONSHIP RANGE SERIES</p>
+
+        <div class="intro-progress-track">
+          <div id="introBarFill" class="intro-progress-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. MATCH SETUP MODAL (10 NATIONS, STARS, FORMATS & ENVIRONMENTS)
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2 class="modal-h2">AAA Championship Setup</h2>
+          <p class="modal-sub">10 Nations &bull; Archer Stars &bull; Match Format &bull; Range Environment</p>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Game Mode &amp; AI Skill</div>
+          <div id="modeGroup" class="pills-4">
+            <button type="button" class="choice-btn" data-mode="AI_CASUAL">1P vs AI (Casual)</button>
+            <button type="button" class="choice-btn selected" data-mode="AI_CLUB">1P vs AI (Club)</button>
+            <button type="button" class="choice-btn" data-mode="AI_WORLD">1P vs AI (World Archer)</button>
+            <button type="button" class="choice-btn" data-mode="LOCAL_2P">2P Local</button>
+          </div>
+        </div>
+
+        <!-- Archer 1 Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Archer 1 Roster</div>
+          <div class="grid-3-row">
+            <input id="a1NameInp" type="text" maxlength="14" value="ROMAN SANA" class="text-inp" />
+            <select id="a1NationSel" class="sel-inp"></select>
+            <input id="a1BadgeInp" type="number" min="1" max="99" value="1" class="text-inp" />
+          </div>
+          <div id="a1StarRow" class="star-chips"></div>
+        </div>
+
+        <!-- Archer 2 Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Archer 2 / AI Opponent Roster</div>
+          <div class="grid-3-row">
+            <input id="a2NameInp" type="text" maxlength="14" value="KIM WOOJIN" class="text-inp" />
+            <select id="a2NationSel" class="sel-inp"></select>
+            <input id="a2BadgeInp" type="number" min="1" max="99" value="7" class="text-inp" />
+          </div>
+          <div id="a2StarRow" class="star-chips"></div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Match Format</div>
+          <div id="formatGroup" class="pills-4">
+            <button type="button" class="choice-btn selected" data-fmt="ENDS_3">3 Ends (9 Arrows)</button>
+            <button type="button" class="choice-btn" data-fmt="ENDS_5">5 Ends (15 Arrows)</button>
+            <button type="button" class="choice-btn" data-fmt="ENDS_6">6 Ends (18 Arrows)</button>
+            <button type="button" class="choice-btn" data-fmt="SHOOTOUT_3">Quick Shootout (3 Arrows)</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Range Environment</div>
+          <div id="envGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-env="OUTDOOR">Outdoor Championship Field</button>
+            <button type="button" class="choice-btn" data-env="EMERALD">Emerald Stadium</button>
+            <button type="button" class="choice-btn" data-env="SUNSET">Sunset Range</button>
+          </div>
+        </div>
+
+        <button id="startMatchBtn" type="button" class="btn-primary">
+          Take Shooting Line &amp; Start
+        </button>
+
+        <div class="btn-stack" style="margin-top:6px;">
+          <a href="archery.html" class="btn-secondary">&larr; Back to Archery Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Range Screenshot</h2>
+          <p class="modal-sub">Autrobook Archery Association</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="Archery Range Screenshot" />
+        <div class="btn-stack">
+          <a id="downloadShotBtn" download="Autrobook-Archery-Championship.png" class="btn-primary">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Resume Match</button>
+          <a href="archery.html" class="btn-secondary">&larr; Back to Archery Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:325px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Match Paused</h2>
+          <p class="modal-sub">Autrobook Archery Association</p>
+        </div>
+        <div class="btn-stack">
+          <button id="resumeBtn" type="button" class="btn-primary">Resume Match</button>
+          <button id="restartMatchBtn" type="button" class="btn-secondary">Restart Match</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Match Setup</button>
+          <a href="archery.html" class="btn-secondary">&larr; Back to Archery Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. CHAMPIONSHIP SUMMARY MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:355px;text-align:center;">
+        <div style="font-size:42px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="winnerTitle" class="modal-h2">CHAMPIONSHIP WINNER!</h2>
+        <p id="winnerSub" class="modal-sub">Autrobook Archery Association</p>
+
+        <div class="stats-box">
+          <div class="stats-row">
+            <span>Total Score</span>
+            <span id="sumScoreText" style="font-weight:900;color:var(--aaa-amber);">0 - 0</span>
+          </div>
+          <div class="stats-row">
+            <span>Peak Arrow Speed</span>
+            <span id="sumPeakSpeed" style="font-weight:900;color:var(--aaa-emerald);">0.0 KM/H</span>
+          </div>
+          <div class="stats-row">
+            <span>X / 10 Gold Hits</span>
+            <span id="sumGoldHits" style="font-weight:900;">0</span>
+          </div>
+          <div class="stats-row">
+            <span>Matches Played / Won</span>
+            <span id="sumCareerStats" style="font-weight:900;color:var(--aaa-amber);">0 / 0</span>
+          </div>
+        </div>
+
+        <div class="btn-stack">
+          <button id="playAgainBtn" type="button" class="btn-primary">Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
+          <a href="archery.html" class="btn-secondary">&larr; Back to Archery Hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       10 NATIONS ROSTER, STAR PRESETS, MATCH FORMATS & RANGE ENVIRONMENTS
+       ======================================================================== */
+    const AAA_NATIONS_10 = [
+      { code: 'BAN', name: 'Bangladesh', kit: '#0a7d3b' },
+      { code: 'KOR', name: 'South Korea', kit: '#1d4ed8' },
+      { code: 'USA', name: 'United States', kit: '#b91c1c' },
+      { code: 'JPN', name: 'Japan', kit: '#dc2626' },
+      { code: 'IND', name: 'India', kit: '#ea580c' },
+      { code: 'ITA', name: 'Italy', kit: '#059669' },
+      { code: 'TUR', name: 'Turkey', kit: '#e11d48' },
+      { code: 'GER', name: 'Germany', kit: '#0f172a' },
+      { code: 'TPE', name: 'Chinese Taipei', kit: '#2563eb' },
+      { code: 'GBR', name: 'Great Britain', kit: '#1e3a8a' }
+    ];
+
+    const AAA_STAR_PRESETS = [
+      { name: 'ROMAN SANA', nation: 'BAN', badge: 1 },
+      { name: 'KIM WOOJIN', nation: 'KOR', badge: 7 },
+      { name: 'BRADY ELLISON', nation: 'USA', badge: 10 },
+      { name: 'TAKA FURUKAWA', nation: 'JPN', badge: 14 },
+      { name: 'MAURO NESPOLI', nation: 'ITA', badge: 9 },
+      { name: 'METE GAZOZ', nation: 'TUR', badge: 11 }
+    ];
+
+    const RANGE_ENVS = {
+      OUTDOOR: {
+        skyTop: '#0f4c81',
+        skyBot: '#67b7dc',
+        turfTop: '#16803c',
+        turfBot: '#0B3D20',
+        lineCol: 'rgba(255, 255, 255, 0.72)'
+      },
+      EMERALD: {
+        skyTop: '#064e3b',
+        skyBot: '#10b981',
+        turfTop: '#15803d',
+        turfBot: '#072b16',
+        lineCol: 'rgba(254, 240, 138, 0.75)'
+      },
+      SUNSET: {
+        skyTop: '#7c2d12',
+        skyBot: '#f59e0b',
+        turfTop: '#14532d',
+        turfBot: '#052e16',
+        lineCol: 'rgba(255, 255, 255, 0.75)'
+      }
+    };
+
+    const AAA_STATS_KEY = 'aaa_archery_championship_stats_v1';
+
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class AAAAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playClick() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(620, now);
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playBowDrawTick(drawRatio = 0.5) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110 + drawRatio * 140, now);
+        g.gain.setValueAtTime(0.03, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.045);
+      }
+
+      playBowRelease(drawRatio = 0.7) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        // Bowstring twang
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220 + drawRatio * 150, now);
+        osc.frequency.exponentialRampToValueAtTime(75, now + 0.14);
+        g.gain.setValueAtTime(0.22, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+
+        // Feathered arrow whoosh noise
+        try {
+          const len = Math.floor(this.ctx.sampleRate * 0.18);
+          const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+          const data = buf.getChannelData(0);
+          for (let i = 0; i < len; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.sin((i / len) * Math.PI);
+          }
+          const src = this.ctx.createBufferSource();
+          src.buffer = buf;
+          const flt = this.ctx.createBiquadFilter();
+          flt.type = 'bandpass';
+          flt.frequency.setValueAtTime(950, now);
+          const wg = this.ctx.createGain();
+          wg.gain.setValueAtTime(0.11, now);
+          wg.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          src.connect(flt);
+          flt.connect(wg);
+          wg.connect(this.ctx.destination);
+          src.start(now);
+        } catch (_e) {}
+      }
+
+      playTargetImpact(pts = 0) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        // Straw target thud
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(pts > 0 ? 150 : 95, now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.11);
+        g.gain.setValueAtTime(pts > 0 ? 0.22 : 0.12, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+
+        // Bullseye chime for 9 or 10
+        if (pts >= 9) {
+          const chime = this.ctx.createOscillator();
+          const cg = this.ctx.createGain();
+          chime.type = 'triangle';
+          chime.frequency.setValueAtTime(pts === 10 ? 1046.5 : 880, now + 0.03);
+          chime.frequency.exponentialRampToValueAtTime(pts === 10 ? 1318.5 : 1046.5, now + 0.24);
+          cg.gain.setValueAtTime(0.16, now + 0.03);
+          cg.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+          chime.connect(cg);
+          cg.connect(this.ctx.destination);
+          chime.start(now + 0.03);
+          chime.stop(now + 0.27);
+        }
+      }
+
+      playWinFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.1;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.16, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.32);
+        });
+        this.playApplauseBurst(now + 0.25);
+      }
+
+      playApplauseBurst(startTime) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const duration = 0.65;
+          const sampleCount = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, sampleCount, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < sampleCount; i++) {
+            const env = Math.sin((i / sampleCount) * Math.PI);
+            data[i] = (Math.random() * 2 - 1) * env * 0.2;
+          }
+          const src = this.ctx.createBufferSource();
+          src.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1650, startTime);
+          filter.Q.setValueAtTime(0.7, startTime);
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.16, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          src.start(startTime);
+        } catch (_e) {}
+      }
+    }
+
+    /* ========================================================================
+       AAA ARCHERY CHAMPIONSHIP ENGINE (DETERMINISTIC TURN-STATE MACHINE)
+       ======================================================================== */
+    class AAAArcheryEngine {
+      constructor() {
+        this.canvas = document.getElementById('archeryCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new AAAAudioSynth();
+
+        this.mode = 'AI_CLUB'; // AI_CASUAL, AI_CLUB, AI_WORLD, LOCAL_2P
+        this.formatKey = 'ENDS_3'; // ENDS_3, ENDS_5, ENDS_6, SHOOTOUT_3
+        this.envKey = 'OUTDOOR'; // OUTDOOR, EMERALD, SUNSET
+
+        const saved = this.loadStats();
+        this.matchesPlayed = saved.played || 0;
+        this.matchesWon = saved.won || 0;
+        this.countedMatch = false;
+
+        this.a1 = {
+          name: 'ROMAN SANA',
+          nation: AAA_NATIONS_10[0],
+          badge: 1,
+          score: 0,
+          arrowsShotInMatch: 0,
+          goldHits: 0
+        };
+
+        this.a2 = {
+          name: 'KIM WOOJIN',
+          nation: AAA_NATIONS_10[1],
+          badge: 7,
+          score: 0,
+          arrowsShotInMatch: 0,
+          goldHits: 0
+        };
+
+        // Turn state machine: 'READY' | 'DRAWING' | 'FLIGHT' | 'AI_THINKING' | 'GAME_OVER'
+        this.turnState = 'READY';
+        this.currentArcher = 0; // 0 = Archer 1, 1 = Archer 2 / AI
+        this.arrowsPerEnd = 3;
+        this.endIndex = 0; // 0-based end index
+        this.arrowInEnd = 0; // 0..2 within current end
+        this.aiTimer = null;
+
+        this.windSpeed = 1.4; // m/s (-5..+5 horizontal crosswind, positive = right/tailwind)
+        this.elevationAngle = -0.22; // radians upward/right toward target
+        this.aimLateralOffset = 0; // sight horizontal adjustment
+        this.drawProgress = 0; // 0..1 while holding bow
+        this.holdingDraw = false;
+        this.drawTickTimer = 0;
+        this.aimKeys = { up: false, down: false, left: false, right: false };
+
+        this.activeArrow = null; // { x, y, vx, vy, angle, ownerIdx }
+        this.stuckArrows = []; // { targetNormX, targetNormY, scoreText, pts, ownerIdx, hitTime }
+        this.hitPopup = null; // { label, pts, x, y, alpha, vy }
+
+        this.arrowSpeedKmh = 0;
+        this.peakSpeedKmh = 0;
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = false;
+
+        this.canvasW = 560;
+        this.canvasH = 290;
+        this.dpr = 1;
+        this.targetCenter = { x: 465, y: 145, r: 58 };
+        this.archerOrigin = { x: 84, y: 185 };
+        this.lastFrameTime = 0;
+
+        this.syncThemeIcon();
+        this.populateSetupUI();
+        this.bindEvents();
+        this.resizeRange();
+        this.rollWind();
+        this.refreshHUD();
+        this.startIntro();
+      }
+
+      clearAITimer() {
+        if (this.aiTimer) {
+          clearTimeout(this.aiTimer);
+          this.aiTimer = null;
+        }
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(AAA_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(AAA_STATS_KEY, JSON.stringify({
+            played: this.matchesPlayed,
+            won: this.matchesWon
+          }));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.renderRange();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1450);
+      }
+
+      getTotalEnds() {
+        if (this.formatKey === 'SHOOTOUT_3') return 1;
+        if (this.formatKey === 'ENDS_5') return 5;
+        if (this.formatKey === 'ENDS_6') return 6;
+        return 3;
+      }
+
+      getArrowsPerTurnSequence() {
+        return this.formatKey === 'SHOOTOUT_3' ? 3 : 3;
+      }
+
+      rollWind() {
+        const raw = (Math.random() * 2 - 1) * 4.4;
+        this.windSpeed = Number(raw.toFixed(1));
+      }
+
+      /* ======================================================================
+         ROSTER SETUP UI (10 NATIONS & STAR PRESETS)
+         ====================================================================== */
+      populateSetupUI() {
+        const s1 = document.getElementById('a1NationSel');
+        const s2 = document.getElementById('a2NationSel');
+        s1.innerHTML = '';
+        s2.innerHTML = '';
+
+        AAA_NATIONS_10.forEach((nat, idx) => {
+          const o1 = document.createElement('option');
+          o1.value = nat.code;
+          o1.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 0) o1.selected = true;
+          s1.appendChild(o1);
+
+          const o2 = document.createElement('option');
+          o2.value = nat.code;
+          o2.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 1) o2.selected = true;
+          s2.appendChild(o2);
+        });
+
+        const buildStarRow = (containerId, isA1) => {
+          const wrap = document.getElementById(containerId);
+          wrap.innerHTML = '';
+          AAA_STAR_PRESETS.forEach((st) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'star-chip';
+            btn.textContent = `${st.name} (${st.nation})`;
+            btn.addEventListener('click', () => {
+              if (isA1) {
+                document.getElementById('a1NameInp').value = st.name;
+                document.getElementById('a1NationSel').value = st.nation;
+                document.getElementById('a1BadgeInp').value = String(st.badge);
+              } else {
+                document.getElementById('a2NameInp').value = st.name;
+                document.getElementById('a2NationSel').value = st.nation;
+                document.getElementById('a2BadgeInp').value = String(st.badge);
+              }
+              this.audio.playClick();
+            });
+            wrap.appendChild(btn);
+          });
+        };
+
+        buildStarRow('a1StarRow', true);
+        buildStarRow('a2StarRow', false);
+      }
+
+      getNation(code) {
+        return AAA_NATIONS_10.find((n) => n.code === code) || AAA_NATIONS_10[0];
+      }
+
+      /* ======================================================================
+         HIGH-DPI RANGE GEOMETRY & RESIZING
+         ====================================================================== */
+      resizeRange() {
+        const stage = document.getElementById('rangeStage').getBoundingClientRect();
+        const w = Math.floor(Math.max(300, stage.width - 6));
+        const h = Math.floor(Math.max(185, stage.height - 6));
+
+        this.canvasW = w;
+        this.canvasH = h;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${w}px`;
+        this.canvas.style.height = `${h}px`;
+        this.canvas.width = Math.floor(w * this.dpr);
+        this.canvas.height = Math.floor(h * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        this.archerOrigin = {
+          x: Math.max(46, w * 0.13),
+          y: h * 0.64
+        };
+
+        const targetR = Math.max(36, Math.min(w, h) * 0.21);
+        this.targetCenter = {
+          x: w - Math.max(66, w * 0.165),
+          y: h * 0.49,
+          r: targetR
+        };
+
+        this.renderRange();
+      }
+
+      /* ======================================================================
+         DRAW, RELEASE, PARABOLIC ARROW TRAJECTORY & RING SCORING
+         ====================================================================== */
+      beginDraw() {
+        if (this.paused || this.turnState === 'GAME_OVER' || this.activeArrow) return;
+        if (this.mode !== 'LOCAL_2P' && this.currentArcher !== 0) return;
+
+        this.holdingDraw = true;
+        this.turnState = 'DRAWING';
+        this.drawProgress = Math.max(0.2, this.drawProgress);
+        this.refreshHUD();
+      }
+
+      releaseArrow(forcedDraw = null, forcedElev = null, forcedLat = null) {
+        if (this.paused || this.turnState === 'GAME_OVER' || this.activeArrow) return;
+        const pwr = forcedDraw !== null ? forcedDraw : Math.max(0.32, this.drawProgress);
+        const elev = forcedElev !== null ? forcedElev : this.elevationAngle;
+        const lat = forcedLat !== null ? forcedLat : this.aimLateralOffset;
+
+        this.holdingDraw = false;
+        this.drawProgress = 0;
+        document.getElementById('drawGaugeFill').style.width = '0%';
+        document.getElementById('drawGaugePct').textContent = '0%';
+
+        const launchSpeed = this.canvasW * (1.28 + pwr * 0.68);
+        // Combine elevation & lateral sight adjustment into launch vector
+        const angle = elev + lat * 0.35;
+        const startX = this.archerOrigin.x + 18;
+        const startY = this.archerOrigin.y - 16;
+
+        this.activeArrow = {
+          x: startX,
+          y: startY,
+          vx: Math.cos(angle) * launchSpeed,
+          vy: Math.sin(angle) * launchSpeed,
+          angle,
+          ownerIdx: this.currentArcher,
+          flightTime: 0
+        };
+
+        this.turnState = 'FLIGHT';
+        this.audio.playBowRelease(pwr);
+        this.refreshHUD();
+      }
+
+      stepArrowFlight(dt) {
+        const ar = this.activeArrow;
+        if (!ar) return;
+
+        ar.flightTime += dt;
+        const gravity = this.canvasH * 0.92;
+        const windAccel = this.windSpeed * this.canvasW * 0.085;
+
+        ar.vx += windAccel * dt;
+        ar.vy += gravity * dt;
+        ar.x += ar.vx * dt;
+        ar.y += ar.vy * dt;
+        ar.angle = Math.atan2(ar.vy, ar.vx);
+
+        const sp = Math.hypot(ar.vx, ar.vy);
+        this.arrowSpeedKmh = Math.min(265, (sp / Math.max(200, this.canvasW)) * 135);
+        if (this.arrowSpeedKmh > this.peakSpeedKmh) {
+          this.peakSpeedKmh = this.arrowSpeedKmh;
+        }
+
+        // Check impact at target X plane or out of bounds
+        const tgt = this.targetCenter;
+        const hitTargetPlane = ar.x >= tgt.x - 4;
+        const outOfBounds = ar.x > this.canvasW + 30 || ar.y > this.canvasH + 30 || ar.y < -40;
+
+        if (hitTargetPlane) {
+          const dy = ar.y - tgt.y;
+          const dx = ar.x - tgt.x;
+          const dist = Math.hypot(dx * 0.7, dy);
+          const ratio = dist / tgt.r;
+          this.scoreArrowImpact(ratio, dy, ar.ownerIdx);
+          this.activeArrow = null;
+          this.arrowSpeedKmh = 0;
+          this.advanceTurnAfterArrow();
+        } else if (outOfBounds) {
+          this.recordMiss(ar.ownerIdx);
+          this.activeArrow = null;
+          this.arrowSpeedKmh = 0;
+          this.advanceTurnAfterArrow();
+        }
+      }
+
+      scoreArrowImpact(ratio, dy, ownerIdx) {
+        const archer = ownerIdx === 0 ? this.a1 : this.a2;
+        const tgt = this.targetCenter;
+
+        let pts = 0;
+        let label = 'MISS';
+        if (ratio <= 0.11) {
+          pts = 10;
+          label = 'X (10)';
+          archer.goldHits++;
+        } else if (ratio <= 0.22) {
+          pts = 10;
+          label = '10 GOLD';
+          archer.goldHits++;
+        } else if (ratio <= 0.34) {
+          pts = 9;
+          label = '9 GOLD';
+        } else if (ratio <= 0.48) {
+          pts = 8;
+          label = '8 RED';
+        } else if (ratio <= 0.62) {
+          pts = 7;
+          label = '7 RED';
+        } else if (ratio <= 0.75) {
+          pts = 6;
+          label = '6 BLUE';
+        } else if (ratio <= 0.88) {
+          pts = 5;
+          label = '5 BLUE';
+        } else if (ratio <= 1.0) {
+          pts = 4;
+          label = '4 BLACK';
+        } else if (ratio <= 1.15) {
+          pts = 2;
+          label = '2 WHITE';
+        }
+
+        archer.score += pts;
+        archer.arrowsShotInMatch++;
+
+        const clampedY = Math.max(-tgt.r * 1.15, Math.min(tgt.r * 1.15, dy));
+        this.stuckArrows.push({
+          dx: (Math.random() - 0.5) * 8,
+          dy: clampedY,
+          pts,
+          label,
+          ownerIdx
+        });
+
+        this.hitPopup = {
+          label,
+          pts,
+          x: tgt.x - 16,
+          y: tgt.y + clampedY - 10,
+          alpha: 1.0
+        };
+
+        this.audio.playTargetImpact(pts);
+        this.showToast(`${archer.name}: ${label}`);
+        this.refreshHUD();
+      }
+
+      recordMiss(ownerIdx) {
+        const archer = ownerIdx === 0 ? this.a1 : this.a2;
+        archer.arrowsShotInMatch++;
+        this.hitPopup = {
+          label: 'MISS (0)',
+          pts: 0,
+          x: this.targetCenter.x - 14,
+          y: this.targetCenter.y - 14,
+          alpha: 1.0
+        };
+        this.audio.playTargetImpact(0);
+        this.showToast(`${archer.name}: MISS`);
+        this.refreshHUD();
+      }
+
+      advanceTurnAfterArrow() {
+        const totalEnds = this.getTotalEnds();
+        const arrowsPerEnd = this.arrowsPerEnd;
+
+        this.arrowInEnd++;
+        if (this.arrowInEnd >= arrowsPerEnd) {
+          this.arrowInEnd = 0;
+          this.endIndex++;
+          this.stuckArrows = [];
+          this.rollWind();
+        }
+
+        if (this.endIndex >= totalEnds) {
+          this.concludeMatch();
+          return;
+        }
+
+        if (this.mode === 'LOCAL_2P') {
+          this.currentArcher = this.currentArcher === 0 ? 1 : 0;
+        } else {
+          // In 1P vs AI modes, alternate arrow-by-arrow so both archers shoot each end
+          this.currentArcher = this.currentArcher === 0 ? 1 : 0;
+        }
+
+        this.turnState = 'READY';
+        this.refreshHUD();
+        this.scheduleAITurnIfNeeded();
+      }
+
+      concludeMatch() {
+        this.clearAITimer();
+        this.turnState = 'GAME_OVER';
+        this.audio.playWinFanfare();
+
+        const a1Wins = this.a1.score >= this.a2.score;
+        const winner = a1Wins ? this.a1 : this.a2;
+
+        if (!this.countedMatch) {
+          this.countedMatch = true;
+          this.matchesPlayed++;
+          if (a1Wins) this.matchesWon++;
+          this.saveStats();
+        }
+
+        document.getElementById('winnerTitle').textContent = `${winner.name} (${winner.nation.code}) WINS!`;
+        document.getElementById('winnerSub').textContent = 'Autrobook Archery Association Champion';
+        document.getElementById('sumScoreText').textContent = `${this.a1.score} - ${this.a2.score}`;
+        document.getElementById('sumPeakSpeed').textContent = `${this.peakSpeedKmh.toFixed(1)} KM/H`;
+        document.getElementById('sumGoldHits').textContent = String(this.a1.goldHits + this.a2.goldHits);
+        document.getElementById('sumCareerStats').textContent = `${this.matchesWon} / ${this.matchesPlayed}`;
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         DETERMINISTIC AI ARCHER SCHEDULER
+         ====================================================================== */
+      scheduleAITurnIfNeeded() {
+        this.clearAITimer();
+        if (this.paused || this.turnState === 'GAME_OVER' || this.mode === 'LOCAL_2P' || this.currentArcher !== 1) {
+          return;
+        }
+
+        this.turnState = 'AI_THINKING';
+        this.refreshHUD();
+
+        const delayMs = this.mode === 'AI_WORLD' ? 660 : this.mode === 'AI_CLUB' ? 820 : 960;
+        this.aiTimer = setTimeout(() => {
+          this.aiTimer = null;
+          if (this.paused || this.turnState === 'GAME_OVER' || this.currentArcher !== 1) return;
+          this.executeAIShot();
+        }, delayMs);
+      }
+
+      executeAIShot() {
+        const spread = this.mode === 'AI_WORLD' ? 0.022 : this.mode === 'AI_CLUB' ? 0.055 : 0.11;
+        const draw = 0.72 + Math.random() * 0.24;
+        const windComp = -this.windSpeed * 0.014;
+        const elev = -0.24 + (Math.random() - 0.5) * spread;
+        const lat = windComp + (Math.random() - 0.5) * spread * 1.4;
+
+        this.drawProgress = draw;
+        this.releaseArrow(draw, elev, lat);
+      }
+
+      /* ======================================================================
+         HUD, SCREENSHOT & INPUT EVENTS
+         ====================================================================== */
+      syncDrawGauge() {
+        const pct = Math.round(this.drawProgress * 100);
+        document.getElementById('drawGaugeFill').style.width = `${pct}%`;
+        document.getElementById('drawGaugePct').textContent = `${pct}%`;
+      }
+
+      refreshHUD() {
+        document.getElementById('roundScoreBadge').textContent = `${this.a1.score} - ${this.a2.score}`;
+
+        const totalEnds = this.getTotalEnds();
+        const dispEnd = Math.min(totalEnds, this.endIndex + 1);
+        const dispArrow = Math.min(this.arrowsPerEnd, this.arrowInEnd + 1);
+        const modeMap = {
+          AI_CASUAL: 'AI CASUAL',
+          AI_CLUB: 'AI CLUB',
+          AI_WORLD: 'WORLD ARCHER',
+          LOCAL_2P: '2P LOCAL'
+        };
+        const activeArcher = this.currentArcher === 0 ? this.a1.name : this.a2.name;
+        document.getElementById('statusBannerText').textContent =
+          `END ${dispEnd}/${totalEnds} • ARROW ${dispArrow}/${this.arrowsPerEnd} • ${modeMap[this.mode] || 'AI'} • ${activeArcher}`;
+
+        document.getElementById('a1DisplayName').textContent = this.a1.name;
+        document.getElementById('a2DisplayName').textContent = this.a2.name;
+
+        const b1 = document.getElementById('a1BadgeNum');
+        b1.textContent = `#${String(this.a1.badge).padStart(2, '0')}`;
+        b1.style.background = this.a1.nation.kit;
+
+        const b2 = document.getElementById('a2BadgeNum');
+        b2.textContent = `#${String(this.a2.badge).padStart(2, '0')}`;
+        b2.style.background = this.a2.nation.kit;
+
+        document.getElementById('a1SubLine').textContent = `${this.a1.nation.code} • ${this.a1.goldHits}X/10`;
+        document.getElementById('a2SubLine').textContent = `${this.a2.nation.code} • ${this.a2.goldHits}X/10`;
+
+        document.getElementById('a1TotalTag').textContent = `${this.a1.score} PTS`;
+        document.getElementById('a2TotalTag').textContent = `${this.a2.score} PTS`;
+
+        document.getElementById('a1Card').classList.toggle('active-turn', this.currentArcher === 0);
+        document.getElementById('a2Card').classList.toggle('active-turn', this.currentArcher === 1);
+
+        const mph = this.arrowSpeedKmh * 0.621371;
+        const peakMph = this.peakSpeedKmh * 0.621371;
+        document.getElementById('radarKmhText').textContent = `${this.arrowSpeedKmh.toFixed(1)} KM/H`;
+        document.getElementById('radarMphPeakText').textContent = `${mph.toFixed(1)} MPH • PK ${peakMph.toFixed(0)}`;
+
+        const humanCanAct = !this.activeArrow && this.turnState !== 'GAME_OVER' &&
+          (this.mode === 'LOCAL_2P' || this.currentArcher === 0);
+        document.getElementById('drawLooseBtn').disabled = !humanCanAct;
+      }
+
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playClick();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderRange();
+        try {
+          const url = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotModalOpen = true;
+          this.clearAITimer();
+          document.getElementById('screenshotImg').src = url;
+          const link = document.getElementById('downloadShotBtn');
+          link.href = url;
+          link.download = `Autrobook-Archery-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_e) {}
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeRange());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.renderRange();
+            }
+          });
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#modeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.mode = btn.dataset.mode;
+            document.querySelectorAll('#modeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#formatGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.formatKey = btn.dataset.fmt;
+            document.querySelectorAll('#formatGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#envGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.envKey = btn.dataset.env;
+            document.querySelectorAll('#envGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.renderRange();
+          });
+        });
+
+        document.getElementById('setupOpenBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetupModal();
+        });
+
+        document.getElementById('startMatchBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const n1 = (document.getElementById('a1NameInp').value || '').trim().toUpperCase();
+          const n2 = (document.getElementById('a2NameInp').value || '').trim().toUpperCase();
+          this.a1.name = (n1 || 'ROMAN SANA').slice(0, 14);
+          this.a2.name = (n2 || 'KIM WOOJIN').slice(0, 14);
+          this.a1.nation = this.getNation(document.getElementById('a1NationSel').value);
+          this.a2.nation = this.getNation(document.getElementById('a2NationSel').value);
+          this.a1.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('a1BadgeInp').value, 10) || 1));
+          this.a2.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('a2BadgeInp').value, 10) || 7));
+
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.startNewChampionship();
+        });
+
+        const drawLooseBtn = document.getElementById('drawLooseBtn');
+        drawLooseBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          this.audio.unlock();
+          this.beginDraw();
+        });
+        drawLooseBtn.addEventListener('pointerup', (e) => {
+          e.preventDefault();
+          if (this.holdingDraw) this.releaseArrow();
+        });
+        drawLooseBtn.addEventListener('pointerleave', () => {
+          if (this.holdingDraw) this.releaseArrow();
+        });
+
+        const bindHold = (btnId, key) => {
+          const btn = document.getElementById(btnId);
+          btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            this.audio.unlock();
+            this.aimKeys[key] = true;
+          });
+          btn.addEventListener('pointerup', () => { this.aimKeys[key] = false; });
+          btn.addEventListener('pointerleave', () => { this.aimKeys[key] = false; });
+          btn.addEventListener('pointercancel', () => { this.aimKeys[key] = false; });
+        };
+        bindHold('aimUpBtn', 'up');
+        bindHold('aimDownBtn', 'down');
+        bindHold('aimLeftBtn', 'left');
+        bindHold('aimRightBtn', 'right');
+
+        document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotModalOpen = false;
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+          this.scheduleAITurnIfNeeded();
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen || this.turnState === 'GAME_OVER') return;
+          this.paused = true;
+          this.clearAITimer();
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+          this.scheduleAITurnIfNeeded();
+        });
+
+        document.getElementById('restartMatchBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.startNewChampionship();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSetupModal();
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.startNewChampionship();
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.openSetupModal();
+        });
+
+        // Canvas pointer hold-to-draw and aim adjustment
+        this.canvas.addEventListener('pointerdown', (e) => {
+          this.audio.unlock();
+          if (this.paused || this.turnState === 'GAME_OVER' || this.activeArrow) return;
+          if (this.mode !== 'LOCAL_2P' && this.currentArcher !== 0) return;
+
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          this.elevationAngle = Math.max(-0.62, Math.min(0.15, Math.atan2(py - this.archerOrigin.y, px - this.archerOrigin.x)));
+          this.beginDraw();
+        });
+
+        this.canvas.addEventListener('pointermove', (e) => {
+          if (!this.holdingDraw || this.activeArrow) return;
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          this.elevationAngle = Math.max(-0.62, Math.min(0.15, Math.atan2(py - this.archerOrigin.y, px - this.archerOrigin.x)));
+        });
+
+        window.addEventListener('pointerup', () => {
+          if (this.holdingDraw) this.releaseArrow();
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'ArrowUp' || e.code === 'KeyW') this.aimKeys.up = true;
+          if (e.code === 'ArrowDown' || e.code === 'KeyS') this.aimKeys.down = true;
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.aimKeys.left = true;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.aimKeys.right = true;
+          if (e.code === 'Space') {
+            if (!this.introActive && !this.setupOpen && !this.shotModalOpen && !this.paused && this.turnState !== 'GAME_OVER') {
+              e.preventDefault();
+              this.audio.unlock();
+              if (!this.holdingDraw && !this.activeArrow && (this.mode === 'LOCAL_2P' || this.currentArcher === 0)) {
+                this.beginDraw();
+              }
+            }
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          if (e.code === 'ArrowUp' || e.code === 'KeyW') this.aimKeys.up = false;
+          if (e.code === 'ArrowDown' || e.code === 'KeyS') this.aimKeys.down = false;
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.aimKeys.left = false;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.aimKeys.right = false;
+          if (e.code === 'Space' && this.holdingDraw) {
+            e.preventDefault();
+            this.releaseArrow();
+          }
+        });
+      }
+
+      openSetupModal() {
+        this.setupOpen = true;
+        this.paused = true;
+        this.clearAITimer();
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      startNewChampionship() {
+        this.a1.score = 0;
+        this.a2.score = 0;
+        this.a1.arrowsShotInMatch = 0;
+        this.a2.arrowsShotInMatch = 0;
+        this.a1.goldHits = 0;
+        this.a2.goldHits = 0;
+        this.endIndex = 0;
+        this.arrowInEnd = 0;
+        this.currentArcher = 0;
+        this.stuckArrows = [];
+        this.activeArrow = null;
+        this.hitPopup = null;
+        this.drawProgress = 0;
+        this.holdingDraw = false;
+        this.peakSpeedKmh = 0;
+        this.countedMatch = false;
+        this.rollWind();
+        this.turnState = 'READY';
+        this.refreshHUD();
+        this.scheduleAITurnIfNeeded();
+      }
+
+      /* ======================================================================
+         INTRO & 2.5D HIGH-DPI ARCHERY RANGE RENDERER
+         ====================================================================== */
+      startIntro() {
+        const dur = 2200;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('aaaIntroScreen').classList.add('hidden');
+        this.openSetupModal();
+      }
+
+      renderRange() {
+        const ctx = this.ctx;
+        const w = this.canvasW;
+        const h = this.canvasH;
+        const env = RANGE_ENVS[this.envKey] || RANGE_ENVS.OUTDOOR;
+        const horizonY = h * 0.52;
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. Sky Gradient
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+        skyGrad.addColorStop(0, env.skyTop);
+        skyGrad.addColorStop(1, env.skyBot);
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, w, horizonY);
+
+        // 2. Championship Range Turf & Distance Markers
+        const turfGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+        turfGrad.addColorStop(0, env.turfTop);
+        turfGrad.addColorStop(1, env.turfBot);
+        ctx.fillStyle = turfGrad;
+        ctx.fillRect(0, horizonY, w, h - horizonY);
+
+        // Distance markers along turf
+        ctx.strokeStyle = env.lineCol;
+        ctx.lineWidth = 1.4;
+        [0.22, 0.48, 0.74].forEach((frac, idx) => {
+          const mx = w * frac;
+          ctx.beginPath();
+          ctx.moveTo(mx, horizonY + 8);
+          ctx.lineTo(mx - 12, h - 6);
+          ctx.stroke();
+
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = '800 9px Inter, sans-serif';
+          ctx.fillText(`${(idx + 1) * 20}M`, mx - 18, h - 10);
+        });
+
+        // Shooting line
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(this.archerOrigin.x - 16, h * 0.74);
+        ctx.lineTo(this.archerOrigin.x + 26, h * 0.74);
+        ctx.stroke();
+
+        // 3. Wind Banner / Flag
+        const flagX = w * 0.54;
+        const flagY = horizonY - 26;
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(flagX, horizonY);
+        ctx.lineTo(flagX, flagY);
+        ctx.stroke();
+
+        const waveLen = Math.max(12, Math.abs(this.windSpeed) * 9);
+        const dirSign = this.windSpeed >= 0 ? 1 : -1;
+        const flutter = Math.sin(performance.now() * 0.012) * 4;
+        ctx.fillStyle = Math.abs(this.windSpeed) > 3 ? '#f59e0b' : '#10b981';
+        ctx.beginPath();
+        ctx.moveTo(flagX, flagY);
+        ctx.lineTo(flagX + dirSign * waveLen, flagY + 4 + flutter * 0.4);
+        ctx.lineTo(flagX + dirSign * waveLen * 0.85, flagY + 11 + flutter);
+        ctx.lineTo(flagX, flagY + 12);
+        ctx.closePath();
+        ctx.fill();
+
+        const windDirLabel = this.windSpeed > 0.2 ? 'R-WIND' : this.windSpeed < -0.2 ? 'L-WIND' : 'CALM';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 9.5px Inter, sans-serif';
+        ctx.fillText(`${Math.abs(this.windSpeed).toFixed(1)} M/S ${windDirLabel}`, flagX - 28, flagY - 6);
+
+        // 4. Concentric 10-Ring Olympic / World Target Face & Stand
+        const tgt = this.targetCenter;
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(tgt.x - 12, tgt.y + tgt.r);
+        ctx.lineTo(tgt.x - 18, h * 0.72);
+        ctx.moveTo(tgt.x + 12, tgt.y + tgt.r);
+        ctx.lineTo(tgt.x + 18, h * 0.72);
+        ctx.stroke();
+
+        const rings = [
+          { frac: 1.0, fill: '#f8fafc' },
+          { frac: 0.88, fill: '#0f172a' },
+          { frac: 0.75, fill: '#2563eb' },
+          { frac: 0.62, fill: '#dc2626' },
+          { frac: 0.34, fill: '#facc15' },
+          { frac: 0.11, fill: '#eab308' }
+        ];
+
+        ctx.save();
+        ctx.translate(tgt.x, tgt.y);
+        ctx.scale(0.66, 1.0);
+        rings.forEach((rg) => {
+          ctx.fillStyle = rg.fill;
+          ctx.beginPath();
+          ctx.arc(0, 0, tgt.r * rg.frac, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        });
+        ctx.restore();
+
+        // Stuck arrows on target
+        this.stuckArrows.forEach((sa) => {
+          const sx = tgt.x + sa.dx;
+          const sy = tgt.y + sa.dy;
+          ctx.strokeStyle = sa.ownerIdx === 0 ? '#fbbf24' : '#38bdf8';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(sx - 18, sy - 3);
+          ctx.lineTo(sx, sy);
+          ctx.stroke();
+
+          ctx.fillStyle = sa.ownerIdx === 0 ? '#f59e0b' : '#0284c7';
+          ctx.fillRect(sx - 20, sy - 5, 5, 4);
+        });
+
+        // 5. Athlete & Recurve Bow on Shooting Line
+        const activeArcher = this.currentArcher === 0 ? this.a1 : this.a2;
+        const ax = this.archerOrigin.x;
+        const ay = this.archerOrigin.y;
+
+        // Kit torso & head
+        ctx.fillStyle = activeArcher.nation.kit;
+        ctx.beginPath();
+        ctx.roundRect(ax - 8, ay - 28, 16, 24, 6);
+        ctx.fill();
+
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath();
+        ctx.arc(ax, ay - 35, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Legs
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(ax - 3, ay - 4);
+        ctx.lineTo(ax - 7, ay + 16);
+        ctx.moveTo(ax + 3, ay - 4);
+        ctx.lineTo(ax + 7, ay + 16);
+        ctx.stroke();
+
+        // Recurve bow & aim trajectory preview
+        const aimAng = this.elevationAngle + this.aimLateralOffset * 0.35;
+        const bowX = ax + 14;
+        const bowY = ay - 16;
+
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bowX, bowY, 18, aimAng - 1.15, aimAng + 1.15);
+        ctx.stroke();
+
+        if (!this.activeArrow && this.turnState !== 'GAME_OVER') {
+          ctx.save();
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(bowX, bowY);
+          ctx.lineTo(bowX + Math.cos(aimAng) * 95, bowY + Math.sin(aimAng) * 95);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 6. Active Arrow in Flight
+        if (this.activeArrow) {
+          const ar = this.activeArrow;
+          ctx.save();
+          ctx.translate(ar.x, ar.y);
+          ctx.rotate(ar.angle);
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(-24, 0);
+          ctx.lineTo(6, 0);
+          ctx.stroke();
+
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.moveTo(-24, 0);
+          ctx.lineTo(-30, -4);
+          ctx.lineTo(-27, 0);
+          ctx.lineTo(-30, 4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 7. Hit Score Popup
+        if (this.hitPopup && this.hitPopup.alpha > 0.02) {
+          ctx.save();
+          ctx.globalAlpha = this.hitPopup.alpha;
+          ctx.fillStyle = this.hitPopup.pts >= 9 ? '#fbbf24' : '#ffffff';
+          ctx.font = '900 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(this.hitPopup.label, this.hitPopup.x, this.hitPopup.y);
+          ctx.restore();
+        }
+      }
+
+      loop(now) {
+        if (!this.lastFrameTime) this.lastFrameTime = now;
+        const dt = Math.min(0.04, (now - this.lastFrameTime) / 1000);
+        this.lastFrameTime = now;
+
+        if (!this.paused) {
+          if (!this.activeArrow && this.turnState !== 'GAME_OVER') {
+            if (this.aimKeys.up) this.elevationAngle = Math.max(-0.62, this.elevationAngle - 0.55 * dt);
+            if (this.aimKeys.down) this.elevationAngle = Math.min(0.15, this.elevationAngle + 0.55 * dt);
+            if (this.aimKeys.left) this.aimLateralOffset = Math.max(-0.55, this.aimLateralOffset - 0.65 * dt);
+            if (this.aimKeys.right) this.aimLateralOffset = Math.min(0.55, this.aimLateralOffset + 0.65 * dt);
+          }
+
+          if (this.holdingDraw && !this.activeArrow && this.turnState !== 'GAME_OVER') {
+            this.drawProgress = Math.min(1.0, this.drawProgress + dt * 0.85);
+            this.drawTickTimer += dt;
+            if (this.drawTickTimer >= 0.22) {
+              this.drawTickTimer = 0;
+              this.audio.playBowDrawTick(this.drawProgress);
+            }
+            this.syncDrawGauge();
+          }
+
+          if (this.activeArrow) {
+            this.stepArrowFlight(dt);
+          }
+
+          if (this.hitPopup) {
+            this.hitPopup.y -= 18 * dt;
+            this.hitPopup.alpha = Math.max(0, this.hitPopup.alpha - dt * 0.9);
+            if (this.hitPopup.alpha <= 0.02) this.hitPopup = null;
+          }
+
+          this.refreshHUD();
+          this.renderRange();
+        }
+
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const app = new AAAArcheryEngine();
+      requestAnimationFrame((t) => app.loop(t));
+    });
+  </script>
+</body>
+</html>
