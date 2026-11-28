@@ -1,0 +1,2139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Ludo Association - Championship Board</title>
+  <style>
+    /* ========================================================================
+       1. DESIGN TOKENS & SYSTEM LIGHT / DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --ala-forest: #0B3D20;
+      --ala-emerald-deep: #0a7d3b;
+      --ala-emerald: #10b981;
+      --ala-gold: #f59e0b;
+      --ala-amber: #fbbf24;
+
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --hud-bg: rgba(255, 255, 255, 0.93);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --hud-bg: rgba(255, 255, 255, 0.93);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04140b;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #ludoArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(7px, env(safe-area-inset-top)) 8px max(7px, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% 18%, #0a7d3b 0%, #0B3D20 58%, #031008 100%);
+      overflow: hidden;
+    }
+
+    .glass-panel {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP BAR, CORNER STATUS STRIPS & 4-CORNER SCOREBOARD
+       ======================================================================== */
+    .top-header {
+      width: 100%;
+      max-width: 560px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .icon-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .icon-circle:hover {
+      border-color: var(--ala-amber);
+    }
+
+    .icon-circle:active {
+      transform: scale(0.92);
+    }
+
+    .brand-center-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 14px;
+      flex: 1;
+      max-width: 260px;
+      border-color: rgba(251, 191, 36, 0.52);
+    }
+
+    .brand-title-line {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--ala-amber);
+      white-space: nowrap;
+    }
+
+    .turn-status-line {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .corners-grid {
+      width: 100%;
+      max-width: 560px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+      z-index: 16;
+    }
+
+    .corner-card {
+      padding: 5px 8px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      border-width: 1.5px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .corner-card.inactive-corner {
+      opacity: 0.42;
+    }
+
+    .corner-card.active-corner {
+      border-color: var(--ala-amber) !important;
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.34);
+      transform: scale(1.01);
+    }
+
+    .corner-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .corner-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+      border: 1.5px solid rgba(255, 255, 255, 0.8);
+      flex-shrink: 0;
+    }
+
+    .corner-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .corner-name {
+      font-size: 10.5px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .corner-role-tag {
+      font-size: 8.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-sub);
+    }
+
+    .corner-home-badge {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      font-size: 9.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: var(--ala-amber);
+      flex-shrink: 0;
+    }
+
+    /* ========================================================================
+       3. CENTER 15x15 LUDO BOARD STAGE & DICE / ACTION DOCK
+       ======================================================================== */
+    .board-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 560px;
+      max-height: 55dvh;
+      margin: 2px 0;
+    }
+
+    canvas#ludoBoardCanvas {
+      display: block;
+      border-radius: 14px;
+      border: 2px solid var(--ala-amber);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.58);
+      cursor: pointer;
+    }
+
+    .bottom-dock {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 18;
+    }
+
+    .dice-and-log-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 13px;
+    }
+
+    .dice-cluster {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .dice-cube-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      background: linear-gradient(145deg, #ffffff 0%, #e2e8f0 100%);
+      border: 2px solid var(--ala-amber);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+      color: #062112;
+      font-size: 24px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+
+    .dice-cube-btn:active:not(:disabled) {
+      transform: scale(0.92);
+    }
+
+    .dice-cube-btn.rolling {
+      animation: diceShake 0.16s linear infinite;
+    }
+
+    @keyframes diceShake {
+      0% { transform: rotate(-9deg) scale(1.06); }
+      50% { transform: rotate(9deg) scale(1.06); }
+      100% { transform: rotate(-9deg) scale(1.06); }
+    }
+
+    .roll-action-btn {
+      padding: 8px 13px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--ala-amber);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .roll-action-btn:disabled {
+      opacity: 0.52;
+      cursor: not-allowed;
+    }
+
+    .live-log-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 10.5px;
+      font-weight: 800;
+      color: var(--text-sub);
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .quick-cmd-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .cmd-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .cmd-btn:active {
+      transform: scale(0.95);
+      border-color: var(--ala-amber);
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK LUDO ASSOCIATION INTRO SCREEN
+       ======================================================================== */
+    #alaIntroScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #alaIntroScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .ray-light {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-a {
+      left: 10%;
+      animation: raySweepA 2.8s ease-in-out infinite alternate;
+    }
+
+    .ray-b {
+      right: 10%;
+      animation: raySweepB 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes raySweepA {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes raySweepB {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-card {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 345px;
+      width: 100%;
+    }
+
+    .ala-crest {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--ala-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ala-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-title {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-sub {
+      margin-top: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-meter {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-meter-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE, CHAMPION SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 430px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 18px 16px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-title-wrap {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .modal-h2 {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .setup-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .section-tag {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ala-amber);
+    }
+
+    .pill-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .pill-choice {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 10.5px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .pill-choice.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--ala-amber);
+      color: #ffffff;
+    }
+
+    .corner-setup-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .corner-setup-row {
+      display: grid;
+      grid-template-columns: 16px 1fr 78px 66px;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 11px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+    }
+
+    .name-edit {
+      width: 100%;
+      padding: 5px 7px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .mini-toggle {
+      padding: 5px 6px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.18);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: var(--text-main);
+      font-size: 9.5px;
+      font-weight: 900;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .mini-toggle.off {
+      background: rgba(239, 68, 68, 0.16);
+      border-color: rgba(239, 68, 68, 0.45);
+      opacity: 0.75;
+    }
+
+    .cta-gold-btn {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--ala-amber);
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .cta-ghost-link {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .stack-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .summary-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .shot-preview-pic {
+      width: 100%;
+      max-height: 50dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--ala-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-pill {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--ala-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-pill.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="ludoArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastPop" class="toast-pill">AUTROBOOK LUDO</div>
+
+    <!-- TOP HUD BAR -->
+    <header class="top-header">
+      <div class="btn-row">
+        <a href="ludo.html" class="icon-circle glass-panel" title="Back to Ludo Hub" aria-label="Back to Ludo Hub">&larr;</a>
+      </div>
+
+      <div class="brand-center-pill glass-panel">
+        <span class="brand-title-line">AUTROBOOK LUDO ASSN.</span>
+        <span id="turnBannerText" class="turn-status-line">RED TURN • ROLL DICE</span>
+      </div>
+
+      <div class="btn-row">
+        <button id="themeBtn" type="button" class="icon-circle glass-panel" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="shotBtn" type="button" class="icon-circle glass-panel" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="setupOpenBtn" type="button" class="icon-circle glass-panel" title="4-Corner Match Setup" aria-label="Match Setup">&#9998;</button>
+        <button id="audioBtn" type="button" class="icon-circle glass-panel" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle glass-panel" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- 4-CORNER PLAYER STATUS CARDS -->
+    <section id="cornersStatusGrid" class="corners-grid"></section>
+
+    <!-- CENTER 15x15 LUDO BOARD -->
+    <div id="boardStage" class="board-container">
+      <canvas id="ludoBoardCanvas"></canvas>
+    </div>
+
+    <!-- BOTTOM DICE & QUICK CONTROLS -->
+    <div class="bottom-dock">
+      <div class="dice-and-log-row glass-panel">
+        <div class="dice-cluster">
+          <button id="diceFaceBtn" type="button" class="dice-cube-btn" title="Tap Dice or Press Space">⚀</button>
+          <button id="rollDiceAction" type="button" class="roll-action-btn">Roll Dice</button>
+        </div>
+        <div id="matchEventLog" class="live-log-text">4-Corner Championship Ready</div>
+      </div>
+
+      <div class="quick-cmd-row">
+        <button id="undoStepBtn" type="button" class="cmd-btn">&crarr; Undo</button>
+        <button id="autoMoveBtn" type="button" class="cmd-btn">&#9654; Auto Move</button>
+        <button id="restartMatchBtn" type="button" class="cmd-btn">&#8635; Restart</button>
+        <button id="setupQuickBtn" type="button" class="cmd-btn">&#9881; 4-Corners</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK LUDO ASSOCIATION INTRO SCREEN
+         ====================================================================== -->
+    <section id="alaIntroScreen">
+      <div class="ray-light ray-a"></div>
+      <div class="ray-light ray-b"></div>
+
+      <div class="intro-card">
+        <div class="ala-crest">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <rect x="20" y="20" width="24" height="24" rx="5" fill="#ffffff" stroke="#064e3b" stroke-width="2"/>
+            <circle cx="26" cy="26" r="2.6" fill="#dc2626"/>
+            <circle cx="38" cy="26" r="2.6" fill="#10b981"/>
+            <circle cx="32" cy="32" r="2.8" fill="#0B3D20"/>
+            <circle cx="26" cy="38" r="2.6" fill="#0284c7"/>
+            <circle cx="38" cy="38" r="2.6" fill="#f59e0b"/>
+          </svg>
+        </div>
+
+        <div class="intro-kicker">OFFICIAL BOARD CIRCUIT</div>
+        <h1 class="intro-title">Autrobook Ludo Association</h1>
+        <p class="intro-sub">4-CORNER CHAMPIONSHIP BOARD</p>
+
+        <div class="intro-meter">
+          <div id="introFillBar" class="intro-meter-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="cta-gold-btn" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. 4-CORNER MATCH SETUP MODAL
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-title-wrap">
+          <h2 class="modal-h2">ALA 4-Corner Setup</h2>
+          <p class="modal-sub">Configure 2, 3, or 4 Corner Players • Human or Bot</p>
+        </div>
+
+        <div class="setup-section">
+          <span class="section-tag">Active Corners Preset</span>
+          <div id="activeCornersPresetRow" class="pill-grid-3">
+            <button type="button" class="pill-choice" data-count="2">2 Corners</button>
+            <button type="button" class="pill-choice" data-count="3">3 Corners</button>
+            <button type="button" class="pill-choice selected" data-count="4">4 Corners (Full)</button>
+          </div>
+        </div>
+
+        <div class="setup-section">
+          <span class="section-tag">Corner Players (Name • Human/Bot • Active)</span>
+          <div id="cornerSetupRows" class="corner-setup-list"></div>
+        </div>
+
+        <button id="startLudoMatchBtn" type="button" class="cta-gold-btn">
+          Start 4-Corner Match
+        </button>
+        <div class="stack-col" style="margin-top:6px;">
+          <a href="ludo.html" class="cta-ghost-link">&larr; Back to Ludo Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-box" style="max-width:365px;text-align:center;">
+        <div class="modal-title-wrap">
+          <h2 class="modal-h2">Board Screenshot</h2>
+          <p class="modal-sub">Autrobook Ludo Association</p>
+        </div>
+        <img id="screenshotPreviewImg" class="shot-preview-pic" alt="Ludo Screenshot Preview" />
+        <div class="stack-col">
+          <a id="downloadShotLink" download="Autrobook-Ludo-Board.png" class="cta-gold-btn">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="cta-ghost-link">Resume Game</button>
+          <a href="ludo.html" class="cta-ghost-link">&larr; Back to Ludo Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-box" style="max-width:325px;text-align:center;">
+        <div class="modal-title-wrap">
+          <h2 class="modal-h2">Match Paused</h2>
+          <p class="modal-sub">Autrobook Ludo Association</p>
+        </div>
+        <div class="stack-col">
+          <button id="resumeMatchBtn" type="button" class="cta-gold-btn">Resume Match</button>
+          <button id="restartFromPauseBtn" type="button" class="cta-ghost-link">Restart Board</button>
+          <button id="setupFromPauseBtn" type="button" class="cta-ghost-link">4-Corner Setup</button>
+          <a href="ludo.html" class="cta-ghost-link">&larr; Back to Ludo Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. CHAMPIONSHIP WINNER MODAL
+         ====================================================================== -->
+    <div id="winnerModal" class="modal-backdrop">
+      <div class="modal-box" style="max-width:355px;text-align:center;">
+        <div style="font-size:42px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="winnerTitleText" class="modal-h2">CHAMPION CROWNED!</h2>
+        <p id="winnerSubtitleText" class="modal-sub">All 4 tokens reached Home</p>
+
+        <div class="summary-box">
+          <div class="summary-row">
+            <span>Winning Corner</span>
+            <span id="winCornerBadge" style="font-weight:900;color:var(--ala-amber);">RED</span>
+          </div>
+          <div class="summary-row">
+            <span>Total Captures</span>
+            <span id="winCapturesCount" style="font-weight:900;color:var(--ala-emerald);">0</span>
+          </div>
+          <div class="summary-row">
+            <span>Matches Played / Wins</span>
+            <span id="winStatsSummary" style="font-weight:900;">0 / 0</span>
+          </div>
+        </div>
+
+        <div class="stack-col">
+          <button id="playAgainLudoBtn" type="button" class="cta-gold-btn">Play Again</button>
+          <button id="setupFromWinnerBtn" type="button" class="cta-ghost-link">Change Corners</button>
+          <a href="ludo.html" class="cta-ghost-link">&larr; Back to Ludo Hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       4-CORNER LUDO BOARD GEOMETRY, 52-CELL TRACK & HOME STRETCHES
+       ======================================================================== */
+    const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+    // 52-cell clockwise perimeter loop on a 15x15 grid (row 0..14, col 0..14)
+    const MAIN_TRACK_52 = [
+      { r: 6, c: 1 },  { r: 6, c: 2 },  { r: 6, c: 3 },  { r: 6, c: 4 },  { r: 6, c: 5 },
+      { r: 5, c: 6 },  { r: 4, c: 6 },  { r: 3, c: 6 },  { r: 2, c: 6 },  { r: 1, c: 6 },  { r: 0, c: 6 },
+      { r: 0, c: 7 },  { r: 0, c: 8 },
+      { r: 1, c: 8 },  { r: 2, c: 8 },  { r: 3, c: 8 },  { r: 4, c: 8 },  { r: 5, c: 8 },
+      { r: 6, c: 9 },  { r: 6, c: 10 }, { r: 6, c: 11 }, { r: 6, c: 12 }, { r: 6, c: 13 }, { r: 6, c: 14 },
+      { r: 7, c: 14 }, { r: 8, c: 14 },
+      { r: 8, c: 13 }, { r: 8, c: 12 }, { r: 8, c: 11 }, { r: 8, c: 10 }, { r: 8, c: 9 },
+      { r: 9, c: 8 },  { r: 10, c: 8 }, { r: 11, c: 8 }, { r: 12, c: 8 }, { r: 13, c: 8 }, { r: 14, c: 8 },
+      { r: 14, c: 7 }, { r: 14, c: 6 },
+      { r: 13, c: 6 }, { r: 12, c: 6 }, { r: 11, c: 6 }, { r: 10, c: 6 }, { r: 9, c: 6 },
+      { r: 8, c: 5 },  { r: 8, c: 4 },  { r: 8, c: 3 },  { r: 8, c: 2 },  { r: 8, c: 1 },  { r: 8, c: 0 },
+      { r: 7, c: 0 },  { r: 6, c: 0 }
+    ];
+
+    // Safe star indices along the 52-cell track (including colored start tiles)
+    const SAFE_TRACK_INDICES = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
+
+    // Four Corner Configurations:
+    // 0: Top-Left (Crimson/Red), 1: Top-Right (Emerald/Green),
+    // 2: Bottom-Right (Gold/Amber), 3: Bottom-Left (Royal Blue)
+    const CORNERS_META = [
+      {
+        id: 0,
+        key: 'RED',
+        label: 'Red',
+        defaultName: 'PLAYER 1 (RED)',
+        color: '#dc2626',
+        softBg: 'rgba(220, 38, 38, 0.18)',
+        startIdx: 1,
+        yardSlots: [
+          { r: 1.85, c: 1.85 }, { r: 1.85, c: 3.15 },
+          { r: 3.15, c: 1.85 }, { r: 3.15, c: 3.15 }
+        ],
+        homeLane: [
+          { r: 7, c: 1 }, { r: 7, c: 2 }, { r: 7, c: 3 }, { r: 7, c: 4 }, { r: 7, c: 5 }
+        ],
+        finishSlots: [
+          { r: 6.45, c: 6.2 }, { r: 7.0, c: 6.15 }, { r: 7.55, c: 6.2 }, { r: 7.0, c: 6.55 }
+        ]
+      },
+      {
+        id: 1,
+        key: 'GREEN',
+        label: 'Green',
+        defaultName: 'PLAYER 2 (GREEN)',
+        color: '#16a34a',
+        softBg: 'rgba(22, 163, 74, 0.18)',
+        startIdx: 14,
+        yardSlots: [
+          { r: 1.85, c: 10.85 }, { r: 1.85, c: 12.15 },
+          { r: 3.15, c: 10.85 }, { r: 3.15, c: 12.15 }
+        ],
+        homeLane: [
+          { r: 1, c: 7 }, { r: 2, c: 7 }, { r: 3, c: 7 }, { r: 4, c: 7 }, { r: 5, c: 7 }
+        ],
+        finishSlots: [
+          { r: 6.2, c: 6.45 }, { r: 6.15, c: 7.0 }, { r: 6.2, c: 7.55 }, { r: 6.55, c: 7.0 }
+        ]
+      },
+      {
+        id: 2,
+        key: 'YELLOW',
+        label: 'Gold',
+        defaultName: 'PLAYER 3 (GOLD)',
+        color: '#d97706',
+        softBg: 'rgba(217, 119, 6, 0.2)',
+        startIdx: 27,
+        yardSlots: [
+          { r: 10.85, c: 10.85 }, { r: 10.85, c: 12.15 },
+          { r: 12.15, c: 10.85 }, { r: 12.15, c: 12.15 }
+        ],
+        homeLane: [
+          { r: 7, c: 13 }, { r: 7, c: 12 }, { r: 7, c: 11 }, { r: 7, c: 10 }, { r: 7, c: 9 }
+        ],
+        finishSlots: [
+          { r: 6.45, c: 7.8 }, { r: 7.0, c: 7.85 }, { r: 7.55, c: 7.8 }, { r: 7.0, c: 7.45 }
+        ]
+      },
+      {
+        id: 3,
+        key: 'BLUE',
+        label: 'Blue',
+        defaultName: 'PLAYER 4 (BLUE)',
+        color: '#2563eb',
+        softBg: 'rgba(37, 99, 235, 0.18)',
+        startIdx: 40,
+        yardSlots: [
+          { r: 10.85, c: 1.85 }, { r: 10.85, c: 3.15 },
+          { r: 12.15, c: 1.85 }, { r: 12.15, c: 3.15 }
+        ],
+        homeLane: [
+          { r: 13, c: 7 }, { r: 12, c: 7 }, { r: 11, c: 7 }, { r: 10, c: 7 }, { r: 9, c: 7 }
+        ],
+        finishSlots: [
+          { r: 7.8, c: 6.45 }, { r: 7.85, c: 7.0 }, { r: 7.8, c: 7.55 }, { r: 7.45, c: 7.0 }
+        ]
+      }
+    ];
+
+    const LUDO_STATS_KEY = 'autrobook_ludo_4corner_stats_v1';
+
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class LudoSoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playDiceRoll() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [0, 0.055, 0.11, 0.165].forEach((offset, i) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(320 + i * 75, now + offset);
+          g.gain.setValueAtTime(0.06, now + offset);
+          g.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.04);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.045);
+        });
+      }
+
+      playTokenHop() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(640, now + 0.065);
+        g.gain.setValueAtTime(0.11, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.075);
+      }
+
+      playCaptureKnockout() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.22);
+        g.gain.setValueAtTime(0.22, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      playBonusChime(isHome = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = isHome ? [523.25, 659.25, 783.99, 1046.5] : [587.33, 880];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.07;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.12, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.21);
+        });
+      }
+
+      playWinFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.11;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.16, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.34);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.36);
+        });
+      }
+    }
+
+    /* ========================================================================
+       4-CORNER LUDO MATCH CONTROLLER
+       ======================================================================== */
+    class AutrobookLudoBoard {
+      constructor() {
+        this.canvas = document.getElementById('ludoBoardCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.sound = new LudoSoundEngine();
+
+        const saved = this.loadStats();
+        this.matchesPlayed = saved.played || 0;
+        this.matchesWon = saved.won || 0;
+        this.countedWin = false;
+
+        // Default 4-corner setup: Red & Green Human, Gold & Blue Bot (all 4 corners active)
+        this.cornerConfigs = CORNERS_META.map((m, i) => ({
+          id: m.id,
+          name: m.defaultName,
+          isBot: i >= 2,
+          active: true
+        }));
+
+        this.players = [];
+        this.currentCornerIdx = 0;
+        this.diceValue = 1;
+        this.isRollingDice = false;
+        this.isHoppingToken = false;
+        this.awaitingTokenChoice = false;
+        this.consecutiveSixes = 0;
+        this.totalCaptures = 0;
+        this.undoSnapshots = [];
+        this.matchEnded = false;
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotOpen = false;
+        this.paused = false;
+
+        this.boardPx = 360;
+        this.dpr = 1;
+        this.lastStatusMsg = '4-Corner Championship Ready';
+
+        this.syncThemeIcon();
+        this.buildSetupRows();
+        this.bindEvents();
+        this.resizeCanvas();
+        this.initNewMatch();
+        this.runIntro();
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(LUDO_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(LUDO_STATS_KEY, JSON.stringify({
+            played: this.matchesPlayed,
+            won: this.matchesWon
+          }));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.drawLudoBoard();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastPop');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      setLog(msg) {
+        this.lastStatusMsg = msg;
+        document.getElementById('matchEventLog').textContent = msg;
+      }
+
+      /* ======================================================================
+         4-CORNER SETUP UI & MATCH INITIALIZATION
+         ====================================================================== */
+      buildSetupRows() {
+        const listEl = document.getElementById('cornerSetupRows');
+        listEl.innerHTML = '';
+
+        this.cornerConfigs.forEach((cfg, idx) => {
+          const meta = CORNERS_META[idx];
+          const row = document.createElement('div');
+          row.className = 'corner-setup-row';
+          row.innerHTML = `
+            <span class="corner-swatch" style="background:${meta.color};"></span>
+            <input type="text" maxlength="15" value="${cfg.name}" data-idx="${idx}" class="name-edit" />
+            <button type="button" data-idx="${idx}" class="mini-toggle role-btn">${cfg.isBot ? 'BOT' : 'HUMAN'}</button>
+            <button type="button" data-idx="${idx}" class="mini-toggle active-btn ${cfg.active ? '' : 'off'}">${cfg.active ? 'ACTIVE' : 'OFF'}</button>
+          `;
+
+          row.querySelector('.role-btn').addEventListener('click', (e) => {
+            const i = parseInt(e.currentTarget.dataset.idx, 10);
+            this.cornerConfigs[i].isBot = !this.cornerConfigs[i].isBot;
+            e.currentTarget.textContent = this.cornerConfigs[i].isBot ? 'BOT' : 'HUMAN';
+          });
+
+          row.querySelector('.active-btn').addEventListener('click', (e) => {
+            const i = parseInt(e.currentTarget.dataset.idx, 10);
+            const activeCount = this.cornerConfigs.filter((c) => c.active).length;
+            if (this.cornerConfigs[i].active && activeCount <= 2) {
+              this.showToast('AT LEAST 2 CORNERS NEEDED');
+              return;
+            }
+            this.cornerConfigs[i].active = !this.cornerConfigs[i].active;
+            e.currentTarget.textContent = this.cornerConfigs[i].active ? 'ACTIVE' : 'OFF';
+            e.currentTarget.classList.toggle('off', !this.cornerConfigs[i].active);
+            this.syncPresetButtons();
+          });
+
+          listEl.appendChild(row);
+        });
+
+        document.querySelectorAll('#activeCornersPresetRow .pill-choice').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const desired = parseInt(btn.dataset.count, 10) || 4;
+            this.cornerConfigs.forEach((c, idx) => {
+              c.active = idx < desired;
+            });
+            this.refreshSetupRowButtons();
+            this.syncPresetButtons();
+          });
+        });
+      }
+
+      refreshSetupRowButtons() {
+        const rows = document.querySelectorAll('.corner-setup-row');
+        rows.forEach((row, idx) => {
+          const cfg = this.cornerConfigs[idx];
+          const rBtn = row.querySelector('.role-btn');
+          const aBtn = row.querySelector('.active-btn');
+          rBtn.textContent = cfg.isBot ? 'BOT' : 'HUMAN';
+          aBtn.textContent = cfg.active ? 'ACTIVE' : 'OFF';
+          aBtn.classList.toggle('off', !cfg.active);
+        });
+      }
+
+      syncPresetButtons() {
+        const count = this.cornerConfigs.filter((c) => c.active).length;
+        document.querySelectorAll('#activeCornersPresetRow .pill-choice').forEach((btn) => {
+          btn.classList.toggle('selected', parseInt(btn.dataset.count, 10) === count);
+        });
+      }
+
+      openSetup() {
+        this.setupOpen = true;
+        this.paused = true;
+        document.querySelectorAll('.corner-setup-row .name-edit').forEach((inp, idx) => {
+          inp.value = this.cornerConfigs[idx].name;
+        });
+        this.refreshSetupRowButtons();
+        this.syncPresetButtons();
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      applySetupAndStartMatch() {
+        this.sound.unlock();
+        document.querySelectorAll('.corner-setup-row .name-edit').forEach((inp, idx) => {
+          const cleaned = (inp.value || '').trim().toUpperCase();
+          this.cornerConfigs[idx].name = (cleaned || CORNERS_META[idx].defaultName).slice(0, 15);
+        });
+
+        document.getElementById('setupModal').classList.remove('open');
+        this.setupOpen = false;
+        this.paused = false;
+        this.initNewMatch();
+      }
+
+      initNewMatch() {
+        document.getElementById('winnerModal').classList.remove('open');
+        document.getElementById('pauseModal').classList.remove('open');
+
+        this.players = CORNERS_META.map((meta, idx) => {
+          const cfg = this.cornerConfigs[idx];
+          return {
+            ...meta,
+            name: cfg.name,
+            isBot: cfg.isBot,
+            active: cfg.active,
+            // progress: -1 (in corner home yard), 0..50 (on 52-cell track), 51..55 (colored home lane), 56 (finished center home)
+            tokens: [
+              { id: 0, progress: -1 },
+              { id: 1, progress: -1 },
+              { id: 2, progress: -1 },
+              { id: 3, progress: -1 }
+            ]
+          };
+        });
+
+        const firstActive = this.players.findIndex((p) => p.active);
+        this.currentCornerIdx = firstActive >= 0 ? firstActive : 0;
+        this.diceValue = 1;
+        this.isRollingDice = false;
+        this.isHoppingToken = false;
+        this.awaitingTokenChoice = false;
+        this.consecutiveSixes = 0;
+        this.totalCaptures = 0;
+        this.undoSnapshots = [];
+        this.matchEnded = false;
+        this.countedWin = false;
+
+        document.getElementById('diceFaceBtn').textContent = DICE_FACES[0];
+        this.setLog(`${this.players[this.currentCornerIdx].name} ready to roll`);
+        this.renderCornerCards();
+        this.updateTurnHUD();
+        this.drawLudoBoard();
+        this.scheduleBotIfNeeded();
+      }
+
+      /* ======================================================================
+         TOKEN POSITION MAPPING & LEGAL MOVES
+         ====================================================================== */
+      getTrackIndexForProgress(player, progress) {
+        if (progress < 0 || progress > 50) return -1;
+        return (player.startIdx + progress) % 52;
+      }
+
+      getTokenGridCoords(player, token) {
+        if (token.progress === -1) {
+          return player.yardSlots[token.id];
+        }
+        if (token.progress >= 0 && token.progress <= 50) {
+          const idx = (player.startIdx + token.progress) % 52;
+          return MAIN_TRACK_52[idx];
+        }
+        if (token.progress >= 51 && token.progress <= 55) {
+          return player.homeLane[token.progress - 51];
+        }
+        return player.finishSlots[token.id];
+      }
+
+      canTokenMove(player, token, roll) {
+        if (token.progress === 56) return false;
+        if (token.progress === -1) {
+          return roll === 6;
+        }
+        return token.progress + roll <= 56;
+      }
+
+      getMovableTokens(player, roll) {
+        return player.tokens.filter((t) => this.canTokenMove(player, t, roll));
+      }
+
+      /* ======================================================================
+         DICE ROLL, TOKEN SELECTION, STEP-BY-STEP HOPPING & CAPTURES
+         ====================================================================== */
+      triggerDiceRoll() {
+        this.sound.unlock();
+        if (this.paused || this.matchEnded || this.isRollingDice || this.isHoppingToken || this.awaitingTokenChoice) {
+          return;
+        }
+
+        const activePlayer = this.players[this.currentCornerIdx];
+        if (!activePlayer || !activePlayer.active) return;
+
+        this.isRollingDice = true;
+        document.getElementById('rollDiceAction').disabled = true;
+        const diceBtn = document.getElementById('diceFaceBtn');
+        diceBtn.classList.add('rolling');
+        this.sound.playDiceRoll();
+
+        const finalRoll = Math.floor(Math.random() * 6) + 1;
+        let ticks = 0;
+        const interval = setInterval(() => {
+          ticks++;
+          const faceIdx = Math.floor(Math.random() * 6);
+          diceBtn.textContent = DICE_FACES[faceIdx];
+          if (ticks >= 7) {
+            clearInterval(interval);
+            diceBtn.classList.remove('rolling');
+            this.diceValue = finalRoll;
+            diceBtn.textContent = DICE_FACES[finalRoll - 1];
+            this.isRollingDice = false;
+            this.resolveDiceRoll(finalRoll);
+          }
+        }, 65);
+      }
+
+      resolveDiceRoll(roll) {
+        const player = this.players[this.currentCornerIdx];
+        if (roll === 6) {
+          this.consecutiveSixes++;
+          if (this.consecutiveSixes >= 3) {
+            this.consecutiveSixes = 0;
+            this.setLog(`${player.name} rolled three 6s — turn forfeited`);
+            this.showToast('THREE 6s — TURN PASS');
+            setTimeout(() => this.advanceToNextCorner(), 650);
+            return;
+          }
+        } else {
+          this.consecutiveSixes = 0;
+        }
+
+        const legal = this.getMovableTokens(player, roll);
+        if (legal.length === 0) {
+          this.consecutiveSixes = 0;
+          this.setLog(`${player.name} rolled ${roll} — no legal move`);
+          document.getElementById('rollDiceAction').disabled = false;
+          setTimeout(() => this.advanceToNextCorner(), 550);
+          return;
+        }
+
+        if (legal.length === 1 && !player.isBot) {
+          this.performTokenMove(player, legal[0], roll);
+          return;
+        }
+
+        if (player.isBot) {
+          const chosen = this.pickBestBotToken(player, legal, roll);
+          setTimeout(() => {
+            if (!this.paused && !this.matchEnded) {
+              this.performTokenMove(player, chosen, roll);
+            }
+          }, 340);
+          return;
+        }
+
+        this.awaitingTokenChoice = true;
+        this.setLog(`${player.name} rolled ${roll} — tap a highlighted token`);
+        this.updateTurnHUD();
+        this.drawLudoBoard();
+      }
+
+      pickBestBotToken(player, legalTokens, roll) {
+        for (const tok of legalTokens) {
+          if (tok.progress >= 0 && tok.progress + roll <= 50) {
+            const destTrack = (player.startIdx + tok.progress + roll) % 52;
+            if (!SAFE_TRACK_INDICES.has(destTrack) && this.hasCapturableEnemyAt(player, destTrack)) {
+              return tok;
+            }
+          }
+        }
+        for (const tok of legalTokens) {
+          if (tok.progress + roll === 56) return tok;
+        }
+        for (const tok of legalTokens) {
+          if (tok.progress === -1 && roll === 6) return tok;
+        }
+        return legalTokens.reduce((best, cur) => (cur.progress > best.progress ? cur : best), legalTokens[0]);
+      }
+
+      hasCapturableEnemyAt(movingPlayer, trackIdx) {
+        return this.players.some((other) => {
+          if (other.id === movingPlayer.id || !other.active) return false;
+          return other.tokens.some((t) => {
+            if (t.progress < 0 || t.progress > 50) return false;
+            return ((other.startIdx + t.progress) % 52) === trackIdx;
+          });
+        });
+      }
+
+      saveUndoSnapshot() {
+        this.undoSnapshots.push({
+          currentCornerIdx: this.currentCornerIdx,
+          diceValue: this.diceValue,
+          consecutiveSixes: this.consecutiveSixes,
+          totalCaptures: this.totalCaptures,
+          players: this.players.map((p) => ({
+            ...p,
+            tokens: p.tokens.map((t) => ({ ...t }))
+          }))
+        });
+        if (this.undoSnapshots.length > 20) this.undoSnapshots.shift();
+      }
+
+      undoLastStep() {
+        this.sound.unlock();
+        if (this.isRollingDice || this.isHoppingToken || this.matchEnded || this.undoSnapshots.length === 0) return;
+        const snap = this.undoSnapshots.pop();
+        this.currentCornerIdx = snap.currentCornerIdx;
+        this.diceValue = snap.diceValue;
+        this.consecutiveSixes = snap.consecutiveSixes;
+        this.totalCaptures = snap.totalCaptures;
+        this.players = snap.players;
+        this.awaitingTokenChoice = false;
+        document.getElementById('diceFaceBtn').textContent = DICE_FACES[this.diceValue - 1] || '⚀';
+        this.setLog('Undid last move');
+        this.renderCornerCards();
+        this.updateTurnHUD();
+        this.drawLudoBoard();
+      }
+
+      autoPickAndMove() {
+        this.sound.unlock();
+        if (this.paused || this.matchEnded || this.isRollingDice || this.isHoppingToken) return;
+        if (!this.awaitingTokenChoice) {
+          this.triggerDiceRoll();
+          return;
+        }
+        const player = this.players[this.currentCornerIdx];
+        const legal = this.getMovableTokens(player, this.diceValue);
+        if (legal.length > 0) {
+          this.performTokenMove(player, this.pickBestBotToken(player, legal, this.diceValue), this.diceValue);
+        }
+      }
+
+      performTokenMove(player, token, roll) {
+        this.saveUndoSnapshot();
+        this.awaitingTokenChoice = false;
+        this.isHoppingToken = true;
+        document.getElementById('rollDiceAction').disabled = true;
+
+        const steps = [];
+        if (token.progress === -1 && roll === 6) {
+          steps.push(0);
+        } else {
+          for (let s = 1; s <= roll; s++) {
+            steps.push(token.progress + s);
+          }
+        }
+
+        let i = 0;
+        const hopStep = () => {
+          if (this.paused) {
+            setTimeout(hopStep, 120);
+            return;
+          }
+          token.progress = steps[i];
+          this.sound.playTokenHop();
+          this.drawLudoBoard();
+          i++;
+
+          if (i < steps.length) {
+            setTimeout(hopStep, 130);
+          } else {
+            this.finalizeTokenArrival(player, token, roll);
+          }
+        };
+
+        hopStep();
+      }
+
+      finalizeTokenArrival(player, token, roll) {
+        this.isHoppingToken = false;
+        let bonusRoll = false;
+
+        if (token.progress === 56) {
+          bonusRoll = true;
+          this.sound.playBonusChime(true);
+          this.setLog(`${player.name} brought a token HOME!`);
+          this.showToast('TOKEN HOME! +BONUS');
+        } else if (token.progress >= 0 && token.progress <= 50) {
+          const trackIdx = (player.startIdx + token.progress) % 52;
+          if (!SAFE_TRACK_INDICES.has(trackIdx)) {
+            let capturedAny = false;
+            this.players.forEach((other) => {
+              if (other.id === player.id || !other.active) return;
+              other.tokens.forEach((ot) => {
+                if (ot.progress >= 0 && ot.progress <= 50) {
+                  const otherIdx = (other.startIdx + ot.progress) % 52;
+                  if (otherIdx === trackIdx) {
+                    ot.progress = -1;
+                    capturedAny = true;
+                    this.totalCaptures++;
+                  }
+                }
+              });
+            });
+
+            if (capturedAny) {
+              bonusRoll = true;
+              this.sound.playCaptureKnockout();
+              this.setLog(`${player.name} captured an opponent token!`);
+              this.showToast('CAPTURED! +BONUS');
+            }
+          } else {
+            this.sound.playBonusChime(false);
+          }
+        }
+
+        if (roll === 6) {
+          bonusRoll = true;
+        }
+
+        this.renderCornerCards();
+        this.drawLudoBoard();
+
+        if (this.checkCornerWin(player)) return;
+
+        if (bonusRoll) {
+          this.setLog(`${player.name} earns a bonus roll`);
+          document.getElementById('rollDiceAction').disabled = false;
+          this.updateTurnHUD();
+          this.scheduleBotIfNeeded();
+        } else {
+          this.consecutiveSixes = 0;
+          this.advanceToNextCorner();
+        }
+      }
+
+      advanceToNextCorner() {
+        const total = this.players.length;
+        for (let step = 1; step <= total; step++) {
+          const candidate = (this.currentCornerIdx + step) % total;
+          if (this.players[candidate].active && !this.checkCornerWin(this.players[candidate])) {
+            this.currentCornerIdx = candidate;
+            break;
+          }
+        }
+        document.getElementById('rollDiceAction').disabled = false;
+        const p = this.players[this.currentCornerIdx];
+        this.setLog(`${p.name}'s turn`);
+        this.renderCornerCards();
+        this.updateTurnHUD();
+        this.drawLudoBoard();
+        this.scheduleBotIfNeeded();
+      }
+
+      checkCornerWin(player) {
+        const allHome = player.tokens.every((t) => t.progress === 56);
+        if (!allHome || this.matchEnded) return false;
+
+        this.matchEnded = true;
+        this.sound.playWinFanfare();
+
+        if (!this.countedWin) {
+          this.countedWin = true;
+          this.matchesPlayed++;
+          if (!player.isBot) this.matchesWon++;
+          this.saveStats();
+        }
+
+        document.getElementById('winnerTitleText').textContent = `${player.name} WINS!`;
+        document.getElementById('winnerSubtitleText').textContent = 'All 4 tokens reached the center home';
+        document.getElementById('winCornerBadge').textContent = player.label.toUpperCase();
+        document.getElementById('winCapturesCount').textContent = String(this.totalCaptures);
+        document.getElementById('winStatsSummary').textContent = `${this.matchesWon} / ${this.matchesPlayed}`;
+        document.getElementById('winnerModal').classList.add('open');
+        return true;
+      }
+
+      scheduleBotIfNeeded() {
+        const p = this.players[this.currentCornerIdx];
+        if (!p || !p.active || p.isBot === false || this.matchEnded || this.paused) return;
+        setTimeout(() => {
+          if (!this.paused && !this.matchEnded && this.players[this.currentCornerIdx]?.isBot) {
+            this.triggerDiceRoll();
+          }
+        }, 520);
+      }
+
+      /* ======================================================================
+         HUD CARDS, SCREENSHOT & EVENTS
+         ====================================================================== */
+      renderCornerCards() {
+        const grid = document.getElementById('cornersStatusGrid');
+        grid.innerHTML = '';
+
+        this.players.forEach((p, idx) => {
+          const homeCount = p.tokens.filter((t) => t.progress === 56).length;
+          const isTurn = idx === this.currentCornerIdx && p.active;
+          const card = document.createElement('div');
+          card.className = `corner-card glass-panel ${p.active ? '' : 'inactive-corner'} ${isTurn ? 'active-corner' : ''}`;
+          card.style.borderColor = p.color;
+          card.innerHTML = `
+            <div class="corner-left">
+              <span class="corner-swatch" style="background:${p.color};"></span>
+              <div class="corner-meta">
+                <span class="corner-name">${p.name}</span>
+                <span class="corner-role-tag">${p.active ? (p.isBot ? 'BOT' : 'HUMAN') : 'INACTIVE'}</span>
+              </div>
+            </div>
+            <span class="corner-home-badge">${homeCount}/4 HOME</span>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      updateTurnHUD() {
+        const p = this.players[this.currentCornerIdx];
+        if (!p) return;
+        const actionHint = this.awaitingTokenChoice ? 'SELECT TOKEN' : 'ROLL DICE';
+        document.getElementById('turnBannerText').textContent = `${p.label.toUpperCase()} TURN • ${actionHint}`;
+        document.getElementById('rollDiceAction').disabled =
+          this.paused || this.matchEnded || this.isRollingDice || this.isHoppingToken || this.awaitingTokenChoice || p.isBot;
+      }
+
+      captureScreenshot() {
+        this.sound.unlock();
+        this.sound.playTokenHop();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.drawLudoBoard();
+        try {
+          const url = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotOpen = true;
+          document.getElementById('screenshotPreviewImg').src = url;
+          const a = document.getElementById('downloadShotLink');
+          a.href = url;
+          a.download = `Autrobook-Ludo-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT SAVED');
+        } catch (_e) {}
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeCanvas());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.drawLudoBoard();
+            }
+          });
+        }
+
+        document.getElementById('themeBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.sound.unlock();
+          this.finishIntro();
+        });
+
+        document.getElementById('setupOpenBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetup();
+        });
+
+        document.getElementById('setupQuickBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetup();
+        });
+
+        document.getElementById('startLudoMatchBtn').addEventListener('click', () => this.applySetupAndStartMatch());
+
+        document.getElementById('shotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotOpen = false;
+          this.paused = false;
+          this.scheduleBotIfNeeded();
+        });
+
+        document.getElementById('audioBtn').addEventListener('click', () => {
+          this.sound.unlock();
+          const muted = this.sound.toggleMute();
+          document.getElementById('audioBtn').innerHTML = muted ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotOpen || this.matchEnded) return;
+          this.paused = true;
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeMatchBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.scheduleBotIfNeeded();
+        });
+
+        document.getElementById('restartMatchBtn').addEventListener('click', () => this.initNewMatch());
+        document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
+          this.paused = false;
+          this.initNewMatch();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSetup();
+        });
+
+        document.getElementById('playAgainLudoBtn').addEventListener('click', () => {
+          this.paused = false;
+          this.initNewMatch();
+        });
+
+        document.getElementById('setupFromWinnerBtn').addEventListener('click', () => {
+          document.getElementById('winnerModal').classList.remove('open');
+          this.paused = false;
+          this.openSetup();
+        });
+
+        document.getElementById('diceFaceBtn').addEventListener('click', () => this.triggerDiceRoll());
+        document.getElementById('rollDiceAction').addEventListener('click', () => this.triggerDiceRoll());
+        document.getElementById('undoStepBtn').addEventListener('click', () => this.undoLastStep());
+        document.getElementById('autoMoveBtn').addEventListener('click', () => this.autoPickAndMove());
+
+        this.canvas.addEventListener('pointerdown', (e) => {
+          this.sound.unlock();
+          if (this.paused || this.matchEnded || this.isRollingDice || this.isHoppingToken) return;
+
+          const activePlayer = this.players[this.currentCornerIdx];
+          if (!activePlayer || !activePlayer.active || activePlayer.isBot) return;
+
+          if (!this.awaitingTokenChoice) {
+            this.triggerDiceRoll();
+            return;
+          }
+
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          const cell = this.boardPx / 15;
+
+          const movable = this.getMovableTokens(activePlayer, this.diceValue);
+          let bestToken = null;
+          let bestDist = cell * 0.85;
+
+          for (const tok of movable) {
+            const coord = this.getTokenGridCoords(activePlayer, tok);
+            const tx = (coord.c + 0.5) * cell;
+            const ty = (coord.r + 0.5) * cell;
+            const d = Math.hypot(px - tx, py - ty);
+            if (d <= bestDist) {
+              bestDist = d;
+              bestToken = tok;
+            }
+          }
+
+          if (bestToken) {
+            this.performTokenMove(activePlayer, bestToken, this.diceValue);
+          }
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'Space') {
+            e.preventDefault();
+            if (!this.introActive && !this.setupOpen && !this.shotOpen && !this.paused && !this.matchEnded) {
+              if (this.awaitingTokenChoice) this.autoPickAndMove();
+              else this.triggerDiceRoll();
+            }
+          }
+        });
+      }
+
+      /* ======================================================================
+         INTRO & 15x15 LUDO BOARD CANVAS RENDERER
+         ====================================================================== */
+      runIntro() {
+        const dur = 2200;
+        const start = performance.now();
+        const bar = document.getElementById('introFillBar');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('alaIntroScreen').classList.add('hidden');
+        this.openSetup();
+      }
+
+      resizeCanvas() {
+        const box = document.getElementById('boardStage').getBoundingClientRect();
+        const side = Math.floor(Math.max(240, Math.min(box.width - 6, box.height - 6)));
+        this.boardPx = side;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${side}px`;
+        this.canvas.style.height = `${side}px`;
+        this.canvas.width = Math.floor(side * this.dpr);
+        this.canvas.height = Math.floor(side * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        this.drawLudoBoard();
+      }
+
+      drawLudoBoard() {
+        const ctx = this.ctx;
+        const size = this.boardPx;
+        const cell = size / 15;
+        ctx.clearRect(0, 0, size, size);
+
+        // Base ivory/cream track cells
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, size, size);
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.22)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 15; i++) {
+          const p = i * cell;
+          ctx.beginPath();
+          ctx.moveTo(p, 0);
+          ctx.lineTo(p, size);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, p);
+          ctx.lineTo(size, p);
+          ctx.stroke();
+        }
+
+        // Colored home stretch lanes & start tiles
+        this.players.forEach((p) => {
+          if (!p.active) return;
+          ctx.fillStyle = p.color;
+          p.homeLane.forEach((sq) => {
+            ctx.fillRect(sq.c * cell, sq.r * cell, cell, cell);
+          });
+          const startSq = MAIN_TRACK_52[p.startIdx];
+          ctx.fillRect(startSq.c * cell, startSq.r * cell, cell, cell);
+        });
+
+        // Safe star markers on perimeter track
+        SAFE_TRACK_INDICES.forEach((idx) => {
+          const sq = MAIN_TRACK_52[idx];
+          this.drawStarGlyph(ctx, (sq.c + 0.5) * cell, (sq.r + 0.5) * cell, cell * 0.34, 'rgba(11, 61, 32, 0.48)');
+        });
+
+        // 4 Corner Home Yards (6x6 blocks)
+        const yards = [
+          { r: 0, c: 0, corner: this.players[0] },
+          { r: 0, c: 9, corner: this.players[1] },
+          { r: 9, c: 9, corner: this.players[2] },
+          { r: 9, c: 0, corner: this.players[3] }
+        ];
+
+        yards.forEach((y) => {
+          const c = y.corner;
+          ctx.fillStyle = c ? c.color : '#64748b';
+          ctx.fillRect(y.c * cell, y.r * cell, cell * 6, cell * 6);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.roundRect((y.c + 0.85) * cell, (y.r + 0.85) * cell, cell * 4.3, cell * 4.3, cell * 0.45);
+          ctx.fill();
+
+          if (c) {
+            c.yardSlots.forEach((slot) => {
+              ctx.fillStyle = c.softBg;
+              ctx.beginPath();
+              ctx.arc((slot.c + 0.5) * cell, (slot.r + 0.5) * cell, cell * 0.44, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = c.color;
+              ctx.lineWidth = 1.6;
+              ctx.stroke();
+            });
+          }
+        });
+
+        // Center 3x3 Finish Triangles (rows 6..8, cols 6..8)
+        const mid = 7.5 * cell;
+        const x1 = 6 * cell;
+        const x2 = 9 * cell;
+        const y1 = 6 * cell;
+        const y2 = 9 * cell;
+
+        // Left triangle (Red)
+        ctx.fillStyle = CORNERS_META[0].color;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1, y2);
+        ctx.lineTo(mid, mid);
+        ctx.closePath();
+        ctx.fill();
+
+        // Top triangle (Green)
+        ctx.fillStyle = CORNERS_META[1].color;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y1);
+        ctx.lineTo(mid, mid);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right triangle (Gold)
+        ctx.fillStyle = CORNERS_META[2].color;
+        ctx.beginPath();
+        ctx.moveTo(x2, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(mid, mid);
+        ctx.closePath();
+        ctx.fill();
+
+        // Bottom triangle (Blue)
+        ctx.fillStyle = CORNERS_META[3].color;
+        ctx.beginPath();
+        ctx.moveTo(x1, y2);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(mid, mid);
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw all active corner tokens
+        const activePlayer = this.players[this.currentCornerIdx];
+        const movableIds = new Set(
+          this.awaitingTokenChoice && activePlayer && !activePlayer.isBot
+            ? this.getMovableTokens(activePlayer, this.diceValue).map((t) => t.id)
+            : []
+        );
+
+        this.players.forEach((p, pIdx) => {
+          if (!p.active) return;
+          p.tokens.forEach((tok) => {
+            const coord = this.getTokenGridCoords(p, tok);
+            const tx = (coord.c + 0.5) * cell;
+            const ty = (coord.r + 0.5) * cell;
+            const rad = cell * 0.35;
+
+            if (pIdx === this.currentCornerIdx && movableIds.has(tok.id)) {
+              ctx.strokeStyle = '#fbbf24';
+              ctx.lineWidth = 2.6;
+              ctx.beginPath();
+              ctx.arc(tx, ty, rad + 3.2, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(tx, ty, rad, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.beginPath();
+            ctx.arc(tx - rad * 0.25, ty - rad * 0.25, rad * 0.32, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        });
+      }
+
+      drawStarGlyph(ctx, cx, cy, outerR, color) {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 === 0 ? outerR : outerR * 0.45;
+          const ang = (i * Math.PI) / 5 - Math.PI / 2;
+          const x = cx + Math.cos(ang) * r;
+          const y = cy + Math.sin(ang) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    window.addEventListener('load', () => {
+      new AutrobookLudoBoard();
+    });
+  </script>
+</body>
+</html>
