@@ -1,0 +1,2151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Sudoku Board</title>
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    /* ========================================================================
+       1. DESIGN TOKENS & SYSTEM LIGHT (#FFFFFF) / DARK (#202124) THEMES
+       ======================================================================== */
+    :root {
+      --sb-forest: #0B3D20;
+      --sb-emerald-deep: #0a7d3b;
+      --sb-emerald: #10b981;
+      --sb-gold: #f59e0b;
+      --sb-amber: #fbbf24;
+
+      --theme-bg: #202124;
+      --hud-bg: rgba(32, 33, 36, 0.95);
+      --hud-border: rgba(16, 185, 129, 0.45);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #202124;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+      --board-bg: #0c2618;
+      --cell-bg: #113421;
+      --cell-alt: #0e2c1c;
+      --cell-peer: rgba(16, 185, 129, 0.14);
+      --cell-match: rgba(251, 191, 36, 0.24);
+      --cell-selected: rgba(16, 185, 129, 0.36);
+      --cell-conflict: rgba(239, 68, 68, 0.28);
+      --given-color: #f8fafc;
+      --user-color: #34d399;
+      --note-color: #fde68a;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --theme-bg: #FFFFFF;
+        --hud-bg: rgba(255, 255, 255, 0.97);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #FFFFFF;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+        --board-bg: #f1fbf5;
+        --cell-bg: #ffffff;
+        --cell-alt: #f6fdf9;
+        --cell-peer: rgba(10, 125, 59, 0.11);
+        --cell-match: rgba(245, 158, 11, 0.22);
+        --cell-selected: rgba(16, 185, 129, 0.28);
+        --cell-conflict: rgba(220, 38, 38, 0.2);
+        --given-color: #062112;
+        --user-color: #0a7d3b;
+        --note-color: #92400e;
+      }
+    }
+
+    body[data-theme="dark"] {
+      --theme-bg: #202124;
+      --hud-bg: rgba(32, 33, 36, 0.95);
+      --hud-border: rgba(16, 185, 129, 0.45);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #202124;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+      --board-bg: #0c2618;
+      --cell-bg: #113421;
+      --cell-alt: #0e2c1c;
+      --cell-peer: rgba(16, 185, 129, 0.14);
+      --cell-match: rgba(251, 191, 36, 0.24);
+      --cell-selected: rgba(16, 185, 129, 0.36);
+      --cell-conflict: rgba(239, 68, 68, 0.28);
+      --given-color: #f8fafc;
+      --user-color: #34d399;
+      --note-color: #fde68a;
+    }
+
+    body[data-theme="light"] {
+      --theme-bg: #FFFFFF;
+      --hud-bg: rgba(255, 255, 255, 0.97);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #FFFFFF;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+      --board-bg: #f1fbf5;
+      --cell-bg: #ffffff;
+      --cell-alt: #f6fdf9;
+      --cell-peer: rgba(10, 125, 59, 0.11);
+      --cell-match: rgba(245, 158, 11, 0.22);
+      --cell-selected: rgba(16, 185, 129, 0.28);
+      --cell-conflict: rgba(220, 38, 38, 0.2);
+      --given-color: #062112;
+      --user-color: #0a7d3b;
+      --note-color: #92400e;
+    }
+
+    /* High-contrast cell style option */
+    body[data-cell-style="HIGH_CONTRAST"] {
+      --cell-peer: rgba(16, 185, 129, 0.22);
+      --cell-match: rgba(251, 191, 36, 0.34);
+      --cell-selected: rgba(245, 158, 11, 0.42);
+    }
+
+    /* Classic parchment cell style option */
+    body[data-cell-style="PARCHMENT"] {
+      --board-bg: #1f2416;
+      --cell-bg: #292f1d;
+      --cell-alt: #242919;
+      --cell-peer: rgba(251, 191, 36, 0.12);
+      --cell-match: rgba(16, 185, 129, 0.22);
+      --cell-selected: rgba(245, 158, 11, 0.34);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--theme-bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    #sbArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(5px, env(safe-area-inset-top)) 7px max(5px, env(safe-area-inset-bottom));
+      background-color: var(--theme-bg);
+      background-image: radial-gradient(circle at 50% 15%, rgba(16, 185, 129, 0.14) 0%, rgba(11, 61, 32, 0.08) 52%, transparent 80%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    }
+
+    /* ========================================================================
+       2. TOP BROADCAST HUD & TELEMETRY PILLS
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 660px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-circle-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      color: #ffffff;
+      border: 1.5px solid rgba(251, 191, 36, 0.6);
+      box-shadow: 0 4px 12px rgba(4, 20, 11, 0.35);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.13s ease, border-color 0.13s ease, background 0.13s ease, box-shadow 0.13s ease;
+    }
+
+    .icon-circle-btn:hover {
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
+      border-color: var(--sb-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+    }
+
+    .icon-circle-btn:active {
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
+      transform: scale(0.92);
+    }
+
+    .brand-center-hud {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 13px;
+      flex: 1;
+      max-width: 340px;
+      border-color: rgba(251, 191, 36, 0.55);
+      min-width: 0;
+    }
+
+    .brand-main-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .hud-logo-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 1.5px solid var(--sb-amber);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .hud-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .hud-logo-fallback {
+      width: 13px;
+      height: 13px;
+      display: none;
+    }
+
+    .hud-logo-badge.use-fallback .hud-logo-img {
+      display: none;
+    }
+
+    .hud-logo-badge.use-fallback .hud-logo-fallback {
+      display: block;
+    }
+
+    .brand-sub-row {
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .telemetry-strip {
+      width: 100%;
+      max-width: 660px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      z-index: 16;
+    }
+
+    .hud-pill {
+      padding: 4px 8px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      font-size: 9.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hud-pill-lbl {
+      color: var(--sb-gold);
+      font-size: 8px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ========================================================================
+       3. CENTER 9x9 SUDOKU BOARD & ACTION / NUMPAD DECK
+       ======================================================================== */
+    .board-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 660px;
+      min-height: 0;
+      margin: 2px 0;
+    }
+
+    .sudoku-grid {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(9, 1fr);
+      background: var(--board-bg);
+      border: 2.5px solid var(--sb-amber);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+    }
+
+    .sudoku-cell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--cell-bg);
+      border-right: 1px solid rgba(16, 185, 129, 0.25);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+      cursor: pointer;
+      transition: background-color 0.08s ease;
+    }
+
+    .sudoku-cell.alt-shade {
+      background: var(--cell-alt);
+    }
+
+    .sudoku-cell.peer-highlight {
+      background: var(--cell-peer);
+    }
+
+    .sudoku-cell.match-highlight {
+      background: var(--cell-match);
+    }
+
+    .sudoku-cell.selected {
+      background: var(--cell-selected);
+      box-shadow: inset 0 0 0 2px var(--sb-amber);
+    }
+
+    .sudoku-cell.conflict {
+      background: var(--cell-conflict);
+      color: #ef4444;
+    }
+
+    .sudoku-cell.box-right {
+      border-right: 2.2px solid var(--sb-gold);
+    }
+
+    .sudoku-cell.box-bottom {
+      border-bottom: 2.2px solid var(--sb-gold);
+    }
+
+    .sudoku-cell.col-last {
+      border-right: none;
+    }
+
+    .sudoku-cell.row-last {
+      border-bottom: none;
+    }
+
+    .cell-value {
+      font-size: clamp(14px, 3.6vw, 24px);
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cell-value.given {
+      color: var(--given-color);
+    }
+
+    .cell-value.user {
+      color: var(--user-color);
+    }
+
+    .cell-value.conflict-val {
+      color: #ef4444;
+    }
+
+    .cell-notes-grid {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 1px;
+      pointer-events: none;
+    }
+
+    .note-mini {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(7px, 1.55vw, 10px);
+      font-weight: 800;
+      line-height: 1;
+      color: var(--note-color);
+    }
+
+    .bottom-deck {
+      width: 100%;
+      max-width: 660px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 18;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+
+    .act-btn {
+      padding: 6.5px 4px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid rgba(16, 185, 129, 0.58);
+      color: #ffffff;
+      font-size: 9.2px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .act-btn:hover {
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
+      border-color: var(--sb-amber);
+    }
+
+    .act-btn:active {
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
+      transform: scale(0.95);
+    }
+
+    .act-btn.active-toggle {
+      background: linear-gradient(135deg, #0a7d3b 0%, #062815 100%);
+      border-color: var(--sb-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.42);
+    }
+
+    .numpad-row {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 4px;
+    }
+
+    .num-btn {
+      padding: 8px 2px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid rgba(251, 191, 36, 0.52);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(4, 20, 11, 0.28);
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+    }
+
+    .num-btn:hover {
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
+      border-color: var(--sb-amber);
+    }
+
+    .num-btn:active {
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
+      transform: scale(0.93);
+    }
+
+    /* ========================================================================
+       4. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
+       ======================================================================== */
+    #sbIntroScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-color: var(--theme-bg);
+      background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.14) 55%, transparent 82%);
+      overflow: hidden;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+
+    #sbIntroScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spot-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-left {
+      left: 10%;
+      animation: raySwingL 2.6s ease-in-out infinite alternate;
+    }
+
+    .ray-right {
+      right: 10%;
+      animation: raySwingR 2.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes raySwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes raySwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .sb-crest-badge {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--sb-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      overflow: hidden;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    .sb-crest-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .sb-crest-fallback-svg {
+      width: 64px;
+      height: 64px;
+      display: none;
+    }
+
+    .sb-crest-badge.use-fallback .sb-crest-logo-img {
+      display: none;
+    }
+
+    .sb-crest-badge.use-fallback .sb-crest-fallback-svg {
+      display: block;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-title {
+      font-size: 25px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: var(--text-main);
+    }
+
+    .intro-progress-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.18);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE & COMPLETION SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 450px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 17px 15px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-head {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .modal-title-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .modal-h2 {
+      font-size: 18.5px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .setup-box {
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 8px;
+    }
+
+    .setup-label {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--sb-gold);
+      margin-bottom: 5px;
+    }
+
+    .pills-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .pills-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .choice-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: #0B3D20;
+      border: 1.5px solid rgba(16, 185, 129, 0.45);
+      color: #ffffff;
+      font-size: 9.6px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+    }
+
+    .choice-btn:hover {
+      background: #0d4b28;
+      border-color: var(--sb-amber);
+    }
+
+    .choice-btn:active {
+      transform: scale(0.97);
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #0a7d3b 0%, #062815 100%);
+      border-color: var(--sb-amber);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.34);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 10.5px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid var(--sb-amber);
+      box-shadow: 0 6px 16px rgba(11, 61, 32, 0.5);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0d9446 0%, #0B3D20 100%);
+      box-shadow: 0 0 15px rgba(251, 191, 36, 0.42);
+    }
+
+    .btn-primary:active {
+      background: linear-gradient(135deg, #0B3D20 0%, #051f10 100%);
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 9.5px 14px;
+      border-radius: 13px;
+      background: #0B3D20;
+      border: 1.5px solid rgba(16, 185, 129, 0.55);
+      color: #ffffff;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    }
+
+    .btn-secondary:hover {
+      background: #0a7d3b;
+      border-color: var(--sb-amber);
+    }
+
+    .btn-secondary:active {
+      background: #062815;
+      transform: scale(0.98);
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 9px;
+    }
+
+    .stats-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .shot-preview-img {
+      width: 100%;
+      max-height: 48dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--sb-amber);
+      background: var(--board-bg);
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--sb-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="sbArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">SUDOKU BOARD</div>
+
+    <!-- TOP HUD BAR WITH DIRECT LINK TO sudoku-board.html -->
+    <header class="top-bar">
+      <div class="btn-group">
+        <a id="backToSudokuLink" href="sudoku-board.html" class="icon-circle-btn glass-hud" title="Back to sudoku-board.html" aria-label="Back to sudoku-board.html">&larr;</a>
+      </div>
+
+      <div class="brand-center-hud glass-hud">
+        <div class="brand-main-row">
+          <span class="hud-logo-badge js-sudoku-logo-badge" aria-hidden="true">
+            <img src="autrobook-sudoku.png" alt="Sudoku Board Logo" class="hud-logo-img js-sudoku-logo-img" />
+            <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+              <rect x="7.5" y="7.5" width="9" height="9" rx="1.5" stroke="#fbbf24" stroke-width="1.6"/>
+              <line x1="10.5" y1="7.5" x2="10.5" y2="16.5" stroke="#fbbf24" stroke-width="1.2"/>
+              <line x1="13.5" y1="7.5" x2="13.5" y2="16.5" stroke="#fbbf24" stroke-width="1.2"/>
+              <line x1="7.5" y1="10.5" x2="16.5" y2="10.5" stroke="#fbbf24" stroke-width="1.2"/>
+              <line x1="7.5" y1="13.5" x2="16.5" y2="13.5" stroke="#fbbf24" stroke-width="1.2"/>
+            </svg>
+          </span>
+          <span>Sudoku Board</span>
+        </div>
+        <div id="statusSubRow" class="brand-sub-row">CLASSIC 9X9 &bull; MEDIUM</div>
+      </div>
+
+      <div class="btn-group">
+        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="muteBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Puzzle (P)" aria-label="Pause Puzzle">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- TIMER, DIFFICULTY & MISTAKES TELEMETRY PILLS -->
+    <section class="telemetry-strip">
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">TIME</span>
+        <span id="timerPillVal">00:00</span>
+      </div>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">DIFF</span>
+        <span id="diffPillVal">MEDIUM</span>
+      </div>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">MISTAKES</span>
+        <span id="mistakesPillVal">0 / 3</span>
+      </div>
+    </section>
+
+    <!-- CENTER 9x9 SUDOKU BOARD STAGE -->
+    <main id="boardStage" class="board-stage">
+      <div id="sudokuGrid" class="sudoku-grid" role="grid" aria-label="9 by 9 Sudoku Board"></div>
+    </main>
+
+    <!-- ACTION CONTROLS & 1-9 NUMBER PAD -->
+    <div class="bottom-deck">
+      <div class="action-row">
+        <button id="notesModeBtn" type="button" class="act-btn" title="Toggle Pencil Notes (N)">&#9998; Notes</button>
+        <button id="hintBtn" type="button" class="act-btn" title="Reveal Hint (H)">&#128161; Hint</button>
+        <button id="undoBtn" type="button" class="act-btn" title="Undo Move (Z)">&#8630; Undo</button>
+        <button id="eraseBtn" type="button" class="act-btn" title="Erase Digit (Backspace)">&#9003; Erase</button>
+        <button id="newBoardBtn" type="button" class="act-btn" title="Generate New Board">New Board</button>
+      </div>
+
+      <div id="numpadRow" class="numpad-row" role="group" aria-label="Digit Input Pad"></div>
+    </div>
+
+    <!-- ======================================================================
+         1. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
+         ====================================================================== -->
+    <section id="sbIntroScreen">
+      <div class="spot-ray ray-left"></div>
+      <div class="spot-ray ray-right"></div>
+
+      <div class="intro-center">
+        <div id="sbCrestBadge" class="sb-crest-badge js-sudoku-logo-badge">
+          <img
+            id="sbIntroLogoImg"
+            src="autrobook-sudoku.png"
+            alt="Sudoku Board Logo"
+            class="sb-crest-logo-img js-sudoku-logo-img"
+          />
+          <svg id="sbIntroFallbackSvg" class="sb-crest-fallback-svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <rect x="20" y="20" width="24" height="24" rx="3" stroke="#10b981" stroke-width="2.5"/>
+            <line x1="28" y1="20" x2="28" y2="44" stroke="#fbbf24" stroke-width="1.8"/>
+            <line x1="36" y1="20" x2="36" y2="44" stroke="#fbbf24" stroke-width="1.8"/>
+            <line x1="20" y1="28" x2="44" y2="28" stroke="#fbbf24" stroke-width="1.8"/>
+            <line x1="20" y1="36" x2="44" y2="36" stroke="#fbbf24" stroke-width="1.8"/>
+          </svg>
+        </div>
+
+        <h1 class="intro-title">Sudoku Board</h1>
+
+        <div class="intro-progress-track">
+          <div id="introBarFill" class="intro-progress-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. BOARD SETUP MODAL (DIFFICULTY, BOARD MODE & CELL STYLE)
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div class="modal-title-row">
+            <span class="hud-logo-badge js-sudoku-logo-badge" aria-hidden="true">
+              <img src="autrobook-sudoku.png" alt="Sudoku Board Logo" class="hud-logo-img js-sudoku-logo-img" />
+              <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+                <rect x="7.5" y="7.5" width="9" height="9" rx="1.5" stroke="#fbbf24" stroke-width="1.6"/>
+              </svg>
+            </span>
+            <h2 class="modal-h2">Sudoku Board Setup</h2>
+          </div>
+          <p class="modal-sub">Difficulty &bull; Board Mode &bull; Cell Style</p>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Difficulty</div>
+          <div id="difficultyGroup" class="pills-4">
+            <button type="button" class="choice-btn" data-diff="EASY">Easy</button>
+            <button type="button" class="choice-btn selected" data-diff="MEDIUM">Medium</button>
+            <button type="button" class="choice-btn" data-diff="HARD">Hard</button>
+            <button type="button" class="choice-btn" data-diff="EXPERT">Expert</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Board Mode</div>
+          <div id="boardModeGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-bmode="CLASSIC">Classic 9x9</button>
+            <button type="button" class="choice-btn" data-bmode="DAILY">Daily Challenge</button>
+            <button type="button" class="choice-btn" data-bmode="SPEEDRUN">Speed Run</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Cell Style</div>
+          <div id="cellStyleGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-cstyle="EMERALD">Emerald Grid</button>
+            <button type="button" class="choice-btn" data-cstyle="HIGH_CONTRAST">High Contrast</button>
+            <button type="button" class="choice-btn" data-cstyle="PARCHMENT">Olive Field</button>
+          </div>
+        </div>
+
+        <button id="startPuzzleBtn" type="button" class="btn-primary">
+          Start Puzzle
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Sudoku Board Snapshot</h2>
+          <p class="modal-sub">Sudoku Board</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="Sudoku Board Screenshot" />
+        <div class="btn-stack">
+          <a id="downloadShotBtn" download="Sudoku-Board.png" class="btn-primary">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Resume Puzzle</button>
+          <a href="sudoku-board.html" class="btn-secondary">&larr; Back to sudoku-board.html</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:335px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Puzzle Paused</h2>
+          <p class="modal-sub">Sudoku Board</p>
+        </div>
+        <div class="btn-stack">
+          <button id="resumePuzzleBtn" type="button" class="btn-primary">Resume</button>
+          <button id="restartPuzzleBtn" type="button" class="btn-secondary">Restart Puzzle</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Setup</button>
+          <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
+          <a href="sudoku-board.html" class="btn-secondary">&larr; Back to sudoku-board.html</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. COMPLETION & CAREER STATISTICS MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="summaryTitle" class="modal-h2">PUZZLE COMPLETE!</h2>
+        <p id="summarySub" class="modal-sub">Sudoku Board</p>
+
+        <div class="stats-box">
+          <div class="stats-row">
+            <span>Final Time</span>
+            <span id="sumTimeVal" style="font-weight:900;color:var(--sb-gold);">00:00</span>
+          </div>
+          <div class="stats-row">
+            <span>Accuracy &bull; Hints Used</span>
+            <span id="sumAccHintsVal" style="font-weight:900;color:var(--sb-emerald);">100% &bull; 0</span>
+          </div>
+          <div class="stats-row">
+            <span>Played &bull; Solved &bull; Streak</span>
+            <span id="sumPlayedSolvedVal" style="font-weight:900;">0 &bull; 0 &bull; 0</span>
+          </div>
+          <div class="stats-row">
+            <span>Best Time (Current Diff)</span>
+            <span id="sumBestDiffVal" style="font-weight:900;color:var(--sb-gold);">--:--</span>
+          </div>
+        </div>
+
+        <div class="btn-stack">
+          <button id="summaryPrimaryBtn" type="button" class="btn-primary">Play Again</button>
+          <button id="nextPuzzleBtn" type="button" class="btn-secondary">Next Puzzle</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Setup</button>
+          <a href="sudoku-board.html" class="btn-secondary">&larr; Back to sudoku-board.html</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       CONSTANTS & PERSISTENT STORAGE SCHEMA
+       ======================================================================== */
+    const DIFFICULTY_CLUES = {
+      EASY: 42,
+      MEDIUM: 34,
+      HARD: 28,
+      EXPERT: 23
+    };
+
+    const MAX_MISTAKES = 3;
+    const SB_STATS_KEY = 'autrobook_sudoku_board_stats_v1';
+
+    /* ========================================================================
+       WEB AUDIO API SYNTHESIZER
+       ======================================================================== */
+    class SBAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playSelect() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        g.gain.setValueAtTime(0.055, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.045);
+      }
+
+      playPlaceDigit() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.08);
+        g.gain.setValueAtTime(0.11, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.095);
+      }
+
+      playNoteToggle() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(698.46, now);
+        g.gain.setValueAtTime(0.065, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playErrorConflict() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(195, now);
+        osc.frequency.exponentialRampToValueAtTime(115, now + 0.18);
+        g.gain.setValueAtTime(0.13, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+
+      playHintChime() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 880].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.06;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.11, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.15);
+        });
+      }
+
+      playCompletionFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.11;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.16, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.32);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.34);
+        });
+      }
+    }
+
+    /* ========================================================================
+       DETERMINISTIC & RANDOMIZED 9x9 SUDOKU GENERATOR + SOLVER
+       ======================================================================== */
+    function createSeededRng(seed) {
+      let s = seed >>> 0;
+      return function next() {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
+    }
+
+    function getDailySeed() {
+      const now = new Date();
+      return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    }
+
+    function isPlacementValid(grid, row, col, val) {
+      for (let i = 0; i < 9; i++) {
+        if (grid[row][i] === val || grid[i][col] === val) return false;
+      }
+      const br = Math.floor(row / 3) * 3;
+      const bc = Math.floor(col / 3) * 3;
+      for (let r = br; r < br + 3; r++) {
+        for (let c = bc; c < bc + 3; c++) {
+          if (grid[r][c] === val) return false;
+        }
+      }
+      return true;
+    }
+
+    function generateSolvedBoard(rng) {
+      const grid = Array.from({ length: 9 }, () => Array(9).fill(0));
+      const baseDigits = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+      function fillCell(idx) {
+        if (idx === 81) return true;
+        const r = Math.floor(idx / 9);
+        const c = idx % 9;
+        const candidates = baseDigits.slice();
+        for (let i = candidates.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          const tmp = candidates[i];
+          candidates[i] = candidates[j];
+          candidates[j] = tmp;
+        }
+
+        for (const num of candidates) {
+          if (isPlacementValid(grid, r, c, num)) {
+            grid[r][c] = num;
+            if (fillCell(idx + 1)) return true;
+            grid[r][c] = 0;
+          }
+        }
+        return false;
+      }
+
+      fillCell(0);
+      return grid;
+    }
+
+    function buildPuzzleFromSolution(solution, clueCount, rng) {
+      const puzzle = solution.map((row) => row.slice());
+      const indices = [];
+      for (let i = 0; i < 81; i++) indices.push(i);
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const tmp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = tmp;
+      }
+
+      const cellsToRemove = Math.max(20, Math.min(62, 81 - clueCount));
+      for (let k = 0; k < cellsToRemove; k++) {
+        const cellIdx = indices[k];
+        const r = Math.floor(cellIdx / 9);
+        const c = cellIdx % 9;
+        puzzle[r][c] = 0;
+      }
+
+      return puzzle;
+    }
+
+    /* ========================================================================
+       SUDOKU BOARD GAME CONTROLLER
+       ======================================================================== */
+    class SudokuBoardGame {
+      constructor() {
+        this.audio = new SBAudioSynth();
+        this.gridEl = document.getElementById('sudokuGrid');
+        this.numpadEl = document.getElementById('numpadRow');
+
+        this.difficulty = 'MEDIUM'; // EASY, MEDIUM, HARD, EXPERT
+        this.boardMode = 'CLASSIC'; // CLASSIC, DAILY, SPEEDRUN
+        this.cellStyle = 'EMERALD'; // EMERALD, HIGH_CONTRAST, PARCHMENT
+
+        const saved = this.loadStats();
+        this.stats = {
+          played: saved.played || 0,
+          solved: saved.solved || 0,
+          streak: saved.streak || 0,
+          bestTimes: saved.bestTimes || { EASY: null, MEDIUM: null, HARD: null, EXPERT: null }
+        };
+        this.countedPlay = false;
+        this.countedWin = false;
+
+        this.solution = [];
+        this.given = [];
+        this.board = [];
+        this.notes = [];
+        this.undoStack = [];
+
+        this.selectedRow = 4;
+        this.selectedCol = 4;
+        this.notesMode = false;
+        this.mistakes = 0;
+        this.hintsUsed = 0;
+        this.validEntries = 0;
+        this.invalidEntries = 0;
+        this.elapsedSeconds = 0;
+        this.puzzleSeedOffset = 0;
+
+        this.puzzleComplete = false;
+        this.failedByMistakes = false;
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = false;
+
+        this.renderAutrobookSudokuLogo();
+        this.syncThemeIcon();
+        this.buildNumpad();
+        this.bindEvents();
+        this.resizeBoardSquare();
+        this.generatePuzzle(false);
+        this.refreshHUD();
+        this.startIntro();
+      }
+
+      renderAutrobookSudokuLogo() {
+        const logoSrc = 'autrobook-sudoku.png';
+        const badges = document.querySelectorAll('.js-sudoku-logo-badge');
+        badges.forEach((badge) => {
+          const img = badge.querySelector('.js-sudoku-logo-img');
+          if (!img) return;
+
+          const showFallback = () => badge.classList.add('use-fallback');
+          const showLogo = () => badge.classList.remove('use-fallback');
+
+          img.onerror = showFallback;
+          img.onload = showLogo;
+
+          if (img.getAttribute('src') !== logoSrc) {
+            img.src = logoSrc;
+          }
+          if (img.complete && img.naturalWidth === 0) {
+            showFallback();
+          }
+        });
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(SB_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(SB_STATS_KEY, JSON.stringify(this.stats));
+        } catch (_e) {}
+      }
+
+      formatClock(sec) {
+        const s = Math.max(0, Math.floor(sec));
+        const mins = Math.floor(s / 60);
+        const rem = s % 60;
+        return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      resizeBoardSquare() {
+        const stage = document.getElementById('boardStage').getBoundingClientRect();
+        const availW = Math.max(220, stage.width - 8);
+        const availH = Math.max(220, stage.height - 8);
+        const side = Math.floor(Math.min(availW, availH));
+        this.gridEl.style.width = `${side}px`;
+        this.gridEl.style.height = `${side}px`;
+      }
+
+      generatePuzzle(incrementSeed = false) {
+        if (incrementSeed) this.puzzleSeedOffset++;
+        const baseSeed = this.boardMode === 'DAILY'
+          ? getDailySeed() + this.puzzleSeedOffset
+          : (Date.now() ^ (this.puzzleSeedOffset * 2654435761)) >>> 0;
+        const rng = createSeededRng(baseSeed);
+
+        this.solution = generateSolvedBoard(rng);
+        const clues = DIFFICULTY_CLUES[this.difficulty] || 34;
+        const puzzle = buildPuzzleFromSolution(this.solution, clues, rng);
+
+        this.given = puzzle.map((r) => r.map((v) => v !== 0));
+        this.board = puzzle.map((r) => r.slice());
+        this.notes = Array.from({ length: 9 }, () =>
+          Array.from({ length: 9 }, () => new Set())
+        );
+        this.undoStack = [];
+
+        this.mistakes = 0;
+        this.hintsUsed = 0;
+        this.validEntries = 0;
+        this.invalidEntries = 0;
+        this.elapsedSeconds = 0;
+        this.puzzleComplete = false;
+        this.failedByMistakes = false;
+        this.countedPlay = false;
+        this.countedWin = false;
+
+        this.selectedRow = 4;
+        this.selectedCol = 4;
+
+        this.refreshHUD();
+        this.renderBoard();
+      }
+
+      restartCurrentPuzzle() {
+        this.board = this.given.map((r, ri) =>
+          r.map((isGiven, ci) => (isGiven ? this.solution[ri][ci] : 0))
+        );
+        this.notes = Array.from({ length: 9 }, () =>
+          Array.from({ length: 9 }, () => new Set())
+        );
+        this.undoStack = [];
+        this.mistakes = 0;
+        this.hintsUsed = 0;
+        this.validEntries = 0;
+        this.invalidEntries = 0;
+        this.elapsedSeconds = 0;
+        this.puzzleComplete = false;
+        this.failedByMistakes = false;
+        this.countedWin = false;
+        this.refreshHUD();
+        this.renderBoard();
+      }
+
+      ensurePlayCounted() {
+        if (!this.countedPlay) {
+          this.countedPlay = true;
+          this.stats.played++;
+          this.saveStats();
+        }
+      }
+
+      pushUndoSnapshot() {
+        this.undoStack.push({
+          board: this.board.map((r) => r.slice()),
+          notes: this.notes.map((r) => r.map((s) => new Set(s))),
+          mistakes: this.mistakes
+        });
+        if (this.undoStack.length > 80) {
+          this.undoStack.shift();
+        }
+      }
+
+      undoMove() {
+        if (this.puzzleComplete || this.failedByMistakes || !this.undoStack.length) return;
+        const snap = this.undoStack.pop();
+        this.board = snap.board;
+        this.notes = snap.notes;
+        this.mistakes = snap.mistakes;
+        this.audio.playSelect();
+        this.refreshHUD();
+        this.renderBoard();
+      }
+
+      clearNotesForPeers(row, col, digit) {
+        for (let i = 0; i < 9; i++) {
+          this.notes[row][i].delete(digit);
+          this.notes[i][col].delete(digit);
+        }
+        const br = Math.floor(row / 3) * 3;
+        const bc = Math.floor(col / 3) * 3;
+        for (let r = br; r < br + 3; r++) {
+          for (let c = bc; c < bc + 3; c++) {
+            this.notes[r][c].delete(digit);
+          }
+        }
+      }
+
+      inputDigit(digit) {
+        if (this.paused || this.puzzleComplete || this.failedByMistakes) return;
+        const r = this.selectedRow;
+        const c = this.selectedCol;
+        if (this.given[r][c]) {
+          this.audio.playSelect();
+          return;
+        }
+
+        this.ensurePlayCounted();
+        this.pushUndoSnapshot();
+
+        if (this.notesMode) {
+          if (this.board[r][c] !== 0) {
+            this.board[r][c] = 0;
+          }
+          if (this.notes[r][c].has(digit)) {
+            this.notes[r][c].delete(digit);
+          } else {
+            this.notes[r][c].add(digit);
+          }
+          this.audio.playNoteToggle();
+          this.renderBoard();
+          return;
+        }
+
+        if (this.board[r][c] === digit) {
+          this.board[r][c] = 0;
+          this.audio.playSelect();
+          this.renderBoard();
+          return;
+        }
+
+        this.board[r][c] = digit;
+        this.notes[r][c].clear();
+
+        if (this.solution[r][c] === digit) {
+          this.validEntries++;
+          this.clearNotesForPeers(r, c, digit);
+          this.audio.playPlaceDigit();
+          this.checkBoardSolved();
+        } else {
+          this.invalidEntries++;
+          this.mistakes++;
+          this.audio.playErrorConflict();
+          this.showToast(`CONFLICT (${this.mistakes}/${MAX_MISTAKES})`);
+          if (this.mistakes >= MAX_MISTAKES) {
+            this.failedByMistakes = true;
+            this.stats.streak = 0;
+            this.saveStats();
+            this.openSummaryModal('LIMIT REACHED', 'Too many mistakes on this board', true);
+          }
+        }
+
+        this.refreshHUD();
+        this.renderBoard();
+      }
+
+      eraseSelectedCell() {
+        if (this.paused || this.puzzleComplete || this.failedByMistakes) return;
+        const r = this.selectedRow;
+        const c = this.selectedCol;
+        if (this.given[r][c]) return;
+        if (this.board[r][c] === 0 && this.notes[r][c].size === 0) return;
+
+        this.pushUndoSnapshot();
+        this.board[r][c] = 0;
+        this.notes[r][c].clear();
+        this.audio.playSelect();
+        this.renderBoard();
+      }
+
+      useHint() {
+        if (this.paused || this.puzzleComplete || this.failedByMistakes) return;
+        this.ensurePlayCounted();
+
+        let targetR = this.selectedRow;
+        let targetC = this.selectedCol;
+        if (this.given[targetR][targetC] || this.board[targetR][targetC] === this.solution[targetR][targetC]) {
+          let found = false;
+          for (let r = 0; r < 9 && !found; r++) {
+            for (let c = 0; c < 9 && !found; c++) {
+              if (!this.given[r][c] && this.board[r][c] !== this.solution[r][c]) {
+                targetR = r;
+                targetC = c;
+                found = true;
+              }
+            }
+          }
+          if (!found) return;
+        }
+
+        this.pushUndoSnapshot();
+        const ans = this.solution[targetR][targetC];
+        this.board[targetR][targetC] = ans;
+        this.notes[targetR][targetC].clear();
+        this.clearNotesForPeers(targetR, targetC, ans);
+        this.selectedRow = targetR;
+        this.selectedCol = targetC;
+        this.hintsUsed++;
+        this.validEntries++;
+        this.audio.playHintChime();
+        this.showToast(`HINT REVEALED: ${ans}`);
+        this.checkBoardSolved();
+        this.refreshHUD();
+        this.renderBoard();
+      }
+
+      isCellConflicting(r, c) {
+        const val = this.board[r][c];
+        if (!val) return false;
+        if (this.solution[r][c] && val !== this.solution[r][c]) return true;
+
+        for (let i = 0; i < 9; i++) {
+          if (i !== c && this.board[r][i] === val) return true;
+          if (i !== r && this.board[i][c] === val) return true;
+        }
+        const br = Math.floor(r / 3) * 3;
+        const bc = Math.floor(c / 3) * 3;
+        for (let rr = br; rr < br + 3; rr++) {
+          for (let cc = bc; cc < bc + 3; cc++) {
+            if ((rr !== r || cc !== c) && this.board[rr][cc] === val) return true;
+          }
+        }
+        return false;
+      }
+
+      checkBoardSolved() {
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (this.board[r][c] !== this.solution[r][c]) return;
+          }
+        }
+
+        this.puzzleComplete = true;
+        this.audio.playCompletionFanfare();
+
+        if (!this.countedWin) {
+          this.countedWin = true;
+          this.stats.solved++;
+          this.stats.streak++;
+          const prevBest = this.stats.bestTimes[this.difficulty];
+          if (prevBest === null || prevBest === undefined || this.elapsedSeconds < prevBest) {
+            this.stats.bestTimes[this.difficulty] = this.elapsedSeconds;
+          }
+          this.saveStats();
+        }
+
+        this.openSummaryModal('PUZZLE COMPLETE!', `${this.difficulty} • ${this.boardMode}`, true);
+      }
+
+      computeAccuracyPct() {
+        const total = this.validEntries + this.invalidEntries;
+        if (total === 0) return 100;
+        return Math.max(0, Math.round((this.validEntries / total) * 100));
+      }
+
+      openSummaryModal(title, sub, isCompletedState) {
+        document.getElementById('summaryTitle').textContent = title;
+        document.getElementById('summarySub').textContent = sub;
+        document.getElementById('sumTimeVal').textContent = this.formatClock(this.elapsedSeconds);
+        document.getElementById('sumAccHintsVal').textContent = `${this.computeAccuracyPct()}% • ${this.hintsUsed}`;
+        document.getElementById('sumPlayedSolvedVal').textContent =
+          `${this.stats.played} • ${this.stats.solved} • ${this.stats.streak}`;
+        const bestSec = this.stats.bestTimes[this.difficulty];
+        document.getElementById('sumBestDiffVal').textContent =
+          bestSec !== null && bestSec !== undefined ? this.formatClock(bestSec) : '--:--';
+
+        const primaryBtn = document.getElementById('summaryPrimaryBtn');
+        primaryBtn.textContent = isCompletedState ? 'Play Again' : 'Resume Puzzle';
+        primaryBtn.dataset.action = isCompletedState ? 'RETRY_SAME' : 'RESUME';
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         RENDERING BOARD, NUMPAD & HUD
+         ====================================================================== */
+      buildNumpad() {
+        this.numpadEl.innerHTML = '';
+        for (let d = 1; d <= 9; d++) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'num-btn';
+          btn.textContent = String(d);
+          btn.addEventListener('click', () => {
+            this.audio.unlock();
+            this.inputDigit(d);
+          });
+          this.numpadEl.appendChild(btn);
+        }
+      }
+
+      renderBoard() {
+        this.gridEl.innerHTML = '';
+        const selVal = this.board[this.selectedRow][this.selectedCol];
+        const selBoxR = Math.floor(this.selectedRow / 3);
+        const selBoxC = Math.floor(this.selectedCol / 3);
+
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'sudoku-cell';
+
+            const boxR = Math.floor(r / 3);
+            const boxC = Math.floor(c / 3);
+            if ((boxR + boxC) % 2 === 1) cell.classList.add('alt-shade');
+
+            const isSelected = r === this.selectedRow && c === this.selectedCol;
+            const isPeer = !isSelected && (r === this.selectedRow || c === this.selectedCol || (boxR === selBoxR && boxC === selBoxC));
+            const val = this.board[r][c];
+            const isMatch = !isSelected && selVal !== 0 && val === selVal;
+            const conflict = this.isCellConflicting(r, c);
+
+            if (isPeer) cell.classList.add('peer-highlight');
+            if (isMatch) cell.classList.add('match-highlight');
+            if (isSelected) cell.classList.add('selected');
+            if (conflict) cell.classList.add('conflict');
+
+            if (c === 2 || c === 5) cell.classList.add('box-right');
+            if (r === 2 || r === 5) cell.classList.add('box-bottom');
+            if (c === 8) cell.classList.add('col-last');
+            if (r === 8) cell.classList.add('row-last');
+
+            if (val !== 0) {
+              const span = document.createElement('span');
+              span.className = 'cell-value ' + (conflict ? 'conflict-val' : (this.given[r][c] ? 'given' : 'user'));
+              span.textContent = String(val);
+              cell.appendChild(span);
+            } else if (this.notes[r][c].size > 0) {
+              const notesGrid = document.createElement('div');
+              notesGrid.className = 'cell-notes-grid';
+              for (let n = 1; n <= 9; n++) {
+                const nSpan = document.createElement('span');
+                nSpan.className = 'note-mini';
+                nSpan.textContent = this.notes[r][c].has(n) ? String(n) : '';
+                notesGrid.appendChild(nSpan);
+              }
+              cell.appendChild(notesGrid);
+            }
+
+            cell.addEventListener('click', () => {
+              this.audio.unlock();
+              this.selectedRow = r;
+              this.selectedCol = c;
+              this.audio.playSelect();
+              this.renderBoard();
+            });
+
+            this.gridEl.appendChild(cell);
+          }
+        }
+      }
+
+      refreshHUD() {
+        document.getElementById('timerPillVal').textContent = this.formatClock(this.elapsedSeconds);
+        document.getElementById('diffPillVal').textContent = this.difficulty;
+        document.getElementById('mistakesPillVal').textContent = `${this.mistakes} / ${MAX_MISTAKES}`;
+        document.getElementById('statusSubRow').textContent = `${this.boardMode} • ${this.difficulty}`;
+        document.getElementById('notesModeBtn').classList.toggle('active-toggle', this.notesMode);
+      }
+
+      /* ======================================================================
+         SCREENSHOT, INTRO & EVENT BINDINGS
+         ====================================================================== */
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playSelect();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        const arenaEl = document.getElementById('sbArena');
+        const rect = arenaEl.getBoundingClientRect();
+        const w = Math.max(320, Math.floor(rect.width));
+        const h = Math.max(480, Math.floor(rect.height));
+        const snapCanvas = document.createElement('canvas');
+        snapCanvas.width = w;
+        snapCanvas.height = h;
+        const sctx = snapCanvas.getContext('2d');
+
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        sctx.fillStyle = isLight ? '#FFFFFF' : '#202124';
+        sctx.fillRect(0, 0, w, h);
+
+        sctx.fillStyle = '#0B3D20';
+        sctx.fillRect(12, 12, w - 24, 46);
+        sctx.fillStyle = '#fbbf24';
+        sctx.font = '900 14px Inter, sans-serif';
+        sctx.fillText(`SUDOKU BOARD • ${this.difficulty} • ${this.formatClock(this.elapsedSeconds)}`, 22, 40);
+
+        const gridRect = this.gridEl.getBoundingClientRect();
+        const gx = gridRect.left - rect.left;
+        const gy = gridRect.top - rect.top;
+        const gs = gridRect.width;
+        const step = gs / 9;
+
+        sctx.fillStyle = '#0c2618';
+        sctx.fillRect(gx, gy, gs, gs);
+
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const cx = gx + c * step;
+            const cy = gy + r * step;
+            sctx.strokeStyle = (r % 3 === 0 || c % 3 === 0) ? '#fbbf24' : 'rgba(16, 185, 129, 0.35)';
+            sctx.lineWidth = (r % 3 === 2 || c % 3 === 2) ? 2 : 1;
+            sctx.strokeRect(cx, cy, step, step);
+
+            const val = this.board[r][c];
+            if (val) {
+              sctx.fillStyle = this.given[r][c] ? '#ffffff' : '#34d399';
+              sctx.font = `900 ${Math.round(step * 0.55)}px Inter, sans-serif`;
+              sctx.textAlign = 'center';
+              sctx.textBaseline = 'middle';
+              sctx.fillText(String(val), cx + step * 0.5, cy + step * 0.52);
+            }
+          }
+        }
+
+        try {
+          const url = snapCanvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotModalOpen = true;
+          document.getElementById('screenshotImg').src = url;
+          const link = document.getElementById('downloadShotBtn');
+          link.href = url;
+          link.download = `Sudoku-Board-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_e) {}
+      }
+
+      startIntro() {
+        const dur = 1800;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('sbIntroScreen').classList.add('hidden');
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeBoardSquare());
+
+        const backLink = document.getElementById('backToSudokuLink');
+        if (backLink) {
+          backLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = 'sudoku-board.html';
+          });
+        }
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+            }
+          });
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.toggleTheme();
+        });
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#difficultyGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.difficulty = btn.dataset.diff;
+            document.querySelectorAll('#difficultyGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#boardModeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.boardMode = btn.dataset.bmode;
+            document.querySelectorAll('#boardModeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#cellStyleGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.cellStyle = btn.dataset.cstyle;
+            document.body.dataset.cellStyle = this.cellStyle;
+            document.querySelectorAll('#cellStyleGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.getElementById('startPuzzleBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.generatePuzzle(true);
+        });
+
+        document.getElementById('notesModeBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.notesMode = !this.notesMode;
+          this.audio.playNoteToggle();
+          this.refreshHUD();
+        });
+
+        document.getElementById('hintBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.useHint();
+        });
+
+        document.getElementById('undoBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.undoMove();
+        });
+
+        document.getElementById('eraseBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.eraseSelectedCell();
+        });
+
+        document.getElementById('newBoardBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.generatePuzzle(true);
+          this.showToast('NEW BOARD GENERATED');
+        });
+
+        document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotModalOpen = false;
+          this.paused = false;
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen || this.puzzleComplete || this.failedByMistakes) return;
+          this.paused = true;
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumePuzzleBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+        });
+
+        document.getElementById('restartPuzzleBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.restartCurrentPuzzle();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
+        });
+
+        document.getElementById('statsFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSummaryModal('CAREER STATS', 'Sudoku Board', false);
+        });
+
+        document.getElementById('summaryPrimaryBtn').addEventListener('click', () => {
+          const act = document.getElementById('summaryPrimaryBtn').dataset.action;
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          if (act === 'RETRY_SAME') {
+            this.restartCurrentPuzzle();
+          }
+        });
+
+        document.getElementById('nextPuzzleBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.generatePuzzle(true);
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen) return;
+
+          if (e.code === 'KeyP' || e.code === 'Escape') {
+            if (!this.puzzleComplete && !this.failedByMistakes) {
+              this.paused = !this.paused;
+              document.getElementById('pauseModal').classList.toggle('open', this.paused);
+            }
+            return;
+          }
+
+          if (this.paused || this.puzzleComplete || this.failedByMistakes) return;
+
+          if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+            e.preventDefault();
+            this.selectedRow = (this.selectedRow + 8) % 9;
+            this.audio.playSelect();
+            this.renderBoard();
+          } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+            e.preventDefault();
+            this.selectedRow = (this.selectedRow + 1) % 9;
+            this.audio.playSelect();
+            this.renderBoard();
+          } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+            e.preventDefault();
+            this.selectedCol = (this.selectedCol + 8) % 9;
+            this.audio.playSelect();
+            this.renderBoard();
+          } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+            e.preventDefault();
+            this.selectedCol = (this.selectedCol + 1) % 9;
+            this.audio.playSelect();
+            this.renderBoard();
+          } else if (e.code === 'Backspace' || e.code === 'Delete') {
+            e.preventDefault();
+            this.audio.unlock();
+            this.eraseSelectedCell();
+          } else if (e.code === 'KeyN') {
+            this.audio.unlock();
+            this.notesMode = !this.notesMode;
+            this.audio.playNoteToggle();
+            this.refreshHUD();
+          } else if (e.code === 'KeyH') {
+            this.audio.unlock();
+            this.useHint();
+          } else if (e.code === 'KeyZ') {
+            this.audio.unlock();
+            this.undoMove();
+          } else if (/^[1-9]$/.test(e.key)) {
+            this.audio.unlock();
+            this.inputDigit(parseInt(e.key, 10));
+          }
+        });
+
+        setInterval(() => {
+          if (!this.paused && !this.introActive && !this.setupOpen && !this.shotModalOpen && !this.puzzleComplete && !this.failedByMistakes) {
+            this.elapsedSeconds++;
+            this.refreshHUD();
+          }
+        }, 1000);
+      }
+    }
+
+    window.addEventListener('load', () => {
+      new SudokuBoardGame();
+    });
+  </script>
+</body>
+</html>
