@@ -4,32 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Snake Arcade</title>
-  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/theme.css" />
   <style>
     /* ========================================================================
        1. DESIGN TOKENS & SYSTEM LIGHT (#FFFFFF) / DARK (#202124) THEMES
        ======================================================================== */
     :root {
-      --asa-forest: #0B3D20;
-      --asa-emerald-deep: #0a7d3b;
-      --asa-emerald: #10b981;
-      --asa-gold: #f59e0b;
-      --asa-amber: #fbbf24;
+      --sn-forest: #0B3D20;
+      --sn-emerald-deep: #0a7d3b;
+      --sn-emerald: #10b981;
+      --sn-gold: #f59e0b;
+      --sn-amber: #fbbf24;
 
       --theme-bg: #202124;
-      --hud-bg: rgba(32, 33, 36, 0.94);
+      --hud-bg: rgba(32, 33, 36, 0.95);
       --hud-border: rgba(16, 185, 129, 0.45);
       --text-main: #ffffff;
       --text-sub: #bbf7d0;
       --modal-bg: #202124;
       --tile-bg: rgba(255, 255, 255, 0.06);
       --tile-border: rgba(255, 255, 255, 0.16);
+
+      --arena-a: #0c3b20;
+      --arena-b: #092e19;
+      --arena-grid: rgba(16, 185, 129, 0.14);
+      --arena-border: #fbbf24;
     }
 
     @media (prefers-color-scheme: light) {
       :root {
         --theme-bg: #FFFFFF;
-        --hud-bg: rgba(255, 255, 255, 0.96);
+        --hud-bg: rgba(255, 255, 255, 0.97);
         --hud-border: rgba(10, 125, 59, 0.35);
         --text-main: #062112;
         --text-sub: #0a7d3b;
@@ -41,7 +46,7 @@
 
     body[data-theme="dark"] {
       --theme-bg: #202124;
-      --hud-bg: rgba(32, 33, 36, 0.94);
+      --hud-bg: rgba(32, 33, 36, 0.95);
       --hud-border: rgba(16, 185, 129, 0.45);
       --text-main: #ffffff;
       --text-sub: #bbf7d0;
@@ -52,13 +57,35 @@
 
     body[data-theme="light"] {
       --theme-bg: #FFFFFF;
-      --hud-bg: rgba(255, 255, 255, 0.96);
+      --hud-bg: rgba(255, 255, 255, 0.97);
       --hud-border: rgba(10, 125, 59, 0.35);
       --text-main: #062112;
       --text-sub: #0a7d3b;
       --modal-bg: #FFFFFF;
       --tile-bg: rgba(11, 61, 32, 0.05);
       --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    /* Arena Themes */
+    body[data-arena="EMERALD_PITCH"] {
+      --arena-a: #0c3b20;
+      --arena-b: #092e19;
+      --arena-grid: rgba(16, 185, 129, 0.16);
+      --arena-border: #fbbf24;
+    }
+
+    body[data-arena="GOLDEN_TURF"] {
+      --arena-a: #292412;
+      --arena-b: #1f1b0d;
+      --arena-grid: rgba(251, 191, 36, 0.15);
+      --arena-border: #f59e0b;
+    }
+
+    body[data-arena="MIDNIGHT_ARENA"] {
+      --arena-a: #071b13;
+      --arena-b: #05130d;
+      --arena-grid: rgba(16, 185, 129, 0.22);
+      --arena-border: #10b981;
     }
 
     *, *::before, *::after {
@@ -80,7 +107,7 @@
       transition: background-color 0.2s ease, color 0.2s ease;
     }
 
-    #asaArena {
+    #snArena {
       position: relative;
       width: 100vw;
       height: 100vh;
@@ -91,7 +118,7 @@
       justify-content: space-between;
       padding: max(5px, env(safe-area-inset-top)) 7px max(5px, env(safe-area-inset-bottom));
       background-color: var(--theme-bg);
-      background-image: radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.12) 48%, transparent 78%);
+      background-image: radial-gradient(circle at 50% 16%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.1) 52%, transparent 82%);
       overflow: hidden;
     }
 
@@ -101,15 +128,15 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--hud-border);
-      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
     }
 
     /* ========================================================================
-       2. TOP BROADCAST HUD, PLAYER CARDS & SPEED RADAR
+       2. TOP BROADCAST HUD & SCORE / BEST / LENGTH TELEMETRY
        ======================================================================== */
     .top-bar {
       width: 100%;
-      max-width: 780px;
+      max-width: 720px;
       z-index: 20;
       display: flex;
       align-items: center;
@@ -134,43 +161,42 @@
       font-weight: 900;
       background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
       color: #ffffff;
-      border: 1.5px solid rgba(251, 191, 36, 0.58);
+      border: 1.5px solid rgba(251, 191, 36, 0.62);
       box-shadow: 0 4px 12px rgba(4, 20, 11, 0.35);
       text-decoration: none;
       cursor: pointer;
-      transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+      transition: transform 0.13s ease, border-color 0.13s ease, background 0.13s ease, box-shadow 0.13s ease;
     }
 
     .icon-circle-btn:hover {
       background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
-      border-color: var(--asa-amber);
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+      border-color: var(--sn-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.38);
     }
 
     .icon-circle-btn:active {
-      background: linear-gradient(145deg, #0B3D20 0%, #062614 100%);
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
       transform: scale(0.92);
     }
 
-    .scoreboard-center {
+    .brand-center-hud {
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 3px 9px;
       border-radius: 13px;
       flex: 1;
-      max-width: 410px;
+      max-width: 360px;
       border-color: rgba(251, 191, 36, 0.55);
       min-width: 0;
     }
 
-    .score-main-row {
+    .brand-main-row {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 11px;
       font-weight: 900;
-      font-variant-numeric: tabular-nums;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -182,7 +208,7 @@
       height: 20px;
       border-radius: 50%;
       background: linear-gradient(145deg, #0a7d3b, #0B3D20);
-      border: 1.5px solid var(--asa-amber);
+      border: 1.5px solid var(--sn-amber);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -212,17 +238,8 @@
       display: block;
     }
 
-    .score-pill {
-      padding: 1px 7px;
-      border-radius: 7px;
-      background: rgba(16, 185, 129, 0.22);
-      border: 1px solid rgba(16, 185, 129, 0.55);
-      color: var(--asa-gold);
-      font-size: 11px;
-    }
-
-    .status-sub-row {
-      font-size: 8.6px;
+    .brand-sub-row {
+      font-size: 8.4px;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -233,231 +250,100 @@
       max-width: 100%;
     }
 
-    .players-radar-row {
+    .telemetry-strip {
       width: 100%;
-      max-width: 780px;
+      max-width: 720px;
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 5px;
-      align-items: center;
       z-index: 16;
     }
 
-    .snake-panel {
+    .hud-pill {
       padding: 4px 8px;
-      border-radius: 11px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 5px;
-      min-width: 0;
-      border-width: 1.5px;
-    }
-
-    .snake-panel.active-snake {
-      border-color: var(--asa-amber);
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.24);
-    }
-
-    .s-meta {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    .s-name-line {
-      display: flex;
-      align-items: center;
       gap: 4px;
       font-size: 10px;
       font-weight: 900;
+      font-variant-numeric: tabular-nums;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .badge-num {
-      padding: 1px 5px;
-      border-radius: 6px;
-      font-size: 8.5px;
-      font-weight: 900;
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.65);
-      flex-shrink: 0;
-    }
-
-    .s-sub-line {
-      font-size: 8.2px;
-      font-weight: 800;
+    .hud-pill-lbl {
+      color: var(--sn-gold);
+      font-size: 8px;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--text-sub);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .pts-badge {
-      padding: 2px 6px;
-      border-radius: 7px;
-      background: rgba(245, 158, 11, 0.2);
-      border: 1px solid rgba(251, 191, 36, 0.5);
-      color: var(--asa-gold);
-      font-size: 9.2px;
-      font-weight: 900;
-      flex-shrink: 0;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .radar-box {
-      padding: 3px 8px;
-      border-radius: 11px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      border-color: rgba(251, 191, 36, 0.48);
-      min-width: 114px;
-    }
-
-    .radar-lbl {
-      font-size: 7.5px;
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--asa-gold);
-    }
-
-    .radar-val {
-      font-size: 10.5px;
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .radar-sub {
-      font-size: 7.8px;
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-      color: var(--text-sub);
     }
 
     /* ========================================================================
-       3. CENTER HIGH-DPI SNAKE CANVAS & TOUCH CONTROLS
+       3. CENTER HIGH-DPI CANVAS STAGE & TOUCH D-PAD CONTROLS
        ======================================================================== */
-    .arena-stage {
+    .board-stage {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       flex: 1;
       width: 100%;
-      max-width: 780px;
-      max-height: 49dvh;
+      max-width: 720px;
+      min-height: 0;
       margin: 2px 0;
     }
 
     canvas#snakeCanvas {
       display: block;
-      border-radius: 16px;
-      border: 2px solid var(--asa-emerald);
-      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+      border-radius: 15px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
       touch-action: none;
     }
 
-    .bottom-controls-deck {
+    .dpad-deck {
       width: 100%;
-      max-width: 780px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      z-index: 18;
-    }
-
-    .dpad-cluster {
-      display: grid;
-      grid-template-columns: repeat(3, 42px);
-      grid-template-rows: repeat(2, 34px);
-      gap: 4px;
-    }
-
-    .dpad-btn {
-      border-radius: 9px;
-      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
-      color: #ffffff;
-      border: 1.5px solid rgba(16, 185, 129, 0.65);
-      box-shadow: 0 4px 12px rgba(4, 20, 11, 0.35);
-      font-size: 12px;
-      font-weight: 900;
-      cursor: pointer;
+      max-width: 720px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+      gap: 6px;
+      z-index: 18;
+    }
+
+    .dpad-btn {
+      padding: 9px 14px;
+      min-width: 56px;
+      border-radius: 11px;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid rgba(16, 185, 129, 0.62);
+      box-shadow: 0 4px 12px rgba(4, 20, 11, 0.34);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
     }
 
     .dpad-btn:hover {
       background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
-      border-color: var(--asa-amber);
+      border-color: var(--sn-amber);
     }
 
     .dpad-btn:active {
-      background: linear-gradient(145deg, #0B3D20 0%, #062614 100%);
-      border-color: var(--asa-amber);
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
+      border-color: var(--sn-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
       transform: scale(0.94);
     }
 
-    .side-action-stack {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      max-width: 270px;
-    }
-
-    .buff-status-strip {
-      padding: 4px 8px;
-      border-radius: 10px;
-      font-size: 8.8px;
-      font-weight: 800;
-      color: var(--text-sub);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .boost-btn {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 11px;
-      background: linear-gradient(135deg, #0a7d3b 0%, #0B3D20 100%);
-      border: 1.5px solid var(--asa-amber);
-      box-shadow: 0 6px 16px rgba(11, 61, 32, 0.45);
-      color: #ffffff;
-      font-size: 10.5px;
-      font-weight: 900;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
-    }
-
-    .boost-btn:hover {
-      background: linear-gradient(135deg, #0d9446 0%, #0B3D20 100%);
-      box-shadow: 0 0 14px rgba(251, 191, 36, 0.38);
-    }
-
-    .boost-btn:active {
-      background: linear-gradient(135deg, #0B3D20 0%, #051f10 100%);
-      transform: scale(0.96);
-    }
-
     /* ========================================================================
-       4. MINIMALIST INTRO SCREEN (NO "AUTROBOOK CHAMPION CIRCUIT" LINE)
+       4. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
        ======================================================================== */
-    #asaIntroScreen {
+    #snIntroScreen {
       position: absolute;
       inset: 0;
       z-index: 60;
@@ -469,10 +355,10 @@
       background-color: var(--theme-bg);
       background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.14) 55%, transparent 82%);
       overflow: hidden;
-      transition: opacity 0.4s ease, visibility 0.4s ease;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
     }
 
-    #asaIntroScreen.hidden {
+    #snIntroScreen.hidden {
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
@@ -483,19 +369,19 @@
       top: -25%;
       width: 220px;
       height: 160%;
-      background: linear-gradient(180deg, rgba(251, 191, 36, 0.22) 0%, rgba(16, 185, 129, 0.11) 55%, transparent 100%);
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
       filter: blur(14px);
       pointer-events: none;
     }
 
     .ray-left {
       left: 10%;
-      animation: raySwingL 2.8s ease-in-out infinite alternate;
+      animation: raySwingL 2.6s ease-in-out infinite alternate;
     }
 
     .ray-right {
       right: 10%;
-      animation: raySwingR 2.8s ease-in-out infinite alternate;
+      animation: raySwingR 2.6s ease-in-out infinite alternate;
     }
 
     @keyframes raySwingL {
@@ -519,13 +405,13 @@
       width: 100%;
     }
 
-    .asa-crest-badge {
+    .sn-crest-badge {
       width: 112px;
       height: 112px;
       border-radius: 50%;
       background: linear-gradient(145deg, #0a7d3b, #0B3D20);
-      border: 3px solid var(--asa-amber);
-      box-shadow: 0 0 36px rgba(251, 191, 36, 0.42);
+      border: 3px solid var(--sn-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -534,7 +420,7 @@
       animation: crestPulse 1.5s ease-in-out infinite alternate;
     }
 
-    .asa-crest-logo-img {
+    .sn-crest-logo-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -542,17 +428,17 @@
       display: block;
     }
 
-    .asa-crest-fallback-svg {
+    .sn-crest-fallback-svg {
       width: 64px;
       height: 64px;
       display: none;
     }
 
-    .asa-crest-badge.use-fallback .asa-crest-logo-img {
+    .sn-crest-badge.use-fallback .sn-crest-logo-img {
       display: none;
     }
 
-    .asa-crest-badge.use-fallback .asa-crest-fallback-svg {
+    .sn-crest-badge.use-fallback .sn-crest-fallback-svg {
       display: block;
     }
 
@@ -562,7 +448,7 @@
     }
 
     .intro-title {
-      font-size: 26px;
+      font-size: 25px;
       font-weight: 900;
       line-height: 1.15;
       color: var(--text-main);
@@ -586,7 +472,7 @@
     }
 
     /* ========================================================================
-       5. MODALS (SETUP, SCREENSHOT, PAUSE & STATS SUMMARY)
+       5. MODALS (SETUP, SCREENSHOT, PAUSE & GAME OVER SUMMARY)
        ======================================================================== */
     .modal-backdrop {
       position: absolute;
@@ -608,7 +494,7 @@
 
     .modal-card {
       width: 100%;
-      max-width: 480px;
+      max-width: 455px;
       max-height: 93dvh;
       overflow-y: auto;
       border-radius: 22px;
@@ -616,12 +502,12 @@
       background: var(--modal-bg);
       color: var(--text-main);
       border: 1.5px solid var(--hud-border);
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
     }
 
     .modal-head {
       text-align: center;
-      margin-bottom: 9px;
+      margin-bottom: 10px;
     }
 
     .modal-title-row {
@@ -644,11 +530,11 @@
     }
 
     .setup-box {
-      padding: 7px 9px;
+      padding: 8px 10px;
       border-radius: 13px;
       background: var(--tile-bg);
       border: 1px solid var(--tile-border);
-      margin-bottom: 7px;
+      margin-bottom: 8px;
     }
 
     .setup-label {
@@ -656,62 +542,8 @@
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--asa-gold);
-      margin-bottom: 4px;
-    }
-
-    .grid-3-row {
-      display: grid;
-      grid-template-columns: 1fr 126px 54px;
-      gap: 6px;
+      color: var(--sn-gold);
       margin-bottom: 5px;
-    }
-
-    .text-inp, .sel-inp {
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 9px;
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-      color: var(--text-main);
-      font-size: 10.5px;
-      font-weight: 800;
-      outline: none;
-      user-select: text;
-      -webkit-user-select: text;
-    }
-
-    .sel-inp option {
-      background: var(--modal-bg);
-      color: var(--text-main);
-    }
-
-    .star-chips {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
-
-    .star-chip {
-      padding: 3.5px 6.5px;
-      border-radius: 8px;
-      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
-      border: 1px solid rgba(16, 185, 129, 0.58);
-      color: #ffffff;
-      font-size: 8.8px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
-    }
-
-    .star-chip:hover {
-      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
-      border-color: var(--asa-amber);
-    }
-
-    .star-chip:active {
-      background: linear-gradient(145deg, #0B3D20 0%, #062614 100%);
-      transform: scale(0.95);
     }
 
     .pills-3 {
@@ -720,19 +552,13 @@
       gap: 5px;
     }
 
-    .pills-4 {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 5px;
-    }
-
     .choice-btn {
-      padding: 6.5px 5px;
+      padding: 7px 6px;
       border-radius: 10px;
       background: #0B3D20;
       border: 1.5px solid rgba(16, 185, 129, 0.45);
       color: #ffffff;
-      font-size: 9.5px;
+      font-size: 9.6px;
       font-weight: 800;
       cursor: pointer;
       text-align: center;
@@ -741,7 +567,7 @@
 
     .choice-btn:hover {
       background: #0d4b28;
-      border-color: var(--asa-amber);
+      border-color: var(--sn-amber);
     }
 
     .choice-btn:active {
@@ -750,9 +576,9 @@
 
     .choice-btn.selected {
       background: linear-gradient(135deg, #0a7d3b 0%, #062815 100%);
-      border-color: var(--asa-amber);
+      border-color: var(--sn-amber);
       color: #ffffff;
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.32);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.34);
     }
 
     .btn-primary {
@@ -760,8 +586,8 @@
       padding: 10.5px 16px;
       border-radius: 13px;
       background: linear-gradient(135deg, #0a7d3b 0%, #0B3D20 100%);
-      border: 1.5px solid var(--asa-amber);
-      box-shadow: 0 6px 16px rgba(11, 61, 32, 0.45);
+      border: 1.5px solid var(--sn-amber);
+      box-shadow: 0 6px 16px rgba(11, 61, 32, 0.5);
       color: #ffffff;
       font-size: 11.5px;
       font-weight: 900;
@@ -773,12 +599,12 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
     }
 
     .btn-primary:hover {
       background: linear-gradient(135deg, #0d9446 0%, #0B3D20 100%);
-      box-shadow: 0 0 15px rgba(251, 191, 36, 0.38);
+      box-shadow: 0 0 15px rgba(251, 191, 36, 0.42);
     }
 
     .btn-primary:active {
@@ -791,7 +617,7 @@
       padding: 9.5px 14px;
       border-radius: 13px;
       background: #0B3D20;
-      border: 1.5px solid rgba(16, 185, 129, 0.52);
+      border: 1.5px solid rgba(16, 185, 129, 0.55);
       color: #ffffff;
       font-size: 10.5px;
       font-weight: 800;
@@ -808,7 +634,7 @@
 
     .btn-secondary:hover {
       background: #0a7d3b;
-      border-color: var(--asa-amber);
+      border-color: var(--sn-amber);
     }
 
     .btn-secondary:active {
@@ -843,11 +669,11 @@
 
     .shot-preview-img {
       width: 100%;
-      max-height: 50dvh;
+      max-height: 48dvh;
       object-fit: contain;
       border-radius: 14px;
-      border: 1.5px solid var(--asa-amber);
-      background: var(--theme-bg);
+      border: 1.5px solid var(--sn-amber);
+      background: var(--arena-b);
       margin: 8px 0;
     }
 
@@ -865,7 +691,7 @@
       text-transform: uppercase;
       color: #ffffff;
       background: rgba(11, 61, 32, 0.94);
-      border: 1px solid var(--asa-amber);
+      border: 1px solid var(--sn-amber);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease, transform 0.2s ease;
@@ -892,114 +718,87 @@
   </style>
 </head>
 <body>
-  <div id="asaArena">
+  <div id="snArena">
     <div id="shutterFlash" class="shutter-flash"></div>
     <div id="toastBanner" class="toast-banner">SNAKE ARCADE</div>
 
-    <!-- TOP BROADCAST HUD BAR WITH DIRECT LINK TO snake.html -->
+    <!-- TOP HUD BAR WITH RESET-TO-START '←' LINK TO snake.html -->
     <header class="top-bar">
       <div class="btn-group">
-        <a href="snake.html" class="icon-circle-btn glass-hud" title="Back to snake.html" aria-label="Back to snake.html">&larr;</a>
+        <a id="backToSnakeLink" href="snake.html" class="icon-circle-btn glass-hud" title="Reset to Start (snake.html)" aria-label="Reset to Start">&larr;</a>
       </div>
 
-      <div class="scoreboard-center glass-hud">
-        <div class="score-main-row">
+      <div class="brand-center-hud glass-hud">
+        <div class="brand-main-row">
           <span class="hud-logo-badge js-snake-logo-badge" aria-hidden="true">
-            <img src="Autrobook-snake.png" alt="Snake Arcade Logo" class="hud-logo-img js-snake-logo-img" />
+            <img src="autrobook-snake.png" alt="Snake Arcade Logo" class="hud-logo-img js-snake-logo-img" />
             <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
-              <path d="M8 14C8 10.5 16 13.5 16 9.5" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M8.5 14.5C8.5 11.5 11 11 12.5 11C14 11 15.5 10.2 15.5 8.5" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round"/>
+              <circle cx="15.8" cy="8.2" r="1.4" fill="#10b981"/>
             </svg>
           </span>
           <span>Snake Arcade</span>
-          <span id="topScoreBadge" class="score-pill">0</span>
         </div>
-        <div id="statusBannerText" class="status-sub-row">CLASSIC ENDLESS &bull; PRO &bull; 1P SOLO</div>
+        <div id="statusSubRow" class="brand-sub-row">CLASSIC &bull; EMERALD PITCH &bull; ARCADE</div>
       </div>
 
       <div class="btn-group">
-        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light (#FFFFFF) / Dark (#202124) Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
         <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
         <button id="muteBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
-        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Match (P)" aria-label="Pause Match">&#10074;&#10074;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Game (P)" aria-label="Pause Game">&#10074;&#10074;</button>
       </div>
     </header>
 
-    <!-- PLAYER / RIVAL CARDS & LIVE SPEED RADAR -->
-    <section class="players-radar-row">
-      <div id="p1Card" class="snake-panel glass-hud active-snake">
-        <div class="s-meta">
-          <div class="s-name-line">
-            <span id="p1BadgeNum" class="badge-num" style="background:#0a7d3b;">#01</span>
-            <span id="p1DisplayName">TARIQ VIPER</span>
-          </div>
-          <span id="p1SubLine" class="s-sub-line">BAN &bull; LEN 4</span>
-        </div>
-        <span id="p1ScoreTag" class="pts-badge">0 PTS</span>
+    <!-- SCORE, BEST & LENGTH TELEMETRY PILLS -->
+    <section class="telemetry-strip">
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">SCORE</span>
+        <span id="scorePillVal">0</span>
       </div>
-
-      <div class="radar-box glass-hud">
-        <span class="radar-lbl">SPEED RADAR</span>
-        <span id="radarKmhText" class="radar-val">0.0 KM/H</span>
-        <span id="radarMphPeakText" class="radar-sub">0.0 MPH &bull; PK 0</span>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">BEST</span>
+        <span id="bestPillVal">0</span>
       </div>
-
-      <div id="p2Card" class="snake-panel glass-hud">
-        <div class="s-meta">
-          <div class="s-name-line">
-            <span id="p2BadgeNum" class="badge-num" style="background:#dc2626;">#07</span>
-            <span id="p2DisplayName">KENJI COBRA</span>
-          </div>
-          <span id="p2SubLine" class="s-sub-line">JPN &bull; RIVAL</span>
-        </div>
-        <span id="p2ScoreTag" class="pts-badge">0 PTS</span>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">LENGTH</span>
+        <span id="lengthPillVal">3</span>
       </div>
     </section>
 
-    <!-- CENTER HIGH-DPI SNAKE CANVAS -->
-    <div id="arenaStage" class="arena-stage">
+    <!-- CENTER HIGH-DPI SNAKE ARENA CANVAS -->
+    <main id="boardStage" class="board-stage">
       <canvas id="snakeCanvas"></canvas>
-    </div>
+    </main>
 
-    <!-- D-PAD, POWER-UP STATUS & BOOST CONTROLS -->
-    <div class="bottom-controls-deck">
-      <div class="dpad-cluster" aria-label="Directional Pad">
-        <div></div>
-        <button id="dpadUp" type="button" class="dpad-btn" aria-label="Move Up">&uarr;</button>
-        <div></div>
-        <button id="dpadLeft" type="button" class="dpad-btn" aria-label="Move Left">&larr;</button>
-        <button id="dpadDown" type="button" class="dpad-btn" aria-label="Move Down">&darr;</button>
-        <button id="dpadRight" type="button" class="dpad-btn" aria-label="Move Right">&rarr;</button>
-      </div>
-
-      <div class="side-action-stack">
-        <div id="buffStatusStrip" class="buff-status-strip glass-hud">
-          <span id="activeBuffText">BUFFS: NONE</span>
-          <span id="matchGoalText">GOAL: ENDLESS</span>
-        </div>
-        <button id="boostBtn" type="button" class="boost-btn">&#9889; Sprint Boost (Space)</button>
-      </div>
+    <!-- ON-SCREEN TOUCH / POINTER D-PAD -->
+    <div id="dpadDeck" class="dpad-deck" role="group" aria-label="Directional Controls">
+      <button id="dirLeftBtn" type="button" class="dpad-btn" aria-label="Move Left">&larr;</button>
+      <button id="dirUpBtn" type="button" class="dpad-btn" aria-label="Move Up">&uarr;</button>
+      <button id="dirDownBtn" type="button" class="dpad-btn" aria-label="Move Down">&darr;</button>
+      <button id="dirRightBtn" type="button" class="dpad-btn" aria-label="Move Right">&rarr;</button>
     </div>
 
     <!-- ======================================================================
-         1. INTRO SCREEN (MINIMALIST — NO "AUTROBOOK CHAMPION CIRCUIT" LINE)
+         1. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
          ====================================================================== -->
-    <section id="asaIntroScreen">
+    <section id="snIntroScreen">
       <div class="spot-ray ray-left"></div>
       <div class="spot-ray ray-right"></div>
 
       <div class="intro-center">
-        <div id="asaCrestBadge" class="asa-crest-badge js-snake-logo-badge">
+        <div id="snCrestBadge" class="sn-crest-badge js-snake-logo-badge">
           <img
-            id="asaIntroLogoImg"
-            src="Autrobook-snake.png"
+            id="snIntroLogoImg"
+            src="autrobook-snake.png"
             alt="Snake Arcade Logo"
-            class="asa-crest-logo-img js-snake-logo-img"
+            class="sn-crest-logo-img js-snake-logo-img"
           />
-          <svg id="asaIntroFallbackSvg" class="asa-crest-fallback-svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+          <svg id="snIntroFallbackSvg" class="sn-crest-fallback-svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
             <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
-            <path d="M21 38C21 28 32 35 32 25C32 19 41 19 41 25" stroke="#10b981" stroke-width="4.5" stroke-linecap="round"/>
-            <circle cx="42.5" cy="24.5" r="2.2" fill="#fbbf24"/>
+            <path d="M21 41C21 33 27 32 32 32C37 32 43 30 43 22" stroke="#10b981" stroke-width="5.5" stroke-linecap="round"/>
+            <circle cx="43.5" cy="21.5" r="3.6" fill="#fbbf24"/>
           </svg>
         </div>
 
@@ -1016,86 +815,58 @@
     </section>
 
     <!-- ======================================================================
-         2. MATCH SETUP MODAL (10 NATIONS, STARS, FORMATS & ARENAS)
+         2. SESSION SETUP MODAL (MODE, ARENA THEME & SPEED)
          ====================================================================== -->
     <div id="setupModal" class="modal-backdrop">
       <div class="modal-card">
         <div class="modal-head">
           <div class="modal-title-row">
             <span class="hud-logo-badge js-snake-logo-badge" aria-hidden="true">
-              <img src="Autrobook-snake.png" alt="Snake Arcade Logo" class="hud-logo-img js-snake-logo-img" />
+              <img src="autrobook-snake.png" alt="Snake Arcade Logo" class="hud-logo-img js-snake-logo-img" />
               <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
-                <path d="M8 14C8 10.5 16 13.5 16 9.5" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="3.5" fill="#fbbf24"/>
               </svg>
             </span>
             <h2 class="modal-h2">Snake Arcade Setup</h2>
           </div>
-          <p class="modal-sub">10 Nations &bull; Star Presets &bull; Match Formats &bull; Arena Themes</p>
+          <p class="modal-sub">Game Mode &bull; Arena Theme &bull; Speed</p>
         </div>
 
         <div class="setup-box">
           <div class="setup-label">Game Mode</div>
           <div id="modeGroup" class="pills-3">
-            <button type="button" class="choice-btn selected" data-mode="SOLO_1P">1P Solo</button>
-            <button type="button" class="choice-btn" data-mode="VS_AI">1P vs AI Rival</button>
-            <button type="button" class="choice-btn" data-mode="DUEL_2P">2P Local Duel</button>
-          </div>
-        </div>
-
-        <!-- Player 1 Roster -->
-        <div class="setup-box">
-          <div class="setup-label">Player 1 Roster</div>
-          <div class="grid-3-row">
-            <input id="p1NameInp" type="text" maxlength="14" value="TARIQ VIPER" class="text-inp" />
-            <select id="p1NationSel" class="sel-inp"></select>
-            <input id="p1BadgeInp" type="number" min="1" max="99" value="1" class="text-inp" />
-          </div>
-          <div id="p1StarRow" class="star-chips"></div>
-        </div>
-
-        <!-- Player 2 / AI Rival Roster -->
-        <div class="setup-box">
-          <div class="setup-label">Player 2 / AI Rival Roster</div>
-          <div class="grid-3-row">
-            <input id="p2NameInp" type="text" maxlength="14" value="KENJI COBRA" class="text-inp" />
-            <select id="p2NationSel" class="sel-inp"></select>
-            <input id="p2BadgeInp" type="number" min="1" max="99" value="7" class="text-inp" />
-          </div>
-          <div id="p2StarRow" class="star-chips"></div>
-        </div>
-
-        <div class="setup-box">
-          <div class="setup-label">Match Format</div>
-          <div id="formatGroup" class="pills-4">
-            <button type="button" class="choice-btn selected" data-fmt="ENDLESS">Classic Endless</button>
-            <button type="button" class="choice-btn" data-fmt="SPRINT_25">Sprint 25 Apples</button>
-            <button type="button" class="choice-btn" data-fmt="TIME_180">3-Min Time Attack</button>
-            <button type="button" class="choice-btn" data-fmt="FIRST_15">First to 15</button>
-          </div>
-        </div>
-
-        <div class="setup-box">
-          <div class="setup-label">Speed / Difficulty</div>
-          <div id="speedGroup" class="pills-3">
-            <button type="button" class="choice-btn" data-spd="CASUAL">Casual</button>
-            <button type="button" class="choice-btn selected" data-spd="PRO">Pro</button>
-            <button type="button" class="choice-btn" data-spd="TURBO">Turbo</button>
+            <button type="button" class="choice-btn selected" data-mode="CLASSIC">Classic</button>
+            <button type="button" class="choice-btn" data-mode="PORTAL_ARENA">Portal Arena</button>
+            <button type="button" class="choice-btn" data-mode="TURBO_DASH">Turbo Dash</button>
           </div>
         </div>
 
         <div class="setup-box">
           <div class="setup-label">Arena Theme</div>
           <div id="arenaGroup" class="pills-3">
-            <button type="button" class="choice-btn selected" data-arena="PITCH">Emerald Pitch</button>
-            <button type="button" class="choice-btn" data-arena="TURF">Tournament Turf</button>
-            <button type="button" class="choice-btn" data-arena="MIDNIGHT">Midnight Arena</button>
+            <button type="button" class="choice-btn selected" data-arena="EMERALD_PITCH">Emerald Pitch</button>
+            <button type="button" class="choice-btn" data-arena="GOLDEN_TURF">Golden Turf</button>
+            <button type="button" class="choice-btn" data-arena="MIDNIGHT_ARENA">Midnight Arena</button>
           </div>
         </div>
 
-        <button id="startMatchBtn" type="button" class="btn-primary">
-          ENTER ARENA &amp; START
+        <div class="setup-box">
+          <div class="setup-label">Speed</div>
+          <div id="speedGroup" class="pills-3">
+            <button type="button" class="choice-btn" data-speed="CHILL">Chill</button>
+            <button type="button" class="choice-btn selected" data-speed="ARCADE">Arcade</button>
+            <button type="button" class="choice-btn" data-speed="HYPER">Hyper</button>
+          </div>
+        </div>
+
+        <button id="startSnakeBtn" type="button" class="btn-primary">
+          Start Snake Arcade
         </button>
+
+        <div class="btn-stack" style="margin-top:6px;">
+          <button id="statsFromSetupBtn" type="button" class="btn-secondary">View Stats</button>
+        </div>
       </div>
     </div>
 
@@ -1105,69 +876,67 @@
     <div id="screenshotModal" class="modal-backdrop">
       <div class="modal-card" style="max-width:365px;text-align:center;">
         <div class="modal-head">
-          <h2 class="modal-h2">Arena Screenshot</h2>
+          <h2 class="modal-h2">Snake Arcade Snapshot</h2>
           <p class="modal-sub">Snake Arcade</p>
         </div>
         <img id="screenshotImg" class="shot-preview-img" alt="Snake Arcade Screenshot" />
         <div class="btn-stack">
           <a id="downloadShotBtn" download="Snake-Arcade.png" class="btn-primary">Download PNG</a>
-          <button id="closeShotBtn" type="button" class="btn-secondary">Resume Match</button>
-          <a href="snake.html" class="btn-secondary">&larr; Back to snake.html</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">BACK</button>
         </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         4. PAUSE MODAL
+         4. PAUSE MODAL (DIRECT 'BACK' RESUMES GAME WITHOUT RESET)
          ====================================================================== -->
     <div id="pauseModal" class="modal-backdrop">
       <div class="modal-card" style="max-width:335px;text-align:center;">
         <div class="modal-head">
-          <h2 class="modal-h2">Match Paused</h2>
+          <h2 class="modal-h2">Game Paused</h2>
           <p class="modal-sub">Snake Arcade</p>
         </div>
         <div class="btn-stack">
           <button id="resumeBtn" type="button" class="btn-primary">Resume</button>
-          <button id="restartMatchBtn" type="button" class="btn-secondary">Restart Match</button>
-          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Match Setup</button>
+          <button id="restartFromPauseBtn" type="button" class="btn-secondary">Restart Game</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Session Setup</button>
           <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
-          <a href="snake.html" class="btn-secondary">&larr; Back to snake.html</a>
+          <button id="backFromPauseBtn" type="button" class="btn-secondary">BACK</button>
         </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         5. STATS & MATCH SUMMARY MODAL
+         5. GAME OVER & CAREER STATISTICS MODAL
          ====================================================================== -->
     <div id="summaryModal" class="modal-backdrop">
-      <div class="modal-card" style="max-width:360px;text-align:center;">
-        <div style="font-size:40px;margin-bottom:4px;">&#127942;</div>
-        <h2 id="winnerTitle" class="modal-h2">SNAKE ARCADE STATS</h2>
-        <p id="winnerSub" class="modal-sub">Snake Arcade</p>
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:4px;">&#128013;</div>
+        <h2 id="summaryTitle" class="modal-h2">GAME OVER!</h2>
+        <p id="summarySub" class="modal-sub">Snake Arcade</p>
 
         <div class="stats-box">
           <div class="stats-row">
-            <span>Final Score</span>
-            <span id="sumScoreText" style="font-weight:900;color:var(--asa-gold);">0</span>
+            <span>Final Score &bull; Length</span>
+            <span id="sumScoreLenVal" style="font-weight:900;color:var(--sn-gold);">0 &bull; 3</span>
           </div>
           <div class="stats-row">
-            <span>Apples Consumed</span>
-            <span id="sumApplesText" style="font-weight:900;color:var(--asa-emerald);">0</span>
+            <span>Games Played</span>
+            <span id="sumPlayedVal" style="font-weight:900;color:var(--sn-emerald);">0</span>
           </div>
           <div class="stats-row">
-            <span>Peak Speed</span>
-            <span id="sumPeakSpeed" style="font-weight:900;color:var(--asa-gold);">0.0 KM/H</span>
+            <span>Best Score &bull; Max Length</span>
+            <span id="sumBestMaxLenVal" style="font-weight:900;">0 &bull; 3</span>
           </div>
           <div class="stats-row">
-            <span>Best Score &bull; Matches Won</span>
-            <span id="sumCareerStats" style="font-weight:900;">0 &bull; 0</span>
+            <span>Total Food Eaten</span>
+            <span id="sumFoodEatenVal" style="font-weight:900;color:var(--sn-gold);">0</span>
           </div>
         </div>
 
         <div class="btn-stack">
           <button id="summaryPrimaryBtn" type="button" class="btn-primary">Play Again</button>
-          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
-          <a href="snake.html" class="btn-secondary">&larr; Back to snake.html</a>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Session Setup</button>
         </div>
       </div>
     </div>
@@ -1175,57 +944,20 @@
 
   <script>
     /* ========================================================================
-       10 NATIONS ROSTER, STAR PRESETS, MATCH FORMATS & ARENA THEMES
+       SPEED PRESETS, GRID CONFIG & PERSISTENT STATS SCHEMA
        ======================================================================== */
-    const ASA_NATIONS_10 = [
-      { code: 'BAN', name: 'Bangladesh', primary: '#10b981', secondary: '#065f46', kit: '#0a7d3b' },
-      { code: 'JPN', name: 'Japan', primary: '#ef4444', secondary: '#991b1b', kit: '#dc2626' },
-      { code: 'BRA', name: 'Brazil', primary: '#facc15', secondary: '#15803d', kit: '#15803d' },
-      { code: 'KOR', name: 'South Korea', primary: '#3b82f6', secondary: '#1e3a8a', kit: '#1d4ed8' },
-      { code: 'GER', name: 'Germany', primary: '#f59e0b', secondary: '#1e293b', kit: '#0f172a' },
-      { code: 'ENG', name: 'England', primary: '#f8fafc', secondary: '#b91c1c', kit: '#b91c1c' },
-      { code: 'USA', name: 'USA', primary: '#60a5fa', secondary: '#1d4ed8', kit: '#1d4ed8' },
-      { code: 'IND', name: 'India', primary: '#fb923c', secondary: '#c2410c', kit: '#ea580c' },
-      { code: 'FRA', name: 'France', primary: '#818cf8', secondary: '#1d4ed8', kit: '#2563eb' },
-      { code: 'ARG', name: 'Argentina', primary: '#38bdf8', secondary: '#0369a1', kit: '#0284c7' }
-    ];
-
-    const ASA_STAR_PRESETS = [
-      { name: 'TARIQ VIPER', nation: 'BAN', badge: 1 },
-      { name: 'KENJI COBRA', nation: 'JPN', badge: 7 },
-      { name: 'LUCAS BOA', nation: 'BRA', badge: 10 },
-      { name: 'MIN-JUN LEE', nation: 'KOR', badge: 9 },
-      { name: 'LEON MAMBA', nation: 'GER', badge: 11 },
-      { name: 'HARRY PYTHON', nation: 'ENG', badge: 8 }
-    ];
-
-    const ARENA_THEMES = {
-      PITCH: {
-        cellA: '#0d6e39',
-        cellB: '#0a5b2f',
-        border: '#fbbf24',
-        gridStroke: 'rgba(255, 255, 255, 0.05)'
-      },
-      TURF: {
-        cellA: '#137a42',
-        cellB: '#0e6334',
-        border: '#f59e0b',
-        gridStroke: 'rgba(254, 240, 138, 0.06)'
-      },
-      MIDNIGHT: {
-        cellA: '#084c31',
-        cellB: '#063b26',
-        border: '#10b981',
-        gridStroke: 'rgba(167, 243, 208, 0.05)'
-      }
+    const GRID_CELLS = 20;
+    const SPEED_INTERVAL_MS = {
+      CHILL: 145,
+      ARCADE: 105,
+      HYPER: 72
     };
-
-    const ASA_STATS_KEY = 'snake_arcade_stats_v1';
+    const SN_STATS_KEY = 'autrobook_snake_arcade_stats_v1';
 
     /* ========================================================================
-       WEB AUDIO API SOUND SYNTHESIZER (INCLUDING APPLAUSE)
+       WEB AUDIO API SOUND SYNTHESIZER
        ======================================================================== */
-    class ASAAudioSynth {
+    class SNAudioSynth {
       constructor() {
         this.ctx = null;
         this.muted = false;
@@ -1254,41 +986,41 @@
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(640, now);
-        g.gain.setValueAtTime(0.08, now);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.frequency.setValueAtTime(560, now);
+        g.gain.setValueAtTime(0.06, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
         osc.connect(g);
         g.connect(this.ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.055);
+        osc.stop(now + 0.05);
       }
 
-      playEatApple(isGolden = false) {
+      playTurn() {
         if (this.muted || !this.ctx) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(isGolden ? 587.33 : 440, now);
-        osc.frequency.exponentialRampToValueAtTime(isGolden ? 1046.5 : 659.25, now + 0.11);
-        g.gain.setValueAtTime(0.16, now);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        g.gain.setValueAtTime(0.045, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
         osc.connect(g);
         g.connect(this.ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.13);
+        osc.stop(now + 0.04);
       }
 
-      playPowerUp() {
+      playEat(isBonus = false) {
         if (this.muted || !this.ctx) return;
         const now = this.ctx.currentTime;
-        [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const notes = isBonus ? [587.33, 783.99, 1046.5] : [523.25, 783.99];
+        notes.forEach((freq, idx) => {
           const osc = this.ctx.createOscillator();
           const g = this.ctx.createGain();
-          osc.type = 'sine';
-          const t0 = now + i * 0.055;
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.055;
           osc.frequency.setValueAtTime(freq, t0);
-          g.gain.setValueAtTime(0.13, t0);
+          g.gain.setValueAtTime(0.12, t0);
           g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
           osc.connect(g);
           g.connect(this.ctx.destination);
@@ -1297,131 +1029,98 @@
         });
       }
 
-      playCrash() {
+      playPortal() {
         if (this.muted || !this.ctx) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(175, now);
-        osc.frequency.exponentialRampToValueAtTime(52, now + 0.28);
-        g.gain.setValueAtTime(0.2, now);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(920, now + 0.14);
+        g.gain.setValueAtTime(0.11, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
         osc.connect(g);
         g.connect(this.ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.31);
+        osc.stop(now + 0.16);
       }
 
-      playApplause(startTime) {
-        if (this.muted || !this.ctx) return;
-        try {
-          const duration = 0.72;
-          const sampleCount = Math.floor(this.ctx.sampleRate * duration);
-          const buffer = this.ctx.createBuffer(1, sampleCount, this.ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < sampleCount; i++) {
-            const env = Math.sin((i / sampleCount) * Math.PI);
-            data[i] = (Math.random() * 2 - 1) * env * 0.22;
-          }
-          const src = this.ctx.createBufferSource();
-          src.buffer = buffer;
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(1600, startTime);
-          filter.Q.setValueAtTime(0.75, startTime);
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.16, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-          src.connect(filter);
-          filter.connect(gain);
-          gain.connect(this.ctx.destination);
-          src.start(startTime);
-        } catch (_e) {}
-      }
-
-      playWinFanfare() {
+      playGameOver() {
         if (this.muted || !this.ctx) return;
         const now = this.ctx.currentTime;
-        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+        [392.0, 311.13, 220.0].forEach((freq, idx) => {
           const osc = this.ctx.createOscillator();
           const g = this.ctx.createGain();
-          osc.type = 'triangle';
-          const t0 = now + idx * 0.1;
+          osc.type = 'sawtooth';
+          const t0 = now + idx * 0.11;
           osc.frequency.setValueAtTime(freq, t0);
-          g.gain.setValueAtTime(0.16, t0);
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+          g.gain.setValueAtTime(0.1, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
           osc.connect(g);
           g.connect(this.ctx.destination);
           osc.start(t0);
-          osc.stop(t0 + 0.32);
+          osc.stop(t0 + 0.24);
         });
-        this.playApplause(now + 0.22);
       }
     }
 
     /* ========================================================================
-       SNAKE ARCADE ENGINE
+       SNAKE ARCADE GAME ENGINE (SMOOTH INTERPOLATION, MODES, PARTICLES)
        ======================================================================== */
-    class ASASnakeEngine {
+    class SnakeArcadeEngine {
       constructor() {
         this.canvas = document.getElementById('snakeCanvas');
         this.ctx = this.canvas.getContext('2d');
-        this.audio = new ASAAudioSynth();
+        this.audio = new SNAudioSynth();
 
-        this.mode = 'SOLO_1P';
-        this.formatKey = 'ENDLESS';
-        this.speedKey = 'PRO';
-        this.arenaKey = 'PITCH';
+        this.mode = 'CLASSIC'; // CLASSIC, PORTAL_ARENA, TURBO_DASH
+        this.arenaTheme = 'EMERALD_PITCH'; // EMERALD_PITCH, GOLDEN_TURF, MIDNIGHT_ARENA
+        this.speedKey = 'ARCADE'; // CHILL, ARCADE, HYPER
 
         const saved = this.loadStats();
-        this.matchesPlayed = saved.played || 0;
-        this.matchesWon = saved.won || 0;
-        this.bestScore = saved.bestScore || 0;
-        this.countedMatch = false;
+        this.stats = {
+          played: saved.played || 0,
+          bestScore: saved.bestScore || 0,
+          maxLength: saved.maxLength || 3,
+          foodEaten: saved.foodEaten || 0
+        };
+        this.countedGame = false;
 
-        this.p1Meta = { name: 'TARIQ VIPER', nation: ASA_NATIONS_10[0], badge: 1 };
-        this.p2Meta = { name: 'KENJI COBRA', nation: ASA_NATIONS_10[1], badge: 7 };
-
-        this.cols = 26;
-        this.rows = 16;
-        this.cellSize = 20;
-        this.canvasW = 520;
-        this.canvasH = 320;
-        this.dpr = 1;
-
-        this.snakes = [];
-        this.apples = [];
-        this.powerUp = null;
+        this.snake = [];
+        this.prevSnake = [];
+        this.dir = { x: 1, y: 0 };
+        this.inputQueue = [];
+        this.food = { x: 14, y: 10 };
+        this.bonusFood = null;
+        this.obstacles = [];
+        this.portals = [];
         this.particles = [];
 
-        this.stepTimer = 0;
-        this.moveProgress = 0;
-        this.timeRemaining = 180;
-        this.boostHeld = false;
+        this.score = 0;
+        this.foodEatenInRun = 0;
+        this.stepAccumulator = 0;
+        this.moveProgress = 1;
+
+        this.canvasSize = 320;
+        this.dpr = 1;
         this.gameOver = false;
-
-        this.speedKmh = 0;
-        this.peakKmh = 0;
-        this.lastFrameTime = 0;
-
         this.introActive = true;
         this.setupOpen = false;
         this.shotModalOpen = false;
         this.paused = false;
+        this.lastFrameTime = 0;
+        this.touchStartPos = null;
 
         this.renderAutrobookSnakeLogo();
         this.syncThemeIcon();
-        this.populateSetupUI();
         this.bindEvents();
-        this.resizeArena();
-        this.initMatchState();
-        this.refreshHUD();
+        this.resizeBoard();
+        this.startNewSession();
         this.startIntro();
       }
 
       renderAutrobookSnakeLogo() {
-        const logoSrc = 'Autrobook-snake.png';
+        const logoSrc = 'autrobook-snake.png';
         const badges = document.querySelectorAll('.js-snake-logo-badge');
         badges.forEach((badge) => {
           const img = badge.querySelector('.js-snake-logo-img');
@@ -1444,7 +1143,7 @@
 
       loadStats() {
         try {
-          const raw = localStorage.getItem(ASA_STATS_KEY);
+          const raw = localStorage.getItem(SN_STATS_KEY);
           return raw ? JSON.parse(raw) : {};
         } catch (_e) {
           return {};
@@ -1453,11 +1152,7 @@
 
       saveStats() {
         try {
-          localStorage.setItem(ASA_STATS_KEY, JSON.stringify({
-            played: this.matchesPlayed,
-            won: this.matchesWon,
-            bestScore: this.bestScore
-          }));
+          localStorage.setItem(SN_STATS_KEY, JSON.stringify(this.stats));
         } catch (_e) {}
       }
 
@@ -1472,7 +1167,6 @@
           (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
         document.body.dataset.theme = isLight ? 'dark' : 'light';
         this.syncThemeIcon();
-        this.renderArena();
       }
 
       showToast(msg) {
@@ -1483,484 +1177,300 @@
         this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
       }
 
-      populateSetupUI() {
-        const s1 = document.getElementById('p1NationSel');
-        const s2 = document.getElementById('p2NationSel');
-        s1.innerHTML = '';
-        s2.innerHTML = '';
+      resizeBoard() {
+        const stage = document.getElementById('boardStage').getBoundingClientRect();
+        const availW = Math.max(220, stage.width - 8);
+        const availH = Math.max(220, stage.height - 8);
+        const side = Math.floor(Math.min(availW, availH, 430));
 
-        ASA_NATIONS_10.forEach((nat, idx) => {
-          const o1 = document.createElement('option');
-          o1.value = nat.code;
-          o1.textContent = `${nat.code} • ${nat.name}`;
-          if (idx === 0) o1.selected = true;
-          s1.appendChild(o1);
-
-          const o2 = document.createElement('option');
-          o2.value = nat.code;
-          o2.textContent = `${nat.code} • ${nat.name}`;
-          if (idx === 1) o2.selected = true;
-          s2.appendChild(o2);
-        });
-
-        const buildStarRow = (containerId, isP1) => {
-          const wrap = document.getElementById(containerId);
-          wrap.innerHTML = '';
-          ASA_STAR_PRESETS.forEach((st) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'star-chip';
-            btn.textContent = `${st.name} (${st.nation})`;
-            btn.addEventListener('click', () => {
-              if (isP1) {
-                document.getElementById('p1NameInp').value = st.name;
-                document.getElementById('p1NationSel').value = st.nation;
-                document.getElementById('p1BadgeInp').value = String(st.badge);
-              } else {
-                document.getElementById('p2NameInp').value = st.name;
-                document.getElementById('p2NationSel').value = st.nation;
-                document.getElementById('p2BadgeInp').value = String(st.badge);
-              }
-              this.audio.playClick();
-            });
-            wrap.appendChild(btn);
-          });
-        };
-
-        buildStarRow('p1StarRow', true);
-        buildStarRow('p2StarRow', false);
-      }
-
-      getNation(code) {
-        return ASA_NATIONS_10.find((n) => n.code === code) || ASA_NATIONS_10[0];
-      }
-
-      resizeArena() {
-        const stage = document.getElementById('arenaStage').getBoundingClientRect();
-        const maxW = Math.floor(Math.max(280, stage.width - 4));
-        const maxH = Math.floor(Math.max(175, stage.height - 4));
-
-        const targetCell = Math.max(11, Math.min(26, Math.floor(Math.min(maxW / this.cols, maxH / this.rows))));
-        this.cellSize = targetCell;
-        this.canvasW = this.cols * this.cellSize;
-        this.canvasH = this.rows * this.cellSize;
+        this.canvasSize = side;
         this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-        this.canvas.style.width = `${this.canvasW}px`;
-        this.canvas.style.height = `${this.canvasH}px`;
-        this.canvas.width = Math.floor(this.canvasW * this.dpr);
-        this.canvas.height = Math.floor(this.canvasH * this.dpr);
+        this.canvas.style.width = `${side}px`;
+        this.canvas.style.height = `${side}px`;
+        this.canvas.width = Math.floor(side * this.dpr);
+        this.canvas.height = Math.floor(side * this.dpr);
         this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-
-        this.renderArena();
       }
 
-      createSnakeEntity(idx, meta, startX, startY, dir, isAI) {
-        const segs = [];
-        for (let i = 0; i < 4; i++) {
-          segs.push({ x: startX - dir.x * i, y: startY - dir.y * i });
+      setupArenaFeatures() {
+        this.obstacles = [];
+        this.portals = [];
+
+        if (this.mode === 'PORTAL_ARENA') {
+          this.portals = [
+            { x: 3, y: 3, color: '#fbbf24' },
+            { x: GRID_CELLS - 4, y: GRID_CELLS - 4, color: '#fbbf24' }
+          ];
+          for (let i = 7; i <= 12; i++) {
+            if (i !== 10) {
+              this.obstacles.push({ x: i, y: 6 });
+              this.obstacles.push({ x: i, y: 13 });
+            }
+          }
+        } else if (this.mode === 'TURBO_DASH') {
+          for (let i = 8; i <= 11; i++) {
+            this.obstacles.push({ x: i, y: 5 });
+            this.obstacles.push({ x: i, y: 14 });
+          }
         }
-        return {
-          idx,
-          meta: { ...meta },
-          isAI,
-          alive: true,
-          dir: { ...dir },
-          nextDir: { ...dir },
-          segments: segs,
-          prevSegments: segs.map((s) => ({ ...s })),
-          score: 0,
-          apples: 0,
-          pendingGrowth: 0,
-          boostTimer: 0,
-          doubleTimer: 0,
-          shieldTimer: 0
-        };
       }
 
-      initMatchState() {
-        this.gameOver = false;
-        this.countedMatch = false;
-        this.stepTimer = 0;
-        this.moveProgress = 0;
-        this.timeRemaining = 180;
-        this.peakKmh = 0;
-        this.speedKmh = 0;
-        this.particles = [];
-        this.powerUp = null;
-
-        const midY = Math.floor(this.rows * 0.5);
-        this.snakes = [
-          this.createSnakeEntity(0, this.p1Meta, 6, midY, { x: 1, y: 0 }, false)
+      startNewSession() {
+        this.snake = [
+          { x: 9, y: 10 },
+          { x: 8, y: 10 },
+          { x: 7, y: 10 }
         ];
+        this.prevSnake = this.snake.map((s) => ({ ...s }));
+        this.dir = { x: 1, y: 0 };
+        this.inputQueue = [];
+        this.bonusFood = null;
+        this.particles = [];
+        this.score = 0;
+        this.foodEatenInRun = 0;
+        this.stepAccumulator = 0;
+        this.moveProgress = 1;
+        this.gameOver = false;
+        this.countedGame = false;
 
-        if (this.mode === 'VS_AI' || this.mode === 'DUEL_2P') {
-          this.snakes.push(
-            this.createSnakeEntity(1, this.p2Meta, this.cols - 7, midY, { x: -1, y: 0 }, this.mode === 'VS_AI')
-          );
-        }
-
-        this.apples = [];
-        this.spawnApple(false);
-        this.spawnApple(true);
+        this.setupArenaFeatures();
+        this.spawnFood();
         this.refreshHUD();
-        this.renderArena();
       }
 
-      isCellOccupied(gx, gy) {
-        for (const sn of this.snakes) {
-          if (!sn.alive) continue;
-          if (sn.segments.some((s) => s.x === gx && s.y === gy)) return true;
-        }
-        if (this.apples.some((a) => a.x === gx && a.y === gy)) return true;
-        if (this.powerUp && this.powerUp.x === gx && this.powerUp.y === gy) return true;
+      // Full hard reset back to the intro/start screen
+      hardResetToStart() {
+        this.audio.unlock();
+        this.audio.playClick();
+
+        document.getElementById('setupModal').classList.remove('open');
+        document.getElementById('screenshotModal').classList.remove('open');
+        document.getElementById('pauseModal').classList.remove('open');
+        document.getElementById('summaryModal').classList.remove('open');
+
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = true;
+        this.startNewSession();
+
+        this.introActive = true;
+        const bar = document.getElementById('introBarFill');
+        if (bar) bar.style.width = '0%';
+        document.getElementById('snIntroScreen').classList.remove('hidden');
+        this.startIntro();
+      }
+
+      isCellOccupied(x, y) {
+        if (this.snake.some((seg) => seg.x === x && seg.y === y)) return true;
+        if (this.obstacles.some((obs) => obs.x === x && obs.y === y)) return true;
+        if (this.portals.some((pt) => pt.x === x && pt.y === y)) return true;
+        if (this.food && this.food.x === x && this.food.y === y) return true;
+        if (this.bonusFood && this.bonusFood.x === x && this.bonusFood.y === y) return true;
         return false;
       }
 
-      spawnApple(golden = false) {
-        for (let tries = 0; tries < 90; tries++) {
-          const x = Math.floor(Math.random() * this.cols);
-          const y = Math.floor(Math.random() * this.rows);
-          if (!this.isCellOccupied(x, y)) {
-            this.apples.push({ x, y, golden });
+      spawnFood() {
+        for (let attempt = 0; attempt < 250; attempt++) {
+          const x = Math.floor(Math.random() * GRID_CELLS);
+          const y = Math.floor(Math.random() * GRID_CELLS);
+          if (!this.snake.some((s) => s.x === x && s.y === y) &&
+              !this.obstacles.some((o) => o.x === x && o.y === y) &&
+              !this.portals.some((p) => p.x === x && p.y === y)) {
+            this.food = { x, y };
             return;
           }
         }
       }
 
-      maybeSpawnPowerUp() {
-        if (this.powerUp || Math.random() > 0.25) return;
-        const types = ['BOOST', 'DOUBLE', 'SHIELD'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        for (let tries = 0; tries < 60; tries++) {
-          const x = Math.floor(Math.random() * this.cols);
-          const y = Math.floor(Math.random() * this.rows);
+      maybeSpawnBonusFood() {
+        if (this.bonusFood || this.foodEatenInRun % 4 !== 0 || this.foodEatenInRun === 0) return;
+        for (let attempt = 0; attempt < 150; attempt++) {
+          const x = Math.floor(Math.random() * GRID_CELLS);
+          const y = Math.floor(Math.random() * GRID_CELLS);
           if (!this.isCellOccupied(x, y)) {
-            this.powerUp = { x, y, type, ttl: 14 };
+            this.bonusFood = { x, y, ttl: 140 };
             return;
           }
         }
       }
 
-      spawnBurst(gx, gy, color) {
-        const cx = (gx + 0.5) * this.cellSize;
-        const cy = (gy + 0.5) * this.cellSize;
+      spawnEatParticles(gx, gy, color) {
+        const cell = this.canvasSize / GRID_CELLS;
+        const cx = (gx + 0.5) * cell;
+        const cy = (gy + 0.5) * cell;
         for (let i = 0; i < 8; i++) {
-          const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.4;
-          const spd = 40 + Math.random() * 65;
+          const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.3;
+          const spd = 35 + Math.random() * 75;
           this.particles.push({
             x: cx,
             y: cy,
             vx: Math.cos(ang) * spd,
             vy: Math.sin(ang) * spd,
-            life: 0.36,
-            color
+            life: 0.34,
+            maxLife: 0.34,
+            color,
+            size: Math.max(2.2, cell * 0.13)
           });
         }
       }
 
-      getStepInterval() {
-        const baseMap = { CASUAL: 0.165, PRO: 0.118, TURBO: 0.082 };
-        let interval = baseMap[this.speedKey] || 0.118;
-        const p1 = this.snakes[0];
-        if (p1 && (this.boostHeld || p1.boostTimer > 0)) {
-          interval *= 0.65;
-        }
-        return Math.max(0.048, interval);
-      }
-
-      queueDirection(snakeIdx, nx, ny) {
-        const sn = this.snakes[snakeIdx];
-        if (!sn || !sn.alive) return;
-        if (nx === -sn.dir.x && ny === -sn.dir.y) return;
-        sn.nextDir = { x: nx, y: ny };
-      }
-
-      chooseAIDirection(sn) {
-        const head = sn.segments[0];
-        const candidates = [
-          { x: 1, y: 0 },
-          { x: -1, y: 0 },
-          { x: 0, y: 1 },
-          { x: 0, y: -1 }
-        ].filter((d) => !(d.x === -sn.dir.x && d.y === -sn.dir.y));
-
-        const target = this.powerUp || this.apples[0] || { x: Math.floor(this.cols / 2), y: Math.floor(this.rows / 2) };
-
-        let bestDir = candidates[0] || sn.dir;
-        let bestScore = -Infinity;
-
-        for (const d of candidates) {
-          const tx = head.x + d.x;
-          const ty = head.y + d.y;
-          if (tx < 0 || tx >= this.cols || ty < 0 || ty >= this.rows) continue;
-
-          let blocked = false;
-          for (const other of this.snakes) {
-            if (!other.alive) continue;
-            if (other.segments.some((s) => s.x === tx && s.y === ty)) {
-              blocked = true;
-              break;
-            }
-          }
-          if (blocked) continue;
-
-          const dist = Math.hypot(target.x - tx, target.y - ty);
-          const util = -dist * 10 + Math.random() * 8;
-          if (util > bestScore) {
-            bestScore = util;
-            bestDir = d;
-          }
-        }
-
-        sn.nextDir = bestDir;
-      }
-
-      stepSimulationTick() {
-        if (this.gameOver) return;
-
-        for (const sn of this.snakes) {
-          if (!sn.alive) continue;
-          sn.prevSegments = sn.segments.map((s) => ({ ...s }));
-          if (sn.isAI) this.chooseAIDirection(sn);
-          sn.dir = { ...sn.nextDir };
-        }
-
-        for (const sn of this.snakes) {
-          if (!sn.alive) continue;
-          const head = sn.segments[0];
-          const nh = { x: head.x + sn.dir.x, y: head.y + sn.dir.y };
-
-          if (nh.x < 0 || nh.x >= this.cols || nh.y < 0 || nh.y >= this.rows) {
-            if (sn.shieldTimer > 0) {
-              sn.shieldTimer = 0;
-              nh.x = Math.max(0, Math.min(this.cols - 1, nh.x));
-              nh.y = Math.max(0, Math.min(this.rows - 1, nh.y));
-              this.showToast('SHIELD SAVED WALL HIT!');
-            } else {
-              sn.alive = false;
-              this.audio.playCrash();
-              this.spawnBurst(head.x, head.y, '#ef4444');
-              continue;
-            }
-          }
-
-          sn.segments.unshift(nh);
-          if (sn.pendingGrowth > 0) {
-            sn.pendingGrowth--;
-          } else {
-            sn.segments.pop();
-          }
-        }
-
-        for (const sn of this.snakes) {
-          if (!sn.alive) continue;
-          const head = sn.segments[0];
-
-          const hitSelf = sn.segments.slice(1).some((s) => s.x === head.x && s.y === head.y);
-          let hitRival = false;
-          for (const other of this.snakes) {
-            if (other.idx === sn.idx || !other.alive) continue;
-            if (other.segments.some((s) => s.x === head.x && s.y === head.y)) {
-              hitRival = true;
-              break;
-            }
-          }
-
-          if (hitSelf || hitRival) {
-            if (sn.shieldTimer > 0) {
-              sn.shieldTimer = 0;
-              this.showToast('SHIELD BLOCKED COLLISION!');
-            } else {
-              sn.alive = false;
-              this.audio.playCrash();
-              this.spawnBurst(head.x, head.y, '#f59e0b');
-            }
-          }
-        }
-
-        for (const sn of this.snakes) {
-          if (!sn.alive) continue;
-          const head = sn.segments[0];
-
-          for (let i = this.apples.length - 1; i >= 0; i--) {
-            const ap = this.apples[i];
-            if (ap.x === head.x && ap.y === head.y) {
-              const mult = sn.doubleTimer > 0 ? 2 : 1;
-              const basePts = ap.golden ? 30 : 10;
-              sn.score += basePts * mult;
-              sn.apples++;
-              sn.pendingGrowth += ap.golden ? 2 : 1;
-              this.apples.splice(i, 1);
-              this.spawnApple(false);
-              if (this.apples.length < 2) this.spawnApple(Math.random() < 0.35);
-              this.maybeSpawnPowerUp();
-              this.spawnBurst(head.x, head.y, ap.golden ? '#fbbf24' : '#ef4444');
-              this.audio.playEatApple(ap.golden);
-            }
-          }
-
-          if (this.powerUp && this.powerUp.x === head.x && this.powerUp.y === head.y) {
-            const t = this.powerUp.type;
-            this.powerUp = null;
-            this.audio.playPowerUp();
-            this.spawnBurst(head.x, head.y, '#38bdf8');
-            if (t === 'BOOST') {
-              sn.boostTimer = 6.0;
-              this.showToast(`${sn.meta.name}: BOOST ACTIVE!`);
-            } else if (t === 'DOUBLE') {
-              sn.doubleTimer = 8.0;
-              this.showToast(`${sn.meta.name}: DOUBLE 2X!`);
-            } else {
-              sn.shieldTimer = 8.0;
-              this.showToast(`${sn.meta.name}: SHIELD ACTIVE!`);
-            }
-          }
-        }
-
-        const baseKmh = this.speedKey === 'TURBO' ? 42 : this.speedKey === 'PRO' ? 31 : 22;
-        const p1 = this.snakes[0];
-        const boostFactor = p1 && (this.boostHeld || p1.boostTimer > 0) ? 1.38 : 1.0;
-        this.speedKmh = Number((baseKmh * boostFactor).toFixed(1));
-        if (this.speedKmh > this.peakKmh) this.peakKmh = this.speedKmh;
-
-        this.checkMatchCompletion();
-      }
-
-      checkMatchCompletion() {
-        const p1 = this.snakes[0];
-        const p2 = this.snakes[1];
-
-        if (this.formatKey === 'SPRINT_25') {
-          if ((p1 && p1.apples >= 25) || (p2 && p2.apples >= 25)) {
-            this.finishMatch('SPRINT 25 COMPLETE!');
-            return;
-          }
-        } else if (this.formatKey === 'FIRST_15') {
-          if ((p1 && p1.apples >= 15) || (p2 && p2.apples >= 15)) {
-            this.finishMatch('FIRST TO 15 REACHED!');
-            return;
-          }
-        } else if (this.formatKey === 'TIME_180' && this.timeRemaining <= 0) {
-          this.finishMatch('TIME ATTACK COMPLETE!');
-          return;
-        }
-
-        if (this.mode === 'SOLO_1P') {
-          if (p1 && !p1.alive) {
-            this.finishMatch('SNAKE ELIMINATED');
-          }
-        } else {
-          const anyAlive = this.snakes.some((s) => s.alive);
-          if (!anyAlive) {
-            this.finishMatch('DUEL COMPLETE');
-          }
+      queueDirection(nx, ny) {
+        if (this.paused || this.gameOver || this.introActive || this.setupOpen || this.shotModalOpen) return;
+        const lastQueued = this.inputQueue.length > 0 ? this.inputQueue[this.inputQueue.length - 1] : this.dir;
+        if (nx === lastQueued.x && ny === lastQueued.y) return;
+        if (nx === -lastQueued.x && ny === -lastQueued.y) return;
+        if (this.inputQueue.length < 3) {
+          this.inputQueue.push({ x: nx, y: ny });
+          this.audio.unlock();
+          this.audio.playTurn();
         }
       }
 
-      finishMatch(reason) {
-        if (this.gameOver) return;
-        this.gameOver = true;
-        this.speedKmh = 0;
-        this.audio.playWinFanfare();
+      getCurrentStepInterval() {
+        const base = SPEED_INTERVAL_MS[this.speedKey] || 105;
+        const modeMult = this.mode === 'TURBO_DASH' ? 0.78 : 1.0;
+        const speedUp = Math.min(28, this.foodEatenInRun * 1.2);
+        return Math.max(46, base * modeMult - speedUp);
+      }
 
-        const p1 = this.snakes[0] || { score: 0, apples: 0, meta: this.p1Meta };
-        const p2 = this.snakes[1] || { score: 0, apples: 0, meta: this.p2Meta };
-        const p1Won = this.mode === 'SOLO_1P' ? p1.score > 0 : p1.score >= p2.score;
+      stepSimulation() {
+        if (this.inputQueue.length > 0) {
+          this.dir = this.inputQueue.shift();
+        }
 
-        if (!this.countedMatch) {
-          this.countedMatch = true;
-          this.matchesPlayed++;
-          if (p1Won) this.matchesWon++;
-          if (p1.score > this.bestScore) this.bestScore = p1.score;
+        if (!this.countedGame) {
+          this.countedGame = true;
+          this.stats.played++;
           this.saveStats();
         }
 
-        this.openSummaryModal(
-          this.mode === 'SOLO_1P' ? `${p1.meta.name} (${p1.meta.nation.code})` : `${p1Won ? p1.meta.name : p2.meta.name} WINS!`,
-          reason,
-          true
-        );
+        this.prevSnake = this.snake.map((s) => ({ ...s }));
+
+        const head = this.snake[0];
+        let nextX = head.x + this.dir.x;
+        let nextY = head.y + this.dir.y;
+        let warped = false;
+
+        if (this.mode === 'PORTAL_ARENA') {
+          if (nextX < 0) nextX = GRID_CELLS - 1;
+          else if (nextX >= GRID_CELLS) nextX = 0;
+          if (nextY < 0) nextY = GRID_CELLS - 1;
+          else if (nextY >= GRID_CELLS) nextY = 0;
+
+          if (this.portals.length === 2) {
+            if (nextX === this.portals[0].x && nextY === this.portals[0].y) {
+              nextX = this.portals[1].x + this.dir.x;
+              nextY = this.portals[1].y + this.dir.y;
+              nextX = (nextX + GRID_CELLS) % GRID_CELLS;
+              nextY = (nextY + GRID_CELLS) % GRID_CELLS;
+              warped = true;
+            } else if (nextX === this.portals[1].x && nextY === this.portals[1].y) {
+              nextX = this.portals[0].x + this.dir.x;
+              nextY = this.portals[0].y + this.dir.y;
+              nextX = (nextX + GRID_CELLS) % GRID_CELLS;
+              nextY = (nextY + GRID_CELLS) % GRID_CELLS;
+              warped = true;
+            }
+          }
+        } else {
+          if (nextX < 0 || nextX >= GRID_CELLS || nextY < 0 || nextY >= GRID_CELLS) {
+            this.triggerGameOver('HIT ARENA WALL');
+            return;
+          }
+        }
+
+        if (this.obstacles.some((o) => o.x === nextX && o.y === nextY)) {
+          this.triggerGameOver('HIT OBSTACLE');
+          return;
+        }
+
+        const ateNormal = this.food && nextX === this.food.x && nextY === this.food.y;
+        const ateBonus = this.bonusFood && nextX === this.bonusFood.x && nextY === this.bonusFood.y;
+        const willGrow = ateNormal || ateBonus;
+
+        const bodyToCheck = willGrow ? this.snake : this.snake.slice(0, -1);
+        if (bodyToCheck.some((seg) => seg.x === nextX && seg.y === nextY)) {
+          this.triggerGameOver('SELF COLLISION');
+          return;
+        }
+
+        const newSnake = [{ x: nextX, y: nextY }];
+        for (let i = 0; i < this.snake.length - (willGrow ? 0 : 1); i++) {
+          newSnake.push({ ...this.snake[i] });
+        }
+        this.snake = newSnake;
+
+        if (warped) {
+          this.audio.playPortal();
+          this.spawnEatParticles(nextX, nextY, '#fbbf24');
+          this.showToast('PORTAL WARP');
+        }
+
+        if (ateNormal) {
+          this.foodEatenInRun++;
+          this.stats.foodEaten++;
+          const modeBonus = this.mode === 'TURBO_DASH' ? 15 : 10;
+          this.score += modeBonus;
+          this.audio.playEat(false);
+          this.spawnEatParticles(nextX, nextY, '#10b981');
+          this.spawnFood();
+          this.maybeSpawnBonusFood();
+        }
+
+        if (ateBonus) {
+          this.foodEatenInRun++;
+          this.stats.foodEaten++;
+          this.score += 35;
+          this.bonusFood = null;
+          this.audio.playEat(true);
+          this.spawnEatParticles(nextX, nextY, '#fbbf24');
+          this.showToast('+35 GOLDEN FRUIT');
+        }
+
+        if (this.bonusFood) {
+          this.bonusFood.ttl--;
+          if (this.bonusFood.ttl <= 0) {
+            this.bonusFood = null;
+          }
+        }
+
+        if (this.score > this.stats.bestScore) {
+          this.stats.bestScore = this.score;
+        }
+        if (this.snake.length > this.stats.maxLength) {
+          this.stats.maxLength = this.snake.length;
+        }
+        this.saveStats();
+        this.refreshHUD();
       }
 
-      openSummaryModal(title, sub, isMatchEnd) {
-        const p1 = this.snakes[0] || { score: 0, apples: 0 };
-        const p2 = this.snakes[1] || { score: 0, apples: 0 };
+      triggerGameOver(reason = 'GAME OVER') {
+        if (this.gameOver) return;
+        this.gameOver = true;
+        this.moveProgress = 1;
+        this.audio.playGameOver();
 
-        document.getElementById('winnerTitle').textContent = title;
-        document.getElementById('winnerSub').textContent = sub;
-        document.getElementById('sumScoreText').textContent =
-          this.mode === 'SOLO_1P' ? `${p1.score} PTS` : `${p1.score} - ${p2.score}`;
-        document.getElementById('sumApplesText').textContent = String(p1.apples + p2.apples);
-        document.getElementById('sumPeakSpeed').textContent = `${this.peakKmh.toFixed(1)} KM/H`;
-        document.getElementById('sumCareerStats').textContent = `${this.bestScore} PTS • ${this.matchesWon}W`;
-
-        const actionBtn = document.getElementById('summaryPrimaryBtn');
-        actionBtn.textContent = isMatchEnd ? 'Play Again' : 'Resume Match';
-        actionBtn.dataset.mode = isMatchEnd ? 'RESTART' : 'RESUME';
+        document.getElementById('summaryTitle').textContent = 'GAME OVER!';
+        document.getElementById('summarySub').textContent = `${reason} • ${this.mode.replace('_', ' ')}`;
+        document.getElementById('sumScoreLenVal').textContent = `${this.score} • ${this.snake.length}`;
+        document.getElementById('sumPlayedVal').textContent = String(this.stats.played);
+        document.getElementById('sumBestMaxLenVal').textContent = `${this.stats.bestScore} • ${this.stats.maxLength}`;
+        document.getElementById('sumFoodEatenVal').textContent = String(this.stats.foodEaten);
         document.getElementById('summaryModal').classList.add('open');
       }
 
       /* ======================================================================
-         HUD, SCREENSHOT & INPUT EVENTS
+         HUD, SCREENSHOT, INTRO & INPUT EVENTS
          ====================================================================== */
       refreshHUD() {
-        const p1 = this.snakes[0] || { score: 0, apples: 0, segments: [], boostTimer: 0, doubleTimer: 0, shieldTimer: 0 };
-        const p2 = this.snakes[1] || { score: 0, apples: 0, segments: [] };
+        document.getElementById('scorePillVal').textContent = String(this.score);
+        document.getElementById('bestPillVal').textContent = String(Math.max(this.score, this.stats.bestScore));
+        document.getElementById('lengthPillVal').textContent = String(this.snake.length);
 
-        document.getElementById('topScoreBadge').textContent =
-          this.mode === 'SOLO_1P' ? `${p1.score}` : `${p1.score} - ${p2.score}`;
-
-        const fmtLabels = {
-          ENDLESS: 'CLASSIC ENDLESS',
-          SPRINT_25: 'SPRINT 25 APPLES',
-          TIME_180: `TIME ${Math.max(0, Math.ceil(this.timeRemaining))}S`,
-          FIRST_15: 'FIRST TO 15'
-        };
-        const modeLabels = {
-          SOLO_1P: '1P SOLO',
-          VS_AI: '1P VS AI RIVAL',
-          DUEL_2P: '2P LOCAL DUEL'
-        };
-        document.getElementById('statusBannerText').textContent =
-          `${fmtLabels[this.formatKey]} • ${this.speedKey} • ${modeLabels[this.mode]}`;
-
-        document.getElementById('p1DisplayName').textContent = this.p1Meta.name;
-        document.getElementById('p2DisplayName').textContent = this.p2Meta.name;
-
-        const b1 = document.getElementById('p1BadgeNum');
-        b1.textContent = `#${String(this.p1Meta.badge).padStart(2, '0')}`;
-        b1.style.background = this.p1Meta.nation.kit;
-
-        const b2 = document.getElementById('p2BadgeNum');
-        b2.textContent = `#${String(this.p2Meta.badge).padStart(2, '0')}`;
-        b2.style.background = this.p2Meta.nation.kit;
-
-        document.getElementById('p1SubLine').textContent = `${this.p1Meta.nation.code} • LEN ${p1.segments.length}`;
-        document.getElementById('p2SubLine').textContent =
-          this.mode === 'SOLO_1P' ? `${this.p2Meta.nation.code} • STANDBY` : `${this.p2Meta.nation.code} • LEN ${p2.segments.length}`;
-
-        document.getElementById('p1ScoreTag').textContent = `${p1.score} PTS`;
-        document.getElementById('p2ScoreTag').textContent = `${p2.score} PTS`;
-
-        const buffs = [];
-        if (p1.boostTimer > 0) buffs.push(`BOOST ${p1.boostTimer.toFixed(1)}S`);
-        if (p1.doubleTimer > 0) buffs.push(`DOUBLE ${p1.doubleTimer.toFixed(1)}S`);
-        if (p1.shieldTimer > 0) buffs.push(`SHIELD ${p1.shieldTimer.toFixed(1)}S`);
-        document.getElementById('activeBuffText').textContent = buffs.length ? `BUFFS: ${buffs.join(' | ')}` : 'BUFFS: NONE';
-
-        const goalMap = {
-          ENDLESS: 'GOAL: ENDLESS',
-          SPRINT_25: `GOAL: ${p1.apples}/25 APPLES`,
-          TIME_180: `TIMER: ${Math.max(0, Math.ceil(this.timeRemaining))}S`,
-          FIRST_15: `GOAL: ${p1.apples}/15 APPLES`
-        };
-        document.getElementById('matchGoalText').textContent = goalMap[this.formatKey];
-
-        const mph = this.speedKmh * 0.621371;
-        const peakMph = this.peakKmh * 0.621371;
-        document.getElementById('radarKmhText').textContent = `${this.speedKmh.toFixed(1)} KM/H`;
-        document.getElementById('radarMphPeakText').textContent = `${mph.toFixed(1)} MPH • PK ${peakMph.toFixed(0)}`;
+        const modeLabel = this.mode.replace('_', ' ');
+        const arenaLabel = this.arenaTheme.replace('_', ' ');
+        document.getElementById('statusSubRow').textContent = `${modeLabel} • ${arenaLabel} • ${this.speedKey}`;
       }
 
       captureScreenshot() {
@@ -1971,7 +1481,7 @@
         flash.classList.add('active');
         setTimeout(() => flash.classList.remove('active'), 160);
 
-        this.renderArena();
+        this.renderCanvas();
         try {
           const url = this.canvas.toDataURL('image/png');
           this.paused = true;
@@ -1985,19 +1495,52 @@
         } catch (_e) {}
       }
 
+      startIntro() {
+        const dur = 1800;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('snIntroScreen').classList.add('hidden');
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
       bindEvents() {
-        window.addEventListener('resize', () => this.resizeArena());
+        window.addEventListener('resize', () => this.resizeBoard());
+
+        const backLink = document.getElementById('backToSnakeLink');
+        if (backLink) {
+          backLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.hardResetToStart();
+          });
+        }
 
         if (window.matchMedia) {
           window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
             if (!document.body.dataset.theme) {
               this.syncThemeIcon();
-              this.renderArena();
             }
           });
         }
 
-        document.getElementById('themeToggleBtn').addEventListener('click', () => this.toggleTheme());
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.toggleTheme();
+        });
 
         document.getElementById('skipIntroBtn').addEventListener('click', () => {
           this.audio.unlock();
@@ -2011,84 +1554,72 @@
           });
         });
 
-        document.querySelectorAll('#formatGroup .choice-btn').forEach((btn) => {
+        document.querySelectorAll('#arenaGroup .choice-btn').forEach((btn) => {
           btn.addEventListener('click', () => {
-            this.formatKey = btn.dataset.fmt;
-            document.querySelectorAll('#formatGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.arenaTheme = btn.dataset.arena;
+            document.body.dataset.arena = this.arenaTheme;
+            document.querySelectorAll('#arenaGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
           });
         });
 
         document.querySelectorAll('#speedGroup .choice-btn').forEach((btn) => {
           btn.addEventListener('click', () => {
-            this.speedKey = btn.dataset.spd;
+            this.speedKey = btn.dataset.speed;
             document.querySelectorAll('#speedGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
           });
         });
 
-        document.querySelectorAll('#arenaGroup .choice-btn').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            this.arenaKey = btn.dataset.arena;
-            document.querySelectorAll('#arenaGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
-            this.renderArena();
-          });
-        });
-
-        document.getElementById('startMatchBtn').addEventListener('click', () => {
+        document.getElementById('startSnakeBtn').addEventListener('click', () => {
           this.audio.unlock();
-          const n1 = (document.getElementById('p1NameInp').value || '').trim().toUpperCase();
-          const n2 = (document.getElementById('p2NameInp').value || '').trim().toUpperCase();
-          this.p1Meta.name = (n1 || 'TARIQ VIPER').slice(0, 14);
-          this.p2Meta.name = (n2 || 'KENJI COBRA').slice(0, 14);
-          this.p1Meta.nation = this.getNation(document.getElementById('p1NationSel').value);
-          this.p2Meta.nation = this.getNation(document.getElementById('p2NationSel').value);
-          this.p1Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p1BadgeInp').value, 10) || 1));
-          this.p2Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p2BadgeInp').value, 10) || 7));
-
           document.getElementById('setupModal').classList.remove('open');
           this.setupOpen = false;
           this.paused = false;
-          this.initMatchState();
+          this.lastFrameTime = performance.now();
+          this.startNewSession();
         });
 
-        document.getElementById('dpadUp').addEventListener('pointerdown', (e) => {
-          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, 0, -1);
-        });
-        document.getElementById('dpadDown').addEventListener('pointerdown', (e) => {
-          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, 0, 1);
-        });
-        document.getElementById('dpadLeft').addEventListener('pointerdown', (e) => {
-          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, -1, 0);
-        });
-        document.getElementById('dpadRight').addEventListener('pointerdown', (e) => {
-          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, 1, 0);
-        });
-
-        const boostBtn = document.getElementById('boostBtn');
-        boostBtn.addEventListener('pointerdown', (e) => {
-          e.preventDefault(); this.audio.unlock(); this.boostHeld = true;
-        });
-        boostBtn.addEventListener('pointerup', () => { this.boostHeld = false; });
-        boostBtn.addEventListener('pointerleave', () => { this.boostHeld = false; });
-
-        let swipeStart = null;
-        this.canvas.addEventListener('pointerdown', (e) => {
+        document.getElementById('statsFromSetupBtn').addEventListener('click', () => {
           this.audio.unlock();
-          swipeStart = { x: e.clientX, y: e.clientY };
+          document.getElementById('summaryTitle').textContent = 'CAREER STATISTICS';
+          document.getElementById('summarySub').textContent = 'Snake Arcade';
+          document.getElementById('sumScoreLenVal').textContent = `${this.score} • ${this.snake.length}`;
+          document.getElementById('sumPlayedVal').textContent = String(this.stats.played);
+          document.getElementById('sumBestMaxLenVal').textContent = `${this.stats.bestScore} • ${this.stats.maxLength}`;
+          document.getElementById('sumFoodEatenVal').textContent = String(this.stats.foodEaten);
+          document.getElementById('summaryPrimaryBtn').textContent = 'Close Stats';
+          document.getElementById('summaryPrimaryBtn').dataset.action = 'CLOSE_ONLY';
+          document.getElementById('summaryModal').classList.add('open');
         });
-        this.canvas.addEventListener('pointermove', (e) => {
-          if (!swipeStart) return;
-          const dx = e.clientX - swipeStart.x;
-          const dy = e.clientY - swipeStart.y;
-          if (Math.hypot(dx, dy) > 18) {
-            if (Math.abs(dx) > Math.abs(dy)) {
-              this.queueDirection(0, dx > 0 ? 1 : -1, 0);
-            } else {
-              this.queueDirection(0, 0, dy > 0 ? 1 : -1);
-            }
-            swipeStart = { x: e.clientX, y: e.clientY };
+
+        document.getElementById('dirLeftBtn').addEventListener('click', () => this.queueDirection(-1, 0));
+        document.getElementById('dirUpBtn').addEventListener('click', () => this.queueDirection(0, -1));
+        document.getElementById('dirDownBtn').addEventListener('click', () => this.queueDirection(0, 1));
+        document.getElementById('dirRightBtn').addEventListener('click', () => this.queueDirection(1, 0));
+
+        this.canvas.addEventListener('touchstart', (e) => {
+          if (e.touches.length > 0) {
+            this.touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
           }
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+          if (!this.touchStartPos || e.touches.length === 0) return;
+          const dx = e.touches[0].clientX - this.touchStartPos.x;
+          const dy = e.touches[0].clientY - this.touchStartPos.y;
+          const threshold = 20;
+          if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+            if (Math.abs(dx) > Math.abs(dy)) {
+              this.queueDirection(dx > 0 ? 1 : -1, 0);
+            } else {
+              this.queueDirection(0, dy > 0 ? 1 : -1);
+            }
+            this.touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          }
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', () => {
+          this.touchStartPos = null;
         });
-        window.addEventListener('pointerup', () => { swipeStart = null; });
 
         document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
 
@@ -2117,239 +1648,238 @@
           this.lastFrameTime = performance.now();
         });
 
-        document.getElementById('restartMatchBtn').addEventListener('click', () => {
+        document.getElementById('backFromPauseBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.audio.playClick();
           document.getElementById('pauseModal').classList.remove('open');
           this.paused = false;
-          this.initMatchState();
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+          this.startNewSession();
         });
 
         document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
           document.getElementById('pauseModal').classList.remove('open');
-          this.openSetupModal();
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
         });
 
         document.getElementById('statsFromPauseBtn').addEventListener('click', () => {
           document.getElementById('pauseModal').classList.remove('open');
-          this.openSummaryModal('SNAKE ARCADE STATS', 'Snake Arcade', false);
+          document.getElementById('summaryTitle').textContent = 'CAREER STATISTICS';
+          document.getElementById('summarySub').textContent = 'Snake Arcade';
+          document.getElementById('sumScoreLenVal').textContent = `${this.score} • ${this.snake.length}`;
+          document.getElementById('sumPlayedVal').textContent = String(this.stats.played);
+          document.getElementById('sumBestMaxLenVal').textContent = `${this.stats.bestScore} • ${this.stats.maxLength}`;
+          document.getElementById('sumFoodEatenVal').textContent = String(this.stats.foodEaten);
+          document.getElementById('summaryPrimaryBtn').textContent = 'Resume';
+          document.getElementById('summaryPrimaryBtn').dataset.action = 'CLOSE_ONLY';
+          document.getElementById('summaryModal').classList.add('open');
         });
 
         document.getElementById('summaryPrimaryBtn').addEventListener('click', () => {
-          const mode = document.getElementById('summaryPrimaryBtn').dataset.mode;
+          const act = document.getElementById('summaryPrimaryBtn').dataset.action;
           document.getElementById('summaryModal').classList.remove('open');
-          this.paused = false;
-          this.lastFrameTime = performance.now();
-          if (mode === 'RESTART') this.initMatchState();
+          if (act === 'CLOSE_ONLY') {
+            if (!this.setupOpen && !this.introActive && !this.gameOver) {
+              this.paused = false;
+              this.lastFrameTime = performance.now();
+            }
+          } else {
+            this.paused = false;
+            this.lastFrameTime = performance.now();
+            this.startNewSession();
+          }
         });
 
         document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
           document.getElementById('summaryModal').classList.remove('open');
-          this.paused = false;
-          this.openSetupModal();
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
         });
 
         window.addEventListener('keydown', (e) => {
-          if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-            this.queueDirection(0, 0, -1);
-          } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-            this.queueDirection(0, 0, 1);
-          } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-            this.queueDirection(0, -1, 0);
-          } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-            this.queueDirection(0, 1, 0);
-          } else if (e.code === 'Space') {
-            this.boostHeld = true;
-          } else if (e.code === 'KeyP') {
-            if (!this.introActive && !this.setupOpen && !this.shotModalOpen && !this.gameOver) {
+          if (this.introActive || this.setupOpen || this.shotModalOpen) return;
+
+          if (e.code === 'KeyP' || e.code === 'Escape') {
+            if (!this.gameOver) {
               this.paused = !this.paused;
               document.getElementById('pauseModal').classList.toggle('open', this.paused);
               this.lastFrameTime = performance.now();
             }
+            return;
           }
 
-          if (this.mode === 'DUEL_2P') {
-            if (e.code === 'KeyW') this.queueDirection(1, 0, -1);
-            if (e.code === 'KeyS') this.queueDirection(1, 0, 1);
-            if (e.code === 'KeyA') this.queueDirection(1, -1, 0);
-            if (e.code === 'KeyD') this.queueDirection(1, 1, 0);
+          if (e.code === 'KeyR') {
+            e.preventDefault();
+            this.audio.unlock();
+            document.getElementById('pauseModal').classList.remove('open');
+            document.getElementById('summaryModal').classList.remove('open');
+            this.paused = false;
+            this.lastFrameTime = performance.now();
+            this.startNewSession();
+            this.showToast('GAME RESTARTED');
+            return;
+          }
+
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+            e.preventDefault();
+            this.queueDirection(-1, 0);
+          } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+            e.preventDefault();
+            this.queueDirection(1, 0);
+          } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+            e.preventDefault();
+            this.queueDirection(0, -1);
+          } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+            e.preventDefault();
+            this.queueDirection(0, 1);
           }
         });
-
-        window.addEventListener('keyup', (e) => {
-          if (e.code === 'Space') this.boostHeld = false;
-        });
-      }
-
-      openSetupModal() {
-        this.setupOpen = true;
-        this.paused = true;
-        document.getElementById('setupModal').classList.add('open');
       }
 
       /* ======================================================================
-         INTRO & HIGH-DPI INTERPOLATED SNAKE RENDERER
+         HIGH-DPI CANVAS RENDERER & ANIMATION LOOP
          ====================================================================== */
-      startIntro() {
-        const dur = 2000;
-        const start = performance.now();
-        const bar = document.getElementById('introBarFill');
-        const step = (now) => {
-          if (!this.introActive) return;
-          const pct = Math.min(100, ((now - start) / dur) * 100);
-          bar.style.width = pct + '%';
-          if (pct >= 100) this.finishIntro();
-          else requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      }
-
-      finishIntro() {
-        if (!this.introActive) return;
-        this.introActive = false;
-        document.getElementById('asaIntroScreen').classList.add('hidden');
-        this.openSetupModal();
-      }
-
-      renderArena() {
+      renderCanvas() {
         const ctx = this.ctx;
-        const w = this.canvasW;
-        const h = this.canvasH;
-        const cs = this.cellSize;
-        const pal = ARENA_THEMES[this.arenaKey] || ARENA_THEMES.PITCH;
-        ctx.clearRect(0, 0, w, h);
+        const size = this.canvasSize;
+        const cell = size / GRID_CELLS;
+        ctx.clearRect(0, 0, size, size);
 
-        for (let r = 0; r < this.rows; r++) {
-          for (let c = 0; c < this.cols; c++) {
-            ctx.fillStyle = (r + c) % 2 === 0 ? pal.cellA : pal.cellB;
-            ctx.fillRect(c * cs, r * cs, cs, cs);
+        const styles = getComputedStyle(document.body);
+        const colA = styles.getPropertyValue('--arena-a').trim() || '#0c3b20';
+        const colB = styles.getPropertyValue('--arena-b').trim() || '#092e19';
+        const gridLine = styles.getPropertyValue('--arena-grid').trim() || 'rgba(16,185,129,0.16)';
+        const borderCol = styles.getPropertyValue('--arena-border').trim() || '#fbbf24';
+
+        for (let r = 0; r < GRID_CELLS; r++) {
+          for (let c = 0; c < GRID_CELLS; c++) {
+            ctx.fillStyle = ((r + c) % 2 === 0) ? colA : colB;
+            ctx.fillRect(c * cell, r * cell, cell + 0.5, cell + 0.5);
           }
         }
 
-        ctx.strokeStyle = pal.gridStroke;
+        ctx.strokeStyle = gridLine;
         ctx.lineWidth = 1;
-        for (let c = 1; c < this.cols; c++) {
+        for (let i = 1; i < GRID_CELLS; i++) {
+          const pos = Math.round(i * cell) + 0.5;
           ctx.beginPath();
-          ctx.moveTo(c * cs, 0);
-          ctx.lineTo(c * cs, h);
+          ctx.moveTo(pos, 0);
+          ctx.lineTo(pos, size);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, pos);
+          ctx.lineTo(size, pos);
           ctx.stroke();
         }
-        for (let r = 1; r < this.rows; r++) {
+
+        for (const obs of this.obstacles) {
+          const pad = cell * 0.12;
+          ctx.fillStyle = '#062112';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1.6;
           ctx.beginPath();
-          ctx.moveTo(0, r * cs);
-          ctx.lineTo(w, r * cs);
-          ctx.stroke();
-        }
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.arc(w * 0.5, h * 0.5, Math.min(w, h) * 0.18, 0, Math.PI * 2);
-        ctx.stroke();
-
-        for (const ap of this.apples) {
-          const cx = (ap.x + 0.5) * cs;
-          const cy = (ap.y + 0.5) * cs;
-          const rad = cs * 0.38;
-
-          ctx.fillStyle = ap.golden ? '#fbbf24' : '#ef4444';
-          ctx.beginPath();
-          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx.roundRect(obs.x * cell + pad, obs.y * cell + pad, cell - pad * 2, cell - pad * 2, 4);
           ctx.fill();
-
-          ctx.strokeStyle = ap.golden ? '#fef08a' : '#fca5a5';
-          ctx.lineWidth = 1.3;
-          ctx.stroke();
-
-          ctx.strokeStyle = '#15803d';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy - rad);
-          ctx.lineTo(cx + 2, cy - rad - 4);
           ctx.stroke();
         }
 
-        if (this.powerUp) {
-          const px = (this.powerUp.x + 0.5) * cs;
-          const py = (this.powerUp.y + 0.5) * cs;
-          const pulse = 1 + Math.sin(performance.now() * 0.01) * 0.14;
-          const colMap = { BOOST: '#38bdf8', DOUBLE: '#fbbf24', SHIELD: '#a855f7' };
-          ctx.fillStyle = colMap[this.powerUp.type] || '#38bdf8';
+        for (const pt of this.portals) {
+          const cx = (pt.x + 0.5) * cell;
+          const cy = (pt.y + 0.5) * cell;
+          ctx.save();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+          ctx.lineWidth = 2.2;
           ctx.beginPath();
-          ctx.arc(px, py, cs * 0.4 * pulse, 0, Math.PI * 2);
+          ctx.arc(cx, cy, cell * 0.4, 0, Math.PI * 2);
           ctx.fill();
-
-          ctx.fillStyle = '#04140b';
-          ctx.font = `900 ${Math.max(7, Math.round(cs * 0.45))}px Inter, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(this.powerUp.type[0], px, py + 0.5);
+          ctx.stroke();
+          ctx.restore();
         }
 
-        const t = this.gameOver ? 1 : Math.min(1, this.moveProgress);
-        for (const sn of this.snakes) {
-          if (!sn.alive && sn.segments.length === 0) continue;
-          const nat = sn.meta.nation;
+        if (this.food) {
+          const fx = (this.food.x + 0.5) * cell;
+          const fy = (this.food.y + 0.5) * cell;
+          ctx.save();
+          ctx.fillStyle = '#ef4444';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(fx, fy, cell * 0.36, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
 
-          for (let i = sn.segments.length - 1; i >= 0; i--) {
-            const curr = sn.segments[i];
-            const prev = sn.prevSegments[i] || curr;
-            const ix = prev.x + (curr.x - prev.x) * t;
-            const iy = prev.y + (curr.y - prev.y) * t;
-            const cx = (ix + 0.5) * cs;
-            const cy = (iy + 0.5) * cs;
-            const taper = i === 0 ? cs * 0.46 : cs * Math.max(0.24, 0.42 - (i / (sn.segments.length + 8)) * 0.14);
+        if (this.bonusFood) {
+          const bx = (this.bonusFood.x + 0.5) * cell;
+          const by = (this.bonusFood.y + 0.5) * cell;
+          ctx.save();
+          ctx.fillStyle = '#fbbf24';
+          ctx.strokeStyle = '#062112';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(bx, by, cell * 0.42, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
 
-            ctx.fillStyle = i === 0 ? nat.primary : (i % 2 === 0 ? nat.primary : nat.secondary);
+        const t = this.gameOver || this.paused ? 1 : this.moveProgress;
+        for (let i = this.snake.length - 1; i >= 0; i--) {
+          const curr = this.snake[i];
+          const prev = this.prevSnake[i] || curr;
+          const wrappedJump = Math.abs(curr.x - prev.x) > 2 || Math.abs(curr.y - prev.y) > 2;
+          const interpX = wrappedJump ? curr.x : prev.x + (curr.x - prev.x) * t;
+          const interpY = wrappedJump ? curr.y : prev.y + (curr.y - prev.y) * t;
+
+          const pad = i === 0 ? cell * 0.08 : cell * 0.13;
+          const x = interpX * cell + pad;
+          const y = interpY * cell + pad;
+          const w = cell - pad * 2;
+          const h = cell - pad * 2;
+
+          ctx.fillStyle = i === 0 ? '#10b981' : (i % 2 === 0 ? '#0a7d3b' : '#059669');
+          ctx.strokeStyle = i === 0 ? '#fbbf24' : 'rgba(255, 255, 255, 0.35)';
+          ctx.lineWidth = i === 0 ? 2 : 1.1;
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, Math.max(3, cell * 0.25));
+          ctx.fill();
+          ctx.stroke();
+
+          if (i === 0) {
+            const cx = x + w * 0.5;
+            const cy = y + h * 0.5;
+            ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(cx, cy, taper, 0, Math.PI * 2);
+            ctx.arc(cx - w * 0.18 + this.dir.y * w * 0.12, cy - h * 0.18 - this.dir.x * h * 0.12, Math.max(1.6, cell * 0.08), 0, Math.PI * 2);
+            ctx.arc(cx + w * 0.18 + this.dir.y * w * 0.12, cy + h * 0.18 - this.dir.x * h * 0.12, Math.max(1.6, cell * 0.08), 0, Math.PI * 2);
             ctx.fill();
-
-            if (sn.shieldTimer > 0 && i === 0) {
-              ctx.strokeStyle = '#a855f7';
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.arc(cx, cy, taper + 3, 0, Math.PI * 2);
-              ctx.stroke();
-            }
-
-            if (i === 0) {
-              const flick = Math.sin(performance.now() * 0.025) > 0.2 ? 1 : 0.4;
-              ctx.strokeStyle = '#fb7185';
-              ctx.lineWidth = 1.6;
-              ctx.beginPath();
-              ctx.moveTo(cx + sn.dir.x * taper, cy + sn.dir.y * taper);
-              ctx.lineTo(cx + sn.dir.x * (taper + cs * 0.35 * flick), cy + sn.dir.y * (taper + cs * 0.35 * flick));
-              ctx.stroke();
-
-              const perpX = -sn.dir.y;
-              const perpY = sn.dir.x;
-              const eyeOffset = taper * 0.45;
-              const fwdOffset = taper * 0.25;
-              [-1, 1].forEach((side) => {
-                const ex = cx + sn.dir.x * fwdOffset + perpX * eyeOffset * side;
-                const ey = cy + sn.dir.y * fwdOffset + perpY * eyeOffset * side;
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(ex, ey, Math.max(2, taper * 0.24), 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.fillStyle = '#0f172a';
-                ctx.beginPath();
-                ctx.arc(ex + sn.dir.x * 0.8, ey + sn.dir.y * 0.8, Math.max(1.1, taper * 0.12), 0, Math.PI * 2);
-                ctx.fill();
-              });
-            }
           }
         }
 
-        for (const pt of this.particles) {
+        for (const p of this.particles) {
           ctx.save();
-          ctx.globalAlpha = Math.max(0, pt.life / 0.36);
-          ctx.fillStyle = pt.color;
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
           ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 3.2, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
+
+        ctx.strokeStyle = borderCol;
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(1.25, 1.25, size - 2.5, size - 2.5);
       }
 
       loop(now) {
@@ -2357,33 +1887,17 @@
         const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
         this.lastFrameTime = now;
 
-        if (!this.paused && !this.gameOver && !this.introActive && !this.setupOpen) {
-          if (this.formatKey === 'TIME_180') {
-            this.timeRemaining = Math.max(0, this.timeRemaining - dt);
-            if (this.timeRemaining <= 0) {
-              this.finishMatch('TIME ATTACK COMPLETE!');
-            }
+        if (!this.paused && !this.gameOver && !this.introActive && !this.setupOpen && !this.shotModalOpen) {
+          const intervalSec = this.getCurrentStepInterval() / 1000;
+          this.stepAccumulator += dt;
+          while (this.stepAccumulator >= intervalSec && !this.gameOver) {
+            this.stepAccumulator -= intervalSec;
+            this.stepSimulation();
           }
+          this.moveProgress = Math.min(1, this.stepAccumulator / intervalSec);
+        }
 
-          for (const sn of this.snakes) {
-            if (sn.boostTimer > 0) sn.boostTimer = Math.max(0, sn.boostTimer - dt);
-            if (sn.doubleTimer > 0) sn.doubleTimer = Math.max(0, sn.doubleTimer - dt);
-            if (sn.shieldTimer > 0) sn.shieldTimer = Math.max(0, sn.shieldTimer - dt);
-          }
-
-          if (this.powerUp) {
-            this.powerUp.ttl -= dt;
-            if (this.powerUp.ttl <= 0) this.powerUp = null;
-          }
-
-          const stepInterval = this.getStepInterval();
-          this.stepTimer += dt;
-          while (this.stepTimer >= stepInterval && !this.gameOver) {
-            this.stepTimer -= stepInterval;
-            this.stepSimulationTick();
-          }
-          this.moveProgress = Math.min(1, this.stepTimer / stepInterval);
-
+        if (!this.paused) {
           for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.x += p.vx * dt;
@@ -2391,17 +1905,15 @@
             p.life -= dt;
             if (p.life <= 0) this.particles.splice(i, 1);
           }
-
-          this.refreshHUD();
         }
 
-        this.renderArena();
+        this.renderCanvas();
         requestAnimationFrame((t) => this.loop(t));
       }
     }
 
     window.addEventListener('load', () => {
-      const app = new ASASnakeEngine();
+      const app = new SnakeArcadeEngine();
       requestAnimationFrame((t) => app.loop(t));
     });
   </script>
