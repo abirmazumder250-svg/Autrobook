@@ -3,11 +3,104 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Football Penalty Shootout - Realistic Target Match</title>
+  <title>Football Strike — Autrobook Broadcast Arcade</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* ==========================================================================
-       RESET & FULL-VIEWPORT MOBILE-FIRST LAYOUT
-       ========================================================================== */
+    /* ========================================================================
+       1. DESIGN TOKENS & SYSTEM LIGHT (#FFFFFF) / DARK (#202124) THEMES
+       ======================================================================== */
+    :root {
+      --fb-forest: #0B3D20;
+      --fb-emerald-deep: #0a7d3b;
+      --fb-emerald: #10b981;
+      --fb-gold: #f59e0b;
+      --fb-amber: #fbbf24;
+
+      --theme-bg: #202124;
+      --hud-bg: rgba(32, 33, 36, 0.94);
+      --hud-border: rgba(16, 185, 129, 0.45);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #202124;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+
+      /* Default Pitch Theme: Emerald Stadium */
+      --sky-top: #041d11;
+      --sky-bot: #09351e;
+      --turf-light: #15803d;
+      --turf-dark: #166534;
+      --line-col: #f8fafc;
+      --goal-frame: #f1f5f9;
+      --net-col: rgba(248, 250, 252, 0.55);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --theme-bg: #FFFFFF;
+        --hud-bg: rgba(255, 255, 255, 0.96);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #FFFFFF;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --theme-bg: #202124;
+      --hud-bg: rgba(32, 33, 36, 0.94);
+      --hud-border: rgba(16, 185, 129, 0.45);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #202124;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --theme-bg: #FFFFFF;
+      --hud-bg: rgba(255, 255, 255, 0.96);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #FFFFFF;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    /* Pitch Surface Themes */
+    body[data-pitch="EMERALD_STADIUM"] {
+      --sky-top: #041d11;
+      --sky-bot: #09351e;
+      --turf-light: #15803d;
+      --turf-dark: #166534;
+      --line-col: #f8fafc;
+      --goal-frame: #f8fafc;
+      --net-col: rgba(248, 250, 252, 0.55);
+    }
+
+    body[data-pitch="GOLDEN_DERBY"] {
+      --sky-top: #1c1004;
+      --sky-bot: #3d2208;
+      --turf-light: #15803d;
+      --turf-dark: #0f5132;
+      --line-col: #fef3c7;
+      --goal-frame: #fde68a;
+      --net-col: rgba(254, 243, 199, 0.52);
+    }
+
+    body[data-pitch="NIGHT_ARENA"] {
+      --sky-top: #040d1a;
+      --sky-bot: #0b223d;
+      --turf-light: #0d9488;
+      --turf-dark: #115e59;
+      --line-col: #f8fafc;
+      --goal-frame: #ffffff;
+      --net-col: rgba(255, 255, 255, 0.52);
+    }
+
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
@@ -21,316 +114,253 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #05160c;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
-      color: #ffffff;
-      touch-action: none;
+      background-color: var(--theme-bg);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
-    #gameContainer {
+    #fsArena {
       position: relative;
       width: 100vw;
       height: 100vh;
       height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(5px, env(safe-area-inset-top)) 7px max(5px, env(safe-area-inset-bottom));
+      background-color: var(--theme-bg);
+      background-image: radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.1) 55%, transparent 82%);
       overflow: hidden;
-      background: radial-gradient(circle at 50% 25%, #0a7d3b 0%, #0B3D20 55%, #04120a 100%);
     }
 
-    canvas#stadiumCanvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      cursor: grab;
-    }
-
-    canvas#stadiumCanvas:active {
-      cursor: grabbing;
-    }
-
-    /* Glassmorphism HUD Surfaces */
-    .glass-panel {
-      background: rgba(8, 28, 17, 0.84);
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(16, 185, 129, 0.28);
-      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.52);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
     }
 
-    /* ==========================================================================
-       TOP HUD BAR
-       ========================================================================== */
-    .top-hud {
-      position: absolute;
-      top: max(10px, env(safe-area-inset-top));
-      left: 10px;
-      right: 10px;
+    /* ========================================================================
+       2. TOP BAR & TELEMETRY STRIP
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 840px;
       z-index: 20;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
-      gap: 6px;
-      pointer-events: none;
+      gap: 4px;
     }
 
-    .hud-cluster {
+    .btn-group {
       display: flex;
       align-items: center;
-      gap: 6px;
-      pointer-events: auto;
+      gap: 4px;
+      flex-shrink: 0;
     }
 
-    .hud-btn {
-      width: 38px;
-      height: 38px;
+    .icon-circle-btn {
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      font-size: 12px;
+      font-weight: 900;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
       color: #ffffff;
+      border: 1.5px solid rgba(251, 191, 36, 0.65);
+      box-shadow: 0 3px 10px rgba(4, 20, 11, 0.35);
       text-decoration: none;
-      font-size: 16px;
-      font-weight: 800;
       cursor: pointer;
-      transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
     }
 
-    .hud-btn:hover {
-      background: rgba(16, 185, 129, 0.32);
-      border-color: rgba(251, 191, 36, 0.65);
+    .icon-circle-btn:hover,
+    .icon-circle-btn:focus-visible {
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
+      border-color: var(--fb-amber);
+      outline: none;
     }
 
-    .hud-btn:active {
+    .icon-circle-btn:active {
       transform: scale(0.92);
     }
 
-    /* Match Scoreboard Pill */
-    .scoreboard-box {
+    .brand-center-hud {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 6px 11px;
-      border-radius: 16px;
-      min-width: 184px;
-      pointer-events: auto;
+      padding: 2px 8px;
+      border-radius: 12px;
+      flex: 1;
+      max-width: 410px;
+      border-color: rgba(245, 158, 11, 0.55);
+      min-width: 0;
     }
 
-    .score-teams {
+    .brand-main-row {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
+      gap: 5px;
+      font-size: 10.5px;
       font-weight: 900;
-      letter-spacing: 0.03em;
-    }
-
-    .team-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .score-num {
-      padding: 1px 7px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .score-num.user {
-      background: rgba(16, 185, 129, 0.32);
-      border-color: rgba(52, 211, 153, 0.6);
-      color: #6ee7b7;
-    }
-
-    .score-num.opp {
-      background: rgba(244, 63, 94, 0.28);
-      border-color: rgba(251, 113, 133, 0.5);
-      color: #fda4af;
-    }
-
-    .score-subrow {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      margin-top: 3px;
-      gap: 8px;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .round-badge {
-      color: #fbbf24;
-    }
-
-    .target-pts-badge {
-      color: #34d399;
-    }
-
-    .best-pts-badge {
-      color: #fde68a;
-    }
-
-    /* Round Dots & Difficulty/Weather Strip */
-    .round-dots-strip {
-      position: absolute;
-      top: calc(max(10px, env(safe-area-inset-top)) + 54px);
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 18;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 4px 12px;
-      border-radius: 999px;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-
-    .dots-group {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .kick-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      transition: all 0.25s ease;
-    }
-
-    .kick-dot.goal {
-      background: #10b981;
-      border-color: #a7f3d0;
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
-    }
-
-    .kick-dot.miss {
-      background: #ef4444;
-      border-color: #fecaca;
-      box-shadow: 0 0 8px rgba(239, 68, 68, 0.85);
-    }
-
-    /* Shot Power & Curve Meter */
-    .shot-meter-box {
-      display: none;
-      width: 100%;
-      padding: 6px 12px;
-      border-radius: 14px;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .shot-meter-box.active {
-      display: flex;
-    }
-
-    .meter-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 9.5px;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #fde68a;
-    }
-
-    .power-track {
-      width: 100%;
-      height: 6px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.14);
-      overflow: hidden;
-    }
-
-    .power-fill {
-      width: 0%;
-      height: 100%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #10b981 0%, #fbbf24 65%, #ef4444 100%);
-      transition: width 0.04s linear;
-    }
-
-    /* Bottom Turn Badge Pill */
-    .bottom-hud {
-      position: absolute;
-      bottom: max(14px, env(safe-area-inset-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 18;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      width: 92%;
-      max-width: 390px;
-      pointer-events: none;
-    }
-
-    .turn-pill {
-      padding: 8px 16px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: #ecfdf5;
-      text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 100%;
     }
 
-    /* Floating Callout Banner */
-    .callout-popup {
-      position: absolute;
-      top: 34%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.75);
-      z-index: 25;
-      text-align: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+    .hud-logo-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 1.3px solid var(--fb-gold);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      line-height: 0;
     }
 
-    .callout-popup.visible {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
+    .hud-logo-svg {
+      width: 18px;
+      height: 18px;
+      display: block;
     }
 
-    .callout-title {
-      font-size: clamp(26px, 7vw, 42px);
-      font-weight: 900;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: #ffffff;
-      text-shadow: 0 4px 18px rgba(0, 0, 0, 0.85), 0 0 22px rgba(16, 185, 129, 0.85);
-    }
-
-    .callout-detail {
-      margin-top: 2px;
-      font-size: 13px;
+    .brand-sub-row {
+      font-size: 7.2px;
       font-weight: 800;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
-      color: #fbbf24;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
 
-    /* ==========================================================================
-       1. INTRO ANIMATION SCREEN (AUTROBOOK FOOTBALL ASSOCIATION)
-       ========================================================================== */
-    #introOverlay {
+    .telemetry-strip {
+      width: 100%;
+      max-width: 840px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 4px;
+      z-index: 16;
+    }
+
+    .hud-pill {
+      padding: 3px 6px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 3px;
+      font-size: 8.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .hud-pill-lbl {
+      color: var(--fb-gold);
+      font-size: 6.8px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    /* ========================================================================
+       3. CENTER FOOTBALL STADIUM PITCH & SHOT / AIM CONTROLS
+       ======================================================================== */
+    .stadium-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 840px;
+      min-height: 0;
+      margin: 3px 0;
+    }
+
+    canvas#footballCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.44);
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .control-deck {
+      width: 100%;
+      max-width: 840px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      z-index: 18;
+    }
+
+    .dir-cluster, .kick-cluster {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pitch-btn {
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid rgba(245, 158, 11, 0.65);
+      box-shadow: 0 3px 10px rgba(4, 20, 11, 0.34);
+      color: #ffffff;
+      font-size: 8.2px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+    }
+
+    .pitch-btn.strike-accent {
+      border-color: var(--fb-amber);
+      color: #fef08a;
+    }
+
+    .pitch-btn:hover,
+    .pitch-btn:focus-visible,
+    .pitch-btn.active {
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
+      border-color: var(--fb-amber);
+      outline: none;
+    }
+
+    .pitch-btn:active,
+    .pitch-btn.active {
+      transform: scale(0.95);
+    }
+
+    /* ========================================================================
+       4. INTRO SCREEN WITH SPOTLIGHT RAYS & SKIP INTRO
+       ======================================================================== */
+    #fsIntroScreen {
       position: absolute;
       inset: 0;
       z-index: 60;
@@ -339,123 +369,114 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      background: radial-gradient(circle at 50% 35%, #0a7d3b 0%, #0B3D20 55%, #020b06 100%);
+      background-color: var(--theme-bg);
+      background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.14) 55%, transparent 82%);
       overflow: hidden;
-      transition: opacity 0.45s ease, visibility 0.45s ease;
+      transition: opacity 0.32s ease, visibility 0.32s ease;
     }
 
-    #introOverlay.fade-out {
+    #fsIntroScreen.hidden {
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
     }
 
-    .floodlight-ray {
+    .spot-ray {
       position: absolute;
       top: -25%;
-      width: 240px;
+      width: 220px;
       height: 160%;
-      background: linear-gradient(180deg, rgba(251, 191, 36, 0.22) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
-      transform-origin: top center;
-      filter: blur(16px);
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
       pointer-events: none;
     }
 
     .ray-left {
-      left: 8%;
-      animation: beamSwingLeft 3s ease-in-out infinite alternate;
+      left: 10%;
+      animation: raySwingL 2.6s ease-in-out infinite alternate;
     }
 
     .ray-right {
-      right: 8%;
-      animation: beamSwingRight 3s ease-in-out infinite alternate;
+      right: 10%;
+      animation: raySwingR 2.6s ease-in-out infinite alternate;
     }
 
-    @keyframes beamSwingLeft {
-      0% { transform: rotate(-26deg); }
-      100% { transform: rotate(16deg); }
+    @keyframes raySwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
     }
 
-    @keyframes beamSwingRight {
-      0% { transform: rotate(26deg); }
-      100% { transform: rotate(-16deg); }
+    @keyframes raySwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
     }
 
-    .intro-card {
+    .intro-center {
       position: relative;
       z-index: 2;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
-      max-width: 340px;
+      max-width: 360px;
       width: 100%;
     }
 
-    .afa-crest {
-      width: 112px;
-      height: 112px;
+    .fs-crest-badge {
+      width: 116px;
+      height: 116px;
       border-radius: 50%;
       background: linear-gradient(145deg, #0a7d3b, #0B3D20);
-      border: 3px solid #fbbf24;
-      box-shadow: 0 0 36px rgba(251, 191, 36, 0.48), inset 0 0 20px rgba(16, 185, 129, 0.45);
+      border: 3px solid var(--fb-gold);
+      box-shadow: 0 0 36px rgba(245, 158, 11, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 18px;
-      animation: emblemGlow 1.6s ease-in-out infinite alternate;
+      margin-bottom: 14px;
+      overflow: hidden;
+      line-height: 0;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
     }
 
-    @keyframes emblemGlow {
-      0% { transform: scale(0.96); box-shadow: 0 0 22px rgba(251, 191, 36, 0.35); }
-      100% { transform: scale(1.04); box-shadow: 0 0 44px rgba(251, 191, 36, 0.68); }
+    .fs-crest-svg {
+      width: 104px;
+      height: 104px;
+      display: block;
     }
 
-    .intro-tag {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: #fbbf24;
-      margin-bottom: 6px;
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
     }
 
-    .intro-heading {
-      font-size: 27px;
+    .intro-title {
+      font-size: 24px;
       font-weight: 900;
       line-height: 1.15;
-      color: #ffffff;
-      text-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+      color: var(--text-main);
     }
 
-    .intro-caption {
-      margin-top: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #6ee7b7;
-      letter-spacing: 0.06em;
-    }
-
-    .intro-bar-wrap {
+    .intro-progress-track {
       width: 100%;
       max-width: 240px;
       height: 6px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.14);
+      background: rgba(16, 185, 129, 0.18);
       overflow: hidden;
-      margin: 22px 0 18px;
+      margin: 18px 0 16px;
+      cursor: pointer;
     }
 
-    .intro-bar-fill {
+    .intro-progress-fill {
       width: 0%;
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(90deg, #10b981, #fbbf24);
+      background: linear-gradient(90deg, #10b981, #f59e0b);
     }
 
-    /* ==========================================================================
-       2. MODALS (TEAM, PLAYER, DIFFICULTY, WEATHER, PAUSE, RESULT)
-       ========================================================================== */
+    /* ========================================================================
+       5. MODALS (#setupOverlay, SCREENSHOT, PAUSE & SUMMARY)
+       ======================================================================== */
     .modal-backdrop {
       position: absolute;
       inset: 0;
@@ -464,204 +485,122 @@
       align-items: center;
       justify-content: center;
       padding: 12px;
-      background: rgba(3, 14, 8, 0.84);
+      background: rgba(0, 0, 0, 0.65);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       overflow-y: auto;
     }
 
-    .modal-backdrop.active {
+    .modal-backdrop.open {
       display: flex;
     }
 
-    .modal-dialog {
+    .modal-card {
       width: 100%;
-      max-width: 410px;
-      max-height: 93dvh;
+      max-width: 490px;
+      max-height: 94dvh;
       overflow-y: auto;
-      border-radius: 24px;
-      padding: 18px 16px;
-      animation: dialogSlideIn 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+      border-radius: 22px;
+      padding: 14px 13px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
     }
 
-    @keyframes dialogSlideIn {
-      0% { opacity: 0; transform: scale(0.92) translateY(12px); }
-      100% { opacity: 1; transform: scale(1) translateY(0); }
-    }
-
-    .dialog-header {
+    .modal-head {
       text-align: center;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
-    .dialog-title {
-      font-size: 20px;
+    .modal-title-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .modal-h2 {
+      font-size: 18px;
       font-weight: 900;
-      color: #ffffff;
-      letter-spacing: 0.02em;
     }
 
-    .dialog-subtitle {
-      font-size: 11px;
-      font-weight: 600;
-      color: #6ee7b7;
+    .modal-sub {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-sub);
       margin-top: 2px;
     }
 
-    .setup-row {
-      display: grid;
-      grid-template-columns: 1fr 84px;
-      gap: 10px;
-      margin-bottom: 12px;
+    .setup-box {
+      padding: 6px 9px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 6px;
     }
 
-    .field-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 11px;
-    }
-
-    .field-label {
-      font-size: 10px;
-      font-weight: 800;
+    .setup-label {
+      font-size: 8.5px;
+      font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #fbbf24;
+      color: var(--fb-gold);
+      margin-bottom: 4.5px;
     }
 
-    .field-input, .field-select {
-      width: 100%;
-      padding: 9px 11px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 800;
-      outline: none;
-      user-select: text;
-      -webkit-user-select: text;
-      transition: border-color 0.15s ease, background-color 0.15s ease;
+    .pills-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4.5px;
     }
 
-    .field-input:focus, .field-select:focus {
-      border-color: #10b981;
-      background: rgba(16, 185, 129, 0.16);
-    }
-
-    .field-select option {
-      background: #062112;
-      color: #ffffff;
-    }
-
-    .pill-row {
+    .pills-3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
+      gap: 4.5px;
     }
 
-    .choice-pill {
-      padding: 8px 6px;
-      border-radius: 11px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1.5px solid rgba(255, 255, 255, 0.13);
-      color: #e2e8f0;
-      font-size: 10.5px;
+    .choice-btn {
+      padding: 6px 5px;
+      border-radius: 10px;
+      background: #0B3D20;
+      border: 1.5px solid rgba(16, 185, 129, 0.45);
+      color: #ffffff;
+      font-size: 8.5px;
       font-weight: 800;
       cursor: pointer;
       text-align: center;
-      transition: all 0.15s ease;
+      transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
     }
 
-    .choice-pill:hover {
-      background: rgba(255, 255, 255, 0.12);
+    .choice-btn:hover,
+    .choice-btn:focus-visible {
+      background: #0d4b28;
+      border-color: var(--fb-amber);
+      outline: none;
     }
 
-    .choice-pill.selected {
-      background: rgba(16, 185, 129, 0.25);
-      border-color: #fbbf24;
+    .choice-btn:active {
+      transform: scale(0.97);
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #0a7d3b 0%, #062815 100%);
+      border-color: var(--fb-amber);
       color: #ffffff;
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.36);
     }
 
-    /* 10-Country Grid Selector */
-    .country-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
-      margin-top: 2px;
-    }
-
-    .country-card {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 9px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1.5px solid rgba(255, 255, 255, 0.12);
-      color: #e2e8f0;
-      cursor: pointer;
-      text-align: left;
-      transition: all 0.15s ease;
-    }
-
-    .country-card:hover {
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    .country-card.selected {
-      background: rgba(16, 185, 129, 0.25);
-      border-color: #fbbf24;
-      box-shadow: 0 0 14px rgba(251, 191, 36, 0.28);
-      color: #ffffff;
-    }
-
-    .country-flag {
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .country-meta {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .country-name {
-      font-size: 11.5px;
-      font-weight: 800;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .country-code {
-      font-size: 9px;
-      font-weight: 700;
-      color: #94a3b8;
-    }
-
-    .kit-swatch {
-      width: 13px;
-      height: 13px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(255, 255, 255, 0.72);
-      flex-shrink: 0;
-    }
-
-    /* Buttons */
-    .btn-gold-green {
+    .btn-primary {
       width: 100%;
-      padding: 12px 18px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
-      border: 1px solid rgba(251, 191, 36, 0.7);
-      box-shadow: 0 8px 20px rgba(10, 125, 59, 0.45);
+      padding: 10px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid var(--fb-gold);
+      box-shadow: 0 6px 16px rgba(11, 61, 32, 0.5);
       color: #ffffff;
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -670,26 +609,29 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: transform 0.15s ease, filter 0.15s ease;
+      gap: 6px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
     }
 
-    .btn-gold-green:hover {
-      filter: brightness(1.08);
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.42);
+      outline: none;
     }
 
-    .btn-gold-green:active {
-      transform: scale(0.97);
+    .btn-primary:active {
+      transform: scale(0.98);
     }
 
-    .btn-outline {
+    .btn-secondary {
       width: 100%;
-      padding: 10px 16px;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 9px 14px;
+      border-radius: 13px;
+      background: #0B3D20;
+      border: 1.5px solid rgba(16, 185, 129, 0.55);
       color: #ffffff;
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.05em;
       text-transform: uppercase;
@@ -698,2491 +640,1890 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: background-color 0.15s ease, transform 0.15s ease;
+      gap: 6px;
+      transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
     }
 
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.16);
+    .btn-secondary:hover,
+    .btn-secondary:focus-visible {
+      background: #0a7d3b;
+      border-color: var(--fb-amber);
+      outline: none;
     }
 
-    .btn-outline:active {
-      transform: scale(0.97);
+    .btn-secondary:active {
+      transform: scale(0.98);
     }
 
-    .stack-actions {
+    .btn-stack {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 6.5px;
+      margin-top: 7px;
     }
 
-    .summary-card {
-      background: rgba(0, 0, 0, 0.38);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 16px;
-      padding: 12px 14px;
+    .stats-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
       margin: 10px 0;
       display: flex;
       flex-direction: column;
-      gap: 7px;
+      gap: 6px;
     }
 
-    .summary-row {
+    .stats-row {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
-      color: #cbd5e1;
     }
 
-    .summary-val {
-      font-size: 14px;
+    .shot-preview-img {
+      width: 100%;
+      max-height: 48dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--fb-gold);
+      background: var(--sky-top);
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 10px;
       font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       color: #ffffff;
-      font-variant-numeric: tabular-nums;
+      background: rgba(11, 61, 32, 0.95);
+      border: 1px solid var(--fb-gold);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
     }
   </style>
 </head>
 <body>
-  <div id="gameContainer">
-    <!-- Main Responsive Stadium Canvas -->
-    <canvas id="stadiumCanvas"></canvas>
+  <div id="fsArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">FOOTBALL STRIKE</div>
 
-    <!-- ======================================================================
-         TOP HUD NAVIGATION & SCOREBOARD
-         ====================================================================== -->
-    <header class="top-hud">
-      <div class="hud-cluster">
-        <!-- Back to Football Hub Link -->
-        <a href="football.html" class="hud-btn glass-panel" title="Back to Football Menu" aria-label="Back to Football Menu">&larr;</a>
+    <!-- TOP BROADCAST BAR -->
+    <header class="top-bar">
+      <div class="btn-group">
+        <a id="backToStartBtn" href="football.html" class="icon-circle-btn glass-hud" title="Reset to Start" aria-label="Reset to Start">&larr;</a>
       </div>
 
-      <!-- Scoreboard -->
-      <div class="scoreboard-box glass-panel">
-        <div class="score-teams">
-          <span class="team-tag">
-            <span id="hudUserFlag">🇧🇩</span>
-            <span id="hudUserCode">BAN</span>
-          </span>
-          <span id="hudUserScore" class="score-num user">0</span>
-          <span style="color:#94a3b8;font-size:11px;">VS</span>
-          <span id="hudOppScore" class="score-num opp">0</span>
-          <span class="team-tag">
-            <span id="hudOppCode">ARG</span>
-            <span id="hudOppFlag">🇦🇷</span>
-          </span>
+      <div class="brand-center-hud glass-hud">
+        <div class="brand-main-row">
+          <span class="hud-logo-badge js-ab-football-logo" data-size="hud" aria-hidden="true"></span>
+          <span>Football Strike</span>
         </div>
-        <div class="score-subrow">
-          <span id="hudRoundText" class="round-badge">ROUND 1 / 5</span>
-          <span id="hudPointsText" class="target-pts-badge">0 PTS</span>
-          <span id="hudBestText" class="best-pts-badge">BEST 0</span>
-        </div>
+        <div id="statusSubRow" class="brand-sub-row">HUMAN VS OPPONENT DUEL &bull; PRO &bull; EMERALD STADIUM</div>
       </div>
 
-      <!-- Edit Team/Settings, Mute/Unmute, Pause -->
-      <div class="hud-cluster">
-        <button id="openSetupBtn" type="button" class="hud-btn glass-panel" title="Team, Difficulty & Weather" aria-label="Team, Difficulty and Weather">&#9998;</button>
-        <button id="muteToggleBtn" type="button" class="hud-btn glass-panel" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
-        <button id="pauseBtn" type="button" class="hud-btn glass-panel" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      <div class="btn-group">
+        <button id="themeBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="soundBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Match (P)" aria-label="Pause Match">&#10074;&#10074;</button>
       </div>
     </header>
 
-    <!-- 5-Round Shootout Dots + Active Difficulty & Weather Badge -->
-    <div class="round-dots-strip glass-panel">
-      <div id="userDotsContainer" class="dots-group" aria-label="Your shootout kicks">
-        <span class="kick-dot"></span><span class="kick-dot"></span><span class="kick-dot"></span><span class="kick-dot"></span><span class="kick-dot"></span>
+    <!-- TELEMETRY STRIP: P1 GOALS, OPP/P2 GOALS, SHOTS, STREAK, CLOCK -->
+    <section class="telemetry-strip" aria-label="Match Telemetry">
+      <div class="hud-pill glass-hud">
+        <span id="p1Lbl" class="hud-pill-lbl">P1</span>
+        <span id="p1ScoreVal">0</span>
       </div>
-      <span id="hudMetaBadge" style="font-size:9px;font-weight:900;color:#fbbf24;">PRO • NIGHT</span>
-      <div id="oppDotsContainer" class="dots-group" aria-label="Opponent shootout kicks">
-        <span class="kick-dot"></span><span class="kick-dot"></span><span class="kick-dot"></span><span class="kick-dot"></span><span class="kick-dot"></span>
+      <div class="hud-pill glass-hud">
+        <span id="p2Lbl" class="hud-pill-lbl">OPP</span>
+        <span id="p2ScoreVal">0</span>
       </div>
-    </div>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">SHOTS</span>
+        <span id="shotsPillVal">0</span>
+      </div>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">STREAK</span>
+        <span id="streakPillVal">0</span>
+      </div>
+      <div class="hud-pill glass-hud">
+        <span id="clockPillLbl" class="hud-pill-lbl">CLOCK</span>
+        <span id="clockPillVal">00:00</span>
+      </div>
+    </section>
 
-    <!-- Floating Goal / Target / Save Callout -->
-    <div id="calloutPopup" class="callout-popup">
-      <div id="calloutTitle" class="callout-title">GOAL!</div>
-      <div id="calloutDetail" class="callout-detail">BULLSEYE +5 PTS</div>
-    </div>
+    <!-- CENTER FOOTBALL PITCH & GOAL CANVAS -->
+    <main id="stadiumStage" class="stadium-stage">
+      <canvas id="footballCanvas"></canvas>
+    </main>
 
-    <!-- Bottom Power/Curve Meter & Turn Banner -->
-    <div class="bottom-hud">
-      <div id="shotMeterBox" class="shot-meter-box glass-panel">
-        <div class="meter-labels">
-          <span id="powerReadout">POWER: 0%</span>
-          <span id="curveReadout">CURVE: CENTER</span>
-        </div>
-        <div class="power-track">
-          <div id="powerFill" class="power-fill"></div>
-        </div>
+    <!-- ON-SCREEN AIM & STRIKE CONTROLS -->
+    <div id="controlDeck" class="control-deck" role="group" aria-label="Football Controls">
+      <div class="dir-cluster">
+        <button id="aimLeftBtn" type="button" class="pitch-btn">&#9664; LEFT</button>
+        <button id="aimCenterBtn" type="button" class="pitch-btn active">CENTER</button>
+        <button id="aimRightBtn" type="button" class="pitch-btn">RIGHT &#9654;</button>
       </div>
-      <div id="turnBanner" class="turn-pill glass-panel">
-        STRIKER #10 • SWIPE UP TOWARD THE TARGET RING
+
+      <div class="kick-cluster">
+        <button id="curveBtn" type="button" class="pitch-btn">CURVE</button>
+        <button id="powerShotBtn" type="button" class="pitch-btn strike-accent">SHOOT</button>
       </div>
     </div>
 
     <!-- ======================================================================
-         1. INTRO ANIMATION SCREEN (AUTROBOOK FOOTBALL ASSOCIATION)
+         1. INTRO SCREEN WITH SPOTLIGHT RAYS & SKIP INTRO
          ====================================================================== -->
-    <section id="introOverlay">
-      <div class="floodlight-ray ray-left"></div>
-      <div class="floodlight-ray ray-right"></div>
+    <section id="fsIntroScreen">
+      <div class="spot-ray ray-left"></div>
+      <div class="spot-ray ray-right"></div>
 
-      <div class="intro-card">
-        <div class="afa-crest">
-          <!-- Custom SVG Crest Emblem -->
-          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#FBBF24" stroke-width="3"/>
-            <circle cx="32" cy="31" r="12.5" fill="#FFFFFF" stroke="#064E3B" stroke-width="2"/>
-            <polygon points="32,23.5 37.5,27.8 35.4,34.5 28.6,34.5 26.5,27.8" fill="#0B3D20"/>
-            <path d="M21 16.5L32 12L43 16.5" stroke="#FDE68A" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
+      <div class="intro-center">
+        <div class="fs-crest-badge js-ab-football-logo" data-size="intro"></div>
+
+        <h1 class="intro-title">Football Strike</h1>
+
+        <div id="introProgressTrack" class="intro-progress-track" title="Tap to skip intro">
+          <div id="introBarFill" class="intro-progress-fill"></div>
         </div>
 
-        <div class="intro-tag">OFFICIAL CHAMPIONSHIP</div>
-        <h1 class="intro-heading">Autrobook Football Association</h1>
-        <p class="intro-caption">REALISTIC TARGET PENALTY SHOOTOUT</p>
-
-        <div class="intro-bar-wrap">
-          <div id="introBarFill" class="intro-bar-fill"></div>
-        </div>
-
-        <button id="skipIntroBtn" type="button" class="btn-gold-green" style="max-width:220px;">
-          Skip Intro
+        <button id="skipIntroBtn" type="button" class="btn-primary" style="max-width:220px;">
+          SKIP INTRO
         </button>
       </div>
     </section>
 
     <!-- ======================================================================
-         2. PLAYER, COUNTRY, DIFFICULTY & WEATHER SETUP MODAL
+         2. MATCH SETUP OVERLAY (#setupOverlay)
          ====================================================================== -->
-    <div id="setupModal" class="modal-backdrop">
-      <div class="modal-dialog glass-panel">
-        <div class="dialog-header">
-          <h2 class="dialog-title">Match &amp; Squad Setup</h2>
-          <p class="dialog-subtitle">Striker, 10 Nations, Difficulty &amp; Atmosphere</p>
+    <div id="setupOverlay" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div class="modal-title-row">
+            <span class="hud-logo-badge js-ab-football-logo" data-size="modal" aria-hidden="true"></span>
+            <h2 class="modal-h2">Match Setup</h2>
+          </div>
+          <p class="modal-sub">Football Strike &bull; Match Configuration</p>
         </div>
 
-        <!-- Editable Player Name & Jersey Number -->
-        <div class="setup-row">
-          <div class="field-group" style="margin-bottom:0;">
-            <label for="playerNameInput" class="field-label">Striker Name (Kit Back)</label>
-            <input id="playerNameInput" type="text" maxlength="12" value="STRIKER" placeholder="ENTER NAME" class="field-input" />
-          </div>
-          <div class="field-group" style="margin-bottom:0;">
-            <label for="jerseyNumInput" class="field-label">Jersey #</label>
-            <input id="jerseyNumInput" type="number" min="1" max="99" value="10" class="field-input" />
-          </div>
-        </div>
-
-        <!-- Difficulty Selector -->
-        <div class="field-group">
-          <span class="field-label">Difficulty Level</span>
-          <div id="difficultyPills" class="pill-row">
-            <button type="button" class="choice-pill" data-diff="AMATEUR">Amateur</button>
-            <button type="button" class="choice-pill selected" data-diff="PRO">Pro</button>
-            <button type="button" class="choice-pill" data-diff="WORLD_CLASS">World Class</button>
+        <div class="setup-box">
+          <div class="setup-label">Game Mode</div>
+          <div id="modeGroup" class="pills-2">
+            <button type="button" class="choice-btn" data-mode="TWO_P_OPPOSITE_ENDS">2P Opposite Ends</button>
+            <button type="button" class="choice-btn" data-mode="TWO_P_POINTS_DUEL">2P Points Duel</button>
+            <button type="button" class="choice-btn selected" data-mode="HUMAN_VS_OPPONENT_DUEL">Human vs Opponent Duel</button>
+            <button type="button" class="choice-btn" data-mode="SOLO_VS_OPPONENT">Solo vs Opponent</button>
+            <button type="button" class="choice-btn" data-mode="TIMED_CHALLENGE">Timed Challenge</button>
+            <button type="button" class="choice-btn" data-mode="SOLO_PRACTICE">Solo Practice</button>
           </div>
         </div>
 
-        <!-- Stadium Weather / Atmosphere Selector -->
-        <div class="field-group">
-          <span class="field-label">Stadium Atmosphere</span>
-          <div id="weatherPills" class="pill-row">
-            <button type="button" class="choice-pill selected" data-weather="NIGHT">🌙 Night Lights</button>
-            <button type="button" class="choice-pill" data-weather="SUNSET">🌅 Golden Sunset</button>
-            <button type="button" class="choice-pill" data-weather="RAIN">🌧️ Rainy Match</button>
+        <div class="setup-box">
+          <div class="setup-label">Skill Level</div>
+          <div id="levelGroup" class="pills-3">
+            <button type="button" class="choice-btn" data-level="AMATEUR">Amateur</button>
+            <button type="button" class="choice-btn selected" data-level="PRO">Pro</button>
+            <button type="button" class="choice-btn" data-level="CHAMPION">Champion</button>
           </div>
         </div>
 
-        <!-- 10 National Teams Selection -->
-        <div class="field-group">
-          <span class="field-label">Select Your Nation (10 Countries)</span>
-          <div id="countryGrid" class="country-grid"></div>
+        <div class="setup-box">
+          <div class="setup-label">Pitch Theme</div>
+          <div id="pitchGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-pitch="EMERALD_STADIUM">Emerald Stadium</button>
+            <button type="button" class="choice-btn" data-pitch="GOLDEN_DERBY">Golden Derby</button>
+            <button type="button" class="choice-btn" data-pitch="NIGHT_ARENA">Night Arena</button>
+          </div>
         </div>
 
-        <!-- Opponent Country Selector -->
-        <div class="field-group">
-          <label for="opponentSelect" class="field-label">Opponent Nation</label>
-          <select id="opponentSelect" class="field-select">
-            <option value="RANDOM">🎲 Random Opponent Nation</option>
-          </select>
+        <div class="setup-box">
+          <div class="setup-label">Sound Pack &amp; Foley Test</div>
+          <div id="soundPackGroup" class="pills-3" style="margin-bottom:5px;">
+            <button type="button" class="choice-btn selected" data-pack="BROADCAST">Broadcast</button>
+            <button type="button" class="choice-btn" data-pack="STADIUM_ROAR">Stadium Roar</button>
+            <button type="button" class="choice-btn" data-pack="ARCADE_KICK">Arcade Kick</button>
+          </div>
+          <button id="testSoundBtn" type="button" class="btn-secondary" style="padding:6px 10px;font-size:8.6px;">
+            TEST SOUND
+          </button>
         </div>
 
-        <button id="kickOffBtn" type="button" class="btn-gold-green">
-          &#9917; KICK OFF MATCH
+        <button id="startBtn" type="button" class="btn-primary">
+          KICK OFF
         </button>
+
+        <div class="btn-stack" style="margin-top:6px;">
+          <button id="statsBtn" type="button" class="btn-secondary">CAREER STATS</button>
+        </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         3. PAUSE MODAL
+         3. SCREENSHOT PREVIEW & DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:370px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Pitch Snapshot</h2>
+          <p class="modal-sub">Football Strike &bull; PNG Preview</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="Football Strike Snapshot" />
+        <div class="btn-stack">
+          <a id="downloadShotBtn" href="#" download="Football-Strike.png" class="btn-primary">Download PNG</a>
+          <button id="closeShotModal" type="button" class="btn-secondary">Resume Match</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL (STRICTLY ONLY RESUME AND RESTART)
          ====================================================================== -->
     <div id="pauseModal" class="modal-backdrop">
-      <div class="modal-dialog glass-panel" style="max-width:330px;text-align:center;">
-        <div class="dialog-header">
-          <h2 class="dialog-title">Match Paused</h2>
-          <p id="pauseMatchLabel" class="dialog-subtitle">BAN vs ARG • AFA Target Match</p>
+      <div class="modal-card" style="max-width:320px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Match Paused</h2>
+          <p class="modal-sub">Football Strike</p>
         </div>
-        <div class="stack-actions">
-          <button id="resumeMatchBtn" type="button" class="btn-gold-green">Resume Match</button>
-          <button id="restartMatchBtn" type="button" class="btn-outline">Restart Shootout</button>
-          <button id="editTeamPauseBtn" type="button" class="btn-outline">Team / Weather / Difficulty</button>
-          <a href="football.html" class="btn-outline">&larr; Back to Football Menu</a>
+        <div class="btn-stack">
+          <button id="resumeBtn" type="button" class="btn-primary">Resume</button>
+          <button id="restartBtn" type="button" class="btn-secondary">Restart</button>
         </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         4. FINAL MATCH RESULT MODAL
+         5. MATCH RESULT & CAREER STATS MODAL
          ====================================================================== -->
-    <div id="resultModal" class="modal-backdrop">
-      <div class="modal-dialog glass-panel" style="max-width:350px;text-align:center;">
-        <div id="resultTrophy" style="font-size:44px;margin-bottom:4px;">🏆</div>
-        <h2 id="resultHeadline" class="dialog-title">VICTORY!</h2>
-        <p id="resultSubline" class="dialog-subtitle">BANGLADESH defeated ARGENTINA!</p>
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:375px;text-align:center;">
+        <div style="font-size:38px;margin-bottom:4px;">&#9917;</div>
+        <h2 id="summaryTitle" class="modal-h2">FULL TIME</h2>
+        <p id="summarySub" class="modal-sub">Football Strike</p>
 
-        <div class="summary-card">
-          <div class="summary-row">
-            <span>Final Penalty Score</span>
-            <span id="resultFinalScore" class="summary-val">4 - 3</span>
+        <div class="stats-box">
+          <div class="stats-row">
+            <span>Matches &bull; Wins</span>
+            <span id="sumMatchesWinsVal" style="font-weight:900;color:var(--fb-gold);">0 &bull; 0</span>
           </div>
-          <div class="summary-row">
-            <span>Target Points Earned</span>
-            <span id="resultTargetPts" class="summary-val" style="color:#34d399;">18 PTS</span>
+          <div class="stats-row">
+            <span>Goals Scored</span>
+            <span id="sumGoalsVal" style="font-weight:900;color:var(--fb-emerald);">0</span>
           </div>
-          <div class="summary-row">
-            <span>All-Time Best Points</span>
-            <span id="resultBestPts" class="summary-val" style="color:#fbbf24;">18 PTS</span>
-          </div>
-          <div class="summary-row">
-            <span>Shots on Target / Bullseyes</span>
-            <span id="resultShotsStats" class="summary-val">4/5 • 2 🎯</span>
-          </div>
-          <div class="summary-row">
-            <span>Goals Scored / Best Streak</span>
-            <span id="resultGoalsStreak" class="summary-val">4 ⚽ • 3 🔥</span>
-          </div>
-          <div class="summary-row">
-            <span>Striker &amp; Mode</span>
-            <span id="resultStrikerTag" class="summary-val" style="color:#6ee7b7;">STRIKER #10 • PRO</span>
+          <div class="stats-row">
+            <span>Best Streak &bull; High Score</span>
+            <span id="sumStreakHighVal" style="font-weight:900;">0 &bull; 0</span>
           </div>
         </div>
 
-        <div class="stack-actions">
-          <button id="playAgainBtn" type="button" class="btn-gold-green">Play Again</button>
-          <button id="changeTeamResultBtn" type="button" class="btn-outline">Team / Weather / Difficulty</button>
-          <a href="football.html" class="btn-outline">&larr; Back to Football Menu</a>
+        <div class="btn-stack">
+          <button id="summaryPrimaryBtn" type="button" class="btn-primary">Play Again</button>
+          <button id="openStatsFromGameOver" type="button" class="btn-secondary">Refresh Stats</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
+          <button id="resetStatsBtn" type="button" class="btn-secondary">Reset Stats</button>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    /**
-     * ============================================================================
-     * 10 NATIONAL TEAMS CONFIGURATION WITH AUTHENTIC KIT COLORS & TRIM
-     * ============================================================================
-     */
-    const COUNTRIES = [
-      {
-        code: 'ARG',
-        name: 'Argentina',
-        flag: '🇦🇷',
-        primary: '#75AADB',
-        secondary: '#FFFFFF',
-        pattern: 'stripes',
-        shorts: '#111827',
-        socks: '#FFFFFF',
-        text: '#0F172A'
-      },
-      {
-        code: 'BRA',
-        name: 'Brazil',
-        flag: '🇧🇷',
-        primary: '#FACC15',
-        secondary: '#15803D',
-        pattern: 'trim',
-        shorts: '#1D4ED8',
-        socks: '#FFFFFF',
-        text: '#14532D'
-      },
-      {
-        code: 'ESP',
-        name: 'Spain',
-        flag: '🇪🇸',
-        primary: '#DC2626',
-        secondary: '#FACC15',
-        pattern: 'trim',
-        shorts: '#1E3A8A',
-        socks: '#DC2626',
-        text: '#FEF08A'
-      },
-      {
-        code: 'GER',
-        name: 'Germany',
-        flag: '🇩🇪',
-        primary: '#F8FAFC',
-        secondary: '#111827',
-        pattern: 'trim',
-        shorts: '#111827',
-        socks: '#F8FAFC',
-        text: '#111827'
-      },
-      {
-        code: 'POR',
-        name: 'Portugal',
-        flag: '🇵🇹',
-        primary: '#B91C1C',
-        secondary: '#065F46',
-        pattern: 'split',
-        shorts: '#065F46',
-        socks: '#B91C1C',
-        text: '#FDE047'
-      },
-      {
-        code: 'BAN',
-        name: 'Bangladesh',
-        flag: '🇧🇩',
-        primary: '#006A4E',
-        secondary: '#F42A41',
-        pattern: 'band',
-        shorts: '#00563F',
-        socks: '#F42A41',
-        text: '#FFFFFF'
-      },
-      {
-        code: 'IND',
-        name: 'India',
-        flag: '🇮🇳',
-        primary: '#2563EB',
-        secondary: '#F97316',
-        pattern: 'trim',
-        shorts: '#1D4ED8',
-        socks: '#2563EB',
-        text: '#FFFFFF'
-      },
-      {
-        code: 'MAR',
-        name: 'Morocco',
-        flag: '🇲🇦',
-        primary: '#C8102E',
-        secondary: '#006233',
-        pattern: 'band',
-        shorts: '#006233',
-        socks: '#C8102E',
-        text: '#FFFFFF'
-      },
-      {
-        code: 'ENG',
-        name: 'England',
-        flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-        primary: '#FFFFFF',
-        secondary: '#1E3A8A',
-        pattern: 'trim',
-        shorts: '#1E3A8A',
-        socks: '#FFFFFF',
-        text: '#1E3A8A'
-      },
-      {
-        code: 'ITA',
-        name: 'Italy',
-        flag: '🇮🇹',
-        primary: '#0066CC',
-        secondary: '#FFFFFF',
-        pattern: 'trim',
-        shorts: '#FFFFFF',
-        socks: '#0066CC',
-        text: '#FFFFFF'
-      }
-    ];
+    (function () {
+      'use strict';
 
-    /**
-     * Difficulty Presets:
-     * - targetSpeedMult: velocity multiplier for moving target rings
-     * - targetRadiusScale: scale multiplier for target rings
-     * - keeperReachScale: keeper dive reach and agility
-     * - oppGoalProb: opponent penalty conversion probability
-     */
-    const DIFFICULTIES = {
-      AMATEUR: {
-        label: 'AMATEUR',
-        targetSpeedMult: 0.72,
-        targetRadiusScale: 1.16,
-        keeperReachScale: 0.82,
-        oppGoalProb: 0.54
-      },
-      PRO: {
-        label: 'PRO',
-        targetSpeedMult: 1.0,
-        targetRadiusScale: 1.0,
-        keeperReachScale: 1.0,
-        oppGoalProb: 0.68
-      },
-      WORLD_CLASS: {
-        label: 'WORLD CLASS',
-        targetSpeedMult: 1.38,
-        targetRadiusScale: 0.84,
-        keeperReachScale: 1.18,
-        oppGoalProb: 0.82
-      }
-    };
+      const MODE_CONFIG = {
+        TWO_P_OPPOSITE_ENDS: {
+          label: '2P Opposite Ends',
+          twoHuman: true,
+          targetGoals: 5,
+          maxShots: 16,
+          timedSec: null,
+          practice: false
+        },
+        TWO_P_POINTS_DUEL: {
+          label: '2P Points Duel',
+          twoHuman: true,
+          targetGoals: 7,
+          maxShots: 20,
+          timedSec: null,
+          practice: false
+        },
+        HUMAN_VS_OPPONENT_DUEL: {
+          label: 'Human vs Opponent Duel',
+          twoHuman: false,
+          targetGoals: 6,
+          maxShots: 16,
+          timedSec: null,
+          practice: false
+        },
+        SOLO_VS_OPPONENT: {
+          label: 'Solo vs Opponent',
+          twoHuman: false,
+          targetGoals: 5,
+          maxShots: 12,
+          timedSec: null,
+          practice: false
+        },
+        TIMED_CHALLENGE: {
+          label: 'Timed Challenge',
+          twoHuman: false,
+          targetGoals: 99,
+          maxShots: 99,
+          timedSec: 75,
+          practice: false
+        },
+        SOLO_PRACTICE: {
+          label: 'Solo Practice',
+          twoHuman: false,
+          targetGoals: 99,
+          maxShots: 999,
+          timedSec: null,
+          practice: true
+        }
+      };
 
-    const HIGH_SCORE_STORAGE_KEY = 'autrobook_afa_target_best_pts_v1';
+      const LEVEL_CONFIG = {
+        AMATEUR: { label: 'Amateur', keeperSpeed: 125, shotSpeed: 430, curvePower: 140 },
+        PRO: { label: 'Pro', keeperSpeed: 195, shotSpeed: 495, curvePower: 210 },
+        CHAMPION: { label: 'Champion', keeperSpeed: 270, shotSpeed: 560, curvePower: 280 }
+      };
 
-    /**
-     * ============================================================================
-     * WEB AUDIO API STADIUM & MATCH SOUND SYNTHESIZER
-     * ============================================================================
-     */
-    class StadiumAudio {
-      constructor() {
-        this.ctx = null;
-        this.muted = false;
-        this.ambientStarted = false;
-        this.ambientGain = null;
-      }
+      const PITCH_CONFIG = {
+        EMERALD_STADIUM: { label: 'Emerald Stadium' },
+        GOLDEN_DERBY: { label: 'Golden Derby' },
+        NIGHT_ARENA: { label: 'Night Arena' }
+      };
 
-      unlock() {
-        try {
-          if (!this.ctx) {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (AudioCtx) {
-              this.ctx = new AudioCtx();
+      const PACK_CONFIG = {
+        BROADCAST: { label: 'Broadcast', pitchMul: 1.0, noiseMul: 1.0, wave: 'triangle' },
+        STADIUM_ROAR: { label: 'Stadium Roar', pitchMul: 1.15, noiseMul: 1.25, wave: 'sawtooth' },
+        ARCADE_KICK: { label: 'Arcade Kick', pitchMul: 1.35, noiseMul: 0.75, wave: 'square' }
+      };
+
+      const STATS_STORAGE_KEY = 'autrobook_football_strike_v1_stats';
+
+      /* ======================================================================
+         WEB AUDIO API FOOTBALL FOLEY, WHISTLE, POST CLANK & CROWD CHEER
+         ====================================================================== */
+      class BroadcastFootballAudio {
+        constructor() {
+          this.ctx = null;
+          this.noiseBuf = null;
+          this.muted = false;
+          this.pack = 'BROADCAST';
+        }
+
+        unlock() {
+          try {
+            if (!this.ctx) {
+              const AudioCtx = window.AudioContext || window.webkitAudioContext;
+              if (AudioCtx) this.ctx = new AudioCtx();
             }
-          }
-          if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(() => {});
-          }
-          if (this.ctx && !this.ambientStarted) {
-            this.startAmbientCrowd();
-          }
-        } catch (_err) {
-          // Ignore audio context errors on restricted devices
+            if (this.ctx && this.ctx.state === 'suspended') {
+              this.ctx.resume().catch(function () {});
+            }
+            if (this.ctx && !this.noiseBuf) {
+              const sr = this.ctx.sampleRate;
+              const buf = this.ctx.createBuffer(1, Math.floor(sr * 1.1), sr);
+              const data = buf.getChannelData(0);
+              for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+              }
+              this.noiseBuf = buf;
+            }
+          } catch (_err) {}
+        }
+
+        toggleMute() {
+          this.muted = !this.muted;
+          return this.muted;
+        }
+
+        setPack(packKey) {
+          if (PACK_CONFIG[packKey]) this.pack = packKey;
+        }
+
+        getPack() {
+          return PACK_CONFIG[this.pack] || PACK_CONFIG.BROADCAST;
+        }
+
+        playKickThump(power) {
+          if (this.muted || !this.ctx) return;
+          try {
+            const pk = this.getPack();
+            const now = this.ctx.currentTime;
+            const pwr = Math.max(0.5, Math.min(1.35, power || 1.0));
+
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            osc.type = pk.wave;
+            osc.frequency.setValueAtTime(195 * pwr * pk.pitchMul, now);
+            osc.frequency.exponentialRampToValueAtTime(48, now + 0.14);
+            g.gain.setValueAtTime(0.24 * pwr, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.connect(g);
+            g.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.16);
+
+            if (this.noiseBuf) {
+              const src = this.ctx.createBufferSource();
+              src.buffer = this.noiseBuf;
+              const lp = this.ctx.createBiquadFilter();
+              lp.type = 'lowpass';
+              lp.frequency.setValueAtTime(1400 * pk.pitchMul, now);
+              const nGain = this.ctx.createGain();
+              nGain.gain.setValueAtTime(0.14 * pwr * pk.noiseMul, now);
+              nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+              src.connect(lp);
+              lp.connect(nGain);
+              nGain.connect(this.ctx.destination);
+              src.start(now, Math.random() * 0.2, 0.09);
+            }
+          } catch (_err) {}
+        }
+
+        playPostClank() {
+          if (this.muted || !this.ctx) return;
+          try {
+            const pk = this.getPack();
+            const now = this.ctx.currentTime;
+            [620, 910, 1280].forEach(function (freq, i) {
+              const osc = this.ctx.createOscillator();
+              const g = this.ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(freq * pk.pitchMul, now + i * 0.015);
+              g.gain.setValueAtTime(0.12 / (i + 1), now + i * 0.015);
+              g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+              osc.connect(g);
+              g.connect(this.ctx.destination);
+              osc.start(now + i * 0.015);
+              osc.stop(now + 0.24);
+            }, this);
+          } catch (_err) {}
+        }
+
+        playNetRipple() {
+          if (this.muted || !this.ctx || !this.noiseBuf) return;
+          try {
+            const pk = this.getPack();
+            const now = this.ctx.currentTime;
+            const src = this.ctx.createBufferSource();
+            src.buffer = this.noiseBuf;
+            const bp = this.ctx.createBiquadFilter();
+            bp.type = 'bandpass';
+            bp.frequency.setValueAtTime(1950 * pk.pitchMul, now);
+            bp.Q.setValueAtTime(3.0, now);
+            const g = this.ctx.createGain();
+            g.gain.setValueAtTime(0.18 * pk.noiseMul, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+            src.connect(bp);
+            bp.connect(g);
+            g.connect(this.ctx.destination);
+            src.start(now, Math.random() * 0.3, 0.25);
+          } catch (_err) {}
+        }
+
+        playGoalCheer() {
+          if (this.muted || !this.ctx) return;
+          try {
+            const pk = this.getPack();
+            const now = this.ctx.currentTime;
+            [523.25, 659.25, 783.99, 1046.5].forEach(function (freq, idx) {
+              const osc = this.ctx.createOscillator();
+              const g = this.ctx.createGain();
+              osc.type = pk.wave;
+              const t0 = now + idx * 0.07;
+              osc.frequency.setValueAtTime(freq * pk.pitchMul, t0);
+              g.gain.setValueAtTime(0.11, t0);
+              g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+              osc.connect(g);
+              g.connect(this.ctx.destination);
+              osc.start(t0);
+              osc.stop(t0 + 0.24);
+            }, this);
+            this.playNetRipple();
+          } catch (_err) {}
+        }
+
+        playMatchWhistle(won) {
+          if (this.muted || !this.ctx) return;
+          try {
+            const pk = this.getPack();
+            const now = this.ctx.currentTime;
+            const notes = won ? [587.33, 783.99, 1046.5] : [440, 349.23, 261.63];
+            notes.forEach(function (freq, idx) {
+              const osc = this.ctx.createOscillator();
+              const g = this.ctx.createGain();
+              osc.type = 'sine';
+              const t0 = now + idx * 0.09;
+              osc.frequency.setValueAtTime(freq * pk.pitchMul, t0);
+              g.gain.setValueAtTime(0.11, t0);
+              g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
+              osc.connect(g);
+              g.connect(this.ctx.destination);
+              osc.start(t0);
+              osc.stop(t0 + 0.26);
+            }, this);
+          } catch (_err) {}
         }
       }
 
-      toggleMute() {
-        this.muted = !this.muted;
-        this.syncAmbientMute();
-        return this.muted;
-      }
-
-      startAmbientCrowd() {
-        if (!this.ctx || this.ambientStarted) return;
-        this.ambientStarted = true;
-
-        const bufferSize = this.ctx.sampleRate * 3;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
-
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-        noise.loop = true;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 340;
-
-        const gain = this.ctx.createGain();
-        gain.gain.value = this.muted ? 0 : 0.035;
-
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
-        noise.start();
-        this.ambientGain = gain;
-      }
-
-      syncAmbientMute() {
-        if (this.ambientGain && this.ctx) {
-          this.ambientGain.gain.setTargetAtTime(this.muted ? 0 : 0.035, this.ctx.currentTime, 0.08);
-        }
-      }
-
-      playWhistle() {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const mod = this.ctx.createOscillator();
-        const modGain = this.ctx.createGain();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(2900, now);
-        osc.frequency.exponentialRampToValueAtTime(2680, now + 0.34);
-
-        mod.type = 'sine';
-        mod.frequency.setValueAtTime(36, now);
-        modGain.gain.setValueAtTime(90, now);
-
-        mod.connect(modGain);
-        modGain.connect(osc.frequency);
-
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.14, now + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-
-        osc.start(now);
-        mod.start(now);
-        osc.stop(now + 0.38);
-        mod.stop(now + 0.38);
-      }
-
-      playKickThud() {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(175, now);
-        osc.frequency.exponentialRampToValueAtTime(42, now + 0.16);
-
-        gain.gain.setValueAtTime(0.36, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.19);
-      }
-
-      playDiveSwoosh() {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const len = Math.floor(this.ctx.sampleRate * 0.22);
-        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) {
-          data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-        }
-
-        const src = this.ctx.createBufferSource();
-        src.buffer = buf;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(520, now);
-        filter.frequency.exponentialRampToValueAtTime(1250, now + 0.2);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.14, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-
-        src.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
-        src.start(now);
-      }
-
-      playNetSwish() {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const len = Math.floor(this.ctx.sampleRate * 0.28);
-        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.sin((i / len) * Math.PI);
-        }
-
-        const src = this.ctx.createBufferSource();
-        src.buffer = buf;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.setValueAtTime(1500, now);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.18, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
-        src.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
-        src.start(now);
-      }
-
-      playPostPing() {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(960, now);
-        osc.frequency.exponentialRampToValueAtTime(580, now + 0.35);
-
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.37);
-      }
-
-      playGoalCheer(isBullseye) {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const dur = 1.25;
-        const len = Math.floor(this.ctx.sampleRate * dur);
-        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.sin((i / len) * Math.PI);
-        }
-
-        const src = this.ctx.createBufferSource();
-        src.buffer = buf;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(780, now);
-        filter.Q.setValueAtTime(0.75, now);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.24, now);
-        gain.gain.exponentialRampToValueAtTime(0.004, now + dur);
-
-        src.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
-        src.start(now);
-
-        const notes = isBullseye ? [587.33, 880, 1174.66] : [523.25, 659.25];
-        notes.forEach((freq, idx) => {
-          const osc = this.ctx.createOscillator();
-          const g = this.ctx.createGain();
-          osc.type = 'triangle';
-          const t0 = now + idx * 0.08;
-          osc.frequency.setValueAtTime(freq, t0);
-          g.gain.setValueAtTime(0.14, t0);
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
-          osc.connect(g);
-          g.connect(this.ctx.destination);
-          osc.start(t0);
-          osc.stop(t0 + 0.32);
-        });
-      }
-
-      playMissGroan() {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(220, now);
-        osc.frequency.linearRampToValueAtTime(145, now + 0.42);
-
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.44);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.45);
-      }
-
-      playMatchEnd(isVictory) {
-        if (this.muted) return;
-        this.unlock();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const seq = isVictory ? [523.25, 659.25, 783.99, 1046.5] : [392.0, 349.23, 311.13, 246.94];
-        seq.forEach((freq, idx) => {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = isVictory ? 'triangle' : 'sawtooth';
-          const start = now + idx * 0.14;
-          osc.frequency.setValueAtTime(freq, start);
-          gain.gain.setValueAtTime(0.16, start);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.36);
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(start);
-          osc.stop(start + 0.38);
-        });
-      }
-    }
-
-    /**
-     * ============================================================================
-     * REALISTIC TARGET PENALTY SHOOTOUT ENGINE
-     * ============================================================================
-     */
-    class RealisticTargetShootout {
-      constructor() {
-        this.canvas = document.getElementById('stadiumCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.audio = new StadiumAudio();
-
-        // Player, National Team, Difficulty & Weather State
-        this.playerName = 'STRIKER';
-        this.jerseyNumber = '10';
-        this.userCountry = COUNTRIES.find((c) => c.code === 'BAN') || COUNTRIES[0];
-        this.oppCountry = COUNTRIES.find((c) => c.code === 'ARG') || COUNTRIES[1];
-        this.selectedOppMode = 'RANDOM';
-        this.difficultyKey = 'PRO';
-        this.weatherMode = 'NIGHT'; // NIGHT, SUNSET, RAIN
-
-        // Persistent High Score
-        this.bestTargetPoints = this.loadBestScore();
-
-        // Match & Shootout State
-        this.introActive = true;
-        this.setupOpen = false;
-        this.paused = false;
-        this.phase = 'PLAYER_AIM'; // PLAYER_AIM, STRIKER_RUN, BALL_FLIGHT, TURN_WAIT, OPPONENT_TURN, MATCH_ENDED
-        this.round = 1;
-        this.maxRounds = 5;
-        this.suddenDeath = false;
-        this.userGoals = 0;
-        this.oppGoals = 0;
-        this.targetPoints = 0;
-        this.userHistory = [];
-        this.oppHistory = [];
-
-        // Match Stats
-        this.stats = {
-          shotsTaken: 0,
-          shotsOnTarget: 0,
-          bullseyes: 0,
-          currentStreak: 0,
-          bestStreak: 0
-        };
-
-        // Viewport & Pitch Geometry
-        this.width = 0;
-        this.height = 0;
-        this.dpr = 1;
-        this.goal = { x: 0, y: 0, w: 0, h: 0 };
-        this.spot = { x: 0, y: 0 };
-
-        // Camera Shake & Atmosphere Effects
-        this.shakeTime = 0;
-        this.shakeMagnitude = 0;
-        this.spectators = [];
-        this.particles = [];
-        this.rainDrops = [];
-        this.puddleRipples = [];
-        this.netWave = { active: false, x: 0, y: 0, t: 0 };
-
-        this.keeper = {
-          x: 0,
-          y: 0,
-          startX: 0,
-          targetX: 0,
-          diveDir: 0,
-          diveT: 0,
-          diving: false,
-          kit: COUNTRIES[0]
-        };
-
-        this.striker = {
-          x: 0,
-          y: 0,
-          startX: 0,
-          startY: 0,
-          runT: 0,
-          running: false,
-          kickSwing: 0,
-          kit: this.userCountry,
-          name: 'STRIKER',
-          number: '10'
-        };
-
-        this.ball = {
-          x: 0,
-          y: 0,
-          z: 0,
-          radius: 13,
-          flying: false,
-          startX: 0,
-          startY: 0,
-          ctrlX: 0,
-          ctrlY: 0,
-          endX: 0,
-          endY: 0,
-          t: 0,
-          duration: 0.56,
-          spin: 0,
-          angle: 0,
-          trail: [],
-          isOpponentShot: false
-        };
-
-        // Moving Target Rings (5-point Gold Bullseye + two 3-point Target Rings)
-        this.targets = [
-          { id: 'gold', relX: 0.22, relY: 0.34, vx: 0.34, dir: 1, baseR: 21, r: 21, pts: 5, color: '#fbbf24', label: '+5' },
-          { id: 'emerald1', relX: 0.78, relY: 0.36, vx: 0.26, dir: -1, baseR: 24, r: 24, pts: 3, color: '#34d399', label: '+3' },
-          { id: 'emerald2', relX: 0.50, relY: 0.68, vx: 0.30, dir: 1, baseR: 24, r: 24, pts: 3, color: '#38bdf8', label: '+3' }
-        ];
-
-        // Swipe / Drag State
-        this.swipe = {
-          active: false,
-          x0: 0,
-          y0: 0,
-          x1: 0,
-          y1: 0,
-          valid: false,
-          aimX: 0,
-          aimY: 0,
-          ctrlX: 0,
-          ctrlY: 0,
-          curve: 0,
-          power: 0
-        };
-
-        this.calloutTimer = null;
-        this.lastFrame = 0;
-
-        this.applyDifficultyTargetScaling();
-        this.buildSetupUI();
-        this.bindEvents();
-        this.handleResize();
-        this.initCrowd();
-        this.initRain();
-        this.refreshHUD();
-        this.runIntroSequence();
-      }
-
-      loadBestScore() {
-        try {
-          const raw = localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
-          const parsed = parseInt(raw || '0', 10);
-          return isNaN(parsed) || parsed < 0 ? 0 : parsed;
-        } catch (_e) {
-          return 0;
-        }
-      }
-
-      saveBestScore(score) {
-        try {
-          localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(score));
-        } catch (_e) {
-          // Ignore storage quota / privacy mode restrictions
-        }
-      }
-
-      applyDifficultyTargetScaling() {
-        const diff = DIFFICULTIES[this.difficultyKey] || DIFFICULTIES.PRO;
-        for (const t of this.targets) {
-          t.r = Math.max(14, t.baseR * diff.targetRadiusScale);
-        }
-      }
-
-      triggerShake(magnitude = 7, duration = 0.26) {
-        this.shakeMagnitude = Math.max(this.shakeMagnitude, magnitude);
-        this.shakeTime = Math.max(this.shakeTime, duration);
-      }
-
-      /* ------------------------------------------------------------------------
-         SETUP UI BUILDER (10 COUNTRIES + DIFFICULTY + WEATHER + NAME/NUMBER)
-         ------------------------------------------------------------------------ */
-      buildSetupUI() {
-        const grid = document.getElementById('countryGrid');
-        const oppSelect = document.getElementById('opponentSelect');
-        grid.innerHTML = '';
-
-        COUNTRIES.forEach((country) => {
-          const card = document.createElement('button');
-          card.type = 'button';
-          card.className = 'country-card' + (country.code === this.userCountry.code ? ' selected' : '');
-          card.dataset.code = country.code;
-          card.innerHTML = `
-            <span class="country-flag">${country.flag}</span>
-            <span class="country-meta">
-              <span class="country-name">${country.name}</span>
-              <span class="country-code">${country.code}</span>
-            </span>
-            <span class="kit-swatch" style="background: linear-gradient(135deg, ${country.primary} 50%, ${country.secondary} 50%);"></span>
-          `;
-          card.addEventListener('click', () => {
-            this.userCountry = country;
-            grid.querySelectorAll('.country-card').forEach((el) => {
-              el.classList.toggle('selected', el.dataset.code === country.code);
-            });
-          });
-          grid.appendChild(card);
-
-          const opt = document.createElement('option');
-          opt.value = country.code;
-          opt.textContent = `${country.flag} ${country.name} (${country.code})`;
-          oppSelect.appendChild(opt);
-        });
-
-        // Difficulty Pills
-        document.querySelectorAll('#difficultyPills .choice-pill').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            this.difficultyKey = btn.dataset.diff;
-            document.querySelectorAll('#difficultyPills .choice-pill').forEach((b) => {
-              b.classList.toggle('selected', b.dataset.diff === this.difficultyKey);
-            });
-            this.applyDifficultyTargetScaling();
-          });
-        });
-
-        // Weather Pills
-        document.querySelectorAll('#weatherPills .choice-pill').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            this.weatherMode = btn.dataset.weather;
-            document.querySelectorAll('#weatherPills .choice-pill').forEach((b) => {
-              b.classList.toggle('selected', b.dataset.weather === this.weatherMode);
-            });
-          });
-        });
-      }
-
-      openSetupModal() {
-        this.setupOpen = true;
-        this.paused = true;
-        document.getElementById('playerNameInput').value = this.playerName;
-        document.getElementById('jerseyNumInput').value = this.jerseyNumber;
-        document.getElementById('opponentSelect').value = this.selectedOppMode;
-        document.querySelectorAll('#difficultyPills .choice-pill').forEach((b) => {
-          b.classList.toggle('selected', b.dataset.diff === this.difficultyKey);
-        });
-        document.querySelectorAll('#weatherPills .choice-pill').forEach((b) => {
-          b.classList.toggle('selected', b.dataset.weather === this.weatherMode);
-        });
-        document.getElementById('setupModal').classList.add('active');
-      }
-
-      applySetupAndStart() {
-        this.audio.unlock();
-        const rawName = (document.getElementById('playerNameInput').value || 'STRIKER').trim().toUpperCase();
-        this.playerName = rawName.slice(0, 12) || 'STRIKER';
-
-        let numVal = parseInt(document.getElementById('jerseyNumInput').value, 10);
-        if (isNaN(numVal) || numVal < 1) numVal = 10;
-        if (numVal > 99) numVal = 99;
-        this.jerseyNumber = String(numVal);
-
-        this.applyDifficultyTargetScaling();
-
-        this.selectedOppMode = document.getElementById('opponentSelect').value;
-        if (this.selectedOppMode === 'RANDOM' || this.selectedOppMode === this.userCountry.code) {
-          const pool = COUNTRIES.filter((c) => c.code !== this.userCountry.code);
-          this.oppCountry = pool[Math.floor(Math.random() * pool.length)];
-        } else {
-          this.oppCountry = COUNTRIES.find((c) => c.code === this.selectedOppMode) || COUNTRIES[0];
-        }
-
-        document.getElementById('setupModal').classList.remove('active');
-        this.setupOpen = false;
-        this.paused = false;
-        this.lastFrame = performance.now();
-        this.startNewShootout();
-      }
-
-      /* ------------------------------------------------------------------------
-         EVENT LISTENERS
-         ------------------------------------------------------------------------ */
-      bindEvents() {
-        window.addEventListener('resize', () => this.handleResize());
-
-        document.getElementById('skipIntroBtn').addEventListener('click', () => {
-          this.audio.unlock();
-          this.completeIntro();
-        });
-
-        document.getElementById('kickOffBtn').addEventListener('click', () => {
-          this.applySetupAndStart();
-        });
-
-        document.getElementById('openSetupBtn').addEventListener('click', () => {
-          if (this.introActive) return;
-          this.openSetupModal();
-        });
-
-        document.getElementById('muteToggleBtn').addEventListener('click', () => {
-          const isMuted = this.audio.toggleMute();
-          document.getElementById('muteToggleBtn').innerHTML = isMuted ? '&#128263;' : '&#128266;';
-        });
-
-        document.getElementById('pauseBtn').addEventListener('click', () => {
-          if (this.introActive || this.setupOpen || this.phase === 'MATCH_ENDED') return;
+      /* ======================================================================
+         FOOTBALL STRIKE GAME ENGINE, BALL SPIN/CURVE & GOALKEEPER AI
+         ====================================================================== */
+      class FootballStrikeEngine {
+        constructor() {
+          this.canvas = document.getElementById('footballCanvas');
+          this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
+          this.audio = new BroadcastFootballAudio();
+
+          this.mode = 'HUMAN_VS_OPPONENT_DUEL';
+          this.level = 'PRO';
+          this.pitchTheme = 'EMERALD_STADIUM';
+
+          this.aimNorm = 0; // -1 left post .. +1 right post
+          this.curveEnabled = false;
+          this.dragAim = null; // { sx, sy, cx, cy }
+
+          const saved = this.loadStats();
+          this.stats = {
+            matches: saved.matches || 0,
+            wins: saved.wins || 0,
+            goals: saved.goals || 0,
+            bestStreak: saved.bestStreak || 0,
+            highScore: saved.highScore || 0
+          };
+          this.matchCounted = false;
+
+          this.canvasW = 640;
+          this.canvasH = 380;
+          this.dpr = 1;
+
+          // Pitch & Goal frame geometry
+          this.pitch = {
+            left: 28,
+            right: 612,
+            top: 48,
+            pitchTopY: 132,
+            pitchBotY: 344,
+            goalLeftX: 226,
+            goalRightX: 414,
+            goalTopY: 72,
+            goalFloorY: 146,
+            netRipple: 0
+          };
+
+          this.keeper = {
+            x: 320,
+            y: 134,
+            vx: 0,
+            diveTimer: 0
+          };
+
+          this.kicker = {
+            x: 320,
+            y: 312,
+            kickTimer: 0,
+            spinAngle: 0
+          };
+
+          this.ball = {
+            x: 320,
+            y: 288,
+            vx: 0,
+            vy: 0,
+            spin: 0,
+            state: 'READY', // 'READY' | 'IN_FLIGHT' | 'SETTLED'
+            settleTimer: 0,
+            radius: 8.5
+          };
+
+          this.trail = [];
+          this.sparks = [];
+          this.popups = [];
+          this.screenShake = 0;
+
+          this.p1Score = 0;
+          this.p2Score = 0;
+          this.shotsTaken = 0;
+          this.streak = 0;
+          this.clockSec = 0;
+
+          this.introActive = true;
+          this.setupOpen = false;
+          this.shotOpen = false;
           this.paused = true;
-          document.getElementById('pauseMatchLabel').textContent =
-            `${this.userCountry.code} vs ${this.oppCountry.code} • ${DIFFICULTIES[this.difficultyKey].label}`;
-          document.getElementById('pauseModal').classList.add('active');
-        });
+          this.gameOver = false;
 
-        document.getElementById('resumeMatchBtn').addEventListener('click', () => {
-          document.getElementById('pauseModal').classList.remove('active');
-          this.paused = false;
-          this.lastFrame = performance.now();
-        });
+          this.introRafId = null;
+          this.rafId = null;
+          this.lastTs = 0;
+          this.toastTimer = null;
 
-        document.getElementById('restartMatchBtn').addEventListener('click', () => {
-          document.getElementById('pauseModal').classList.remove('active');
-          this.paused = false;
-          this.startNewShootout();
-        });
+          this.renderAutrobookFootballLogo();
+          this.syncThemeIcon();
+          this.bindControls();
+          this.resizePitch();
+          this.resetMatch(false);
+          this.updateHUD();
+          this.runIntro();
+        }
 
-        document.getElementById('editTeamPauseBtn').addEventListener('click', () => {
-          document.getElementById('pauseModal').classList.remove('active');
-          this.openSetupModal();
-        });
+        /* ====================================================================
+           CUSTOM RE-DESIGNED FOOTBALL EMBLEM (PENTAGON BALL + GOAL & CREST)
+           ==================================================================== */
+        renderAutrobookFootballLogo() {
+          const slots = document.querySelectorAll('.js-ab-football-logo');
+          slots.forEach(function (slot) {
+            const isIntro = slot.getAttribute('data-size') === 'intro';
+            const cls = isIntro ? 'fs-crest-svg' : 'hud-logo-svg';
+            slot.innerHTML =
+              '<svg class="' + cls + '" viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
+              '<defs>' +
+              '<radialGradient id="fsCrestGrad" cx="48%" cy="32%" r="65%">' +
+              '<stop offset="0%" stop-color="#10b981" stop-opacity="0.46" />' +
+              '<stop offset="65%" stop-color="#0a7d3b" stop-opacity="0.96" />' +
+              '<stop offset="100%" stop-color="#052111" stop-opacity="1" />' +
+              '</radialGradient>' +
+              '<radialGradient id="fsBallGrad" cx="38%" cy="32%" r="68%">' +
+              '<stop offset="0%" stop-color="#ffffff" />' +
+              '<stop offset="72%" stop-color="#f1f5f9" />' +
+              '<stop offset="100%" stop-color="#cbd5e1" />' +
+              '</radialGradient>' +
+              '</defs>' +
+              // Emerald & gold broadcast emblem ring
+              '<circle cx="50" cy="50" r="46" fill="url(#fsCrestGrad)" stroke="#f59e0b" stroke-width="3" />' +
+              '<circle cx="50" cy="50" r="41" fill="none" stroke="rgba(254,240,138,0.3)" stroke-width="1.2" />' +
+              // Stylized goal frame & net mesh in upper half
+              '<path d="M25 46V27H75V46" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />' +
+              '<path d="M33 27V44M41 27V44M50 27V44M59 27V44M67 27V44M25 33H75M25 39H75" stroke="rgba(255,255,255,0.45)" stroke-width="1.1" />' +
+              // Crisp pentagon football centered with gold accent ring
+              '<circle cx="50" cy="60" r="19" fill="url(#fsBallGrad)" stroke="#0B3D20" stroke-width="2" />' +
+              '<polygon points="50,51.5 57.5,57 54.6,65.8 45.4,65.8 42.5,57" fill="#0B3D20" stroke="#f59e0b" stroke-width="1.2" />' +
+              '<path d="M50 51.5V41M57.5 57L66.8 53.8M54.6 65.8L60.2 73.6M45.4 65.8L39.8 73.6M42.5 57L33.2 53.8" stroke="#0B3D20" stroke-width="1.7" stroke-linecap="round" />' +
+              '</svg>';
+          });
+        }
 
-        document.getElementById('playAgainBtn').addEventListener('click', () => {
-          document.getElementById('resultModal').classList.remove('active');
-          this.startNewShootout();
-        });
+        loadStats() {
+          try {
+            const raw = localStorage.getItem(STATS_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : {};
+          } catch (_err) {
+            return {};
+          }
+        }
 
-        document.getElementById('changeTeamResultBtn').addEventListener('click', () => {
-          document.getElementById('resultModal').classList.remove('active');
-          this.openSetupModal();
-        });
+        saveStats() {
+          try {
+            localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(this.stats));
+          } catch (_err) {}
+        }
 
-        const onPointerDown = (clientX, clientY) => {
-          if (this.introActive || this.setupOpen || this.paused || this.phase !== 'PLAYER_AIM') return;
+        resetStats() {
+          this.stats = { matches: 0, wins: 0, goals: 0, bestStreak: 0, highScore: 0 };
+          this.saveStats();
+          this.showToast('STATS RESET');
+          this.openStatsModal();
+        }
+
+        showToast(msg) {
+          const el = document.getElementById('toastBanner');
+          if (!el) return;
+          el.textContent = msg;
+          el.classList.add('show');
+          clearTimeout(this.toastTimer);
+          this.toastTimer = setTimeout(function () {
+            el.classList.remove('show');
+          }, 1350);
+        }
+
+        formatClock(sec) {
+          const s = Math.max(0, Math.floor(sec));
+          const m = Math.floor(s / 60);
+          const r = s % 60;
+          return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0');
+        }
+
+        syncThemeIcon() {
+          const btn = document.getElementById('themeBtn');
+          if (!btn) return;
+          const light = document.body.dataset.theme === 'light' ||
+            (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+          btn.innerHTML = light ? '&#9790;' : '&#9788;';
+        }
+
+        toggleTheme() {
+          const light = document.body.dataset.theme === 'light' ||
+            (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+          document.body.dataset.theme = light ? 'dark' : 'light';
+          this.syncThemeIcon();
+        }
+
+        resizePitch() {
+          if (!this.canvas || !this.ctx) return;
+          const stage = document.getElementById('stadiumStage');
+          const rect = stage ? stage.getBoundingClientRect() : { width: 640, height: 380 };
+          this.canvasW = Math.max(280, Math.floor(rect.width - 2));
+          this.canvasH = Math.max(200, Math.floor(rect.height - 2));
+          this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+          this.canvas.width = Math.floor(this.canvasW * this.dpr);
+          this.canvas.height = Math.floor(this.canvasH * this.dpr);
+          this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+          const p = this.pitch;
+          p.left = Math.max(14, Math.min(40, this.canvasW * 0.04));
+          p.right = this.canvasW - p.left;
+          p.top = Math.max(24, Math.min(44, this.canvasH * 0.11));
+          p.pitchTopY = p.top + (this.canvasH - p.top) * 0.25;
+          p.pitchBotY = this.canvasH - Math.max(18, Math.min(36, this.canvasH * 0.08));
+
+          const goalW = Math.max(130, Math.min(240, this.canvasW * 0.3));
+          p.goalLeftX = this.canvasW * 0.5 - goalW * 0.5;
+          p.goalRightX = this.canvasW * 0.5 + goalW * 0.5;
+          p.goalTopY = p.top + 16;
+          p.goalFloorY = p.pitchTopY + 12;
+
+          this.keeper.x = Math.max(p.goalLeftX + 18, Math.min(p.goalRightX - 18, this.keeper.x));
+          this.keeper.y = p.goalFloorY - 4;
+          this.kicker.x = this.canvasW * 0.5;
+          this.kicker.y = p.pitchBotY - 26;
+
+          if (this.ball.state === 'READY') {
+            this.ball.x = this.kicker.x;
+            this.ball.y = p.pitchBotY - 38;
+          }
+        }
+
+        resetBallSpot() {
+          const p = this.pitch;
+          this.ball.x = this.canvasW * 0.5;
+          this.ball.y = p.pitchBotY - 38;
+          this.ball.vx = 0;
+          this.ball.vy = 0;
+          this.ball.spin = 0;
+          this.ball.state = 'READY';
+          this.ball.settleTimer = 0;
+          this.keeper.x = this.canvasW * 0.5;
+          this.keeper.vx = 0;
+          this.keeper.diveTimer = 0;
+          this.trail = [];
+        }
+
+        resetMatch(countAsMatch) {
+          const mCfg = MODE_CONFIG[this.mode] || MODE_CONFIG.HUMAN_VS_OPPONENT_DUEL;
+          this.p1Score = 0;
+          this.p2Score = 0;
+          this.shotsTaken = 0;
+          this.streak = 0;
+          this.clockSec = mCfg.timedSec ? mCfg.timedSec : 0;
+          this.gameOver = false;
+          this.matchCounted = Boolean(countAsMatch);
+          this.sparks = [];
+          this.popups = [];
+          this.screenShake = 0;
+          this.resetBallSpot();
+          this.updateHUD();
+        }
+
+        hardResetToStart() {
           this.audio.unlock();
-          const rect = this.canvas.getBoundingClientRect();
-          this.swipe.active = true;
-          this.swipe.x0 = clientX - rect.left;
-          this.swipe.y0 = clientY - rect.top;
-          this.swipe.x1 = this.swipe.x0;
-          this.swipe.y1 = this.swipe.y0;
-          this.swipe.valid = false;
-          this.updateShotMeterUI();
-        };
+          this.audio.playKickThump(0.75);
 
-        const onPointerMove = (clientX, clientY) => {
-          if (!this.swipe.active) return;
-          const rect = this.canvas.getBoundingClientRect();
-          this.swipe.x1 = clientX - rect.left;
-          this.swipe.y1 = clientY - rect.top;
-          this.evaluateSwipeTrajectory();
-          this.updateShotMeterUI();
-        };
-
-        const onPointerUp = () => {
-          if (!this.swipe.active) return;
-          this.swipe.active = false;
-          this.updateShotMeterUI();
-          if (this.swipe.valid && this.phase === 'PLAYER_AIM') {
-            this.triggerPlayerRunup();
+          if (this.introRafId) {
+            cancelAnimationFrame(this.introRafId);
+            this.introRafId = null;
           }
-        };
 
-        this.canvas.addEventListener('mousedown', (e) => onPointerDown(e.clientX, e.clientY));
-        window.addEventListener('mousemove', (e) => onPointerMove(e.clientX, e.clientY));
-        window.addEventListener('mouseup', onPointerUp);
+          clearTimeout(this.toastTimer);
+          const toast = document.getElementById('toastBanner');
+          if (toast) toast.classList.remove('show');
 
-        this.canvas.addEventListener('touchstart', (e) => {
-          if (e.touches.length > 0) {
-            onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
-          }
-        }, { passive: true });
+          ['setupOverlay', 'screenshotModal', 'pauseModal', 'summaryModal'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('open');
+          });
 
-        window.addEventListener('touchmove', (e) => {
-          if (this.swipe.active && e.touches.length > 0) {
-            onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
-          }
-        }, { passive: true });
+          this.setupOpen = false;
+          this.shotOpen = false;
+          this.paused = true;
+          this.lastTs = 0;
+          this.dragAim = null;
 
-        window.addEventListener('touchend', onPointerUp);
-      }
+          this.resizePitch();
+          this.resetMatch(false);
+          this.updateHUD();
 
-      updateShotMeterUI() {
-        const box = document.getElementById('shotMeterBox');
-        if (!this.swipe.active || !this.swipe.valid) {
-          box.classList.remove('active');
-          return;
+          this.introActive = true;
+          const bar = document.getElementById('introBarFill');
+          if (bar) bar.style.width = '0%';
+          const intro = document.getElementById('fsIntroScreen');
+          if (intro) intro.classList.remove('hidden');
+          this.runIntro();
         }
-        box.classList.add('active');
-        const pct = Math.round(this.swipe.power * 100);
-        document.getElementById('powerFill').style.width = `${pct}%`;
-        document.getElementById('powerReadout').textContent = `POWER: ${pct}%`;
 
-        const curveVal = Math.round(this.swipe.curve * 100);
-        let curveLabel = 'CENTER';
-        if (curveVal < -12) curveLabel = `LEFT SPIN ${Math.abs(curveVal)}%`;
-        else if (curveVal > 12) curveLabel = `RIGHT SPIN ${curveVal}%`;
-        document.getElementById('curveReadout').textContent = `CURVE: ${curveLabel}`;
-      }
-
-      /* ------------------------------------------------------------------------
-         INTRO ANIMATION FLOW
-         ------------------------------------------------------------------------ */
-      runIntroSequence() {
-        const introDuration = 2700;
-        const startTime = performance.now();
-        const barFill = document.getElementById('introBarFill');
-
-        const stepIntro = (now) => {
-          if (!this.introActive) return;
-          const progress = Math.min(100, ((now - startTime) / introDuration) * 100);
-          barFill.style.width = progress + '%';
-          if (progress >= 100) {
-            this.completeIntro();
-          } else {
-            requestAnimationFrame(stepIntro);
-          }
-        };
-        requestAnimationFrame(stepIntro);
-      }
-
-      completeIntro() {
-        if (!this.introActive) return;
-        this.introActive = false;
-        document.getElementById('introOverlay').classList.add('fade-out');
-        this.openSetupModal();
-      }
-
-      /* ------------------------------------------------------------------------
-         RESIZE, CROWD & RAIN PARTICLES
-         ------------------------------------------------------------------------ */
-      handleResize() {
-        const rect = this.canvas.parentElement.getBoundingClientRect();
-        this.width = Math.max(300, rect.width);
-        this.height = Math.max(460, rect.height);
-        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-        this.canvas.width = Math.floor(this.width * this.dpr);
-        this.canvas.height = Math.floor(this.height * this.dpr);
-        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-
-        const goalW = Math.min(this.width * 0.78, 370);
-        const goalH = Math.max(112, Math.min(this.height * 0.18, 154));
-        this.goal = {
-          x: (this.width - goalW) * 0.5,
-          y: this.height * 0.25,
-          w: goalW,
-          h: goalH
-        };
-
-        this.spot = {
-          x: this.width * 0.5,
-          y: this.height * 0.72
-        };
-
-        if (!this.ball.flying) {
-          this.prepareTurnEntities(this.phase === 'OPPONENT_TURN');
-        }
-      }
-
-      initCrowd() {
-        this.spectators = [];
-        const rows = 5;
-        const cols = 32;
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            this.spectators.push({
-              row: r,
-              colRatio: (c + (r % 2) * 0.5) / cols,
-              phase: Math.random() * Math.PI * 2,
-              seed: (r * 13 + c * 7) % 6,
-              armRaised: (r + c) % 3 === 0
+        spawnSparks(x, y, color, count) {
+          const total = count || 12;
+          for (let i = 0; i < total; i++) {
+            const ang = (Math.PI * 2 * i) / total + (Math.random() - 0.5) * 0.35;
+            const spd = 65 + Math.random() * 145;
+            this.sparks.push({
+              x: x,
+              y: y,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd - 20,
+              life: 0.38,
+              maxLife: 0.38,
+              color: color || '#fbbf24',
+              r: 2.2 + Math.random() * 2.2
             });
           }
         }
-      }
 
-      initRain() {
-        this.rainDrops = [];
-        for (let i = 0; i < 90; i++) {
-          this.rainDrops.push({
-            x: Math.random(),
-            y: Math.random(),
-            speed: 0.95 + Math.random() * 0.55,
-            len: 10 + Math.random() * 10
+        spawnPopup(x, y, text, color) {
+          this.popups.push({
+            x: x,
+            y: y,
+            vy: -28,
+            text: text,
+            color: color || '#fbbf24',
+            life: 0.95,
+            maxLife: 0.95
           });
         }
-      }
 
-      /* ------------------------------------------------------------------------
-         SHOOTOUT MATCH FLOW
-         ------------------------------------------------------------------------ */
-      startNewShootout() {
-        this.round = 1;
-        this.suddenDeath = false;
-        this.userGoals = 0;
-        this.oppGoals = 0;
-        this.targetPoints = 0;
-        this.userHistory = [];
-        this.oppHistory = [];
-        this.particles = [];
-        this.puddleRipples = [];
-        this.stats = {
-          shotsTaken: 0,
-          shotsOnTarget: 0,
-          bullseyes: 0,
-          currentStreak: 0,
-          bestStreak: 0
-        };
-        this.phase = 'PLAYER_AIM';
+        executeShot(aimOverride, powerOverride, curveOverride) {
+          if (this.paused || this.gameOver) return;
+          if (this.ball.state !== 'READY') return;
 
-        this.prepareTurnEntities(false);
-        this.refreshHUD();
-        this.audio.playWhistle();
-        this.setTurnBanner(`${this.playerName} #${this.jerseyNumber} • SWIPE TOWARD TARGET`);
-      }
+          const p = this.pitch;
+          const lvl = LEVEL_CONFIG[this.level] || LEVEL_CONFIG.PRO;
+          const aim = aimOverride !== undefined && aimOverride !== null
+            ? Math.max(-1, Math.min(1, aimOverride))
+            : this.aimNorm;
+          const power = powerOverride !== undefined && powerOverride !== null
+            ? Math.max(0.65, Math.min(1.3, powerOverride))
+            : 1.0;
+          const curved = curveOverride !== undefined && curveOverride !== null
+            ? Boolean(curveOverride)
+            : this.curveEnabled;
 
-      prepareTurnEntities(isOpponentTurn) {
-        this.ball.flying = false;
-        this.ball.t = 0;
-        this.ball.x = this.spot.x;
-        this.ball.y = this.spot.y;
-        this.ball.z = 0;
-        this.ball.spin = 0;
-        this.ball.angle = 0;
-        this.ball.radius = Math.max(11, Math.min(14, this.width * 0.032));
-        this.ball.trail = [];
-        this.ball.isOpponentShot = isOpponentTurn;
+          const goalCenterX = (p.goalLeftX + p.goalRightX) * 0.5;
+          const halfSpan = (p.goalRightX - p.goalLeftX) * 0.44;
+          const targetX = goalCenterX + aim * halfSpan;
+          const targetY = (p.goalTopY + p.goalFloorY) * 0.54;
 
-        this.keeper.x = this.goal.x + this.goal.w * 0.5;
-        this.keeper.y = this.goal.y + this.goal.h - 4;
-        this.keeper.startX = this.keeper.x;
-        this.keeper.targetX = this.keeper.x;
-        this.keeper.diveDir = 0;
-        this.keeper.diveT = 0;
-        this.keeper.diving = false;
-        this.keeper.kit = isOpponentTurn ? this.userCountry : this.oppCountry;
+          const dx = targetX - this.ball.x;
+          const dy = targetY - this.ball.y;
+          const dist = Math.max(40, Math.hypot(dx, dy));
+          const speed = lvl.shotSpeed * power;
 
-        this.striker.startX = this.spot.x - 46;
-        this.striker.startY = this.spot.y + 66;
-        this.striker.x = this.striker.startX;
-        this.striker.y = this.striker.startY;
-        this.striker.runT = 0;
-        this.striker.running = false;
-        this.striker.kickSwing = 0;
-        this.striker.kit = isOpponentTurn ? this.oppCountry : this.userCountry;
-        this.striker.name = isOpponentTurn ? this.oppCountry.code : this.playerName;
-        this.striker.number = isOpponentTurn ? '9' : this.jerseyNumber;
-      }
+          this.ball.vx = (dx / dist) * speed;
+          this.ball.vy = (dy / dist) * speed;
+          this.ball.spin = curved ? (aim >= 0 ? -lvl.curvePower : lvl.curvePower) : 0;
+          this.ball.state = 'IN_FLIGHT';
+          this.kicker.kickTimer = 0.25;
+          this.shotsTaken += 1;
 
-      evaluateSwipeTrajectory() {
-        const dx = this.swipe.x1 - this.swipe.x0;
-        const dy = this.swipe.y1 - this.swipe.y0;
-        const dist = Math.hypot(dx, dy);
-
-        if (dist < 18 || dy > 16) {
-          this.swipe.valid = false;
-          return;
+          this.audio.playKickThump(power);
+          this.spawnSparks(this.ball.x, this.ball.y, '#fbbf24', 8);
+          this.updateHUD();
         }
 
-        this.swipe.valid = true;
-        this.swipe.power = Math.min(1, dist / (this.height * 0.27));
+        handleShotOutcome(isGoal, labelText, colorHex) {
+          const mCfg = MODE_CONFIG[this.mode] || MODE_CONFIG.HUMAN_VS_OPPONENT_DUEL;
+          this.ball.state = 'SETTLED';
+          this.ball.settleTimer = 1.05;
 
-        const horizFactor = Math.max(-1.35, Math.min(1.35, dx / (this.width * 0.34)));
-        const aimX = this.spot.x + horizFactor * (this.goal.w * 0.58);
-        const aimY = this.goal.y + this.goal.h * (0.8 - this.swipe.power * 0.74);
-
-        this.swipe.curve = Math.max(-1, Math.min(1, horizFactor * 0.95));
-        this.swipe.aimX = aimX;
-        this.swipe.aimY = aimY;
-        this.swipe.ctrlX = (this.spot.x + aimX) * 0.5 + this.swipe.curve * this.width * 0.14;
-        this.swipe.ctrlY = (this.spot.y + aimY) * 0.5 - this.height * 0.05;
-      }
-
-      triggerPlayerRunup() {
-        this.phase = 'STRIKER_RUN';
-        this.striker.running = true;
-        this.striker.runT = 0;
-        this.setTurnBanner(`${this.playerName} APPROACHING THE SPOT...`);
-      }
-
-      kickBall(endX, endY, ctrlX, ctrlY, spin, isOpponentShot) {
-        this.audio.playKickThud();
-        if (!isOpponentShot && this.swipe.power > 0.78) {
-          this.triggerShake(4.2, 0.16);
-        }
-
-        this.ball.flying = true;
-        this.ball.t = 0;
-        this.ball.startX = this.spot.x;
-        this.ball.startY = this.spot.y;
-        this.ball.endX = endX;
-        this.ball.endY = endY;
-        this.ball.ctrlX = ctrlX;
-        this.ball.ctrlY = ctrlY;
-        this.ball.spin = spin;
-        this.ball.isOpponentShot = isOpponentShot;
-        this.ball.trail = [];
-        this.phase = 'BALL_FLIGHT';
-
-        const diff = DIFFICULTIES[this.difficultyKey] || DIFFICULTIES.PRO;
-        const center = this.goal.x + this.goal.w * 0.5;
-        const offset = endX - center;
-        const keeperReadChance = isOpponentShot
-          ? Math.min(0.75, 0.34 * diff.keeperReachScale)
-          : Math.min(0.78, 0.44 * diff.keeperReachScale);
-        const readsCorrectly = Math.random() < keeperReadChance;
-
-        let dir = 0;
-        if (Math.abs(offset) > this.goal.w * 0.12) {
-          dir = offset < 0 ? -1 : 1;
-          if (!readsCorrectly) dir = -dir;
-        } else {
-          dir = readsCorrectly ? 0 : (Math.random() < 0.5 ? -1 : 1);
-        }
-
-        this.keeper.diving = true;
-        this.keeper.diveDir = dir;
-        this.keeper.diveT = 0;
-        this.keeper.startX = this.keeper.x;
-        this.keeper.targetX = center + dir * (this.goal.w * 0.34 * Math.min(1.12, diff.keeperReachScale));
-        this.audio.playDiveSwoosh();
-      }
-
-      handleBallArrival() {
-        const bx = this.ball.endX;
-        const by = this.ball.endY;
-        const isOpp = this.ball.isOpponentShot;
-        const diff = DIFFICULTIES[this.difficultyKey] || DIFFICULTIES.PRO;
-
-        const margin = 6;
-        const insideX = bx > this.goal.x + margin && bx < this.goal.x + this.goal.w - margin;
-        const insideY = by > this.goal.y + margin && by < this.goal.y + this.goal.h + 4;
-
-        const hitPost =
-          (Math.abs(bx - this.goal.x) <= margin && insideY) ||
-          (Math.abs(bx - (this.goal.x + this.goal.w)) <= margin && insideY) ||
-          (Math.abs(by - this.goal.y) <= margin && insideX);
-
-        const reachX = this.goal.w * 0.145 * diff.keeperReachScale;
-        const reachY = this.goal.h * 0.52 * diff.keeperReachScale;
-        let saved =
-          insideX &&
-          insideY &&
-          Math.abs(bx - this.keeper.x) < reachX &&
-          Math.abs(by - (this.keeper.y - this.goal.h * 0.34)) < reachY;
-
-        if (isOpp && insideX && insideY && !saved) {
-          saved = Math.random() > diff.oppGoalProb;
-        }
-
-        let isGoal = false;
-        let bonusPts = 0;
-        let hitBullseye = false;
-        let headline = 'WIDE!';
-        let subline = 'MISSED THE TARGET';
-
-        if (!isOpp) {
-          this.stats.shotsTaken++;
-        }
-
-        if (hitPost) {
-          this.audio.playPostPing();
-          this.audio.playMissGroan();
-          this.triggerShake(8, 0.28);
-          headline = 'POST!';
-          subline = 'WOODWORK DENIES IT!';
-          this.emitParticles(bx, by, '#fbbf24', 18);
-        } else if (saved) {
-          this.audio.playKickThud();
-          if (!isOpp) {
-            this.stats.shotsOnTarget++;
-            this.audio.playMissGroan();
-          } else {
-            this.audio.playGoalCheer(false);
-          }
-          headline = 'SAVED!';
-          subline = isOpp ? `${this.userCountry.name.toUpperCase()} KEEPER SAVES!` : `${this.oppCountry.code} KEEPER BLOCKS!`;
-          this.emitParticles(bx, by, '#38bdf8', 20);
-        } else if (insideX && insideY) {
-          isGoal = true;
-          this.audio.playNetSwish();
-          this.netWave = { active: true, x: bx, y: by, t: 0 };
-
-          if (!isOpp) {
-            this.stats.shotsOnTarget++;
-            this.stats.currentStreak++;
-            this.stats.bestStreak = Math.max(this.stats.bestStreak, this.stats.currentStreak);
-
-            for (const target of this.targets) {
-              const tx = this.goal.x + target.relX * this.goal.w;
-              const ty = this.goal.y + target.relY * this.goal.h;
-              if (Math.hypot(bx - tx, by - ty) <= target.r + 12) {
-                bonusPts += target.pts;
-                if (target.id === 'gold') hitBullseye = true;
-              }
-            }
-            if (hitBullseye) this.stats.bullseyes++;
-
-            const earned = 1 + bonusPts;
-            this.targetPoints += earned;
-            if (this.targetPoints > this.bestTargetPoints) {
-              this.bestTargetPoints = this.targetPoints;
-              this.saveBestScore(this.bestTargetPoints);
-            }
-
-            this.audio.playGoalCheer(bonusPts > 0);
-            if (hitBullseye) {
-              headline = 'BULLSEYE +5!';
-              subline = `GOLD RING HIT! +${earned} PTS`;
-            } else if (bonusPts > 0) {
-              headline = `TARGET +${bonusPts}!`;
-              subline = `GOAL + TARGET BONUS (+${earned} PTS)`;
-            } else {
-              headline = 'GOAL!';
-              subline = `${this.playerName} SCORES (+1 PT)`;
-            }
-          } else {
-            this.audio.playMissGroan();
-            headline = 'GOAL!';
-            subline = `${this.oppCountry.name.toUpperCase()} SCORES`;
-          }
-
-          this.emitParticles(bx, by, '#10b981', 26);
-        } else {
-          this.audio.playMissGroan();
-        }
-
-        if (!isOpp) {
           if (isGoal) {
-            this.userGoals++;
-          } else {
-            this.stats.currentStreak = 0;
-          }
-          this.userHistory.push(isGoal);
-        } else {
-          if (isGoal) this.oppGoals++;
-          this.oppHistory.push(isGoal);
-        }
+            this.pitch.netRipple = 1.0;
+            this.screenShake = 6.5;
+            this.audio.playGoalCheer();
+            this.spawnSparks(this.ball.x, this.ball.y, '#fbbf24', 18);
+            this.spawnPopup(this.ball.x, this.ball.y - 14, labelText || 'GOAL!', '#fbbf24');
+            this.showToast('GOAL! ' + (labelText || 'STRIKE'));
 
-        this.refreshHUD();
-        this.showCallout(headline, subline);
-        this.phase = 'TURN_WAIT';
+            if (!mCfg.practice) {
+              this.p1Score += 1;
+              this.streak += 1;
+              this.stats.goals += 1;
+              if (this.streak > this.stats.bestStreak) this.stats.bestStreak = this.streak;
+              if (this.p1Score > this.stats.highScore) this.stats.highScore = this.p1Score;
+              this.saveStats();
 
-        setTimeout(() => {
-          if (!isOpp) {
-            this.beginOpponentPenalty();
-          } else {
-            this.checkShootoutProgression();
-          }
-        }, 1450);
-      }
-
-      beginOpponentPenalty() {
-        this.phase = 'OPPONENT_TURN';
-        this.prepareTurnEntities(true);
-        this.setTurnBanner(`${this.oppCountry.flag} ${this.oppCountry.name.toUpperCase()} PREPARING KICK...`);
-
-        setTimeout(() => {
-          if (this.phase !== 'OPPONENT_TURN') return;
-          this.audio.playWhistle();
-          const aimX = this.goal.x + this.goal.w * (0.14 + Math.random() * 0.72);
-          const aimY = this.goal.y + this.goal.h * (0.2 + Math.random() * 0.6);
-          const ctrlX = (this.spot.x + aimX) * 0.5 + (Math.random() - 0.5) * 65;
-          const ctrlY = (this.spot.y + aimY) * 0.5 - 30;
-          this.kickBall(aimX, aimY, ctrlX, ctrlY, (Math.random() - 0.5) * 6, true);
-        }, 850);
-      }
-
-      checkShootoutProgression() {
-        const remaining = Math.max(0, this.maxRounds - this.round);
-
-        if (!this.suddenDeath) {
-          const userClinched = this.userGoals > this.oppGoals + remaining;
-          const oppClinched = this.oppGoals > this.userGoals + remaining;
-
-          if (userClinched || oppClinched || this.round >= this.maxRounds) {
-            if (this.userGoals === this.oppGoals) {
-              this.suddenDeath = true;
-              this.round++;
-              this.nextPlayerRound();
-            } else {
-              this.concludeMatch();
-            }
-            return;
-          }
-        } else {
-          if (this.userGoals !== this.oppGoals) {
-            this.concludeMatch();
-            return;
-          }
-        }
-
-        this.round++;
-        this.nextPlayerRound();
-      }
-
-      nextPlayerRound() {
-        this.phase = 'PLAYER_AIM';
-        this.prepareTurnEntities(false);
-        this.refreshHUD();
-        this.audio.playWhistle();
-        this.setTurnBanner(`${this.playerName} #${this.jerseyNumber} • SWIPE TOWARD TARGET`);
-      }
-
-      concludeMatch() {
-        this.phase = 'MATCH_ENDED';
-        const victory = this.userGoals > this.oppGoals;
-
-        document.getElementById('resultTrophy').textContent = victory ? '🏆' : '🥈';
-        document.getElementById('resultHeadline').textContent = victory ? 'VICTORY!' : 'DEFEAT!';
-        document.getElementById('resultSubline').textContent = victory
-          ? `${this.userCountry.name.toUpperCase()} defeated ${this.oppCountry.name.toUpperCase()}!`
-          : `${this.oppCountry.name.toUpperCase()} won the shootout against ${this.userCountry.name.toUpperCase()}.`;
-        document.getElementById('resultFinalScore').textContent = `${this.userGoals} - ${this.oppGoals}`;
-        document.getElementById('resultTargetPts').textContent = `${this.targetPoints} PTS`;
-        document.getElementById('resultBestPts').textContent = `${this.bestTargetPoints} PTS`;
-        document.getElementById('resultShotsStats').textContent =
-          `${this.stats.shotsOnTarget}/${this.stats.shotsTaken} • ${this.stats.bullseyes} 🎯`;
-        document.getElementById('resultGoalsStreak').textContent =
-          `${this.userGoals} ⚽ • ${this.stats.bestStreak} 🔥`;
-        document.getElementById('resultStrikerTag').textContent =
-          `${this.playerName} #${this.jerseyNumber} • ${DIFFICULTIES[this.difficultyKey].label}`;
-
-        this.audio.playMatchEnd(victory);
-        document.getElementById('resultModal').classList.add('active');
-      }
-
-      refreshHUD() {
-        document.getElementById('hudUserFlag').textContent = this.userCountry.flag;
-        document.getElementById('hudUserCode').textContent = this.userCountry.code;
-        document.getElementById('hudOppFlag').textContent = this.oppCountry.flag;
-        document.getElementById('hudOppCode').textContent = this.oppCountry.code;
-
-        document.getElementById('hudUserScore').textContent = String(this.userGoals);
-        document.getElementById('hudOppScore').textContent = String(this.oppGoals);
-        document.getElementById('hudPointsText').textContent = `${this.targetPoints} PTS`;
-        document.getElementById('hudBestText').textContent = `BEST ${this.bestTargetPoints}`;
-        document.getElementById('hudRoundText').textContent = this.suddenDeath
-          ? `SUDDEN DEATH (RD ${this.round})`
-          : `ROUND ${Math.min(this.round, this.maxRounds)} / ${this.maxRounds}`;
-
-        const weatherTag = this.weatherMode === 'RAIN' ? 'RAIN' : (this.weatherMode === 'SUNSET' ? 'SUNSET' : 'NIGHT');
-        document.getElementById('hudMetaBadge').textContent = `${this.difficultyKey.replace('_', ' ')} • ${weatherTag}`;
-
-        const syncDots = (elId, history) => {
-          const dots = document.getElementById(elId).querySelectorAll('.kick-dot');
-          const recent = history.slice(-5);
-          dots.forEach((dot, idx) => {
-            dot.classList.remove('goal', 'miss');
-            if (idx < recent.length) {
-              dot.classList.add(recent[idx] ? 'goal' : 'miss');
-            }
-          });
-        };
-
-        syncDots('userDotsContainer', this.userHistory);
-        syncDots('oppDotsContainer', this.oppHistory);
-      }
-
-      setTurnBanner(text) {
-        document.getElementById('turnBanner').textContent = text;
-      }
-
-      showCallout(title, detail) {
-        const popup = document.getElementById('calloutPopup');
-        document.getElementById('calloutTitle').textContent = title;
-        document.getElementById('calloutDetail').textContent = detail;
-        popup.classList.add('visible');
-        clearTimeout(this.calloutTimer);
-        this.calloutTimer = setTimeout(() => {
-          popup.classList.remove('visible');
-        }, 1250);
-      }
-
-      emitParticles(x, y, color, count) {
-        for (let i = 0; i < count; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const spd = 45 + Math.random() * 175;
-          this.particles.push({
-            x,
-            y,
-            vx: Math.cos(a) * spd,
-            vy: Math.sin(a) * spd - 45,
-            life: 0.55 + Math.random() * 0.35,
-            maxLife: 0.9,
-            size: 2.5 + Math.random() * 3.5,
-            color
-          });
-        }
-      }
-
-      /* ------------------------------------------------------------------------
-         FRAME UPDATE & PHYSICS
-         ------------------------------------------------------------------------ */
-      update(dt) {
-        const diff = DIFFICULTIES[this.difficultyKey] || DIFFICULTIES.PRO;
-
-        // Camera Shake Decay
-        if (this.shakeTime > 0) {
-          this.shakeTime = Math.max(0, this.shakeTime - dt);
-          if (this.shakeTime === 0) this.shakeMagnitude = 0;
-        }
-
-        // Move Target Rings inside Goal Mouth
-        for (const t of this.targets) {
-          t.relX += t.vx * diff.targetSpeedMult * t.dir * dt;
-          if (t.relX > 0.85) {
-            t.relX = 0.85;
-            t.dir = -1;
-          } else if (t.relX < 0.15) {
-            t.relX = 0.15;
-            t.dir = 1;
-          }
-        }
-
-        // Rain Drops & Pitch Puddle Ripples
-        if (this.weatherMode === 'RAIN') {
-          const horizonY = this.goal.y + this.goal.h;
-          for (const drop of this.rainDrops) {
-            drop.y += drop.speed * dt;
-            drop.x -= 0.14 * dt;
-            if (drop.y > 1) {
-              drop.y = -0.05;
-              drop.x = Math.random();
-              if (Math.random() < 0.25) {
-                this.puddleRipples.push({
-                  x: drop.x * this.width,
-                  y: horizonY + Math.random() * (this.height - horizonY),
-                  r: 1.5,
-                  alpha: 0.45
-                });
+              // Opponent response turn in duel/vs modes
+              if (!mCfg.twoHuman && Math.random() < 0.45) {
+                this.p2Score += 1;
               }
             }
-            if (drop.x < -0.05) drop.x = 1.05;
+          } else {
+            this.streak = 0;
+            this.spawnPopup(this.ball.x, this.ball.y - 12, labelText || 'SAVED!', '#f87171');
+            this.showToast(labelText || 'SAVED BY KEEPER');
+
+            if (!mCfg.practice && !mCfg.twoHuman && Math.random() < 0.5) {
+              this.p2Score += 1;
+            }
           }
 
-          for (let i = this.puddleRipples.length - 1; i >= 0; i--) {
-            const rp = this.puddleRipples[i];
-            rp.r += 24 * dt;
-            rp.alpha -= 0.9 * dt;
-            if (rp.alpha <= 0) this.puddleRipples.splice(i, 1);
-          }
+          this.updateHUD();
+          this.checkMatchEnd();
         }
 
-        // Striker Run-up Animation
-        if (this.striker.running) {
-          this.striker.runT += dt / 0.34;
-          const p = Math.min(1, this.striker.runT);
-          this.striker.x = this.striker.startX + (this.spot.x - 18 - this.striker.startX) * p;
-          this.striker.y = this.striker.startY + (this.spot.y + 10 - this.striker.startY) * p;
-          this.striker.kickSwing = Math.sin(p * Math.PI);
-
-          if (p >= 1) {
-            this.striker.running = false;
-            this.kickBall(
-              this.swipe.aimX,
-              this.swipe.aimY,
-              this.swipe.ctrlX,
-              this.swipe.ctrlY,
-              this.swipe.curve * 9,
-              false
-            );
+        checkMatchEnd() {
+          const mCfg = MODE_CONFIG[this.mode] || MODE_CONFIG.HUMAN_VS_OPPONENT_DUEL;
+          if (mCfg.practice || mCfg.timedSec) return;
+          if (this.p1Score >= mCfg.targetGoals || this.p2Score >= mCfg.targetGoals || this.shotsTaken >= mCfg.maxShots) {
+            this.finishMatch();
           }
         }
 
-        // Goalkeeper Dive
-        if (this.keeper.diving) {
-          this.keeper.diveT = Math.min(1, this.keeper.diveT + dt / 0.42);
-          const ease = 1 - Math.pow(1 - this.keeper.diveT, 3);
-          this.keeper.x = this.keeper.startX + (this.keeper.targetX - this.keeper.startX) * ease;
+        finishMatch() {
+          if (this.gameOver) return;
+          this.gameOver = true;
+          this.paused = true;
+
+          const won = this.p1Score >= this.p2Score;
+          if (won) this.stats.wins += 1;
+          if (this.p1Score > this.stats.highScore) this.stats.highScore = this.p1Score;
+          this.saveStats();
+          this.audio.playMatchWhistle(won);
+
+          const titleEl = document.getElementById('summaryTitle');
+          const subEl = document.getElementById('summarySub');
+          const mwEl = document.getElementById('sumMatchesWinsVal');
+          const glEl = document.getElementById('sumGoalsVal');
+          const shEl = document.getElementById('sumStreakHighVal');
+          const primBtn = document.getElementById('summaryPrimaryBtn');
+          const modal = document.getElementById('summaryModal');
+
+          if (titleEl) titleEl.textContent = won ? 'VICTORY STRIKE!' : 'FULL TIME';
+          if (subEl) subEl.textContent = 'Final Score: ' + this.p1Score + ' - ' + this.p2Score;
+          if (mwEl) mwEl.textContent = this.stats.matches + ' • ' + this.stats.wins;
+          if (glEl) glEl.textContent = String(this.stats.goals);
+          if (shEl) shEl.textContent = this.stats.bestStreak + ' • ' + this.stats.highScore;
+          if (primBtn) {
+            primBtn.textContent = 'Play Again';
+            primBtn.dataset.mode = 'PLAY_AGAIN';
+          }
+          if (modal) modal.classList.add('open');
         }
 
-        // Ball Quadratic Bezier Flight with Magnus Spin
-        if (this.ball.flying) {
-          this.ball.t += dt / this.ball.duration;
-          const t = Math.min(1, this.ball.t);
-          const inv = 1 - t;
+        updateSimulation(dt) {
+          const mCfg = MODE_CONFIG[this.mode] || MODE_CONFIG.HUMAN_VS_OPPONENT_DUEL;
+          const lvl = LEVEL_CONFIG[this.level] || LEVEL_CONFIG.PRO;
+          const p = this.pitch;
 
-          this.ball.x = inv * inv * this.ball.startX + 2 * inv * t * this.ball.ctrlX + t * t * this.ball.endX;
-          this.ball.y = inv * inv * this.ball.startY + 2 * inv * t * this.ball.ctrlY + t * t * this.ball.endY;
-          this.ball.z = Math.sin(t * Math.PI) * 38;
-          this.ball.angle += this.ball.spin * dt * 1.9;
+          if (mCfg.timedSec) {
+            this.clockSec = Math.max(0, this.clockSec - dt);
+            if (this.clockSec <= 0) {
+              this.finishMatch();
+              return;
+            }
+          } else {
+            this.clockSec += dt;
+          }
 
-          const baseR = Math.max(11, Math.min(14, this.width * 0.032));
-          this.ball.radius = baseR * (1 - t * 0.35);
+          if (this.screenShake > 0) {
+            this.screenShake = Math.max(0, this.screenShake - dt * 22);
+          }
+          if (p.netRipple > 0) {
+            p.netRipple = Math.max(0, p.netRipple - dt * 2.4);
+          }
+          if (this.kicker.kickTimer > 0) {
+            this.kicker.kickTimer = Math.max(0, this.kicker.kickTimer - dt);
+          }
 
-          this.ball.trail.push({ x: this.ball.x, y: this.ball.y - this.ball.z, r: this.ball.radius });
-          if (this.ball.trail.length > 12) this.ball.trail.shift();
+          // Goalkeeper movement & dive reaction
+          if (this.ball.state === 'IN_FLIGHT') {
+            const diffX = this.ball.x - this.keeper.x;
+            this.keeper.vx = Math.sign(diffX) * Math.min(lvl.keeperSpeed, Math.abs(diffX) * 5.2);
+            this.keeper.x += this.keeper.vx * dt;
+            this.keeper.x = Math.max(p.goalLeftX + 12, Math.min(p.goalRightX - 12, this.keeper.x));
+          } else {
+            const patrolX = this.canvasW * 0.5 + Math.sin(this.clockSec * 2.2) * ((p.goalRightX - p.goalLeftX) * 0.22);
+            const dxK = patrolX - this.keeper.x;
+            this.keeper.x += dxK * Math.min(1, dt * 5);
+          }
 
-          if (t >= 1) {
-            this.ball.flying = false;
-            this.handleBallArrival();
+          if (this.ball.state === 'IN_FLIGHT') {
+            this.ball.vx += this.ball.spin * dt;
+            this.ball.x += this.ball.vx * dt;
+            this.ball.y += this.ball.vy * dt;
+            this.kicker.spinAngle += dt * 16;
+
+            this.trail.push({ x: this.ball.x, y: this.ball.y, life: 0.18 });
+            if (this.trail.length > 12) this.trail.shift();
+
+            // Goalkeeper save check near goal line
+            const keeperHit = Math.hypot(this.ball.x - this.keeper.x, this.ball.y - (this.keeper.y - 12));
+            if (keeperHit < 17 && this.ball.y <= p.goalFloorY + 6) {
+              this.audio.playKickThump(0.65);
+              this.handleShotOutcome(false, 'KEEPER SAVE!', '#f87171');
+              return;
+            }
+
+            // Goalpost / crossbar collision
+            const hitLeftPost = Math.hypot(this.ball.x - p.goalLeftX, this.ball.y - p.goalFloorY) < 9;
+            const hitRightPost = Math.hypot(this.ball.x - p.goalRightX, this.ball.y - p.goalFloorY) < 9;
+            const hitCrossbar = this.ball.y <= p.goalTopY + 5 && this.ball.x >= p.goalLeftX && this.ball.x <= p.goalRightX;
+
+            if (hitLeftPost || hitRightPost || hitCrossbar) {
+              this.audio.playPostClank();
+              this.spawnSparks(this.ball.x, this.ball.y, '#fef08a', 12);
+              this.handleShotOutcome(false, hitCrossbar ? 'CROSSBAR!' : 'POST!', '#fbbf24');
+              return;
+            }
+
+            // Reached goal line
+            if (this.ball.y <= p.goalFloorY) {
+              const insideGoal = this.ball.x > p.goalLeftX + 4 && this.ball.x < p.goalRightX - 4;
+              if (insideGoal) {
+                this.handleShotOutcome(true, this.ball.spin !== 0 ? 'CURVE GOAL!' : 'GOAL!', '#fbbf24');
+              } else {
+                this.handleShotOutcome(false, 'WIDE!', '#cbd5e1');
+              }
+              return;
+            }
+          } else if (this.ball.state === 'SETTLED') {
+            this.ball.settleTimer -= dt;
+            if (this.ball.settleTimer <= 0 && !this.gameOver) {
+              this.resetBallSpot();
+            }
+          }
+
+          for (let i = this.trail.length - 1; i >= 0; i--) {
+            this.trail[i].life -= dt;
+            if (this.trail[i].life <= 0) this.trail.splice(i, 1);
+          }
+
+          for (let i = this.sparks.length - 1; i >= 0; i--) {
+            const sp = this.sparks[i];
+            sp.x += sp.vx * dt;
+            sp.y += sp.vy * dt;
+            sp.vy += 220 * dt;
+            sp.life -= dt;
+            if (sp.life <= 0) this.sparks.splice(i, 1);
+          }
+
+          for (let i = this.popups.length - 1; i >= 0; i--) {
+            const pp = this.popups[i];
+            pp.y += pp.vy * dt;
+            pp.life -= dt;
+            if (pp.life <= 0) this.popups.splice(i, 1);
           }
         }
 
-        // Net Ripple Decay
-        if (this.netWave.active) {
-          this.netWave.t += dt;
-          if (this.netWave.t > 0.85) this.netWave.active = false;
+        updateHUD() {
+          const mCfg = MODE_CONFIG[this.mode] || MODE_CONFIG.HUMAN_VS_OPPONENT_DUEL;
+          const p1Lbl = document.getElementById('p1Lbl');
+          const p2Lbl = document.getElementById('p2Lbl');
+          const p1Val = document.getElementById('p1ScoreVal');
+          const p2Val = document.getElementById('p2ScoreVal');
+          const shotsVal = document.getElementById('shotsPillVal');
+          const streakVal = document.getElementById('streakPillVal');
+          const clkLbl = document.getElementById('clockPillLbl');
+          const clkVal = document.getElementById('clockPillVal');
+          const subEl = document.getElementById('statusSubRow');
+
+          if (p1Lbl) p1Lbl.textContent = mCfg.twoHuman ? 'P1' : 'YOU';
+          if (p2Lbl) p2Lbl.textContent = mCfg.twoHuman ? 'P2' : 'OPP';
+          if (p1Val) p1Val.textContent = String(this.p1Score);
+          if (p2Val) p2Val.textContent = String(this.p2Score);
+          if (shotsVal) shotsVal.textContent = String(this.shotsTaken);
+          if (streakVal) streakVal.textContent = String(this.streak);
+          if (clkLbl) clkLbl.textContent = mCfg.timedSec ? 'TIME' : 'CLOCK';
+          if (clkVal) clkVal.textContent = this.formatClock(this.clockSec);
+
+          const ptLbl = (PITCH_CONFIG[this.pitchTheme] || PITCH_CONFIG.EMERALD_STADIUM).label.toUpperCase();
+          const lvLbl = (LEVEL_CONFIG[this.level] || LEVEL_CONFIG.PRO).label.toUpperCase();
+          if (subEl) subEl.textContent = mCfg.label.toUpperCase() + ' • ' + lvLbl + ' • ' + ptLbl;
         }
 
-        // Sparks / Confetti Update
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-          const p = this.particles[i];
-          p.x += p.vx * dt;
-          p.y += p.vy * dt;
-          p.vy += 260 * dt;
-          p.life -= dt;
-          if (p.life <= 0) this.particles.splice(i, 1);
-        }
-      }
+        openStatsModal() {
+          const titleEl = document.getElementById('summaryTitle');
+          const subEl = document.getElementById('summarySub');
+          const mwEl = document.getElementById('sumMatchesWinsVal');
+          const glEl = document.getElementById('sumGoalsVal');
+          const shEl = document.getElementById('sumStreakHighVal');
+          const primBtn = document.getElementById('summaryPrimaryBtn');
+          const modal = document.getElementById('summaryModal');
 
-      /* ------------------------------------------------------------------------
-         REALISTIC STADIUM, WEATHER, HUMAN FIGURES & DYNAMIC KIT RENDERING
-         ------------------------------------------------------------------------ */
-      render(now) {
-        const ctx = this.ctx;
-        ctx.save();
-        ctx.clearRect(0, 0, this.width, this.height);
-
-        if (this.shakeTime > 0) {
-          const sx = (Math.random() - 0.5) * 2 * this.shakeMagnitude;
-          const sy = (Math.random() - 0.5) * 2 * this.shakeMagnitude;
-          ctx.translate(sx, sy);
+          if (titleEl) titleEl.textContent = 'CAREER STATISTICS';
+          if (subEl) subEl.textContent = 'Football Strike • Local Storage';
+          if (mwEl) mwEl.textContent = this.stats.matches + ' • ' + this.stats.wins;
+          if (glEl) glEl.textContent = String(this.stats.goals);
+          if (shEl) shEl.textContent = this.stats.bestStreak + ' • ' + this.stats.highScore;
+          if (primBtn) {
+            primBtn.textContent = 'Close';
+            primBtn.dataset.mode = 'CLOSE';
+          }
+          if (modal) modal.classList.add('open');
         }
 
-        this.renderStadiumBackdrop(ctx, now);
-        this.renderTurfPitch(ctx);
-        this.renderGoalAndTargets(ctx, now);
-        this.renderGoalkeeper(ctx);
-        this.renderSwipeGuide(ctx);
-        this.renderFootball(ctx);
-        this.renderStriker(ctx, now);
-        this.renderWeatherOverlay(ctx);
-        this.renderParticles(ctx);
+        captureSnapshot() {
+          if (!this.canvas) return;
+          this.audio.unlock();
+          this.audio.playKickThump(0.8);
 
-        ctx.restore();
-      }
+          const flash = document.getElementById('shutterFlash');
+          if (flash) {
+            flash.classList.add('active');
+            setTimeout(function () { flash.classList.remove('active'); }, 150);
+          }
 
-      renderStadiumBackdrop(ctx, now) {
-        const horizonY = this.goal.y + this.goal.h;
-
-        // Sky Palette by Weather Mode
-        const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
-        if (this.weatherMode === 'SUNSET') {
-          sky.addColorStop(0, '#2a1236');
-          sky.addColorStop(0.5, '#9a3412');
-          sky.addColorStop(1, '#f59e0b');
-        } else if (this.weatherMode === 'RAIN') {
-          sky.addColorStop(0, '#07111a');
-          sky.addColorStop(0.55, '#0f2537');
-          sky.addColorStop(1, '#16384f');
-        } else {
-          sky.addColorStop(0, '#020906');
-          sky.addColorStop(0.55, '#0B3D20');
-          sky.addColorStop(1, '#0a7d3b');
+          this.drawPitch();
+          try {
+            const url = this.canvas.toDataURL('image/png');
+            this.paused = true;
+            this.shotOpen = true;
+            const img = document.getElementById('screenshotImg');
+            const dl = document.getElementById('downloadShotBtn');
+            const modal = document.getElementById('screenshotModal');
+            if (img) img.src = url;
+            if (dl) {
+              dl.href = url;
+              dl.download = 'Football-Strike-' + Date.now() + '.png';
+            }
+            if (modal) modal.classList.add('open');
+            this.showToast('SNAPSHOT READY');
+          } catch (_err) {}
         }
-        ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, this.width, horizonY);
 
-        // Glowing Stadium Floodlight Towers + Rays
-        const towers = [this.width * 0.14, this.width * 0.86];
-        towers.forEach((tx, idx) => {
-          const ty = this.height * 0.085;
-          const haloColor = this.weatherMode === 'SUNSET'
-            ? 'rgba(253, 224, 71, 0.36)'
-            : 'rgba(251, 191, 36, 0.34)';
+        runIntro() {
+          if (this.introRafId) {
+            cancelAnimationFrame(this.introRafId);
+            this.introRafId = null;
+          }
+          const dur = 1350;
+          const start = performance.now();
+          const bar = document.getElementById('introBarFill');
+          const self = this;
 
-          const halo = ctx.createRadialGradient(tx, ty, 3, tx, ty, 110);
-          halo.addColorStop(0, 'rgba(255, 253, 235, 0.96)');
-          halo.addColorStop(0.28, haloColor);
-          halo.addColorStop(0.6, 'rgba(16, 185, 129, 0.12)');
-          halo.addColorStop(1, 'rgba(16, 185, 129, 0)');
-          ctx.fillStyle = halo;
-          ctx.beginPath();
-          ctx.arc(tx, ty, 110, 0, Math.PI * 2);
-          ctx.fill();
+          const step = function (now) {
+            if (!self.introActive) return;
+            const pct = Math.min(100, ((now - start) / dur) * 100);
+            if (bar) bar.style.width = pct + '%';
+            if (pct >= 100) {
+              self.introRafId = null;
+              self.showSetupModal();
+            } else {
+              self.introRafId = requestAnimationFrame(step);
+            }
+          };
+          this.introRafId = requestAnimationFrame(step);
+        }
+
+        showSetupModal() {
+          this.introActive = false;
+          if (this.introRafId) {
+            cancelAnimationFrame(this.introRafId);
+            this.introRafId = null;
+          }
+          const intro = document.getElementById('fsIntroScreen');
+          if (intro) intro.classList.add('hidden');
+
+          this.setupOpen = true;
+          this.paused = true;
+          const setup = document.getElementById('setupOverlay');
+          if (setup) setup.classList.add('open');
+        }
+
+        bindControls() {
+          const self = this;
+
+          ['pointerdown', 'keydown', 'click'].forEach(function (evName) {
+            window.addEventListener(evName, function () {
+              self.audio.unlock();
+            }, { passive: true });
+          });
+
+          window.addEventListener('resize', function () {
+            self.resizePitch();
+          });
+
+          if (window.matchMedia) {
+            try {
+              window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function () {
+                if (!document.body.dataset.theme) self.syncThemeIcon();
+              });
+            } catch (_err) {}
+          }
+
+          const backBtn = document.getElementById('backToStartBtn');
+          if (backBtn) {
+            backBtn.addEventListener('click', function (e) {
+              e.preventDefault();
+              self.hardResetToStart();
+            });
+          }
+
+          const themeBtn = document.getElementById('themeBtn');
+          if (themeBtn) {
+            themeBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.toggleTheme();
+            });
+          }
+
+          const shotBtn = document.getElementById('screenshotBtn');
+          if (shotBtn) {
+            shotBtn.addEventListener('click', function () {
+              self.captureSnapshot();
+            });
+          }
+
+          const closeShot = document.getElementById('closeShotModal');
+          if (closeShot) {
+            closeShot.addEventListener('click', function () {
+              const modal = document.getElementById('screenshotModal');
+              if (modal) modal.classList.remove('open');
+              self.shotOpen = false;
+              if (!self.setupOpen && !self.introActive && !self.gameOver) {
+                self.paused = false;
+                self.lastTs = performance.now();
+              }
+            });
+          }
+
+          const soundBtn = document.getElementById('soundBtn');
+          if (soundBtn) {
+            soundBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              const m = self.audio.toggleMute();
+              soundBtn.innerHTML = m ? '&#128263;' : '&#128266;';
+              self.showToast(m ? 'SOUND MUTED' : 'SOUND ON');
+            });
+          }
+
+          const pauseBtn = document.getElementById('pauseBtn');
+          if (pauseBtn) {
+            pauseBtn.addEventListener('click', function () {
+              if (self.introActive || self.setupOpen || self.shotOpen || self.gameOver) return;
+              self.paused = true;
+              self.dragAim = null;
+              const modal = document.getElementById('pauseModal');
+              if (modal) modal.classList.add('open');
+            });
+          }
+
+          const resumeBtn = document.getElementById('resumeBtn');
+          if (resumeBtn) {
+            resumeBtn.addEventListener('click', function () {
+              const modal = document.getElementById('pauseModal');
+              if (modal) modal.classList.remove('open');
+              self.paused = false;
+              self.lastTs = performance.now();
+            });
+          }
+
+          const restartBtn = document.getElementById('restartBtn');
+          if (restartBtn) {
+            restartBtn.addEventListener('click', function () {
+              const modal = document.getElementById('pauseModal');
+              if (modal) modal.classList.remove('open');
+              self.resetMatch(true);
+              self.paused = false;
+              self.lastTs = performance.now();
+              self.showToast('MATCH RESTARTED');
+            });
+          }
+
+          const skipBtn = document.getElementById('skipIntroBtn');
+          if (skipBtn) {
+            skipBtn.addEventListener('click', function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              self.audio.unlock();
+              self.showSetupModal();
+            });
+          }
+
+          const introTrack = document.getElementById('introProgressTrack');
+          if (introTrack) {
+            introTrack.addEventListener('click', function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              self.audio.unlock();
+              self.showSetupModal();
+            });
+          }
+
+          const introScreen = document.getElementById('fsIntroScreen');
+          if (introScreen) {
+            introScreen.addEventListener('click', function () {
+              self.audio.unlock();
+              self.showSetupModal();
+            });
+          }
+
+          document.querySelectorAll('#modeGroup .choice-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              self.mode = btn.dataset.mode || 'HUMAN_VS_OPPONENT_DUEL';
+              document.querySelectorAll('#modeGroup .choice-btn').forEach(function (b) {
+                b.classList.toggle('selected', b === btn);
+              });
+              self.updateHUD();
+            });
+          });
+
+          document.querySelectorAll('#levelGroup .choice-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              self.level = btn.dataset.level || 'PRO';
+              document.querySelectorAll('#levelGroup .choice-btn').forEach(function (b) {
+                b.classList.toggle('selected', b === btn);
+              });
+              self.updateHUD();
+            });
+          });
+
+          document.querySelectorAll('#pitchGroup .choice-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              self.pitchTheme = btn.dataset.pitch || 'EMERALD_STADIUM';
+              document.body.dataset.pitch = self.pitchTheme;
+              document.querySelectorAll('#pitchGroup .choice-btn').forEach(function (b) {
+                b.classList.toggle('selected', b === btn);
+              });
+              self.updateHUD();
+            });
+          });
+
+          document.querySelectorAll('#soundPackGroup .choice-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const pack = btn.dataset.pack || 'BROADCAST';
+              self.audio.setPack(pack);
+              document.querySelectorAll('#soundPackGroup .choice-btn').forEach(function (b) {
+                b.classList.toggle('selected', b === btn);
+              });
+              self.audio.unlock();
+              self.audio.playKickThump(0.9);
+              self.showToast('SOUND: ' + (PACK_CONFIG[pack] ? PACK_CONFIG[pack].label.toUpperCase() : pack));
+            });
+          });
+
+          const testSoundBtn = document.getElementById('testSoundBtn');
+          if (testSoundBtn) {
+            testSoundBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.audio.playKickThump(1.2);
+              setTimeout(function () {
+                self.audio.playGoalCheer();
+              }, 160);
+              self.showToast('FOLEY TESTED');
+            });
+          }
+
+          const startBtn = document.getElementById('startBtn');
+          if (startBtn) {
+            startBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.audio.playKickThump(1.0);
+              const modal = document.getElementById('setupOverlay');
+              if (modal) modal.classList.remove('open');
+              self.setupOpen = false;
+              self.stats.matches += 1;
+              self.saveStats();
+              self.resetMatch(true);
+              self.paused = false;
+              self.lastTs = performance.now();
+              self.showToast('KICK OFF!');
+            });
+          }
+
+          const statsBtn = document.getElementById('statsBtn');
+          if (statsBtn) {
+            statsBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.openStatsModal();
+            });
+          }
+
+          const openStatsFromGameOver = document.getElementById('openStatsFromGameOver');
+          if (openStatsFromGameOver) {
+            openStatsFromGameOver.addEventListener('click', function () {
+              self.audio.unlock();
+              self.openStatsModal();
+            });
+          }
+
+          const summaryPrimaryBtn = document.getElementById('summaryPrimaryBtn');
+          if (summaryPrimaryBtn) {
+            summaryPrimaryBtn.addEventListener('click', function () {
+              const modeAct = summaryPrimaryBtn.dataset.mode;
+              const modal = document.getElementById('summaryModal');
+              if (modal) modal.classList.remove('open');
+              if (modeAct === 'PLAY_AGAIN') {
+                self.stats.matches += 1;
+                self.saveStats();
+                self.resetMatch(true);
+                self.paused = false;
+                self.lastTs = performance.now();
+              } else if (!self.setupOpen && !self.introActive && !self.gameOver) {
+                self.paused = false;
+                self.lastTs = performance.now();
+              }
+            });
+          }
+
+          const setupFromSummaryBtn = document.getElementById('setupFromSummaryBtn');
+          if (setupFromSummaryBtn) {
+            setupFromSummaryBtn.addEventListener('click', function () {
+              const sumModal = document.getElementById('summaryModal');
+              const setModal = document.getElementById('setupOverlay');
+              if (sumModal) sumModal.classList.remove('open');
+              self.setupOpen = true;
+              self.paused = true;
+              if (setModal) setModal.classList.add('open');
+            });
+          }
+
+          const resetStatsBtn = document.getElementById('resetStatsBtn');
+          if (resetStatsBtn) {
+            resetStatsBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.resetStats();
+            });
+          }
+
+          const setAim = function (val, btnId) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.aimNorm = val;
+              ['aimLeftBtn', 'aimCenterBtn', 'aimRightBtn'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('active', id === btnId);
+              });
+            });
+          };
+
+          setAim(-0.78, 'aimLeftBtn');
+          setAim(0, 'aimCenterBtn');
+          setAim(0.78, 'aimRightBtn');
+
+          const curveBtn = document.getElementById('curveBtn');
+          if (curveBtn) {
+            curveBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.curveEnabled = !self.curveEnabled;
+              curveBtn.classList.toggle('active', self.curveEnabled);
+              self.showToast(self.curveEnabled ? 'CURVE SHOT ON' : 'STRAIGHT SHOT');
+            });
+          }
+
+          const powerShotBtn = document.getElementById('powerShotBtn');
+          if (powerShotBtn) {
+            powerShotBtn.addEventListener('click', function () {
+              self.audio.unlock();
+              self.executeShot(self.aimNorm, 1.15, self.curveEnabled);
+            });
+          }
+
+          if (this.canvas) {
+            this.canvas.addEventListener('pointerdown', function (e) {
+              if (self.paused || self.gameOver || self.introActive || self.setupOpen || self.shotOpen) return;
+              self.audio.unlock();
+              const rect = self.canvas.getBoundingClientRect();
+              const x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * self.canvasW;
+              const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * self.canvasH;
+              self.dragAim = { sx: x, sy: y, cx: x, cy: y };
+            });
+
+            this.canvas.addEventListener('pointermove', function (e) {
+              if (!self.dragAim || !self.canvas) return;
+              const rect = self.canvas.getBoundingClientRect();
+              self.dragAim.cx = ((e.clientX - rect.left) / Math.max(1, rect.width)) * self.canvasW;
+              self.dragAim.cy = ((e.clientY - rect.top) / Math.max(1, rect.height)) * self.canvasH;
+            });
+
+            const releaseDrag = function () {
+              if (!self.dragAim) return;
+              const dx = self.dragAim.cx - self.dragAim.sx;
+              const dy = self.dragAim.cy - self.dragAim.sy;
+              const dist = Math.hypot(dx, dy);
+              const targetAim = dist > 16
+                ? Math.max(-1, Math.min(1, dx / 85))
+                : Math.max(-1, Math.min(1, (self.dragAim.cx - self.canvasW * 0.5) / ((self.pitch.goalRightX - self.pitch.goalLeftX) * 0.5)));
+              const pwr = dist > 20 ? Math.max(0.8, Math.min(1.28, dist / 75)) : 1.05;
+              const useCurve = self.curveEnabled || Math.abs(dx) > 45;
+              self.dragAim = null;
+              self.aimNorm = targetAim;
+              self.executeShot(targetAim, pwr, useCurve);
+            };
+
+            this.canvas.addEventListener('pointerup', releaseDrag);
+            this.canvas.addEventListener('pointercancel', function () {
+              self.dragAim = null;
+            });
+          }
+
+          window.addEventListener('keydown', function (e) {
+            if (self.introActive || self.setupOpen || self.shotOpen) return;
+
+            if (e.code === 'KeyP' || e.code === 'Escape') {
+              if (!self.gameOver) {
+                self.paused = !self.paused;
+                const modal = document.getElementById('pauseModal');
+                if (modal) modal.classList.toggle('open', self.paused);
+                self.lastTs = performance.now();
+              }
+              return;
+            }
+
+            if (self.paused || self.gameOver) return;
+
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+              e.preventDefault();
+              self.aimNorm = Math.max(-1, self.aimNorm - 0.25);
+            } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+              e.preventDefault();
+              self.aimNorm = Math.min(1, self.aimNorm + 0.25);
+            } else if (e.code === 'KeyC') {
+              e.preventDefault();
+              self.curveEnabled = !self.curveEnabled;
+              self.showToast(self.curveEnabled ? 'CURVE SHOT ON' : 'STRAIGHT SHOT');
+            } else if (e.code === 'Space' || e.code === 'Enter') {
+              e.preventDefault();
+              self.audio.unlock();
+              self.executeShot(self.aimNorm, 1.1, self.curveEnabled);
+            }
+          });
+        }
+
+        /* ====================================================================
+           STADIUM TURF, GOALPOSTS, NET RIPPLE, KEEPER & FOOTBALL RENDERER
+           ==================================================================== */
+        drawPitch() {
+          if (!this.ctx) return;
+          const ctx = this.ctx;
+          const w = this.canvasW;
+          const h = this.canvasH;
+          ctx.clearRect(0, 0, w, h);
+
+          const cs = getComputedStyle(document.body);
+          const skyTop = cs.getPropertyValue('--sky-top').trim() || '#041d11';
+          const skyBot = cs.getPropertyValue('--sky-bot').trim() || '#09351e';
+          const turfL = cs.getPropertyValue('--turf-light').trim() || '#15803d';
+          const turfD = cs.getPropertyValue('--turf-dark').trim() || '#166534';
+          const lineCol = cs.getPropertyValue('--line-col').trim() || '#f8fafc';
+          const goalFrame = cs.getPropertyValue('--goal-frame').trim() || '#f8fafc';
+          const netCol = cs.getPropertyValue('--net-col').trim() || 'rgba(248, 250, 252, 0.55)';
+
+          const p = this.pitch;
 
           ctx.save();
-          const coneGrad = ctx.createLinearGradient(tx, ty, this.width * 0.5, horizonY + 80);
-          coneGrad.addColorStop(0, this.weatherMode === 'SUNSET'
-            ? 'rgba(254, 240, 138, 0.18)'
-            : 'rgba(255, 250, 220, 0.14)');
-          coneGrad.addColorStop(1, 'rgba(255, 250, 220, 0)');
-          ctx.fillStyle = coneGrad;
+          if (this.screenShake > 0) {
+            ctx.translate((Math.random() - 0.5) * this.screenShake * 1.2, (Math.random() - 0.5) * this.screenShake * 1.2);
+          }
+
+          // Stadium stands & floodlights
+          const skyGrad = ctx.createLinearGradient(0, 0, 0, p.pitchTopY);
+          skyGrad.addColorStop(0, skyTop);
+          skyGrad.addColorStop(1, skyBot);
+          ctx.fillStyle = skyGrad;
+          ctx.fillRect(0, 0, w, p.pitchTopY);
+
+          for (let sx = 14; sx < w - 14; sx += 16) {
+            ctx.fillStyle = (Math.floor(sx / 16) % 2 === 0) ? 'rgba(251, 191, 36, 0.24)' : 'rgba(255, 255, 255, 0.15)';
+            ctx.beginPath();
+            ctx.arc(sx, p.top - 4, 4.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Mowed green pitch stripes
+          ctx.fillStyle = turfD;
+          ctx.fillRect(0, p.pitchTopY, w, h - p.pitchTopY);
+
+          const bands = 7;
+          const bandH = Math.max(12, (h - p.pitchTopY) / bands);
+          for (let i = 0; i < bands; i++) {
+            if (i % 2 === 0) {
+              ctx.fillStyle = turfL;
+              ctx.fillRect(0, p.pitchTopY + i * bandH, w, bandH);
+            }
+          }
+
+          // Penalty box lines & penalty spot
+          ctx.strokeStyle = lineCol;
+          ctx.lineWidth = 2;
+          const penW = Math.min(w * 0.72, (p.goalRightX - p.goalLeftX) * 2.1);
+          const penLeft = w * 0.5 - penW * 0.5;
+          const penH = Math.min(92, (p.pitchBotY - p.pitchTopY) * 0.65);
+
           ctx.beginPath();
-          ctx.moveTo(tx - 14, ty);
-          ctx.lineTo(tx + 14, ty);
-          ctx.lineTo(idx === 0 ? this.width * 0.72 : this.width * 0.96, horizonY + 80);
-          ctx.lineTo(idx === 0 ? this.width * 0.04 : this.width * 0.28, horizonY + 80);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
+          ctx.moveTo(penLeft, p.pitchTopY);
+          ctx.lineTo(penLeft - 14, p.pitchTopY + penH);
+          ctx.lineTo(penLeft + penW + 14, p.pitchTopY + penH);
+          ctx.lineTo(penLeft + penW, p.pitchTopY);
+          ctx.stroke();
 
-          ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(tx - 17, ty - 6, 34, 12);
-        });
-
-        // Tiered Grandstand & Articulated Spectator Silhouettes
-        const standTop = this.height * 0.122;
-        const standBot = horizonY - 22;
-        ctx.fillStyle = '#07140e';
-        ctx.fillRect(0, standTop, this.width, standBot - standTop);
-
-        const crowdColors = [
-          this.userCountry.primary,
-          this.userCountry.secondary,
-          this.oppCountry.primary,
-          this.oppCountry.secondary,
-          '#fbbf24',
-          '#e2e8f0'
-        ];
-        const skinTones = ['#f5d0a9', '#d69e66', '#8d5524', '#ffdbac'];
-        const tSec = now * 0.0046;
-
-        for (const s of this.spectators) {
-          const sx = s.colRatio * this.width;
-          const sy = standTop + 12 + s.row * ((standBot - standTop - 16) / 5);
-          const waveY = Math.sin(tSec + s.phase + s.colRatio * 4.5) * 2.2;
-          const jerseyCol = crowdColors[s.seed];
-          const skinCol = skinTones[s.seed % skinTones.length];
-
-          // Spectator torso/shoulders
-          ctx.fillStyle = jerseyCol;
+          // Penalty spot
+          ctx.fillStyle = lineCol;
           ctx.beginPath();
-          ctx.roundRect(sx - 4.5, sy - 1 + waveY, 9, 7, 2.5);
+          ctx.arc(w * 0.5, p.pitchBotY - 38, 3.2, 0, Math.PI * 2);
           ctx.fill();
 
-          // Optional raised cheering arm
-          if (s.armRaised) {
-            ctx.strokeStyle = skinCol;
+          // Goal net & frame with ripple offset on goal
+          const rippleOffset = p.netRipple > 0 ? Math.sin(this.clockSec * 42) * p.netRipple * 5 : 0;
+          ctx.strokeStyle = netCol;
+          ctx.lineWidth = 1.2;
+          for (let gx = p.goalLeftX + 10; gx < p.goalRightX; gx += 12) {
+            ctx.beginPath();
+            ctx.moveTo(gx, p.goalTopY);
+            ctx.lineTo(gx + rippleOffset, p.goalFloorY);
+            ctx.stroke();
+          }
+          for (let gy = p.goalTopY + 10; gy < p.goalFloorY; gy += 11) {
+            ctx.beginPath();
+            ctx.moveTo(p.goalLeftX + rippleOffset * 0.5, gy);
+            ctx.lineTo(p.goalRightX + rippleOffset * 0.5, gy);
+            ctx.stroke();
+          }
+
+          ctx.strokeStyle = goalFrame;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(p.goalLeftX, p.goalFloorY);
+          ctx.lineTo(p.goalLeftX, p.goalTopY);
+          ctx.lineTo(p.goalRightX, p.goalTopY);
+          ctx.lineTo(p.goalRightX, p.goalFloorY);
+          ctx.stroke();
+
+          // Aim target marker along goal line when ready
+          if (this.ball.state === 'READY') {
+            const goalCenterX = (p.goalLeftX + p.goalRightX) * 0.5;
+            const halfSpan = (p.goalRightX - p.goalLeftX) * 0.44;
+            const aimX = goalCenterX + this.aimNorm * halfSpan;
+            const aimY = (p.goalTopY + p.goalFloorY) * 0.56;
+
+            ctx.strokeStyle = '#fbbf24';
             ctx.lineWidth = 1.8;
             ctx.beginPath();
-            ctx.moveTo(sx + 4, sy + 1 + waveY);
-            ctx.lineTo(sx + 6.5, sy - 5.5 + waveY);
+            ctx.arc(aimX, aimY, 7, 0, Math.PI * 2);
             ctx.stroke();
           }
 
-          // Spectator head
-          ctx.fillStyle = skinCol;
-          ctx.beginPath();
-          ctx.arc(sx, sy - 4.2 + waveY, 2.6, 0, Math.PI * 2);
-          ctx.fill();
-        }
+          // Goalkeeper character
+          this.drawKeeper(ctx, this.keeper.x, this.keeper.y);
 
-        // LED Perimeter Advertising Boards
-        const adH = 22;
-        const adY = horizonY - adH;
-        const adGrad = ctx.createLinearGradient(0, adY, this.width, adY);
-        adGrad.addColorStop(0, '#0B3D20');
-        adGrad.addColorStop(0.5, '#0a7d3b');
-        adGrad.addColorStop(1, '#0B3D20');
-        ctx.fillStyle = adGrad;
-        ctx.fillRect(0, adY, this.width, adH);
-
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 1.4;
-        ctx.strokeRect(0, adY, this.width, adH);
-
-        ctx.fillStyle = '#fef3c7';
-        ctx.font = '800 9.5px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('AUTROBOOK   •   AFA CHAMPIONSHIP   •   FINAL', this.width * 0.5, adY + 14);
-      }
-
-      renderTurfPitch(ctx) {
-        const horizonY = this.goal.y + this.goal.h;
-        const pitchH = this.height - horizonY;
-
-        const stripes = 9;
-        for (let i = 0; i < stripes; i++) {
-          const y0 = horizonY + (i / stripes) * pitchH;
-          const y1 = horizonY + ((i + 1) / stripes) * pitchH;
-          if (this.weatherMode === 'RAIN') {
-            ctx.fillStyle = i % 2 === 0 ? '#0e5a2b' : '#127036';
-          } else if (this.weatherMode === 'SUNSET') {
-            ctx.fillStyle = i % 2 === 0 ? '#187c34' : '#1e963d';
-          } else {
-            ctx.fillStyle = i % 2 === 0 ? '#147a38' : '#189645';
-          }
-          ctx.fillRect(0, y0, this.width, y1 - y0 + 1);
-        }
-
-        // Wet Turf Gloss in Rain Mode or Warm Sunset Tint
-        const sheen = ctx.createRadialGradient(
-          this.width * 0.5,
-          horizonY + pitchH * 0.36,
-          25,
-          this.width * 0.5,
-          horizonY + pitchH * 0.5,
-          this.width * 0.88
-        );
-        if (this.weatherMode === 'RAIN') {
-          sheen.addColorStop(0, 'rgba(186, 230, 253, 0.16)');
-          sheen.addColorStop(1, 'rgba(2, 18, 12, 0.52)');
-        } else if (this.weatherMode === 'SUNSET') {
-          sheen.addColorStop(0, 'rgba(251, 191, 36, 0.18)');
-          sheen.addColorStop(1, 'rgba(24, 14, 6, 0.42)');
-        } else {
-          sheen.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-          sheen.addColorStop(1, 'rgba(2, 20, 10, 0.45)');
-        }
-        ctx.fillStyle = sheen;
-        ctx.fillRect(0, horizonY, this.width, pitchH);
-
-        // Puddle Ripples on Wet Grass
-        if (this.weatherMode === 'RAIN') {
-          for (const rp of this.puddleRipples) {
-            ctx.save();
-            ctx.strokeStyle = `rgba(224, 242, 254, ${Math.max(0, rp.alpha)})`;
-            ctx.lineWidth = 1.1;
+          // Ball motion trail & football
+          for (let i = 0; i < this.trail.length; i++) {
+            const tr = this.trail[i];
+            const alpha = Math.max(0, tr.life / 0.18) * 0.5;
+            ctx.fillStyle = 'rgba(251, 191, 36, ' + alpha.toFixed(2) + ')';
             ctx.beginPath();
-            ctx.ellipse(rp.x, rp.y, rp.r * 1.6, rp.r * 0.55, 0, 0, Math.PI * 2);
+            ctx.arc(tr.x, tr.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          this.drawBall(ctx, this.ball.x, this.ball.y, this.ball.radius, this.kicker.spinAngle);
+
+          // Kicker character in foreground
+          this.drawKicker(ctx, this.kicker.x, this.kicker.y, this.kicker.kickTimer > 0);
+
+          // Drag aim line
+          if (this.dragAim) {
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.moveTo(this.dragAim.sx, this.dragAim.sy);
+            ctx.lineTo(this.dragAim.cx, this.dragAim.cy);
             ctx.stroke();
+            ctx.setLineDash([]);
+          }
+
+          // Sparks & popups
+          for (let i = 0; i < this.sparks.length; i++) {
+            const sp = this.sparks[i];
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, sp.life / sp.maxLife);
+            ctx.fillStyle = sp.color;
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
           }
-        }
 
-        // Pitch Lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.86)';
-        ctx.lineWidth = 2.4;
-
-        ctx.beginPath();
-        ctx.moveTo(0, horizonY);
-        ctx.lineTo(this.width, horizonY);
-        ctx.stroke();
-
-        const topW = Math.min(this.width * 0.86, this.goal.w * 1.48);
-        const botW = this.width * 0.98;
-        const botY = this.height * 0.84;
-
-        ctx.beginPath();
-        ctx.moveTo((this.width - topW) * 0.5, horizonY);
-        ctx.lineTo((this.width - botW) * 0.5, botY);
-        ctx.lineTo((this.width + botW) * 0.5, botY);
-        ctx.lineTo((this.width + topW) * 0.5, horizonY);
-        ctx.stroke();
-
-        const sixTopW = this.goal.w * 1.15;
-        const sixBotW = this.goal.w * 1.32;
-        const sixBotY = horizonY + pitchH * 0.22;
-
-        ctx.beginPath();
-        ctx.moveTo((this.width - sixTopW) * 0.5, horizonY);
-        ctx.lineTo((this.width - sixBotW) * 0.5, sixBotY);
-        ctx.lineTo((this.width + sixBotW) * 0.5, sixBotY);
-        ctx.lineTo((this.width + sixTopW) * 0.5, horizonY);
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.ellipse(this.spot.x, this.spot.y + 4, 7.5, 3.6, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      renderGoalAndTargets(ctx, now) {
-        const g = this.goal;
-        const insetX = g.w * 0.06;
-        const insetY = g.h * 0.14;
-
-        ctx.fillStyle = 'rgba(5, 18, 12, 0.36)';
-        ctx.fillRect(g.x + insetX, g.y + insetY, g.w - insetX * 2, g.h - insetY);
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.lineWidth = 1;
-        const cols = 18;
-        const rows = 8;
-
-        for (let c = 0; c <= cols; c++) {
-          const ratio = c / cols;
-          const topX = g.x + ratio * g.w;
-          const botX = g.x + insetX + ratio * (g.w - insetX * 2);
-          let ripple = 0;
-          if (this.netWave.active) {
-            const d = Math.abs(topX - this.netWave.x);
-            ripple = Math.sin(this.netWave.t * 25 - d * 0.08) * Math.max(0, 7 - d * 0.04) * (1 - this.netWave.t);
-          }
-          ctx.beginPath();
-          ctx.moveTo(topX, g.y);
-          ctx.quadraticCurveTo((topX + botX) * 0.5 + ripple, g.y + g.h * 0.5, botX, g.y + g.h - 2);
-          ctx.stroke();
-        }
-
-        for (let r = 0; r <= rows; r++) {
-          const ratio = r / rows;
-          const y = g.y + ratio * g.h;
-          ctx.beginPath();
-          ctx.moveTo(g.x + insetX * ratio, y);
-          ctx.lineTo(g.x + g.w - insetX * ratio, y);
-          ctx.stroke();
-        }
-
-        if (!this.ball.isOpponentShot) {
-          const pulse = 1 + Math.sin(now * 0.007) * 0.07;
-          for (const t of this.targets) {
-            const tx = g.x + t.relX * g.w;
-            const ty = g.y + t.relY * g.h;
-            const radius = t.r * pulse;
-
+          for (let i = 0; i < this.popups.length; i++) {
+            const pp = this.popups[i];
             ctx.save();
-            ctx.beginPath();
-            ctx.arc(tx, ty, radius, 0, Math.PI * 2);
-            ctx.fillStyle = t.id === 'gold' ? 'rgba(251, 191, 36, 0.28)' : 'rgba(52, 211, 153, 0.24)';
-            ctx.fill();
-            ctx.lineWidth = 2.8;
-            ctx.strokeStyle = t.color;
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(tx, ty, radius * 0.52, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.arc(tx, ty, radius * 0.34, 0, Math.PI * 2);
-            ctx.fillStyle = t.color;
-            ctx.fill();
-
-            ctx.fillStyle = '#041f14';
-            ctx.font = '900 8.5px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.globalAlpha = Math.max(0, pp.life / pp.maxLife);
+            ctx.fillStyle = pp.color;
+            ctx.font = '900 11px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(t.label, tx, ty + 3);
+            ctx.fillText(pp.text, pp.x, pp.y);
             ctx.restore();
           }
-        }
 
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 6.5;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(g.x, g.y + g.h);
-        ctx.lineTo(g.x, g.y);
-        ctx.lineTo(g.x + g.w, g.y);
-        ctx.lineTo(g.x + g.w, g.y + g.h);
-        ctx.stroke();
-      }
-
-      /**
-       * Articulated Goalkeeper with Ready Crouch & Full-Stretch Dive Pose
-       */
-      renderGoalkeeper(ctx) {
-        const k = this.keeper;
-        const h = this.goal.h * 0.54;
-        const diveT = k.diveT;
-        const diveAngle = k.diving ? k.diveDir * diveT * 1.22 : 0;
-        const diveLift = k.diving ? Math.sin(diveT * Math.PI) * 16 : 0;
-        const readyCrouch = !k.diving ? 2.5 : 0;
-
-        ctx.save();
-        // Turf shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
-        ctx.beginPath();
-        ctx.ellipse(k.x, k.y + 2, k.diving ? 26 : 18, 5.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.translate(k.x, k.y - h * 0.45 - diveLift + readyCrouch);
-        ctx.rotate(diveAngle);
-
-        const kitCol = k.kit.secondary === '#FFFFFF' ? '#0ea5e9' : k.kit.secondary;
-        const trimCol = k.kit.primary;
-
-        // Articulated legs + keeper socks + boots
-        const leftLegSpread = k.diving ? -0.35 : -0.14;
-        const rightLegSpread = k.diving ? 0.55 : 0.14;
-        const rightLegBend = k.diving ? diveT * 0.65 : 0;
-
-        // Left leg
-        ctx.save();
-        ctx.translate(-5.5, 5);
-        ctx.rotate(leftLegSpread);
-        ctx.fillStyle = k.kit.shorts;
-        ctx.beginPath();
-        ctx.roundRect(-3.5, -2, 7, 8, 2);
-        ctx.fill();
-        ctx.fillStyle = k.kit.socks;
-        ctx.fillRect(-3, 5, 6, 10);
-        ctx.fillStyle = '#111827';
-        ctx.beginPath();
-        ctx.roundRect(-3.5, 14, 7.5, 4, 2);
-        ctx.fill();
-        ctx.restore();
-
-        // Right leg
-        ctx.save();
-        ctx.translate(5.5, 5);
-        ctx.rotate(rightLegSpread + rightLegBend);
-        ctx.fillStyle = k.kit.shorts;
-        ctx.beginPath();
-        ctx.roundRect(-3.5, -2, 7, 8, 2);
-        ctx.fill();
-        ctx.fillStyle = k.kit.socks;
-        ctx.fillRect(-3, 5, 6, 10);
-        ctx.fillStyle = '#111827';
-        ctx.beginPath();
-        ctx.roundRect(-3.5, 14, 7.5, 4, 2);
-        ctx.fill();
-        ctx.restore();
-
-        // Shorts
-        ctx.fillStyle = k.kit.shorts;
-        ctx.beginPath();
-        ctx.roundRect(-10.5, 1, 21, 7, 3);
-        ctx.fill();
-
-        // Torso & shoulders
-        ctx.fillStyle = kitCol;
-        ctx.beginPath();
-        ctx.roundRect(-13, -17, 26, 20, 6);
-        ctx.fill();
-
-        // Chest accent stripe
-        ctx.fillStyle = trimCol;
-        ctx.fillRect(-11, -12, 22, 4);
-
-        // Extended arms + goalkeeper gloves
-        const armRaise = k.diving ? -14 : -3;
-        ctx.strokeStyle = kitCol;
-        ctx.lineWidth = 5.2;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(-12, -13);
-        ctx.lineTo(-24, armRaise);
-        ctx.moveTo(12, -13);
-        ctx.lineTo(24, armRaise);
-        ctx.stroke();
-
-        // Goalkeeper gloves
-        ctx.fillStyle = '#facc15';
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.arc(-25.5, armRaise - 1, 4.6, 0, Math.PI * 2);
-        ctx.arc(25.5, armRaise - 1, 4.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Neck & Head
-        ctx.fillStyle = '#e0ac69';
-        ctx.fillRect(-3, -20, 6, 4);
-        ctx.beginPath();
-        ctx.arc(0, -25.5, 6.8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Hair cap
-        ctx.fillStyle = '#1e293b';
-        ctx.beginPath();
-        ctx.arc(0, -26.8, 7, Math.PI, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      }
-
-      /**
-       * Articulated Striker with Stride Cycle, Kick Follow-Through & Authentic Kit
-       */
-      renderStriker(ctx, now) {
-        const s = this.striker;
-        const kit = s.kit;
-        const stridePhase = s.running ? s.runT * Math.PI * 5 : Math.sin(now * 0.003) * 0.35;
-        const strideSwing = s.running ? Math.sin(stridePhase) : Math.sin(now * 0.003) * 0.08;
-        const kickLegAngle = s.kickSwing * 0.95;
-
-        ctx.save();
-        // Ground contact shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.beginPath();
-        ctx.ellipse(s.x, s.y + 39, 21, 6.8, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.translate(s.x, s.y - (s.running ? Math.abs(strideSwing) * 4 : 0));
-
-        // Left Leg (planted / stride)
-        ctx.save();
-        ctx.translate(-6.5, 14);
-        ctx.rotate(-strideSwing * 0.45);
-        ctx.fillStyle = kit.socks;
-        ctx.beginPath();
-        ctx.roundRect(-3.8, 0, 7.6, 20, 3);
-        ctx.fill();
-        ctx.fillStyle = kit.secondary;
-        ctx.fillRect(-3.8, 4, 7.6, 2.5);
-        // Boot
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.roundRect(-4.5, 18.5, 10.5, 5, 2.2);
-        ctx.fill();
-        ctx.fillStyle = kit.secondary;
-        ctx.fillRect(-1, 19, 6, 1.5);
-        ctx.restore();
-
-        // Right Leg (kicking / stride)
-        ctx.save();
-        ctx.translate(6.5, 14);
-        ctx.rotate(strideSwing * 0.45 - kickLegAngle);
-        ctx.fillStyle = kit.socks;
-        ctx.beginPath();
-        ctx.roundRect(-3.8, 0, 7.6, 20, 3);
-        ctx.fill();
-        ctx.fillStyle = kit.secondary;
-        ctx.fillRect(-3.8, 4, 7.6, 2.5);
-        // Boot
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.roundRect(-4.5, 18.5, 11, 5.2, 2.2);
-        ctx.fill();
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(0, 19, 5.5, 1.6);
-        ctx.restore();
-
-        // Shorts with side trim
-        ctx.fillStyle = kit.shorts;
-        ctx.beginPath();
-        ctx.roundRect(-13.5, 2, 27, 15, 4);
-        ctx.fill();
-        ctx.fillStyle = kit.secondary;
-        ctx.fillRect(-13.5, 4, 3, 12);
-        ctx.fillRect(10.5, 4, 3, 12);
-
-        // Articulated Jersey Torso with Authentic Nation Pattern
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(-17.5, -29, 35, 34, 7);
-        ctx.clip();
-
-        ctx.fillStyle = kit.primary;
-        ctx.fillRect(-17.5, -29, 35, 34);
-
-        if (kit.pattern === 'stripes') {
-          ctx.fillStyle = kit.secondary;
-          ctx.fillRect(-11.5, -29, 6, 34);
-          ctx.fillRect(5.5, -29, 6, 34);
-        } else if (kit.pattern === 'split') {
-          ctx.fillStyle = kit.secondary;
-          ctx.fillRect(0, -29, 17.5, 34);
-        } else if (kit.pattern === 'band') {
-          ctx.fillStyle = kit.secondary;
-          ctx.fillRect(-17.5, -20, 35, 8);
-        }
-
-        // Collar trim
-        ctx.fillStyle = kit.secondary;
-        ctx.fillRect(-9, -29, 18, 3.8);
-        ctx.restore();
-
-        // Jersey outline
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.roundRect(-17.5, -29, 35, 34, 7);
-        ctx.stroke();
-
-        // Left & Right Arms + Forearms + Wrists/Hands
-        const armSwing = strideSwing * 0.55 + s.kickSwing * 0.35;
-
-        // Left arm
-        ctx.save();
-        ctx.translate(-18, -25);
-        ctx.rotate(armSwing);
-        ctx.fillStyle = kit.primary;
-        ctx.beginPath();
-        ctx.roundRect(-5.5, -1, 6.5, 10, 3);
-        ctx.fill();
-        ctx.fillStyle = '#e0ac69';
-        ctx.beginPath();
-        ctx.roundRect(-4.5, 8, 5, 8, 2.5);
-        ctx.fill();
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(-4.8, 15.5, 5.5, 2.5);
-        ctx.restore();
-
-        // Right arm
-        ctx.save();
-        ctx.translate(18, -25);
-        ctx.rotate(-armSwing);
-        ctx.fillStyle = kit.primary;
-        ctx.beginPath();
-        ctx.roundRect(-1, -1, 6.5, 10, 3);
-        ctx.fill();
-        ctx.fillStyle = '#e0ac69';
-        ctx.beginPath();
-        ctx.roundRect(-0.5, 8, 5, 8, 2.5);
-        ctx.fill();
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(-0.7, 15.5, 5.5, 2.5);
-        ctx.restore();
-
-        // Player Name & Jersey Number on Kit Back
-        ctx.fillStyle = kit.text;
-        ctx.font = '900 6.5px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(s.name, 0, -18);
-
-        ctx.font = '900 14px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillText(s.number, 0, -2.5);
-
-        // Neck & Head
-        ctx.fillStyle = '#e0ac69';
-        ctx.fillRect(-3.8, -32.5, 7.6, 4.5);
-
-        ctx.fillStyle = '#e0ac69';
-        ctx.beginPath();
-        ctx.arc(0, -39, 8.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Ear & Styled Hair
-        ctx.fillStyle = '#c68e53';
-        ctx.beginPath();
-        ctx.arc(-8.2, -38.8, 2.1, 0, Math.PI * 2);
-        ctx.arc(8.2, -38.8, 2.1, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#18181b';
-        ctx.beginPath();
-        ctx.arc(0, -40.5, 8.4, Math.PI * 0.96, Math.PI * 2.04);
-        ctx.fill();
-
-        ctx.restore();
-      }
-
-      renderSwipeGuide(ctx) {
-        if (this.swipe.active && this.swipe.valid) {
-          ctx.save();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-          ctx.lineWidth = 3.8;
-          ctx.setLineDash([8, 6]);
-          ctx.beginPath();
-          ctx.moveTo(this.spot.x, this.spot.y);
-          ctx.quadraticCurveTo(this.swipe.ctrlX, this.swipe.ctrlY, this.swipe.aimX, this.swipe.aimY);
-          ctx.stroke();
-
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.arc(this.swipe.aimX, this.swipe.aimY, 11, 0, Math.PI * 2);
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
           ctx.restore();
         }
 
-        if (this.ball.trail.length > 1) {
+        drawKeeper(ctx, x, y) {
           ctx.save();
-          for (let i = 1; i < this.ball.trail.length; i++) {
-            const p0 = this.ball.trail[i - 1];
-            const p1 = this.ball.trail[i];
-            const alpha = (i / this.ball.trail.length) * 0.55;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.lineWidth = p1.r * 1.15;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(p0.x, p0.y);
-            ctx.lineTo(p1.x, p1.y);
-            ctx.stroke();
-          }
-          ctx.restore();
-        }
-      }
-
-      renderFootball(ctx) {
-        const b = this.ball;
-        const drawY = b.y - b.z;
-
-        ctx.save();
-        const scale = Math.max(0.55, 1 - b.z / 80);
-        ctx.fillStyle = `rgba(0, 0, 0, ${0.42 * scale})`;
-        ctx.beginPath();
-        ctx.ellipse(b.x, b.y + b.radius * 0.55, b.radius * scale, b.radius * 0.42 * scale, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.translate(b.x, drawY);
-        ctx.rotate(b.angle);
-
-        const grad = ctx.createRadialGradient(-b.radius * 0.3, -b.radius * 0.3, 1, 0, 0, b.radius);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.78, '#e2e8f0');
-        grad.addColorStop(1, '#64748b');
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        const pr = b.radius * 0.36;
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        for (let i = 0; i < 5; i++) {
-          const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
-          const px = Math.cos(a) * pr;
-          const py = Math.sin(a) * pr;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.restore();
-      }
-
-      renderWeatherOverlay(ctx) {
-        if (this.weatherMode !== 'RAIN') return;
-
-        ctx.save();
-        ctx.strokeStyle = 'rgba(207, 250, 254, 0.38)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        for (const d of this.rainDrops) {
-          const x = d.x * this.width;
-          const y = d.y * this.height;
-          ctx.moveTo(x, y);
-          ctx.lineTo(x - d.len * 0.25, y + d.len);
-        }
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      renderParticles(ctx) {
-        for (const p of this.particles) {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-          ctx.fillStyle = p.color;
+          ctx.fillStyle = '#f59e0b';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.4;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.roundRect(x - 8, y - 26, 16, 15, 4);
           ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#fde68a';
+          ctx.beginPath();
+          ctx.arc(x, y - 32, 6.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Outstretched keeper gloves
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(x - 8, y - 22);
+          ctx.lineTo(x - 16, y - 28);
+          ctx.moveTo(x + 8, y - 22);
+          ctx.lineTo(x + 16, y - 28);
+          ctx.stroke();
           ctx.restore();
         }
-      }
 
-      animate(now) {
-        if (!this.lastFrame) this.lastFrame = now;
-        const dt = Math.min(0.05, (now - this.lastFrame) / 1000);
-        this.lastFrame = now;
+        drawKicker(ctx, x, y, kicking) {
+          ctx.save();
+          ctx.fillStyle = '#0a7d3b';
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(x - 9, y - 24, 18, 16, 5);
+          ctx.fill();
+          ctx.stroke();
 
-        if (!this.paused) {
-          this.update(dt);
-          this.render(now);
+          ctx.fillStyle = '#fde68a';
+          ctx.beginPath();
+          ctx.arc(x, y - 31, 7, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Kicking leg
+          ctx.strokeStyle = '#f8fafc';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(x + 4, y - 8);
+          if (kicking) {
+            ctx.lineTo(x + 12, y - 22);
+          } else {
+            ctx.lineTo(x + 6, y + 6);
+          }
+          ctx.stroke();
+          ctx.restore();
         }
-        requestAnimationFrame((t) => this.animate(t));
-      }
-    }
 
-    window.addEventListener('load', () => {
-      const game = new RealisticTargetShootout();
-      requestAnimationFrame((t) => game.animate(t));
-    });
+        drawBall(ctx, x, y, r, rot) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(rot);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#062112';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Center pentagon patch
+          ctx.fillStyle = '#0B3D20';
+          ctx.beginPath();
+          for (let i = 0; i < 5; i++) {
+            const ang = -Math.PI * 0.5 + (i * Math.PI * 2) / 5;
+            const px = Math.cos(ang) * (r * 0.42);
+            const py = Math.sin(ang) * (r * 0.42);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.restore();
+        }
+
+        frame(ts) {
+          if (!this.lastTs) this.lastTs = ts;
+          const dt = Math.min(0.05, Math.max(0.001, (ts - this.lastTs) / 1000));
+          this.lastTs = ts;
+
+          try {
+            if (!this.paused && !this.gameOver && !this.introActive && !this.setupOpen && !this.shotOpen) {
+              this.updateSimulation(dt);
+              this.updateHUD();
+            }
+            this.drawPitch();
+          } catch (_err) {}
+
+          const self = this;
+          this.rafId = requestAnimationFrame(function (nextTs) {
+            self.frame(nextTs);
+          });
+        }
+
+        start() {
+          if (!this.rafId) {
+            const self = this;
+            this.rafId = requestAnimationFrame(function (ts) {
+              self.frame(ts);
+            });
+          }
+        }
+      }
+
+      let booted = false;
+      function bootFootballStrike() {
+        if (booted) return;
+        booted = true;
+        try {
+          const app = new FootballStrikeEngine();
+          app.start();
+        } catch (_err) {
+          const intro = document.getElementById('fsIntroScreen');
+          const setup = document.getElementById('setupOverlay');
+          if (intro) intro.classList.add('hidden');
+          if (setup) setup.classList.add('open');
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootFootballStrike);
+      } else {
+        bootFootballStrike();
+      }
+    })();
   </script>
 </body>
 </html>
