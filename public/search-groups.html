@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Search Groups</title>
+  <link rel="stylesheet" href="/theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-color: #FFFFFF;
+      --surface-color: #F0F2F5;
+      --text-primary: #202124;
+      --text-secondary: #5F6368;
+      --border-color: #E0E0E0;
+      --accent-color: #10b981;
+      --btn-hover: rgba(0, 0, 0, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #202124;
+        --surface-color: #35363A;
+        --text-primary: #E8EAED;
+        --text-secondary: #9AA0A6;
+        --border-color: #3C4043;
+        --accent-color: #10b981;
+        --btn-hover: rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Search Header matching screenshot */
+    .search-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background-color: var(--bg-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .back-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.2s;
+    }
+
+    .back-btn:hover {
+      background-color: var(--btn-hover);
+    }
+
+    .back-btn svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .search-input-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background-color: var(--surface-color);
+      border-radius: 9999px;
+      padding: 0 16px;
+      height: 42px;
+    }
+
+    .search-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 16px;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .clear-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      display: none;
+      padding-left: 8px;
+    }
+
+    /* Search Results Container */
+    .results-container {
+      flex: 1;
+      padding: 8px 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .status-text {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-top: 24px;
+    }
+
+    .group-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background-color: var(--surface-color);
+      text-decoration: none;
+      color: inherit;
+      transition: opacity 0.2s;
+    }
+
+    .group-card:active {
+      opacity: 0.85;
+    }
+
+    .group-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .group-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+      background-color: var(--border-color);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-primary);
+    }
+
+    .group-details {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .group-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .group-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .visit-btn {
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: none;
+      background-color: var(--accent-color);
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="search-header">
+    <button type="button" class="back-btn" id="backButton" aria-label="Back to Groups">
+      <svg viewBox="0 0 24 24">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+
+    <div class="search-input-wrapper">
+      <input
+        type="text"
+        id="searchInput"
+        class="search-input"
+        placeholder="Search groups"
+        autocomplete="off"
+        autofocus
+      />
+      <button type="button" class="clear-btn" id="clearButton" aria-label="Clear search">&times;</button>
+    </div>
+  </header>
+
+  <!-- Results Area -->
+  <main class="results-container" id="resultsContainer"></main>
+
+  <script>
+    // Initialize Supabase Client
+    const SUPABASE_URL = 'https://gemyqaniztqrsilayblx.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const backButton = document.getElementById('backButton');
+    const searchInput = document.getElementById('searchInput');
+    const clearButton = document.getElementById('clearButton');
+    const resultsContainer = document.getElementById('resultsContainer');
+
+    let debounceTimer = null;
+
+    // Navigate to groups.html when clicking '<'
+    function goToGroups() {
+      window.location.href = 'groups.html';
+    }
+
+    backButton.addEventListener('click', goToGroups);
+
+    // Clear search input
+    clearButton.addEventListener('click', () => {
+      searchInput.value = '';
+      clearButton.style.display = 'none';
+      resultsContainer.innerHTML = '';
+      searchInput.focus();
+    });
+
+    // Listen to search input with debounce
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      clearButton.style.display = query.length > 0 ? 'block' : 'none';
+
+      clearTimeout(debounceTimer);
+      if (!query) {
+        resultsContainer.innerHTML = '';
+        return;
+      }
+
+      debounceTimer = setTimeout(() => {
+        searchGroups(query);
+      }, 300);
+    });
+
+    // Query groups from Supabase
+    async function searchGroups(query) {
+      resultsContainer.innerHTML = '<div class="status-text">Searching...</div>';
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('groups')
+          .select('*')
+          .ilike('name', `%${query}%`)
+          .limit(25);
+
+        if (error) throw error;
+
+        renderGroups(data);
+      } catch (err) {
+        console.error('Error searching groups:', err.message);
+        resultsContainer.innerHTML = '<div class="status-text">Failed to load groups. Please try again.</div>';
+      }
+    }
+
+    // Render matched groups
+    function renderGroups(groups) {
+      if (!groups || groups.length === 0) {
+        resultsContainer.innerHTML = '<div class="status-text">No groups found</div>';
+        return;
+      }
+
+      resultsContainer.innerHTML = groups.map(group => {
+        const groupName = escapeHtml(group.name || 'Unnamed Group');
+        const privacy = escapeHtml(group.privacy || 'Public');
+        const membersCount = group.members_count !== undefined ? `${group.members_count} members` : '';
+        const metaText = [privacy, membersCount].filter(Boolean).join(' • ');
+        const initial = groupName.charAt(0).toUpperCase();
+
+        const avatarHtml = group.cover_url || group.avatar_url
+          ? `<img src="${escapeHtml(group.cover_url || group.avatar_url)}" alt="${groupName}" class="group-avatar" />`
+          : `<div class="group-avatar">${initial}</div>`;
+
+        return `
+          <div class="group-card" onclick="openGroup('${group.id}')">
+            <div class="group-info">
+              ${avatarHtml}
+              <div class="group-details">
+                <span class="group-name">${groupName}</span>
+                <span class="group-meta">${metaText}</span>
+              </div>
+            </div>
+            <button type="button" class="visit-btn">Open</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openGroup(groupId) {
+      window.location.href = `groups.html?id=${encodeURIComponent(groupId)}`;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
