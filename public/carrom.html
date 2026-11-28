@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Carrom Association - Championship Board</title>
+  <style>
+    /* ========================================================================
+       1. DESIGN TOKENS & SYSTEM LIGHT / DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --aca-forest: #0B3D20;
+      --aca-emerald-deep: #0a7d3b;
+      --aca-emerald: #10b981;
+      --aca-gold: #f59e0b;
+      --aca-amber: #fbbf24;
+
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --hud-bg: rgba(255, 255, 255, 0.93);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --hud-bg: rgba(255, 255, 255, 0.93);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04140b;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #carromArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(7px, env(safe-area-inset-top)) 8px max(7px, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% 18%, #0a7d3b 0%, #0B3D20 58%, #031008 100%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP BAR, SCOREBOARD & PLAYER STRIPS
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 560px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .btn-cluster {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .round-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .round-btn:hover {
+      border-color: var(--aca-amber);
+    }
+
+    .round-btn:active {
+      transform: scale(0.92);
+    }
+
+    .scoreboard-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 14px;
+      flex: 1;
+      max-width: 268px;
+      border-color: rgba(251, 191, 36, 0.52);
+    }
+
+    .score-main-line {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pts-highlight {
+      padding: 1px 7px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(16, 185, 129, 0.52);
+      color: var(--aca-amber);
+      font-size: 13px;
+    }
+
+    .score-sub-line {
+      font-size: 9.2px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .players-row {
+      width: 100%;
+      max-width: 560px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      z-index: 16;
+    }
+
+    .player-card {
+      padding: 5px 9px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .player-card.active-player {
+      border-color: var(--aca-amber);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.3);
+    }
+
+    .p-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .p-name {
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .p-role {
+      font-size: 8.8px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-sub);
+    }
+
+    .p-queen-tag {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: rgba(220, 38, 38, 0.22);
+      border: 1px solid rgba(248, 113, 113, 0.55);
+      color: #fca5a5;
+      font-size: 9px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    /* ========================================================================
+       3. CENTER SQUARE CARROM BOARD STAGE & STRIKER CONTROLS
+       ======================================================================== */
+    .board-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 560px;
+      max-height: 56dvh;
+      margin: 2px 0;
+    }
+
+    canvas#carromBoardCanvas {
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .bottom-controls {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 18;
+    }
+
+    .striker-slider-panel {
+      padding: 6px 10px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .slider-label {
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--aca-amber);
+      white-space: nowrap;
+    }
+
+    input[type="range"].striker-range {
+      flex: 1;
+      accent-color: #10b981;
+      cursor: pointer;
+      height: 18px;
+    }
+
+    .status-readout {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text-sub);
+      white-space: nowrap;
+    }
+
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .cmd-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .cmd-btn:active:not(:disabled) {
+      transform: scale(0.95);
+      border-color: var(--aca-amber);
+    }
+
+    .cmd-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK CARROM ASSOCIATION INTRO SCREEN
+       ======================================================================== */
+    #acaCarromIntro {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #acaCarromIntro.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .beam-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .beam-left {
+      left: 10%;
+      animation: beamSwingL 2.8s ease-in-out infinite alternate;
+    }
+
+    .beam-right {
+      right: 10%;
+      animation: beamSwingR 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes beamSwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes beamSwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 345px;
+      width: 100%;
+    }
+
+    .aca-carrom-crest {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--aca-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--aca-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-title {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-sub {
+      margin-top: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-meter {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-meter-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE, SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 415px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 18px 16px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-head {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .modal-h2 {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .field-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--aca-amber);
+    }
+
+    .two-col-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .text-field {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 11px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .pills-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .pills-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .opt-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 10.5px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .opt-btn.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--aca-amber);
+      color: #ffffff;
+    }
+
+    .btn-primary-gold {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--aca-amber);
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary-link {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .action-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .summary-table {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .shot-preview-img {
+      width: 100%;
+      max-height: 50dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--aca-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--aca-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="carromArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">AUTROBOOK CARROM</div>
+
+    <!-- TOP BROADCAST HUD WITH BACK LINK TO carrom.html -->
+    <header class="top-bar">
+      <div class="btn-cluster">
+        <a href="carrom.html" class="round-btn glass-hud" title="Back to Carrom Hub" aria-label="Back to Carrom Hub">&larr;</a>
+      </div>
+
+      <div class="scoreboard-pill glass-hud">
+        <div class="score-main-line">
+          <span id="p1ScoreName">P1</span>
+          <span id="scoreBoardPts" class="pts-highlight">0 - 0</span>
+          <span id="p2ScoreName">P2</span>
+        </div>
+        <div id="scoreTargetMeta" class="score-sub-line">TARGET 25 PTS • 1P VS AI (CLUB)</div>
+      </div>
+
+      <div class="btn-cluster">
+        <button id="themeBtn" type="button" class="round-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="round-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="setupBtn" type="button" class="round-btn glass-hud" title="Match Setup" aria-label="Match Setup">&#9998;</button>
+        <button id="muteBtn" type="button" class="round-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="round-btn glass-hud" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- TWO PLAYERS STATUS CARDS -->
+    <section class="players-row">
+      <div id="p1Card" class="player-card glass-hud active-player">
+        <div class="p-info">
+          <span id="p1CardName" class="p-name">PLAYER 1</span>
+          <span id="p1CardRole" class="p-role">WHITE CARROM MEN</span>
+        </div>
+        <span id="p1QueenTag" class="p-queen-tag" style="display:none;">QUEEN</span>
+      </div>
+
+      <div id="p2Card" class="player-card glass-hud">
+        <div class="p-info">
+          <span id="p2CardName" class="p-name">ACA AI</span>
+          <span id="p2CardRole" class="p-role">BLACK CARROM MEN</span>
+        </div>
+        <span id="p2QueenTag" class="p-queen-tag" style="display:none;">QUEEN</span>
+      </div>
+    </section>
+
+    <!-- HIGH-DPI SQUARE CARROM BOARD CANVAS -->
+    <div id="boardStage" class="board-stage">
+      <canvas id="carromBoardCanvas"></canvas>
+    </div>
+
+    <!-- STRIKER POSITION SLIDER & QUICK ACTIONS -->
+    <div class="bottom-controls">
+      <div class="striker-slider-panel glass-hud">
+        <span class="slider-label">Striker</span>
+        <input id="strikerSlider" type="range" min="0" max="100" value="50" class="striker-range" aria-label="Slide Striker Along Baseline" />
+        <span id="turnStateLabel" class="status-readout">Drag striker to aim &amp; flick</span>
+      </div>
+
+      <div class="cmd-grid">
+        <button id="quickShotBtn" type="button" class="cmd-btn">&#127919; Strike</button>
+        <button id="reRackBtn" type="button" class="cmd-btn">&#9673; Re-Rack</button>
+        <button id="resetMatchBtn" type="button" class="cmd-btn">&#8635; New Match</button>
+        <button id="setupQuickBtn" type="button" class="cmd-btn">&#9881; Setup</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK CARROM ASSOCIATION INTRO SCREEN
+         ====================================================================== -->
+    <section id="acaCarromIntro">
+      <div class="beam-ray beam-left"></div>
+      <div class="beam-ray beam-right"></div>
+
+      <div class="intro-center">
+        <div class="aca-carrom-crest">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <circle cx="32" cy="32" r="12" stroke="#fde68a" stroke-width="2" fill="none"/>
+            <circle cx="32" cy="32" r="5" fill="#dc2626" stroke="#ffffff" stroke-width="1.5"/>
+            <circle cx="22" cy="22" r="3" fill="#ffffff"/>
+            <circle cx="42" cy="22" r="3" fill="#1e293b" stroke="#ffffff" stroke-width="1"/>
+            <circle cx="22" cy="42" r="3" fill="#1e293b" stroke="#ffffff" stroke-width="1"/>
+            <circle cx="42" cy="42" r="3" fill="#ffffff"/>
+          </svg>
+        </div>
+
+        <div class="intro-kicker">OFFICIAL CHAMPIONSHIP BOARD</div>
+        <h1 class="intro-title">Autrobook Carrom Association</h1>
+        <p class="intro-sub">CHAMPIONSHIP BOARD SERIES</p>
+
+        <div class="intro-meter">
+          <div id="introProgressFill" class="intro-meter-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary-gold" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. MATCH SETUP MODAL
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2 class="modal-h2">ACA Carrom Setup</h2>
+          <p class="modal-sub">1P vs AI or 2P Local • Queen &amp; Cover Rules</p>
+        </div>
+
+        <div class="two-col-inputs">
+          <div class="field-group" style="margin-bottom:0;">
+            <label for="p1NameInput" class="field-label">Player 1 Name</label>
+            <input id="p1NameInput" type="text" maxlength="14" value="PLAYER 1" class="text-field" />
+          </div>
+          <div class="field-group" style="margin-bottom:0;">
+            <label for="p2NameInput" class="field-label">Player 2 / AI Name</label>
+            <input id="p2NameInput" type="text" maxlength="14" value="ACA AI" class="text-field" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">Players Mode</span>
+          <div id="modeGroup" class="pills-2">
+            <button type="button" class="opt-btn selected" data-mode="AI_CLUB">1P vs AI</button>
+            <button type="button" class="opt-btn" data-mode="LOCAL_2P">2P Local</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">AI Skill Level</span>
+          <div id="aiLevelGroup" class="pills-3">
+            <button type="button" class="opt-btn" data-ai="CASUAL">Casual</button>
+            <button type="button" class="opt-btn selected" data-ai="CLUB">Club</button>
+            <button type="button" class="opt-btn" data-ai="PRO">Pro</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">Match Target Points</span>
+          <div id="targetPtsGroup" class="pills-3">
+            <button type="button" class="opt-btn" data-pts="15">15 Points</button>
+            <button type="button" class="opt-btn selected" data-pts="25">25 Points</button>
+            <button type="button" class="opt-btn" data-pts="35">35 Points</button>
+          </div>
+        </div>
+
+        <button id="startCarromBtn" type="button" class="btn-primary-gold">
+          Start Championship Board
+        </button>
+        <div class="action-stack" style="margin-top:6px;">
+          <a href="carrom.html" class="btn-secondary-link">&larr; Back to Carrom Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Board Screenshot</h2>
+          <p class="modal-sub">Autrobook Carrom Association</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="Carrom Board Screenshot" />
+        <div class="action-stack">
+          <a id="downloadShotBtn" download="Autrobook-Carrom-Board.png" class="btn-primary-gold">Download PNG</a>
+          <button id="closeShotModalBtn" type="button" class="btn-secondary-link">Resume Match</button>
+          <a href="carrom.html" class="btn-secondary-link">&larr; Back to Carrom Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:325px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Match Paused</h2>
+          <p class="modal-sub">Autrobook Carrom Association</p>
+        </div>
+        <div class="action-stack">
+          <button id="resumeMatchBtn" type="button" class="btn-primary-gold">Resume Match</button>
+          <button id="restartFromPauseBtn" type="button" class="btn-secondary-link">New Match</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary-link">Match Setup</button>
+          <a href="carrom.html" class="btn-secondary-link">&larr; Back to Carrom Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. CHAMPIONSHIP SUMMARY MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:355px;text-align:center;">
+        <div style="font-size:42px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="winnerHeading" class="modal-h2">CHAMPIONSHIP WINNER!</h2>
+        <p id="winnerSubtext" class="modal-sub">Autrobook Carrom Association</p>
+
+        <div class="summary-table">
+          <div class="summary-row">
+            <span>Final Score</span>
+            <span id="sumFinalScore" style="font-weight:900;color:var(--aca-amber);">0 - 0</span>
+          </div>
+          <div class="summary-row">
+            <span>Target Points</span>
+            <span id="sumTargetPts" style="font-weight:900;">25</span>
+          </div>
+          <div class="summary-row">
+            <span>Fouls Committed</span>
+            <span id="sumFoulsCount" style="font-weight:900;color:#f87171;">0</span>
+          </div>
+          <div class="summary-row">
+            <span>Matches Played / Won</span>
+            <span id="sumCareerStats" style="font-weight:900;color:var(--aca-emerald);">0 / 0</span>
+          </div>
+        </div>
+
+        <div class="action-stack">
+          <button id="playAgainBtn" type="button" class="btn-primary-gold">Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary-link">Match Setup</button>
+          <a href="carrom.html" class="btn-secondary-link">&larr; Back to Carrom Hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class CarromAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playFlick() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(340, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.08);
+        g.gain.setValueAtTime(0.16, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.095);
+      }
+
+      playClack(intensity = 0.7) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        const f0 = 780 + Math.min(1, intensity) * 420;
+        osc.frequency.setValueAtTime(f0, now);
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.045);
+        g.gain.setValueAtTime(Math.min(0.24, 0.06 + intensity * 0.18), now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playPocketDrop() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.06;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.13, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.19);
+        });
+      }
+
+      playFoulBuzz() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(165, now);
+        osc.frequency.linearRampToValueAtTime(125, now + 0.24);
+        g.gain.setValueAtTime(0.16, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      }
+
+      playWinFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.11;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.16, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.32);
+        });
+      }
+    }
+
+    /* ========================================================================
+       AUTROBOOK CARROM ASSOCIATION PHYSICS & MATCH ENGINE
+       ======================================================================== */
+    const CARROM_STATS_KEY = 'aca_carrom_championship_stats_v1';
+
+    class AutrobookCarromEngine {
+      constructor() {
+        this.canvas = document.getElementById('carromBoardCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new CarromAudioSynth();
+
+        this.p1Name = 'PLAYER 1';
+        this.p2Name = 'ACA AI';
+        this.twoPlayerLocal = false;
+        this.aiSkill = 'CLUB'; // CASUAL, CLUB, PRO
+        this.targetPoints = 25; // 15, 25, 35
+
+        const saved = this.loadStats();
+        this.matchesPlayed = saved.played || 0;
+        this.matchesWon = saved.won || 0;
+        this.countedWin = false;
+
+        this.scores = [0, 0];
+        this.foulsCount = 0;
+        this.currentPlayer = 0; // 0 = Player 1 (Bottom baseline), 1 = Player 2 / AI (Top baseline)
+        this.queenHolder = null; // null, 0, or 1
+        this.pendingQueenCover = null; // { playerIdx } if Queen pocketed this turn and needs cover
+
+        this.turnPocketed = [];
+        this.strikerPocketedThisTurn = false;
+        this.isSimulating = false;
+        this.matchOver = false;
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotOpen = false;
+        this.paused = false;
+
+        this.boardSize = 360;
+        this.dpr = 1;
+        this.playBounds = { left: 28, right: 332, top: 28, bottom: 332, pocketR: 18 };
+        this.pieces = [];
+        this.striker = { x: 180, y: 286, vx: 0, vy: 0, r: 14, pocketed: false };
+
+        this.aimDrag = {
+          active: false,
+          startX: 0,
+          startY: 0,
+          curX: 0,
+          curY: 0
+        };
+
+        this.lastFrame = 0;
+
+        this.syncThemeIcon();
+        this.bindEvents();
+        this.resizeBoard();
+        this.rackPieces();
+        this.resetStrikerForTurn();
+        this.refreshHUD();
+        this.startIntro();
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(CARROM_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(CARROM_STATS_KEY, JSON.stringify({
+            played: this.matchesPlayed,
+            won: this.matchesWon
+          }));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.renderBoard();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      setStatusText(msg) {
+        document.getElementById('turnStateLabel').textContent = msg;
+      }
+
+      /* ======================================================================
+         BOARD GEOMETRY & HEXAGONAL CARROM RACKING
+         ====================================================================== */
+      resizeBoard() {
+        const stage = document.getElementById('boardStage').getBoundingClientRect();
+        const side = Math.floor(Math.max(250, Math.min(stage.width - 8, stage.height - 8)));
+        const prevSize = this.boardSize || side;
+        const scaleRatio = side / prevSize;
+
+        this.boardSize = side;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${side}px`;
+        this.canvas.style.height = `${side}px`;
+        this.canvas.width = Math.floor(side * this.dpr);
+        this.canvas.height = Math.floor(side * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        const framePad = side * 0.075;
+        this.playBounds = {
+          left: framePad,
+          right: side - framePad,
+          top: framePad,
+          bottom: side - framePad,
+          pocketR: side * 0.048
+        };
+
+        const pieceR = side * 0.0265;
+        this.striker.r = side * 0.0355;
+
+        this.pieces.forEach((p) => {
+          p.x *= scaleRatio;
+          p.y *= scaleRatio;
+          p.vx *= scaleRatio;
+          p.vy *= scaleRatio;
+          p.r = pieceR;
+        });
+
+        this.striker.x *= scaleRatio;
+        this.striker.y = this.getBaselineY(this.currentPlayer);
+        this.renderBoard();
+      }
+
+      getBaselineY(playerIdx) {
+        const b = this.playBounds;
+        const span = b.bottom - b.top;
+        return playerIdx === 0 ? b.top + span * 0.81 : b.top + span * 0.19;
+      }
+
+      getPocketCenters() {
+        const b = this.playBounds;
+        const inset = b.pocketR * 0.85;
+        return [
+          { x: b.left + inset, y: b.top + inset },
+          { x: b.right - inset, y: b.top + inset },
+          { x: b.left + inset, y: b.bottom - inset },
+          { x: b.right - inset, y: b.bottom - inset }
+        ];
+      }
+
+      rackPieces() {
+        const cx = this.boardSize * 0.5;
+        const cy = this.boardSize * 0.5;
+        const r = this.boardSize * 0.0265;
+        const gap = r * 2.12;
+
+        this.pieces = [];
+        this.pendingQueenCover = null;
+
+        // Center Red Queen
+        this.pieces.push({ type: 'QUEEN', x: cx, y: cy, vx: 0, vy: 0, r, pocketed: false });
+
+        // Ring 1 (6 pieces around Queen)
+        for (let i = 0; i < 6; i++) {
+          const ang = (i * Math.PI) / 3;
+          this.pieces.push({
+            type: i % 2 === 0 ? 'WHITE' : 'BLACK',
+            x: cx + Math.cos(ang) * gap,
+            y: cy + Math.sin(ang) * gap,
+            vx: 0,
+            vy: 0,
+            r,
+            pocketed: false
+          });
+        }
+
+        // Ring 2 (12 pieces on outer hexagonal cluster)
+        const r2 = gap * 2;
+        for (let i = 0; i < 12; i++) {
+          const ang = (i * Math.PI) / 6;
+          const x = cx + Math.cos(ang) * r2;
+          const y = cy + Math.sin(ang) * r2;
+          this.pieces.push({
+            type: i % 2 === 0 ? 'BLACK' : 'WHITE',
+            x,
+            y,
+            vx: 0,
+            vy: 0,
+            r,
+            pocketed: false
+          });
+        }
+      }
+
+      resetStrikerForTurn() {
+        this.striker.pocketed = false;
+        this.striker.vx = 0;
+        this.striker.vy = 0;
+        this.striker.y = this.getBaselineY(this.currentPlayer);
+        const minX = this.playBounds.left + this.boardSize * 0.16;
+        const maxX = this.playBounds.right - this.boardSize * 0.16;
+        const sliderPct = parseInt(document.getElementById('strikerSlider').value, 10) / 100;
+        this.striker.x = minX + (maxX - minX) * sliderPct;
+        this.turnPocketed = [];
+        this.strikerPocketedThisTurn = false;
+        this.aimDrag.active = false;
+        this.renderBoard();
+
+        if (!this.matchOver && !this.paused && this.currentPlayer === 1 && !this.twoPlayerLocal) {
+          setTimeout(() => {
+            if (!this.paused && !this.matchOver && this.currentPlayer === 1 && !this.twoPlayerLocal && !this.isSimulating) {
+              this.executeAIShot();
+            }
+          }, 580);
+        }
+      }
+
+      /* ======================================================================
+         FLICK LAUNCH, PHYSICS STEP, POCKETING & QUEEN / FOUL RULES
+         ====================================================================== */
+      launchStriker(vx, vy) {
+        if (this.isSimulating || this.matchOver || this.paused || this.striker.pocketed) return;
+        const speed = Math.hypot(vx, vy);
+        const maxSpeed = this.boardSize * 2.55;
+        const clampedSpeed = Math.min(maxSpeed, Math.max(this.boardSize * 0.45, speed));
+        const ang = Math.atan2(vy, vx);
+
+        this.striker.vx = Math.cos(ang) * clampedSpeed;
+        this.striker.vy = Math.sin(ang) * clampedSpeed;
+        this.isSimulating = true;
+        this.turnPocketed = [];
+        this.strikerPocketedThisTurn = false;
+        this.audio.playFlick();
+        this.setStatusText('Pieces in motion...');
+      }
+
+      executeAIShot() {
+        const activeTargets = this.pieces.filter((p) => !p.pocketed && p.type !== 'QUEEN');
+        const target = activeTargets[Math.floor(Math.random() * activeTargets.length)] ||
+          this.pieces.find((p) => !p.pocketed);
+
+        const minX = this.playBounds.left + this.boardSize * 0.18;
+        const maxX = this.playBounds.right - this.boardSize * 0.18;
+        const sx = minX + Math.random() * (maxX - minX);
+        const sy = this.getBaselineY(1);
+        this.striker.x = sx;
+        this.striker.y = sy;
+
+        const jitter = this.aiSkill === 'PRO' ? 4 : this.aiSkill === 'CLUB' ? 14 : 28;
+        const tx = (target ? target.x : this.boardSize * 0.5) + (Math.random() - 0.5) * jitter;
+        const ty = target ? target.y : this.boardSize * 0.5;
+        const ang = Math.atan2(ty - sy, tx - sx);
+        const power = this.boardSize * (1.55 + Math.random() * 0.65);
+
+        this.launchStriker(Math.cos(ang) * power, Math.sin(ang) * power);
+      }
+
+      stepPhysics(dt) {
+        if (!this.isSimulating) return;
+
+        const allBodies = [
+          ...(this.striker.pocketed ? [] : [this.striker]),
+          ...this.pieces.filter((p) => !p.pocketed)
+        ];
+
+        const damping = Math.pow(0.24, dt);
+        let anyMoving = false;
+
+        for (const body of allBodies) {
+          body.x += body.vx * dt;
+          body.y += body.vy * dt;
+          body.vx *= damping;
+          body.vy *= damping;
+
+          if (Math.hypot(body.vx, body.vy) < 4.5) {
+            body.vx = 0;
+            body.vy = 0;
+          } else {
+            anyMoving = true;
+          }
+
+          // Cushion rebounds
+          const b = this.playBounds;
+          if (body.x - body.r < b.left) {
+            body.x = b.left + body.r;
+            body.vx = Math.abs(body.vx) * 0.82;
+            this.audio.playClack(0.35);
+          } else if (body.x + body.r > b.right) {
+            body.x = b.right - body.r;
+            body.vx = -Math.abs(body.vx) * 0.82;
+            this.audio.playClack(0.35);
+          }
+
+          if (body.y - body.r < b.top) {
+            body.y = b.top + body.r;
+            body.vy = Math.abs(body.vy) * 0.82;
+            this.audio.playClack(0.35);
+          } else if (body.y + body.r > b.bottom) {
+            body.y = b.bottom - body.r;
+            body.vy = -Math.abs(body.vy) * 0.82;
+            this.audio.playClack(0.35);
+          }
+        }
+
+        // Elastic circle-circle collisions
+        for (let i = 0; i < allBodies.length; i++) {
+          for (let j = i + 1; j < allBodies.length; j++) {
+            const a = allBodies[i];
+            const b = allBodies[j];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = a.r + b.r;
+
+            if (dist > 0 && dist < minDist) {
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const overlap = (minDist - dist) * 0.5;
+              a.x -= nx * overlap;
+              a.y -= ny * overlap;
+              b.x += nx * overlap;
+              b.y += ny * overlap;
+
+              const rvx = b.vx - a.vx;
+              const rvy = b.vy - a.vy;
+              const velAlongNormal = rvx * nx + rvy * ny;
+              if (velAlongNormal < 0) {
+                const restitution = 0.88;
+                const imp = (-(1 + restitution) * velAlongNormal) * 0.5;
+                a.vx -= imp * nx;
+                a.vy -= imp * ny;
+                b.vx += imp * nx;
+                b.vy += imp * ny;
+                const relSpeed = Math.abs(velAlongNormal) / this.boardSize;
+                this.audio.playClack(Math.min(1, relSpeed));
+              }
+            }
+          }
+        }
+
+        // Pocket detection
+        const pockets = this.getPocketCenters();
+        for (const pk of pockets) {
+          if (!this.striker.pocketed) {
+            if (Math.hypot(this.striker.x - pk.x, this.striker.y - pk.y) < this.playBounds.pocketR * 0.92) {
+              this.striker.pocketed = true;
+              this.striker.vx = 0;
+              this.striker.vy = 0;
+              this.strikerPocketedThisTurn = true;
+              this.audio.playFoulBuzz();
+            }
+          }
+
+          for (const piece of this.pieces) {
+            if (piece.pocketed) continue;
+            if (Math.hypot(piece.x - pk.x, piece.y - pk.y) < this.playBounds.pocketR * 0.94) {
+              piece.pocketed = true;
+              piece.vx = 0;
+              piece.vy = 0;
+              this.turnPocketed.push(piece.type);
+              this.audio.playPocketDrop();
+            }
+          }
+        }
+
+        if (!anyMoving) {
+          this.isSimulating = false;
+          this.resolveTurnOutcome();
+        }
+      }
+
+      resolveTurnOutcome() {
+        const pIdx = this.currentPlayer;
+        const pocketedQueen = this.turnPocketed.includes('QUEEN');
+        const pocketedMan = this.turnPocketed.some((t) => t === 'WHITE' || t === 'BLACK');
+
+        if (this.strikerPocketedThisTurn) {
+          this.foulsCount++;
+          this.scores[pIdx] = Math.max(0, this.scores[pIdx] - 2);
+          if (this.pendingQueenCover && this.pendingQueenCover.playerIdx === pIdx) {
+            this.returnQueenToCenter();
+            this.pendingQueenCover = null;
+          }
+          this.showToast('FOUL! STRIKER POCKETED (-2)');
+          this.currentPlayer = pIdx === 0 ? 1 : 0;
+        } else {
+          let earned = 0;
+          if (pocketedMan) {
+            earned += this.turnPocketed.filter((t) => t !== 'QUEEN').length * 3;
+          }
+          if (pocketedQueen) {
+            if (pocketedMan) {
+              this.queenHolder = pIdx;
+              this.pendingQueenCover = null;
+              earned += 5;
+              this.showToast('QUEEN COVERED! (+5)');
+            } else {
+              this.pendingQueenCover = { playerIdx: pIdx };
+              this.showToast('QUEEN POCKETED — COVER NEXT');
+            }
+          } else if (this.pendingQueenCover && this.pendingQueenCover.playerIdx === pIdx) {
+            if (pocketedMan) {
+              this.queenHolder = pIdx;
+              this.pendingQueenCover = null;
+              earned += 5;
+              this.showToast('QUEEN COVERED! (+5)');
+            } else {
+              this.returnQueenToCenter();
+              this.pendingQueenCover = null;
+              this.showToast('QUEEN RETURNED');
+            }
+          }
+
+          this.scores[pIdx] += earned;
+
+          const remainingMen = this.pieces.filter((p) => !p.pocketed && p.type !== 'QUEEN').length;
+          if (remainingMen === 0) {
+            this.rackPieces();
+          }
+
+          if (!pocketedMan && !pocketedQueen && !this.pendingQueenCover) {
+            this.currentPlayer = pIdx === 0 ? 1 : 0;
+          }
+        }
+
+        this.refreshHUD();
+
+        if (this.scores[0] >= this.targetPoints || this.scores[1] >= this.targetPoints) {
+          this.concludeMatch();
+          return;
+        }
+
+        this.resetStrikerForTurn();
+      }
+
+      returnQueenToCenter() {
+        const queen = this.pieces.find((p) => p.type === 'QUEEN');
+        if (queen) {
+          queen.pocketed = false;
+          queen.x = this.boardSize * 0.5;
+          queen.y = this.boardSize * 0.5;
+          queen.vx = 0;
+          queen.vy = 0;
+        }
+      }
+
+      concludeMatch() {
+        this.matchOver = true;
+        this.paused = true;
+        const p1Won = this.scores[0] >= this.scores[1];
+        this.audio.playWinFanfare();
+
+        if (!this.countedWin) {
+          this.countedWin = true;
+          this.matchesPlayed++;
+          if (p1Won) this.matchesWon++;
+          this.saveStats();
+        }
+
+        const winnerName = p1Won ? this.p1Name : this.p2Name;
+        document.getElementById('winnerHeading').textContent = `${winnerName} WINS!`;
+        document.getElementById('winnerSubtext').textContent = `Reached ${this.targetPoints}-point ACA target`;
+        document.getElementById('sumFinalScore').textContent = `${this.scores[0]} - ${this.scores[1]}`;
+        document.getElementById('sumTargetPts').textContent = String(this.targetPoints);
+        document.getElementById('sumFoulsCount').textContent = String(this.foulsCount);
+        document.getElementById('sumCareerStats').textContent = `${this.matchesWon} / ${this.matchesPlayed}`;
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         HUD, SCREENSHOT & USER INPUT EVENTS
+         ====================================================================== */
+      refreshHUD() {
+        document.getElementById('p1ScoreName').textContent = this.p1Name.slice(0, 8);
+        document.getElementById('p2ScoreName').textContent = this.p2Name.slice(0, 8);
+        document.getElementById('scoreBoardPts').textContent = `${this.scores[0]} - ${this.scores[1]}`;
+        document.getElementById('scoreTargetMeta').textContent =
+          `TARGET ${this.targetPoints} PTS • ${this.twoPlayerLocal ? '2P LOCAL' : '1P VS AI (' + this.aiSkill + ')'}`;
+
+        document.getElementById('p1CardName').textContent = this.p1Name;
+        document.getElementById('p2CardName').textContent = this.p2Name;
+        document.getElementById('p1Card').classList.toggle('active-player', this.currentPlayer === 0);
+        document.getElementById('p2Card').classList.toggle('active-player', this.currentPlayer === 1);
+
+        document.getElementById('p1QueenTag').style.display = this.queenHolder === 0 ? 'inline-block' : 'none';
+        document.getElementById('p2QueenTag').style.display = this.queenHolder === 1 ? 'inline-block' : 'none';
+
+        const activeName = this.currentPlayer === 0 ? this.p1Name : this.p2Name;
+        document.getElementById('quickShotBtn').disabled =
+          this.isSimulating || (this.currentPlayer === 1 && !this.twoPlayerLocal);
+        this.setStatusText(`${activeName}'s shot — drag striker to aim`);
+      }
+
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playFlick();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderBoard();
+        try {
+          const dataUrl = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotOpen = true;
+          document.getElementById('screenshotImg').src = dataUrl;
+          const dl = document.getElementById('downloadShotBtn');
+          dl.href = dataUrl;
+          dl.download = `Autrobook-Carrom-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT SAVED');
+        } catch (_e) {}
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeBoard());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.renderBoard();
+            }
+          });
+        }
+
+        document.getElementById('themeBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#modeGroup .opt-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.twoPlayerLocal = btn.dataset.mode === 'LOCAL_2P';
+            document.querySelectorAll('#modeGroup .opt-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#aiLevelGroup .opt-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.aiSkill = btn.dataset.ai;
+            document.querySelectorAll('#aiLevelGroup .opt-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#targetPtsGroup .opt-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.targetPoints = parseInt(btn.dataset.pts, 10) || 25;
+            document.querySelectorAll('#targetPtsGroup .opt-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.getElementById('setupBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetupModal();
+        });
+
+        document.getElementById('setupQuickBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetupModal();
+        });
+
+        document.getElementById('startCarromBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const n1 = (document.getElementById('p1NameInput').value || '').trim().toUpperCase();
+          const n2 = (document.getElementById('p2NameInput').value || '').trim().toUpperCase();
+          this.p1Name = (n1 || 'PLAYER 1').slice(0, 14);
+          this.p2Name = (n2 || (this.twoPlayerLocal ? 'PLAYER 2' : 'ACA AI')).slice(0, 14);
+
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.startFreshMatch();
+        });
+
+        document.getElementById('strikerSlider').addEventListener('input', (e) => {
+          if (this.isSimulating || this.matchOver) return;
+          if (this.currentPlayer === 1 && !this.twoPlayerLocal) return;
+          const pct = parseInt(e.target.value, 10) / 100;
+          const minX = this.playBounds.left + this.boardSize * 0.16;
+          const maxX = this.playBounds.right - this.boardSize * 0.16;
+          this.striker.x = minX + (maxX - minX) * pct;
+          this.renderBoard();
+        });
+
+        document.getElementById('quickShotBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          if (this.isSimulating || this.matchOver) return;
+          const dirSign = this.currentPlayer === 0 ? -1 : 1;
+          const spread = (Math.random() - 0.5) * 0.45;
+          const power = this.boardSize * 1.95;
+          this.launchStriker(Math.sin(spread) * power, dirSign * Math.cos(spread) * power);
+        });
+
+        document.getElementById('reRackBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          if (this.isSimulating) return;
+          this.rackPieces();
+          this.resetStrikerForTurn();
+          this.showToast('PIECES RE-RACKED');
+        });
+
+        document.getElementById('resetMatchBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.startFreshMatch();
+        });
+
+        document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotModalBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotOpen = false;
+          this.paused = false;
+          this.lastFrame = performance.now();
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotOpen || this.matchOver) return;
+          this.paused = true;
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeMatchBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrame = performance.now();
+        });
+
+        document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.startFreshMatch();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSetupModal();
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.startFreshMatch();
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.openSetupModal();
+        });
+
+        this.canvas.addEventListener('pointerdown', (e) => {
+          this.audio.unlock();
+          if (this.paused || this.matchOver || this.isSimulating || this.striker.pocketed) return;
+          if (this.currentPlayer === 1 && !this.twoPlayerLocal) return;
+
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+
+          this.aimDrag.active = true;
+          this.aimDrag.startX = this.striker.x;
+          this.aimDrag.startY = this.striker.y;
+          this.aimDrag.curX = px;
+          this.aimDrag.curY = py;
+          this.renderBoard();
+        });
+
+        window.addEventListener('pointermove', (e) => {
+          if (!this.aimDrag.active) return;
+          const rect = this.canvas.getBoundingClientRect();
+          this.aimDrag.curX = e.clientX - rect.left;
+          this.aimDrag.curY = e.clientY - rect.top;
+          this.renderBoard();
+        });
+
+        window.addEventListener('pointerup', () => {
+          if (!this.aimDrag.active) return;
+          this.aimDrag.active = false;
+          const pullX = this.aimDrag.startX - this.aimDrag.curX;
+          const pullY = this.aimDrag.startY - this.aimDrag.curY;
+          const dist = Math.hypot(pullX, pullY);
+          if (dist > 12) {
+            this.launchStriker(pullX * 7.5, pullY * 7.5);
+          }
+          this.renderBoard();
+        });
+      }
+
+      openSetupModal() {
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('p1NameInput').value = this.p1Name;
+        document.getElementById('p2NameInput').value = this.p2Name;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      startFreshMatch() {
+        this.scores = [0, 0];
+        this.foulsCount = 0;
+        this.currentPlayer = 0;
+        this.queenHolder = null;
+        this.pendingQueenCover = null;
+        this.matchOver = false;
+        this.countedWin = false;
+        this.isSimulating = false;
+        this.rackPieces();
+        this.resetStrikerForTurn();
+        this.refreshHUD();
+      }
+
+      /* ======================================================================
+         INTRO & HIGH-DPI SQUARE CARROM BOARD RENDERING
+         ====================================================================== */
+      startIntro() {
+        const dur = 2200;
+        const start = performance.now();
+        const bar = document.getElementById('introProgressFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('acaCarromIntro').classList.add('hidden');
+        this.openSetupModal();
+      }
+
+      renderBoard() {
+        const ctx = this.ctx;
+        const size = this.boardSize;
+        const b = this.playBounds;
+        ctx.clearRect(0, 0, size, size);
+
+        // 1. Forest & Gold Frame Border
+        const frameGrad = ctx.createLinearGradient(0, 0, size, size);
+        frameGrad.addColorStop(0, '#0B3D20');
+        frameGrad.addColorStop(0.5, '#0a7d3b');
+        frameGrad.addColorStop(1, '#062614');
+        ctx.fillStyle = frameGrad;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, size, size, 16);
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // 2. Playing Surface
+        ctx.fillStyle = '#f4dfb6';
+        ctx.beginPath();
+        ctx.roundRect(b.left, b.top, b.right - b.left, b.bottom - b.top, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#6b4423';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 3. Center Rosette & Outer Circle
+        const cx = size * 0.5;
+        const cy = size * 0.5;
+        const outerR = size * 0.145;
+        ctx.strokeStyle = '#0a7d3b';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.16)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+
+        for (let i = 0; i < 8; i++) {
+          const ang = (i * Math.PI) / 4;
+          ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#0a7d3b';
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(ang) * outerR * 0.72, cy + Math.sin(ang) * outerR * 0.72, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 4. Four Baselines & Corner Diagonal Arrows
+        const span = b.bottom - b.top;
+        const baseInset = span * 0.19;
+        const sidePad = span * 0.17;
+        const lineGap = this.striker.r * 1.15;
+
+        ctx.strokeStyle = '#0B3D20';
+        ctx.lineWidth = 1.5;
+
+        const drawBasePair = (yPos) => {
+          ctx.beginPath();
+          ctx.moveTo(b.left + sidePad, yPos - lineGap * 0.5);
+          ctx.lineTo(b.right - sidePad, yPos - lineGap * 0.5);
+          ctx.moveTo(b.left + sidePad, yPos + lineGap * 0.5);
+          ctx.lineTo(b.right - sidePad, yPos + lineGap * 0.5);
+          ctx.stroke();
+
+          [b.left + sidePad, b.right - sidePad].forEach((ex) => {
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(ex, yPos, lineGap * 0.48, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0B3D20';
+            ctx.stroke();
+          });
+        };
+
+        drawBasePair(b.top + baseInset);
+        drawBasePair(b.bottom - baseInset);
+
+        // Corner directional arrows
+        const pockets = this.getPocketCenters();
+        pockets.forEach((pk, idx) => {
+          const toCenterX = cx - pk.x;
+          const toCenterY = cy - pk.y;
+          const len = Math.hypot(toCenterX, toCenterY) || 1;
+          const ux = toCenterX / len;
+          const uy = toCenterY / len;
+          const x1 = pk.x + ux * (b.pocketR * 1.35);
+          const y1 = pk.y + uy * (b.pocketR * 1.35);
+          const x2 = pk.x + ux * (span * 0.27);
+          const y2 = pk.y + uy * (span * 0.27);
+
+          ctx.strokeStyle = idx % 2 === 0 ? 'rgba(11, 61, 32, 0.45)' : 'rgba(180, 83, 9, 0.45)';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        });
+
+        // 5. Four Corner Pockets with Mesh Shading
+        pockets.forEach((pk) => {
+          ctx.fillStyle = '#141a16';
+          ctx.beginPath();
+          ctx.arc(pk.x, pk.y, b.pocketR, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(pk.x - b.pocketR * 0.5, pk.y - b.pocketR * 0.5);
+          ctx.lineTo(pk.x + b.pocketR * 0.5, pk.y + b.pocketR * 0.5);
+          ctx.moveTo(pk.x + b.pocketR * 0.5, pk.y - b.pocketR * 0.5);
+          ctx.lineTo(pk.x - b.pocketR * 0.5, pk.y + b.pocketR * 0.5);
+          ctx.stroke();
+        });
+
+        // 6. Carrom Pieces (White, Black, Red Queen)
+        for (const p of this.pieces) {
+          if (p.pocketed) continue;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+          ctx.beginPath();
+          ctx.arc(p.x + 1.5, p.y + 2, p.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (p.type === 'QUEEN') {
+            ctx.fillStyle = '#dc2626';
+          } else if (p.type === 'WHITE') {
+            ctx.fillStyle = '#fffbeb';
+          } else {
+            ctx.fillStyle = '#1e293b';
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = p.type === 'BLACK' ? '#94a3b8' : '#78350f';
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 0.45, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 7. Striker & Aim Trajectory Line
+        if (!this.striker.pocketed) {
+          if (this.aimDrag.active) {
+            const pullX = this.aimDrag.startX - this.aimDrag.curX;
+            const pullY = this.aimDrag.startY - this.aimDrag.curY;
+            const dist = Math.hypot(pullX, pullY);
+            if (dist > 6) {
+              const ang = Math.atan2(pullY, pullX);
+              const aimLen = Math.min(size * 0.48, dist * 1.9);
+              const endX = this.striker.x + Math.cos(ang) * aimLen;
+              const endY = this.striker.y + Math.sin(ang) * aimLen;
+
+              ctx.save();
+              ctx.setLineDash([6, 5]);
+              ctx.strokeStyle = '#fbbf24';
+              ctx.lineWidth = 2.4;
+              ctx.beginPath();
+              ctx.moveTo(this.striker.x, this.striker.y);
+              ctx.lineTo(endX, endY);
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(this.striker.x, this.striker.y, this.striker.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#0a7d3b';
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.arc(this.striker.x, this.striker.y, this.striker.r * 0.36, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      loop(now) {
+        if (!this.lastFrame) this.lastFrame = now;
+        const dt = Math.min(0.05, (now - this.lastFrame) / 1000);
+        this.lastFrame = now;
+
+        if (!this.paused) {
+          this.stepPhysics(dt);
+          this.renderBoard();
+        }
+
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const app = new AutrobookCarromEngine();
+      requestAnimationFrame((t) => app.loop(t));
+    });
+  </script>
+</body>
+</html>
