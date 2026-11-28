@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Snake Arena - Championship Edition</title>
+  <style>
+    /* ========================================================================
+       1. ASA DESIGN TOKENS & SYSTEM LIGHT / DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --asa-forest: #0B3D20;
+      --asa-emerald-deep: #0a7d3b;
+      --asa-emerald: #10b981;
+      --asa-gold: #f59e0b;
+      --asa-amber: #fbbf24;
+
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --hud-bg: rgba(255, 255, 255, 0.94);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --hud-bg: rgba(255, 255, 255, 0.94);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04140b;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #asaArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(5px, env(safe-area-inset-top)) 7px max(5px, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% 18%, #0a7d3b 0%, #0B3D20 58%, #031008 100%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP BAR, SCOREBOARD, SNAKE CARDS & LIVE SPEED RADAR
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 760px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-circle-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .hub-pill-link {
+      padding: 0 8px;
+      height: 30px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: var(--asa-amber);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .icon-circle-btn:hover, .hub-pill-link:hover {
+      border-color: var(--asa-amber);
+    }
+
+    .icon-circle-btn:active, .hub-pill-link:active {
+      transform: scale(0.92);
+    }
+
+    .scoreboard-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 13px;
+      flex: 1;
+      max-width: 365px;
+      border-color: rgba(251, 191, 36, 0.55);
+      min-width: 0;
+    }
+
+    .score-main-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .asa-mini-crest {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    .score-pill {
+      padding: 1px 7px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(16, 185, 129, 0.55);
+      color: var(--asa-amber);
+      font-size: 11.5px;
+    }
+
+    .status-sub-row {
+      font-size: 8.8px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .players-radar-row {
+      width: 100%;
+      max-width: 760px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 5px;
+      align-items: center;
+      z-index: 16;
+    }
+
+    .snake-panel {
+      padding: 4px 8px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      min-width: 0;
+      border-width: 1.5px;
+    }
+
+    .snake-panel.active-snake {
+      border-color: var(--asa-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+    }
+
+    .s-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .s-name-line {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-num {
+      padding: 1px 5px;
+      border-radius: 6px;
+      font-size: 8.5px;
+      font-weight: 900;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      flex-shrink: 0;
+    }
+
+    .s-sub-line {
+      font-size: 8.2px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pts-badge {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: var(--asa-amber);
+      font-size: 9.2px;
+      font-weight: 900;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .radar-box {
+      padding: 3px 8px;
+      border-radius: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-color: rgba(251, 191, 36, 0.48);
+      min-width: 112px;
+    }
+
+    .radar-lbl {
+      font-size: 7.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--asa-amber);
+    }
+
+    .radar-val {
+      font-size: 10.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .radar-sub {
+      font-size: 7.8px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-sub);
+    }
+
+    /* ========================================================================
+       3. CENTER HIGH-DPI SNAKE PITCH & TOUCH D-PAD / BOOST DECK
+       ======================================================================== */
+    .arena-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 760px;
+      max-height: 49dvh;
+      margin: 2px 0;
+    }
+
+    canvas#snakeCanvas {
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65);
+      touch-action: none;
+    }
+
+    .bottom-controls-deck {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 18;
+    }
+
+    .dpad-cluster {
+      display: grid;
+      grid-template-columns: repeat(3, 42px);
+      grid-template-rows: repeat(2, 34px);
+      gap: 4px;
+    }
+
+    .dpad-btn {
+      border-radius: 9px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dpad-btn:active {
+      background: rgba(16, 185, 129, 0.3);
+      border-color: var(--asa-amber);
+      transform: scale(0.94);
+    }
+
+    .side-action-stack {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-width: 260px;
+    }
+
+    .buff-status-strip {
+      padding: 4px 8px;
+      border-radius: 10px;
+      font-size: 8.8px;
+      font-weight: 800;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .boost-btn {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--asa-amber);
+      color: #ffffff;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .boost-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK SNAKE ASSOCIATION (ASA) INTRO SCREEN
+       ======================================================================== */
+    #asaIntroScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #asaIntroScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spot-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-left {
+      left: 10%;
+      animation: raySwingL 2.8s ease-in-out infinite alternate;
+    }
+
+    .ray-right {
+      right: 10%;
+      animation: raySwingR 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes raySwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes raySwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 365px;
+      width: 100%;
+    }
+
+    .asa-crest-badge {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--asa-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--asa-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-title {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-sub {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-progress-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE, CHAMPIONSHIP SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 475px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 17px 15px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-head {
+      text-align: center;
+      margin-bottom: 9px;
+    }
+
+    .modal-h2 {
+      font-size: 18.5px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .setup-box {
+      padding: 7px 9px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 7px;
+    }
+
+    .setup-label {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--asa-amber);
+      margin-bottom: 4px;
+    }
+
+    .grid-3-row {
+      display: grid;
+      grid-template-columns: 1fr 124px 54px;
+      gap: 6px;
+      margin-bottom: 5px;
+    }
+
+    .text-inp, .sel-inp {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.24);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 10.5px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .sel-inp option {
+      background: #072213;
+      color: #ffffff;
+    }
+
+    .star-chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .star-chip {
+      padding: 3.5px 6.5px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--text-main);
+      font-size: 8.8px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .pills-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .pills-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .choice-btn {
+      padding: 6.5px 5px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 9.5px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--asa-amber);
+      color: #ffffff;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 10.5px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--asa-amber);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 9.5px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 9px;
+    }
+
+    .stats-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .shot-preview-img {
+      width: 100%;
+      max-height: 50dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--asa-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--asa-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="asaArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">AUTROBOOK SNAKE ARENA</div>
+
+    <!-- TOP BAR WITH BACK LINK TO snake.html -->
+    <header class="top-bar">
+      <div class="btn-group">
+        <a href="snake.html" class="icon-circle-btn glass-hud" title="Back to Snake Hub" aria-label="Back to Snake Hub">&larr;</a>
+        <a href="snake.html" class="hub-pill-link glass-hud" title="Open snake.html Hub">snake.html</a>
+      </div>
+
+      <div class="scoreboard-center glass-hud">
+        <div class="score-main-row">
+          <svg class="asa-mini-crest" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+            <path d="M8 14C8 10.5 16 13.5 16 9.5" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+          <span>Autrobook Snake Arena</span>
+          <span id="topScoreBadge" class="score-pill">0</span>
+        </div>
+        <div id="statusBannerText" class="status-sub-row">CLASSIC ENDLESS &bull; PRO &bull; 1P SOLO</div>
+      </div>
+
+      <div class="btn-group">
+        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="setupOpenBtn" type="button" class="icon-circle-btn glass-hud" title="Match Setup" aria-label="Match Setup">&#9998;</button>
+        <button id="muteBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- PLAYER / RIVAL CARDS & LIVE SPEED RADAR -->
+    <section class="players-radar-row">
+      <div id="p1Card" class="snake-panel glass-hud active-snake">
+        <div class="s-meta">
+          <div class="s-name-line">
+            <span id="p1BadgeNum" class="badge-num" style="background:#0a7d3b;">#01</span>
+            <span id="p1DisplayName">TARIQ VIPER</span>
+          </div>
+          <span id="p1SubLine" class="s-sub-line">BAN &bull; LEN 4</span>
+        </div>
+        <span id="p1ScoreTag" class="pts-badge">0 PTS</span>
+      </div>
+
+      <div class="radar-box glass-hud">
+        <span class="radar-lbl">SPEED RADAR</span>
+        <span id="radarKmhText" class="radar-val">0.0 KM/H</span>
+        <span id="radarMphPeakText" class="radar-sub">0.0 MPH &bull; PK 0</span>
+      </div>
+
+      <div id="p2Card" class="snake-panel glass-hud">
+        <div class="s-meta">
+          <div class="s-name-line">
+            <span id="p2BadgeNum" class="badge-num" style="background:#dc2626;">#07</span>
+            <span id="p2DisplayName">KENJI COBRA</span>
+          </div>
+          <span id="p2SubLine" class="s-sub-line">JPN &bull; RIVAL</span>
+        </div>
+        <span id="p2ScoreTag" class="pts-badge">0 PTS</span>
+      </div>
+    </section>
+
+    <!-- CENTER HIGH-DPI SNAKE PITCH CANVAS -->
+    <div id="arenaStage" class="arena-stage">
+      <canvas id="snakeCanvas"></canvas>
+    </div>
+
+    <!-- D-PAD, POWER-UP STATUS & BOOST CONTROLS -->
+    <div class="bottom-controls-deck">
+      <div class="dpad-cluster" aria-label="Directional Pad">
+        <div></div>
+        <button id="dpadUp" type="button" class="dpad-btn" aria-label="Move Up">&uarr;</button>
+        <div></div>
+        <button id="dpadLeft" type="button" class="dpad-btn" aria-label="Move Left">&larr;</button>
+        <button id="dpadDown" type="button" class="dpad-btn" aria-label="Move Down">&darr;</button>
+        <button id="dpadRight" type="button" class="dpad-btn" aria-label="Move Right">&rarr;</button>
+      </div>
+
+      <div class="side-action-stack">
+        <div id="buffStatusStrip" class="buff-status-strip glass-hud">
+          <span id="activeBuffText">BUFFS: NONE</span>
+          <span id="matchGoalText">GOAL: ENDLESS</span>
+        </div>
+        <button id="boostBtn" type="button" class="boost-btn">&#9889; Sprint Boost (Space)</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK SNAKE ASSOCIATION (ASA) INTRO SCREEN
+         ====================================================================== -->
+    <section id="asaIntroScreen">
+      <div class="spot-ray ray-left"></div>
+      <div class="spot-ray ray-right"></div>
+
+      <div class="intro-center">
+        <div class="asa-crest-badge">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <path d="M21 38C21 28 32 35 32 25C32 19 41 19 41 25" stroke="#10b981" stroke-width="4.5" stroke-linecap="round"/>
+            <circle cx="42.5" cy="24.5" r="2.2" fill="#fbbf24"/>
+          </svg>
+        </div>
+
+        <div class="intro-kicker">OFFICIAL ARENA CIRCUIT</div>
+        <h1 class="intro-title">Autrobook Snake Arena</h1>
+        <p class="intro-sub">CHAMPIONSHIP EDITION</p>
+
+        <div class="intro-progress-track">
+          <div id="introBarFill" class="intro-progress-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. MATCH SETUP MODAL (10 NATIONS, STARS, FORMATS & ARENAS)
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2 class="modal-h2">ASA Championship Setup</h2>
+          <p class="modal-sub">10 Nations &bull; Star Presets &bull; Match Formats &bull; Arena Themes</p>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Game Mode</div>
+          <div id="modeGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-mode="SOLO_1P">1P Solo</button>
+            <button type="button" class="choice-btn" data-mode="VS_AI">1P vs AI Rival</button>
+            <button type="button" class="choice-btn" data-mode="DUEL_2P">2P Local Duel</button>
+          </div>
+        </div>
+
+        <!-- Player 1 Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Player 1 Roster</div>
+          <div class="grid-3-row">
+            <input id="p1NameInp" type="text" maxlength="14" value="TARIQ VIPER" class="text-inp" />
+            <select id="p1NationSel" class="sel-inp"></select>
+            <input id="p1BadgeInp" type="number" min="1" max="99" value="1" class="text-inp" />
+          </div>
+          <div id="p1StarRow" class="star-chips"></div>
+        </div>
+
+        <!-- Player 2 / AI Rival Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Player 2 / AI Rival Roster</div>
+          <div class="grid-3-row">
+            <input id="p2NameInp" type="text" maxlength="14" value="KENJI COBRA" class="text-inp" />
+            <select id="p2NationSel" class="sel-inp"></select>
+            <input id="p2BadgeInp" type="number" min="1" max="99" value="7" class="text-inp" />
+          </div>
+          <div id="p2StarRow" class="star-chips"></div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Match Format</div>
+          <div id="formatGroup" class="pills-4">
+            <button type="button" class="choice-btn selected" data-fmt="ENDLESS">Classic Endless</button>
+            <button type="button" class="choice-btn" data-fmt="SPRINT_25">Sprint 25 Apples</button>
+            <button type="button" class="choice-btn" data-fmt="TIME_180">3-Min Time Attack</button>
+            <button type="button" class="choice-btn" data-fmt="FIRST_15">First to 15</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Speed / Difficulty</div>
+          <div id="speedGroup" class="pills-3">
+            <button type="button" class="choice-btn" data-spd="CASUAL">Casual</button>
+            <button type="button" class="choice-btn selected" data-spd="PRO">Pro</button>
+            <button type="button" class="choice-btn" data-spd="TURBO">Turbo</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Arena Theme</div>
+          <div id="arenaGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-arena="PITCH">Emerald Pitch</button>
+            <button type="button" class="choice-btn" data-arena="TURF">Tournament Turf</button>
+            <button type="button" class="choice-btn" data-arena="MIDNIGHT">Midnight Arena</button>
+          </div>
+        </div>
+
+        <button id="startMatchBtn" type="button" class="btn-primary">
+          Enter Arena &amp; Start
+        </button>
+
+        <div class="btn-stack" style="margin-top:6px;">
+          <a href="snake.html" class="btn-secondary">&larr; Back to snake.html Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Arena Screenshot</h2>
+          <p class="modal-sub">Autrobook Snake Arena</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="Snake Arena Screenshot" />
+        <div class="btn-stack">
+          <a id="downloadShotBtn" download="Autrobook-Snake-Arena.png" class="btn-primary">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Resume Match</button>
+          <a href="snake.html" class="btn-secondary">&larr; Back to snake.html Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:325px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Match Paused</h2>
+          <p class="modal-sub">Autrobook Snake Arena</p>
+        </div>
+        <div class="btn-stack">
+          <button id="resumeBtn" type="button" class="btn-primary">Resume Match</button>
+          <button id="restartMatchBtn" type="button" class="btn-secondary">Restart Match</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Match Setup</button>
+          <a href="snake.html" class="btn-secondary">&larr; Back to snake.html Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. CHAMPIONSHIP SUMMARY MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:355px;text-align:center;">
+        <div style="font-size:42px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="winnerTitle" class="modal-h2">ARENA COMPLETE!</h2>
+        <p id="winnerSub" class="modal-sub">Autrobook Snake Arena Championship</p>
+
+        <div class="stats-box">
+          <div class="stats-row">
+            <span>Final Score</span>
+            <span id="sumScoreText" style="font-weight:900;color:var(--asa-amber);">0</span>
+          </div>
+          <div class="stats-row">
+            <span>Apples Consumed</span>
+            <span id="sumApplesText" style="font-weight:900;color:var(--asa-emerald);">0</span>
+          </div>
+          <div class="stats-row">
+            <span>Peak Speed</span>
+            <span id="sumPeakSpeed" style="font-weight:900;color:var(--asa-amber);">0.0 KM/H</span>
+          </div>
+          <div class="stats-row">
+            <span>Best Score &bull; Matches Won</span>
+            <span id="sumCareerStats" style="font-weight:900;">0 &bull; 0</span>
+          </div>
+        </div>
+
+        <div class="btn-stack">
+          <button id="playAgainBtn" type="button" class="btn-primary">Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
+          <a href="snake.html" class="btn-secondary">&larr; Back to snake.html Hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       10 NATIONS ROSTER, STAR PRESETS, MATCH FORMATS & ARENA THEMES
+       ======================================================================== */
+    const ASA_NATIONS_10 = [
+      { code: 'BAN', name: 'Bangladesh', primary: '#10b981', secondary: '#065f46', kit: '#0a7d3b' },
+      { code: 'JPN', name: 'Japan', primary: '#ef4444', secondary: '#991b1b', kit: '#dc2626' },
+      { code: 'BRA', name: 'Brazil', primary: '#facc15', secondary: '#15803d', kit: '#15803d' },
+      { code: 'KOR', name: 'South Korea', primary: '#3b82f6', secondary: '#1e3a8a', kit: '#1d4ed8' },
+      { code: 'GER', name: 'Germany', primary: '#f59e0b', secondary: '#1e293b', kit: '#0f172a' },
+      { code: 'ENG', name: 'England', primary: '#f8fafc', secondary: '#b91c1c', kit: '#b91c1c' },
+      { code: 'USA', name: 'USA', primary: '#60a5fa', secondary: '#1d4ed8', kit: '#1d4ed8' },
+      { code: 'IND', name: 'India', primary: '#fb923c', secondary: '#c2410c', kit: '#ea580c' },
+      { code: 'IDN', name: 'Indonesia', primary: '#f87171', secondary: '#991b1b', kit: '#dc2626' },
+      { code: 'SWE', name: 'Sweden', primary: '#fde047', secondary: '#1d4ed8', kit: '#2563eb' }
+    ];
+
+    const ASA_STAR_PRESETS = [
+      { name: 'TARIQ VIPER', nation: 'BAN', badge: 1 },
+      { name: 'KENJI COBRA', nation: 'JPN', badge: 7 },
+      { name: 'LUCAS BOA', nation: 'BRA', badge: 10 },
+      { name: 'MIN-JUN LEE', nation: 'KOR', badge: 9 },
+      { name: 'LEON MAMBA', nation: 'GER', badge: 11 },
+      { name: 'HARRY PYTHON', nation: 'ENG', badge: 8 }
+    ];
+
+    const ARENA_THEMES = {
+      PITCH: {
+        cellA: '#0d6e39',
+        cellB: '#0a5b2f',
+        border: '#fbbf24',
+        gridStroke: 'rgba(255, 255, 255, 0.05)'
+      },
+      TURF: {
+        cellA: '#137a42',
+        cellB: '#0e6334',
+        border: '#f59e0b',
+        gridStroke: 'rgba(254, 240, 138, 0.06)'
+      },
+      MIDNIGHT: {
+        cellA: '#084c31',
+        cellB: '#063b26',
+        border: '#10b981',
+        gridStroke: 'rgba(167, 243, 208, 0.05)'
+      }
+    };
+
+    const ASA_STATS_KEY = 'asa_snake_championship_stats_v1';
+
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class ASAAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playClick() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(640, now);
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playEatApple(isGolden = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(isGolden ? 587.33 : 440, now);
+        osc.frequency.exponentialRampToValueAtTime(isGolden ? 1046.5 : 659.25, now + 0.11);
+        g.gain.setValueAtTime(0.16, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+
+      playPowerUp() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sine';
+          const t0 = now + i * 0.055;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.13, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.15);
+        });
+      }
+
+      playCrash() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(175, now);
+        osc.frequency.exponentialRampToValueAtTime(52, now + 0.28);
+        g.gain.setValueAtTime(0.2, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.31);
+      }
+
+      playWinFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.1;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.16, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.32);
+        });
+      }
+    }
+
+    /* ========================================================================
+       ASA SNAKE ARENA ENGINE (INTERPOLATED MOVEMENT, AI & POWER-UPS)
+       ======================================================================== */
+    class ASASnakeEngine {
+      constructor() {
+        this.canvas = document.getElementById('snakeCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new ASAAudioSynth();
+
+        this.mode = 'SOLO_1P'; // SOLO_1P, VS_AI, DUEL_2P
+        this.formatKey = 'ENDLESS'; // ENDLESS, SPRINT_25, TIME_180, FIRST_15
+        this.speedKey = 'PRO'; // CASUAL, PRO, TURBO
+        this.arenaKey = 'PITCH'; // PITCH, TURF, MIDNIGHT
+
+        const saved = this.loadStats();
+        this.matchesPlayed = saved.played || 0;
+        this.matchesWon = saved.won || 0;
+        this.bestScore = saved.bestScore || 0;
+        this.countedMatch = false;
+
+        this.p1Meta = { name: 'TARIQ VIPER', nation: ASA_NATIONS_10[0], badge: 1 };
+        this.p2Meta = { name: 'KENJI COBRA', nation: ASA_NATIONS_10[1], badge: 7 };
+
+        this.cols = 26;
+        this.rows = 16;
+        this.cellSize = 20;
+        this.canvasW = 520;
+        this.canvasH = 320;
+        this.dpr = 1;
+
+        this.snakes = [];
+        this.apples = [];
+        this.powerUp = null; // { x, y, type: 'BOOST' | 'DOUBLE' | 'SHIELD', ttl }
+        this.particles = [];
+
+        this.stepTimer = 0;
+        this.moveProgress = 0; // 0..1 interpolation between grid ticks
+        this.timeRemaining = 180; // seconds for TIME_180
+        this.boostHeld = false;
+        this.gameOver = false;
+
+        this.speedKmh = 0;
+        this.peakKmh = 0;
+        this.lastFrameTime = 0;
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = false;
+
+        this.syncThemeIcon();
+        this.populateSetupUI();
+        this.bindEvents();
+        this.resizeArena();
+        this.initMatchState();
+        this.refreshHUD();
+        this.startIntro();
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(ASA_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(ASA_STATS_KEY, JSON.stringify({
+            played: this.matchesPlayed,
+            won: this.matchesWon,
+            bestScore: this.bestScore
+          }));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.renderArena();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      populateSetupUI() {
+        const s1 = document.getElementById('p1NationSel');
+        const s2 = document.getElementById('p2NationSel');
+        s1.innerHTML = '';
+        s2.innerHTML = '';
+
+        ASA_NATIONS_10.forEach((nat, idx) => {
+          const o1 = document.createElement('option');
+          o1.value = nat.code;
+          o1.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 0) o1.selected = true;
+          s1.appendChild(o1);
+
+          const o2 = document.createElement('option');
+          o2.value = nat.code;
+          o2.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 1) o2.selected = true;
+          s2.appendChild(o2);
+        });
+
+        const buildStarRow = (containerId, isP1) => {
+          const wrap = document.getElementById(containerId);
+          wrap.innerHTML = '';
+          ASA_STAR_PRESETS.forEach((st) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'star-chip';
+            btn.textContent = `${st.name} (${st.nation})`;
+            btn.addEventListener('click', () => {
+              if (isP1) {
+                document.getElementById('p1NameInp').value = st.name;
+                document.getElementById('p1NationSel').value = st.nation;
+                document.getElementById('p1BadgeInp').value = String(st.badge);
+              } else {
+                document.getElementById('p2NameInp').value = st.name;
+                document.getElementById('p2NationSel').value = st.nation;
+                document.getElementById('p2BadgeInp').value = String(st.badge);
+              }
+              this.audio.playClick();
+            });
+            wrap.appendChild(btn);
+          });
+        };
+
+        buildStarRow('p1StarRow', true);
+        buildStarRow('p2StarRow', false);
+      }
+
+      getNation(code) {
+        return ASA_NATIONS_10.find((n) => n.code === code) || ASA_NATIONS_10[0];
+      }
+
+      resizeArena() {
+        const stage = document.getElementById('arenaStage').getBoundingClientRect();
+        const maxW = Math.floor(Math.max(280, stage.width - 4));
+        const maxH = Math.floor(Math.max(175, stage.height - 4));
+
+        const targetCell = Math.max(11, Math.min(26, Math.floor(Math.min(maxW / this.cols, maxH / this.rows))));
+        this.cellSize = targetCell;
+        this.canvasW = this.cols * this.cellSize;
+        this.canvasH = this.rows * this.cellSize;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${this.canvasW}px`;
+        this.canvas.style.height = `${this.canvasH}px`;
+        this.canvas.width = Math.floor(this.canvasW * this.dpr);
+        this.canvas.height = Math.floor(this.canvasH * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        this.renderArena();
+      }
+
+      createSnakeEntity(idx, meta, startX, startY, dir, isAI) {
+        const segs = [];
+        for (let i = 0; i < 4; i++) {
+          segs.push({ x: startX - dir.x * i, y: startY - dir.y * i });
+        }
+        return {
+          idx,
+          meta: { ...meta },
+          isAI,
+          alive: true,
+          dir: { ...dir },
+          nextDir: { ...dir },
+          segments: segs,
+          prevSegments: segs.map((s) => ({ ...s })),
+          score: 0,
+          apples: 0,
+          pendingGrowth: 0,
+          boostTimer: 0,
+          doubleTimer: 0,
+          shieldTimer: 0
+        };
+      }
+
+      initMatchState() {
+        this.gameOver = false;
+        this.countedMatch = false;
+        this.stepTimer = 0;
+        this.moveProgress = 0;
+        this.timeRemaining = 180;
+        this.peakKmh = 0;
+        this.particles = [];
+        this.powerUp = null;
+
+        const midY = Math.floor(this.rows * 0.5);
+        this.snakes = [
+          this.createSnakeEntity(0, this.p1Meta, 6, midY, { x: 1, y: 0 }, false)
+        ];
+
+        if (this.mode === 'VS_AI' || this.mode === 'DUEL_2P') {
+          this.snakes.push(
+            this.createSnakeEntity(1, this.p2Meta, this.cols - 7, midY, { x: -1, y: 0 }, this.mode === 'VS_AI')
+          );
+        }
+
+        this.apples = [];
+        this.spawnApple(false);
+        this.spawnApple(true);
+        this.refreshHUD();
+        this.renderArena();
+      }
+
+      isCellOccupied(gx, gy) {
+        for (const sn of this.snakes) {
+          if (!sn.alive) continue;
+          if (sn.segments.some((s) => s.x === gx && s.y === gy)) return true;
+        }
+        if (this.apples.some((a) => a.x === gx && a.y === gy)) return true;
+        if (this.powerUp && this.powerUp.x === gx && this.powerUp.y === gy) return true;
+        return false;
+      }
+
+      spawnApple(golden = false) {
+        for (let tries = 0; tries < 90; tries++) {
+          const x = Math.floor(Math.random() * this.cols);
+          const y = Math.floor(Math.random() * this.rows);
+          if (!this.isCellOccupied(x, y)) {
+            this.apples.push({ x, y, golden });
+            return;
+          }
+        }
+      }
+
+      maybeSpawnPowerUp() {
+        if (this.powerUp || Math.random() > 0.24) return;
+        const types = ['BOOST', 'DOUBLE', 'SHIELD'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        for (let tries = 0; tries < 60; tries++) {
+          const x = Math.floor(Math.random() * this.cols);
+          const y = Math.floor(Math.random() * this.rows);
+          if (!this.isCellOccupied(x, y)) {
+            this.powerUp = { x, y, type, ttl: 14 };
+            return;
+          }
+        }
+      }
+
+      spawnBurst(gx, gy, color) {
+        const cx = (gx + 0.5) * this.cellSize;
+        const cy = (gy + 0.5) * this.cellSize;
+        for (let i = 0; i < 8; i++) {
+          const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.4;
+          const spd = 40 + Math.random() * 65;
+          this.particles.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 0.36,
+            color
+          });
+        }
+      }
+
+      getStepInterval() {
+        const baseMap = { CASUAL: 0.165, PRO: 0.118, TURBO: 0.082 };
+        let interval = baseMap[this.speedKey] || 0.118;
+        const p1 = this.snakes[0];
+        if (p1 && (this.boostHeld || p1.boostTimer > 0)) {
+          interval *= 0.65;
+        }
+        return Math.max(0.048, interval);
+      }
+
+      queueDirection(snakeIdx, nx, ny) {
+        const sn = this.snakes[snakeIdx];
+        if (!sn || !sn.alive) return;
+        // Prevent 180-degree reversal into neck
+        if (nx === -sn.dir.x && ny === -sn.dir.y) return;
+        sn.nextDir = { x: nx, y: ny };
+      }
+
+      chooseAIDirection(sn) {
+        const head = sn.segments[0];
+        const candidates = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 }
+        ].filter((d) => !(d.x === -sn.dir.x && d.y === -sn.dir.y));
+
+        const target = this.apples[0] || { x: Math.floor(this.cols / 2), y: Math.floor(this.rows / 2) };
+
+        let bestDir = candidates[0] || sn.dir;
+        let bestScore = -Infinity;
+
+        for (const d of candidates) {
+          const tx = head.x + d.x;
+          const ty = head.y + d.y;
+          if (tx < 0 || tx >= this.cols || ty < 0 || ty >= this.rows) continue;
+
+          let blocked = false;
+          for (const other of this.snakes) {
+            if (!other.alive) continue;
+            if (other.segments.some((s) => s.x === tx && s.y === ty)) {
+              blocked = true;
+              break;
+            }
+          }
+          if (blocked) continue;
+
+          const dist = Math.hypot(target.x - tx, target.y - ty);
+          const util = -dist * 10 + Math.random() * 8;
+          if (util > bestScore) {
+            bestScore = util;
+            bestDir = d;
+          }
+        }
+
+        sn.nextDir = bestDir;
+      }
+
+      stepSimulationTick() {
+        if (this.gameOver) return;
+
+        for (const sn of this.snakes) {
+          if (!sn.alive) continue;
+          sn.prevSegments = sn.segments.map((s) => ({ ...s }));
+          if (sn.isAI) this.chooseAIDirection(sn);
+          sn.dir = { ...sn.nextDir };
+        }
+
+        // Advance heads & bodies
+        for (const sn of this.snakes) {
+          if (!sn.alive) continue;
+          const head = sn.segments[0];
+          const nh = { x: head.x + sn.dir.x, y: head.y + sn.dir.y };
+
+          if (nh.x < 0 || nh.x >= this.cols || nh.y < 0 || nh.y >= this.rows) {
+            if (sn.shieldTimer > 0) {
+              sn.shieldTimer = 0;
+              nh.x = Math.max(0, Math.min(this.cols - 1, nh.x));
+              nh.y = Math.max(0, Math.min(this.rows - 1, nh.y));
+              this.showToast('SHIELD SAVED WALL HIT!');
+            } else {
+              sn.alive = false;
+              this.audio.playCrash();
+              this.spawnBurst(head.x, head.y, '#ef4444');
+              continue;
+            }
+          }
+
+          sn.segments.unshift(nh);
+          if (sn.pendingGrowth > 0) {
+            sn.pendingGrowth--;
+          } else {
+            sn.segments.pop();
+          }
+        }
+
+        // Check self & rival collisions
+        for (const sn of this.snakes) {
+          if (!sn.alive) continue;
+          const head = sn.segments[0];
+
+          // Self collision
+          const hitSelf = sn.segments.slice(1).some((s) => s.x === head.x && s.y === head.y);
+          // Rival body collision
+          let hitRival = false;
+          for (const other of this.snakes) {
+            if (other.idx === sn.idx || !other.alive) continue;
+            if (other.segments.some((s) => s.x === head.x && s.y === head.y)) {
+              hitRival = true;
+              break;
+            }
+          }
+
+          if (hitSelf || hitRival) {
+            if (sn.shieldTimer > 0) {
+              sn.shieldTimer = 0;
+              this.showToast('SHIELD BLOCKED COLLISION!');
+            } else {
+              sn.alive = false;
+              this.audio.playCrash();
+              this.spawnBurst(head.x, head.y, '#f59e0b');
+            }
+          }
+        }
+
+        // Check apple & power-up pickups
+        for (const sn of this.snakes) {
+          if (!sn.alive) continue;
+          const head = sn.segments[0];
+
+          for (let i = this.apples.length - 1; i >= 0; i--) {
+            const ap = this.apples[i];
+            if (ap.x === head.x && ap.y === head.y) {
+              const mult = sn.doubleTimer > 0 ? 2 : 1;
+              const basePts = ap.golden ? 30 : 10;
+              sn.score += basePts * mult;
+              sn.apples++;
+              sn.pendingGrowth += ap.golden ? 2 : 1;
+              this.apples.splice(i, 1);
+              this.spawnApple(false);
+              if (this.apples.length < 2) this.spawnApple(Math.random() < 0.35);
+              this.maybeSpawnPowerUp();
+              this.spawnBurst(head.x, head.y, ap.golden ? '#fbbf24' : '#ef4444');
+              this.audio.playEatApple(ap.golden);
+            }
+          }
+
+          if (this.powerUp && this.powerUp.x === head.x && this.powerUp.y === head.y) {
+            const t = this.powerUp.type;
+            this.powerUp = null;
+            this.audio.playPowerUp();
+            this.spawnBurst(head.x, head.y, '#38bdf8');
+            if (t === 'BOOST') {
+              sn.boostTimer = 6.0;
+              this.showToast(`${sn.meta.name}: SPEED BOOST!`);
+            } else if (t === 'DOUBLE') {
+              sn.doubleTimer = 8.0;
+              this.showToast(`${sn.meta.name}: SCORE 2X!`);
+            } else {
+              sn.shieldTimer = 8.0;
+              this.showToast(`${sn.meta.name}: SHIELD ACTIVE!`);
+            }
+          }
+        }
+
+        // Update speed radar
+        const baseKmh = this.speedKey === 'TURBO' ? 42 : this.speedKey === 'PRO' ? 31 : 22;
+        const p1 = this.snakes[0];
+        const boostFactor = p1 && (this.boostHeld || p1.boostTimer > 0) ? 1.38 : 1.0;
+        this.speedKmh = Number((baseKmh * boostFactor).toFixed(1));
+        if (this.speedKmh > this.peakKmh) this.peakKmh = this.speedKmh;
+
+        this.checkMatchCompletion();
+      }
+
+      checkMatchCompletion() {
+        const p1 = this.snakes[0];
+        const p2 = this.snakes[1];
+
+        if (this.formatKey === 'SPRINT_25') {
+          if ((p1 && p1.apples >= 25) || (p2 && p2.apples >= 25)) {
+            this.finishMatch('SPRINT 25 COMPLETE!');
+            return;
+          }
+        } else if (this.formatKey === 'FIRST_15') {
+          if ((p1 && p1.apples >= 15) || (p2 && p2.apples >= 15)) {
+            this.finishMatch('FIRST TO 15 REACHED!');
+            return;
+          }
+        } else if (this.formatKey === 'TIME_180' && this.timeRemaining <= 0) {
+          this.finishMatch('TIME ATTACK COMPLETE!');
+          return;
+        }
+
+        if (this.mode === 'SOLO_1P') {
+          if (p1 && !p1.alive) {
+            this.finishMatch('SNAKE ELIMINATED');
+          }
+        } else {
+          const anyAlive = this.snakes.some((s) => s.alive);
+          if (!anyAlive) {
+            this.finishMatch('DUEL COMPLETE');
+          }
+        }
+      }
+
+      finishMatch(reason) {
+        if (this.gameOver) return;
+        this.gameOver = true;
+        this.speedKmh = 0;
+        this.audio.playWinFanfare();
+
+        const p1 = this.snakes[0] || { score: 0, apples: 0, meta: this.p1Meta };
+        const p2 = this.snakes[1] || { score: 0, apples: 0, meta: this.p2Meta };
+        const p1Won = this.mode === 'SOLO_1P' ? p1.score > 0 : p1.score >= p2.score;
+
+        if (!this.countedMatch) {
+          this.countedMatch = true;
+          this.matchesPlayed++;
+          if (p1Won) this.matchesWon++;
+          if (p1.score > this.bestScore) this.bestScore = p1.score;
+          this.saveStats();
+        }
+
+        document.getElementById('winnerTitle').textContent =
+          this.mode === 'SOLO_1P' ? `${p1.meta.name} (${p1.meta.nation.code})` : `${p1Won ? p1.meta.name : p2.meta.name} WINS!`;
+        document.getElementById('winnerSub').textContent = reason;
+        document.getElementById('sumScoreText').textContent =
+          this.mode === 'SOLO_1P' ? `${p1.score} PTS` : `${p1.score} - ${p2.score}`;
+        document.getElementById('sumApplesText').textContent = String(p1.apples + p2.apples);
+        document.getElementById('sumPeakSpeed').textContent = `${this.peakKmh.toFixed(1)} KM/H`;
+        document.getElementById('sumCareerStats').textContent = `${this.bestScore} PTS • ${this.matchesWon}W`;
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         HUD, SCREENSHOT & INPUT EVENTS
+         ====================================================================== */
+      refreshHUD() {
+        const p1 = this.snakes[0] || { score: 0, apples: 0, segments: [], boostTimer: 0, doubleTimer: 0, shieldTimer: 0 };
+        const p2 = this.snakes[1] || { score: 0, apples: 0, segments: [] };
+
+        document.getElementById('topScoreBadge').textContent =
+          this.mode === 'SOLO_1P' ? `${p1.score}` : `${p1.score} - ${p2.score}`;
+
+        const fmtLabels = {
+          ENDLESS: 'CLASSIC ENDLESS',
+          SPRINT_25: 'SPRINT 25 APPLES',
+          TIME_180: `TIME ${Math.max(0, Math.ceil(this.timeRemaining))}S`,
+          FIRST_15: 'FIRST TO 15'
+        };
+        const modeLabels = {
+          SOLO_1P: '1P SOLO',
+          VS_AI: '1P VS AI RIVAL',
+          DUEL_2P: '2P LOCAL DUEL'
+        };
+        document.getElementById('statusBannerText').textContent =
+          `${fmtLabels[this.formatKey]} • ${this.speedKey} • ${modeLabels[this.mode]}`;
+
+        document.getElementById('p1DisplayName').textContent = this.p1Meta.name;
+        document.getElementById('p2DisplayName').textContent = this.p2Meta.name;
+
+        const b1 = document.getElementById('p1BadgeNum');
+        b1.textContent = `#${String(this.p1Meta.badge).padStart(2, '0')}`;
+        b1.style.background = this.p1Meta.nation.kit;
+
+        const b2 = document.getElementById('p2BadgeNum');
+        b2.textContent = `#${String(this.p2Meta.badge).padStart(2, '0')}`;
+        b2.style.background = this.p2Meta.nation.kit;
+
+        document.getElementById('p1SubLine').textContent = `${this.p1Meta.nation.code} • LEN ${p1.segments.length}`;
+        document.getElementById('p2SubLine').textContent =
+          this.mode === 'SOLO_1P' ? `${this.p2Meta.nation.code} • STANDBY` : `${this.p2Meta.nation.code} • LEN ${p2.segments.length}`;
+
+        document.getElementById('p1ScoreTag').textContent = `${p1.score} PTS`;
+        document.getElementById('p2ScoreTag').textContent = `${p2.score} PTS`;
+
+        const buffs = [];
+        if (p1.boostTimer > 0) buffs.push(`BOOST ${p1.boostTimer.toFixed(1)}S`);
+        if (p1.doubleTimer > 0) buffs.push(`2X ${p1.doubleTimer.toFixed(1)}S`);
+        if (p1.shieldTimer > 0) buffs.push(`SHIELD ${p1.shieldTimer.toFixed(1)}S`);
+        document.getElementById('activeBuffText').textContent = buffs.length ? `BUFFS: ${buffs.join(' | ')}` : 'BUFFS: NONE';
+
+        const goalMap = {
+          ENDLESS: 'GOAL: ENDLESS',
+          SPRINT_25: `GOAL: ${p1.apples}/25 APPLES`,
+          TIME_180: `TIMER: ${Math.max(0, Math.ceil(this.timeRemaining))}S`,
+          FIRST_15: `GOAL: ${p1.apples}/15 APPLES`
+        };
+        document.getElementById('matchGoalText').textContent = goalMap[this.formatKey];
+
+        const mph = this.speedKmh * 0.621371;
+        const peakMph = this.peakKmh * 0.621371;
+        document.getElementById('radarKmhText').textContent = `${this.speedKmh.toFixed(1)} KM/H`;
+        document.getElementById('radarMphPeakText').textContent = `${mph.toFixed(1)} MPH • PK ${peakMph.toFixed(0)}`;
+      }
+
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playClick();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderArena();
+        try {
+          const url = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotModalOpen = true;
+          document.getElementById('screenshotImg').src = url;
+          const link = document.getElementById('downloadShotBtn');
+          link.href = url;
+          link.download = `Autrobook-Snake-Arena-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_e) {}
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeArena());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.renderArena();
+            }
+          });
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#modeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.mode = btn.dataset.mode;
+            document.querySelectorAll('#modeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#formatGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.formatKey = btn.dataset.fmt;
+            document.querySelectorAll('#formatGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#speedGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.speedKey = btn.dataset.spd;
+            document.querySelectorAll('#speedGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#arenaGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.arenaKey = btn.dataset.arena;
+            document.querySelectorAll('#arenaGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.renderArena();
+          });
+        });
+
+        document.getElementById('setupOpenBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetupModal();
+        });
+
+        document.getElementById('startMatchBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const n1 = (document.getElementById('p1NameInp').value || '').trim().toUpperCase();
+          const n2 = (document.getElementById('p2NameInp').value || '').trim().toUpperCase();
+          this.p1Meta.name = (n1 || 'TARIQ VIPER').slice(0, 14);
+          this.p2Meta.name = (n2 || 'KENJI COBRA').slice(0, 14);
+          this.p1Meta.nation = this.getNation(document.getElementById('p1NationSel').value);
+          this.p2Meta.nation = this.getNation(document.getElementById('p2NationSel').value);
+          this.p1Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p1BadgeInp').value, 10) || 1));
+          this.p2Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p2BadgeInp').value, 10) || 7));
+
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.initMatchState();
+        });
+
+        // D-pad & Boost controls
+        document.getElementById('dpadUp').addEventListener('pointerdown', (e) => {
+          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, 0, -1);
+        });
+        document.getElementById('dpadDown').addEventListener('pointerdown', (e) => {
+          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, 0, 1);
+        });
+        document.getElementById('dpadLeft').addEventListener('pointerdown', (e) => {
+          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, -1, 0);
+        });
+        document.getElementById('dpadRight').addEventListener('pointerdown', (e) => {
+          e.preventDefault(); this.audio.unlock(); this.queueDirection(0, 1, 0);
+        });
+
+        const boostBtn = document.getElementById('boostBtn');
+        boostBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault(); this.audio.unlock(); this.boostHeld = true;
+        });
+        boostBtn.addEventListener('pointerup', () => { this.boostHeld = false; });
+        boostBtn.addEventListener('pointerleave', () => { this.boostHeld = false; });
+
+        // Swipe on canvas
+        let swipeStart = null;
+        this.canvas.addEventListener('pointerdown', (e) => {
+          this.audio.unlock();
+          swipeStart = { x: e.clientX, y: e.clientY };
+        });
+        this.canvas.addEventListener('pointermove', (e) => {
+          if (!swipeStart) return;
+          const dx = e.clientX - swipeStart.x;
+          const dy = e.clientY - swipeStart.y;
+          if (Math.hypot(dx, dy) > 18) {
+            if (Math.abs(dx) > Math.abs(dy)) {
+              this.queueDirection(0, dx > 0 ? 1 : -1, 0);
+            } else {
+              this.queueDirection(0, 0, dy > 0 ? 1 : -1);
+            }
+            swipeStart = { x: e.clientX, y: e.clientY };
+          }
+        });
+        window.addEventListener('pointerup', () => { swipeStart = null; });
+
+        document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotModalOpen = false;
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen || this.gameOver) return;
+          this.paused = true;
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('restartMatchBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.initMatchState();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSetupModal();
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.initMatchState();
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.openSetupModal();
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+            this.queueDirection(0, 0, -1);
+          } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+            this.queueDirection(0, 0, 1);
+          } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+            this.queueDirection(0, -1, 0);
+          } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+            this.queueDirection(0, 1, 0);
+          } else if (e.code === 'Space') {
+            this.boostHeld = true;
+          } else if (e.code === 'KeyP') {
+            if (!this.introActive && !this.setupOpen && !this.shotModalOpen && !this.gameOver) {
+              this.paused = !this.paused;
+              document.getElementById('pauseModal').classList.toggle('open', this.paused);
+              this.lastFrameTime = performance.now();
+            }
+          }
+
+          // P2 WASD in 2P Local Duel
+          if (this.mode === 'DUEL_2P') {
+            if (e.code === 'KeyW') this.queueDirection(1, 0, -1);
+            if (e.code === 'KeyS') this.queueDirection(1, 0, 1);
+            if (e.code === 'KeyA') this.queueDirection(1, -1, 0);
+            if (e.code === 'KeyD') this.queueDirection(1, 1, 0);
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          if (e.code === 'Space') this.boostHeld = false;
+        });
+      }
+
+      openSetupModal() {
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         INTRO & HIGH-DPI INTERPOLATED SNAKE RENDERER
+         ====================================================================== */
+      startIntro() {
+        const dur = 2200;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('asaIntroScreen').classList.add('hidden');
+        this.openSetupModal();
+      }
+
+      renderArena() {
+        const ctx = this.ctx;
+        const w = this.canvasW;
+        const h = this.canvasH;
+        const cs = this.cellSize;
+        const pal = ARENA_THEMES[this.arenaKey] || ARENA_THEMES.PITCH;
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. Checkered Arena Turf
+        for (let r = 0; r < this.rows; r++) {
+          for (let c = 0; c < this.cols; c++) {
+            ctx.fillStyle = (r + c) % 2 === 0 ? pal.cellA : pal.cellB;
+            ctx.fillRect(c * cs, r * cs, cs, cs);
+          }
+        }
+
+        // 2. Subtle Grid Lines & Pitch Center Ring
+        ctx.strokeStyle = pal.gridStroke;
+        ctx.lineWidth = 1;
+        for (let c = 1; c < this.cols; c++) {
+          ctx.beginPath();
+          ctx.moveTo(c * cs, 0);
+          ctx.lineTo(c * cs, h);
+          ctx.stroke();
+        }
+        for (let r = 1; r < this.rows; r++) {
+          ctx.beginPath();
+          ctx.moveTo(0, r * cs);
+          ctx.lineTo(w, r * cs);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(w * 0.5, h * 0.5, Math.min(w, h) * 0.18, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 3. Apples (Standard & Golden)
+        for (const ap of this.apples) {
+          const cx = (ap.x + 0.5) * cs;
+          const cy = (ap.y + 0.5) * cs;
+          const rad = cs * 0.38;
+
+          ctx.fillStyle = ap.golden ? '#fbbf24' : '#ef4444';
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = ap.golden ? '#fef08a' : '#fca5a5';
+          ctx.lineWidth = 1.3;
+          ctx.stroke();
+
+          // Stem & leaf
+          ctx.strokeStyle = '#15803d';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - rad);
+          ctx.lineTo(cx + 2, cy - rad - 4);
+          ctx.stroke();
+        }
+
+        // 4. Power-Up Orb
+        if (this.powerUp) {
+          const px = (this.powerUp.x + 0.5) * cs;
+          const py = (this.powerUp.y + 0.5) * cs;
+          const pulse = 1 + Math.sin(performance.now() * 0.01) * 0.14;
+          const colMap = { BOOST: '#38bdf8', DOUBLE: '#fbbf24', SHIELD: '#a855f7' };
+          ctx.fillStyle = colMap[this.powerUp.type] || '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(px, py, cs * 0.4 * pulse, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#04140b';
+          ctx.font = `900 ${Math.max(7, Math.round(cs * 0.45))}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(this.powerUp.type[0], px, py + 0.5);
+        }
+
+        // 5. Interpolated Snakes with Articulated Head, Eyes, Tongue & Badge
+        const t = this.gameOver ? 1 : Math.min(1, this.moveProgress);
+        for (const sn of this.snakes) {
+          if (!sn.alive && sn.segments.length === 0) continue;
+          const nat = sn.meta.nation;
+
+          for (let i = sn.segments.length - 1; i >= 0; i--) {
+            const curr = sn.segments[i];
+            const prev = sn.prevSegments[i] || curr;
+            const ix = prev.x + (curr.x - prev.x) * t;
+            const iy = prev.y + (curr.y - prev.y) * t;
+            const cx = (ix + 0.5) * cs;
+            const cy = (iy + 0.5) * cs;
+            const taper = i === 0 ? cs * 0.46 : cs * Math.max(0.24, 0.42 - (i / (sn.segments.length + 8)) * 0.14);
+
+            ctx.fillStyle = i === 0 ? nat.primary : (i % 2 === 0 ? nat.primary : nat.secondary);
+            ctx.beginPath();
+            ctx.arc(cx, cy, taper, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (sn.shieldTimer > 0 && i === 0) {
+              ctx.strokeStyle = '#a855f7';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(cx, cy, taper + 3, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
+            if (i === 0) {
+              // Flickering tongue
+              const flick = Math.sin(performance.now() * 0.025) > 0.2 ? 1 : 0.4;
+              ctx.strokeStyle = '#fb7185';
+              ctx.lineWidth = 1.6;
+              ctx.beginPath();
+              ctx.moveTo(cx + sn.dir.x * taper, cy + sn.dir.y * taper);
+              ctx.lineTo(cx + sn.dir.x * (taper + cs * 0.35 * flick), cy + sn.dir.y * (taper + cs * 0.35 * flick));
+              ctx.stroke();
+
+              // Eyes
+              const perpX = -sn.dir.y;
+              const perpY = sn.dir.x;
+              const eyeOffset = taper * 0.45;
+              const fwdOffset = taper * 0.25;
+              [-1, 1].forEach((side) => {
+                const ex = cx + sn.dir.x * fwdOffset + perpX * eyeOffset * side;
+                const ey = cy + sn.dir.y * fwdOffset + perpY * eyeOffset * side;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(ex, ey, Math.max(2, taper * 0.24), 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(ex + sn.dir.x * 0.8, ey + sn.dir.y * 0.8, Math.max(1.1, taper * 0.12), 0, Math.PI * 2);
+                ctx.fill();
+              });
+            }
+          }
+        }
+
+        // 6. Burst Particles
+        for (const pt of this.particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, pt.life / 0.36);
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      loop(now) {
+        if (!this.lastFrameTime) this.lastFrameTime = now;
+        const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
+        this.lastFrameTime = now;
+
+        if (!this.paused && !this.gameOver && !this.introActive && !this.setupOpen) {
+          if (this.formatKey === 'TIME_180') {
+            this.timeRemaining = Math.max(0, this.timeRemaining - dt);
+            if (this.timeRemaining <= 0) {
+              this.finishMatch('TIME ATTACK COMPLETE!');
+            }
+          }
+
+          for (const sn of this.snakes) {
+            if (sn.boostTimer > 0) sn.boostTimer = Math.max(0, sn.boostTimer - dt);
+            if (sn.doubleTimer > 0) sn.doubleTimer = Math.max(0, sn.doubleTimer - dt);
+            if (sn.shieldTimer > 0) sn.shieldTimer = Math.max(0, sn.shieldTimer - dt);
+          }
+
+          if (this.powerUp) {
+            this.powerUp.ttl -= dt;
+            if (this.powerUp.ttl <= 0) this.powerUp = null;
+          }
+
+          const stepInterval = this.getStepInterval();
+          this.stepTimer += dt;
+          while (this.stepTimer >= stepInterval && !this.gameOver) {
+            this.stepTimer -= stepInterval;
+            this.stepSimulationTick();
+          }
+          this.moveProgress = Math.min(1, this.stepTimer / stepInterval);
+
+          for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt;
+            if (p.life <= 0) this.particles.splice(i, 1);
+          }
+
+          this.refreshHUD();
+        }
+
+        this.renderArena();
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const app = new ASASnakeEngine();
+      requestAnimationFrame((t) => app.loop(t));
+    });
+  </script>
+</body>
+</html>
