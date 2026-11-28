@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Reels you've watched — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="/theme.css" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #FFFFFF;
+      --surface: #f3f4f6;
+      --card: #FFFFFF;
+      --elevated: #f8f9fa;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e5e7eb;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --shadow: 0 8px 24px rgba(32, 33, 36, 0.14);
+    }
+
+    :root[data-theme="dark"],
+    body.dark-theme {
+      color-scheme: dark;
+      --bg: #202124;
+      --surface: #28292c;
+      --card: #202124;
+      --elevated: #2c2d31;
+      --text: #FFFFFF;
+      --muted: #9aa0a6;
+      --border: #383a3f;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #202124;
+        --surface: #28292c;
+        --card: #202124;
+        --elevated: #2c2d31;
+        --text: #FFFFFF;
+        --muted: #9aa0a6;
+        --border: #383a3f;
+        --dark-green: #0B3D20;
+        --emerald: #0a7d3b;
+        --emerald-bright: #10b981;
+        --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 48px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      height: 56px;
+      padding: 0 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .back-btn:hover {
+      background: var(--surface);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-title.hidden {
+      display: none;
+    }
+
+    .search-inline-input {
+      flex: 1;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 0 14px;
+      font-size: 14px;
+      outline: none;
+      display: none;
+    }
+
+    .search-inline-input.active {
+      display: block;
+    }
+
+    .icon-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .icon-action-btn:hover {
+      background: var(--surface);
+    }
+
+    /* Main Content */
+    .main-container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px 14px;
+    }
+
+    .watched-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .watched-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      padding: 4px;
+      border-radius: 10px;
+      transition: background 0.14s ease;
+    }
+
+    .watched-row:hover {
+      background: var(--surface);
+    }
+
+    .watched-thumb-box {
+      position: relative;
+      width: 156px;
+      aspect-ratio: 16 / 10;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--dark-green);
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .watched-thumb-box img,
+    .watched-thumb-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .watched-badge {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      background: rgba(11, 61, 32, 0.88);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 5px;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .watched-meta {
+      min-width: 0;
+      flex: 1;
+      padding-top: 2px;
+    }
+
+    .watched-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .watched-creator {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .watched-views {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      min-height: 68vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 36px 20px;
+      gap: 16px;
+    }
+
+    .empty-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .dark-green-btn {
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      background: var(--dark-green);
+      color: #ffffff;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .dark-green-btn:hover {
+      background: var(--emerald);
+    }
+
+    .dark-green-btn:active {
+      transform: scale(0.97);
+    }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <div class="header-left">
+      <button
+        type="button"
+        class="back-btn"
+        id="backToSaveBtn"
+        aria-label="Back to Saved"
+        onclick="goToSavePage()"
+      >
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <h1 class="header-title" id="watchedHeaderTitle">Reels you've watched</h1>
+      <input
+        type="search"
+        id="watchedSearchInput"
+        class="search-inline-input"
+        placeholder="Search watched reels..."
+        oninput="renderWatchedReels()"
+      />
+    </div>
+    <button
+      type="button"
+      class="icon-action-btn"
+      id="toggleWatchedSearchBtn"
+      aria-label="Search watched reels"
+      onclick="toggleWatchedSearch()"
+    >
+      <i class="fas fa-search"></i>
+    </button>
+  </header>
+
+  <main class="main-container" id="watchedReelsContainer"></main>
+
+  <script>
+    const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+
+    const sb = (window.supabase && typeof window.supabase.createClient === "function")
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    let watchedItems = [];
+
+    function goToSavePage() {
+      window.location.href = "save.html";
+    }
+
+    function goToReelsPage() {
+      window.location.href = "reels.html";
+    }
+
+    function escapeHtml(val) {
+      return String(val ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
+
+    function formatViews(views) {
+      const n = Number(views || 0);
+      if (!Number.isFinite(n) || n <= 0) return "Watched";
+      if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, "")}M views`;
+      if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K views`;
+      return `${n} views`;
+    }
+
+    function toggleWatchedSearch() {
+      const input = document.getElementById("watchedSearchInput");
+      const title = document.getElementById("watchedHeaderTitle");
+      if (!input || !title) return;
+      const open = input.classList.toggle("active");
+      title.classList.toggle("hidden", open);
+      if (open) {
+        input.focus();
+      } else {
+        input.value = "";
+        renderWatchedReels();
+      }
+    }
+
+    function renderEmptyWatched() {
+      const container = document.getElementById("watchedReelsContainer");
+      if (!container) return;
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-title">No reels watched yet</div>
+          <button type="button" class="dark-green-btn" onclick="goToReelsPage()">
+            Watch Reels
+          </button>
+        </div>
+      `;
+    }
+
+    function renderWatchedReels() {
+      const container = document.getElementById("watchedReelsContainer");
+      if (!container) return;
+
+      const q = (document.getElementById("watchedSearchInput")?.value || "").trim().toLowerCase();
+      const filtered = watchedItems.filter((item) => {
+        const title = String(item.title || item.caption || "").toLowerCase();
+        const creator = String(item.creator_name || item.author_name || item.username || "").toLowerCase();
+        return !q || title.includes(q) || creator.includes(q);
+      });
+
+      if (!filtered.length) {
+        renderEmptyWatched();
+        return;
+      }
+
+      container.innerHTML = `<div class="watched-list">${filtered.map((item) => {
+        const title = item.title || item.caption || "Watched Reel";
+        const creator = item.creator_name || item.author_name || item.username || "Creator";
+        const viewsLabel = formatViews(item.views_count ?? item.views);
+        const mediaUrl = item.thumbnail_url || item.video_url || item.media_url || "";
+        const reelHref = item.reel_id ? `reels.html?reel=${encodeURIComponent(item.reel_id)}` : "reels.html";
+
+        const thumbHtml = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl) && !item.thumbnail_url
+          ? `<video src="${escapeHtml(mediaUrl)}" muted preload="metadata"></video>`
+          : mediaUrl
+            ? `<img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(title)}" />`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#34d399;font-size:22px;"><i class="fas fa-play"></i></div>`;
+
+        return `
+          <a href="${escapeHtml(reelHref)}" class="watched-row">
+            <div class="watched-thumb-box">
+              ${thumbHtml}
+              <span class="watched-badge">Watched</span>
+            </div>
+            <div class="watched-meta">
+              <div class="watched-title">${escapeHtml(title)}</div>
+              <div class="watched-creator">
+                <span>${escapeHtml(creator)}</span>${item.is_verified ? `<i class="fas fa-circle-check" style="color:var(--emerald-bright);font-size:12px;"></i>` : ""}
+              </div>
+              <div class="watched-views">${escapeHtml(viewsLabel)}</div>
+            </div>
+          </a>
+        `;
+      }).join("")}</div>`;
+    }
+
+    async function loadWatchedReelsFromSupabase() {
+      if (!sb) {
+        renderEmptyWatched();
+        return;
+      }
+
+      try {
+        const { data: sess } = await sb.auth.getSession();
+        const userId = sess?.session?.user?.id || localStorage.getItem("autro_user_id") || null;
+
+        let query = sb
+          .from("reel_watches")
+          .select("*")
+          .order("watched_at", { ascending: false });
+
+        if (userId) {
+          query = query.eq("user_id", userId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        watchedItems = Array.isArray(data) ? data : [];
+        renderWatchedReels();
+      } catch (err) {
+        console.warn("Failed to load watched reels:", err);
+        watchedItems = [];
+        renderEmptyWatched();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadWatchedReelsFromSupabase);
+  </script>
+</body>
+</html>
