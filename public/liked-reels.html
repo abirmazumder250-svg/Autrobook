@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Liked Reels — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="/theme.css" />
+  <link rel="stylesheet" href="profile.css" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #FFFFFF;
+      --surface: #f3f4f6;
+      --card: #FFFFFF;
+      --elevated: #f8f9fa;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e5e7eb;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --pill-bg: #eef0f2;
+      --pill-text: #202124;
+      --btn-hover: #e2e5e9;
+      --shadow: 0 8px 24px rgba(32, 33, 36, 0.14);
+    }
+
+    :root[data-theme="dark"],
+    body.dark-theme {
+      color-scheme: dark;
+      --bg: #202124;
+      --surface: #28292c;
+      --card: #202124;
+      --elevated: #2c2d31;
+      --text: #FFFFFF;
+      --muted: #9aa0a6;
+      --border: #383a3f;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --pill-bg: #ffffff;
+      --pill-text: #202124;
+      --btn-hover: #35373c;
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #202124;
+        --surface: #28292c;
+        --card: #202124;
+        --elevated: #2c2d31;
+        --text: #FFFFFF;
+        --muted: #9aa0a6;
+        --border: #383a3f;
+        --dark-green: #0B3D20;
+        --emerald: #0a7d3b;
+        --emerald-bright: #10b981;
+        --pill-bg: #ffffff;
+        --pill-text: #202124;
+        --btn-hover: #35373c;
+        --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 92px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      height: 56px;
+      padding: 0 14px;
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .back-btn:hover {
+      background: var(--surface);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+      flex: 1;
+      text-align: center;
+      margin-right: 6px;
+    }
+
+    .profile-corner-link {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .profile-corner-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      display: none;
+    }
+
+    .profile-corner-avatar.has-img {
+      display: block;
+    }
+
+    .profile-corner-fallback {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .profile-corner-badge {
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--text);
+      border: 1.5px solid var(--bg);
+      font-size: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Privacy Notice Banner */
+    .privacy-banner {
+      background: var(--surface);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .privacy-banner i {
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    /* Main Content */
+    .main-container {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .empty-state {
+      background: var(--surface);
+      padding: 44px 20px 42px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 16px;
+    }
+
+    .empty-clapper-svg {
+      width: 78px;
+      height: 78px;
+      display: block;
+    }
+
+    .empty-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    /* Liked Reels Grid */
+    .reels-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      padding: 14px;
+    }
+
+    @media (min-width: 560px) {
+      .reels-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .reel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: var(--text);
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .reel-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--emerald);
+    }
+
+    .reel-thumb {
+      position: relative;
+      aspect-ratio: 9 / 13;
+      background: var(--dark-green);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .reel-thumb img,
+    .reel-thumb video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .reel-play-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(11, 61, 32, 0.85);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .reel-info {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .reel-caption {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .reel-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Floating Create Reel Pill */
+    .floating-create-wrap {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 22px;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 60;
+    }
+
+    .create-reel-btn {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--pill-bg);
+      color: var(--pill-text);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 24px;
+      font-size: 15.5px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+
+    .create-reel-btn:hover {
+      background: var(--btn-hover);
+    }
+
+    .create-reel-btn:active {
+      transform: scale(0.97);
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Header -->
+  <header class="top-header">
+    <button
+      type="button"
+      class="back-btn"
+      id="backToReelsBtn"
+      aria-label="Back to Reels"
+      onclick="navigateBackToReels()"
+    >
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <h1 class="header-title">Liked</h1>
+
+    <a href="profile.html" class="profile-corner-link" title="Profile" aria-label="Profile">
+      <img id="topProfileAvatar" class="profile-corner-avatar" alt="Profile" />
+      <span id="topProfileFallback" class="profile-corner-fallback">
+        <i class="fas fa-user"></i>
+      </span>
+      <span class="profile-corner-badge" aria-hidden="true">
+        <i class="fas fa-chevron-down"></i>
+      </span>
+    </a>
+  </header>
+
+  <!-- Privacy Notice -->
+  <div class="privacy-banner">
+    <i class="fas fa-lock"></i>
+    <span>This page is only visible to you</span>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main-container" id="likedReelsContainer">
+    <div class="empty-state" id="emptyLikedReels">
+      <svg class="empty-clapper-svg" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g transform="rotate(-12 44 44)">
+          <rect x="14" y="34" width="60" height="38" rx="7" fill="#0a7d3b" stroke="#0B3D20" stroke-width="2.5"/>
+          <path d="M16 21C15.5 17.5 18 14.5 21.5 14L67.5 8C71 7.5 74 10 74.5 13.5L76 23L17.5 30.5L16 21Z" fill="#0B3D20" stroke="#10b981" stroke-width="2"/>
+          <path d="M27 13L34 28M42 11L49 26M57 9L64 24" stroke="#34d399" stroke-width="4" stroke-linecap="round"/>
+          <polygon points="39,44 39,62 55,53" fill="#ffffff"/>
+        </g>
+      </svg>
+      <div class="empty-title">No liked reels yet</div>
+    </div>
+  </main>
+
+  <!-- Bottom Floating Create Reel Button -->
+  <div class="floating-create-wrap">
+    <button
+      type="button"
+      class="create-reel-btn"
+      id="createReelBtn"
+      onclick="openCreateReelsPage()"
+    >
+      <i class="fas fa-clapperboard"></i>
+      <span>Create reel</span>
+    </button>
+  </div>
+
+  <script src="profile.js"></script>
+  <script>
+    const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+
+    const sb = (window.supabase && typeof window.supabase.createClient === "function")
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    function navigateBackToReels() {
+      window.location.href = "reels.html";
+    }
+
+    function openCreateReelsPage() {
+      window.location.href = "create-reels.html";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
+
+    function renderEmptyState() {
+      const container = document.getElementById("likedReelsContainer");
+      if (!container) return;
+      container.innerHTML = `
+        <div class="empty-state" id="emptyLikedReels">
+          <svg class="empty-clapper-svg" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <g transform="rotate(-12 44 44)">
+              <rect x="14" y="34" width="60" height="38" rx="7" fill="#0a7d3b" stroke="#0B3D20" stroke-width="2.5"/>
+              <path d="M16 21C15.5 17.5 18 14.5 21.5 14L67.5 8C71 7.5 74 10 74.5 13.5L76 23L17.5 30.5L16 21Z" fill="#0B3D20" stroke="#10b981" stroke-width="2"/>
+              <path d="M27 13L34 28M42 11L49 26M57 9L64 24" stroke="#34d399" stroke-width="4" stroke-linecap="round"/>
+              <polygon points="39,44 39,62 55,53" fill="#ffffff"/>
+            </g>
+          </svg>
+          <div class="empty-title">No liked reels yet</div>
+        </div>
+      `;
+    }
+
+    function renderLikedReels(reels) {
+      const container = document.getElementById("likedReelsContainer");
+      if (!container) return;
+
+      if (!Array.isArray(reels) || reels.length === 0) {
+        renderEmptyState();
+        return;
+      }
+
+      container.innerHTML = `<div class="reels-grid">${reels.map((reel) => {
+        const reelId = reel.id ?? "";
+        const caption = reel.caption || reel.title || "Liked Reel";
+        const mediaUrl = reel.video_url || reel.media_url || reel.thumbnail_url || "";
+        const thumbUrl = reel.thumbnail_url || reel.cover_url || "";
+        const author = reel.author_name || reel.username || "Autrobook Reel";
+        const href = reelId !== "" ? `reels.html?reel=${encodeURIComponent(reelId)}` : "reels.html";
+
+        let mediaMarkup = `<i class="fas fa-clapperboard" style="font-size: 32px; color: #34d399;"></i>`;
+        if (thumbUrl) {
+          mediaMarkup = `<img src="${escapeHtml(thumbUrl)}" alt="${escapeHtml(caption)}" />`;
+        } else if (mediaUrl && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl)) {
+          mediaMarkup = `<video src="${escapeHtml(mediaUrl)}" muted preload="metadata"></video>`;
+        } else if (mediaUrl) {
+          mediaMarkup = `<img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(caption)}" />`;
+        }
+
+        return `
+          <a href="${escapeHtml(href)}" class="reel-card">
+            <div class="reel-thumb">
+              ${mediaMarkup}
+              <span class="reel-play-badge"><i class="fas fa-heart"></i> Liked</span>
+            </div>
+            <div class="reel-info">
+              <div class="reel-caption">${escapeHtml(caption)}</div>
+              <div class="reel-meta">${escapeHtml(author)}</div>
+            </div>
+          </a>
+        `;
+      }).join("")}</div>`;
+    }
+
+    async function loadLikedReelsAndProfile() {
+      let avatarUrl = localStorage.getItem("autro_profile_avatar") || "";
+      let userId = localStorage.getItem("autro_user_id") || null;
+
+      if (sb) {
+        try {
+          const { data: sessionData } = await sb.auth.getSession();
+          let authUser = sessionData?.session?.user || null;
+
+          if (!authUser) {
+            const { data: userData } = await sb.auth.getUser();
+            authUser = userData?.user || null;
+          }
+
+          if (authUser) {
+            userId = authUser.id;
+            localStorage.setItem("autro_user_id", userId);
+          }
+
+          if (userId) {
+            const { data: profileRow } = await sb
+              .from("profiles")
+              .select("avatar_url")
+              .eq("id", userId)
+              .maybeSingle();
+
+            if (profileRow && profileRow.avatar_url) {
+              avatarUrl = profileRow.avatar_url;
+              localStorage.setItem("autro_profile_avatar", avatarUrl);
+            }
+          }
+        } catch (err) {
+          console.warn("Profile sync error:", err);
+        }
+      }
+
+      const avatarImg = document.getElementById("topProfileAvatar");
+      const fallbackIcon = document.getElementById("topProfileFallback");
+      if (avatarImg && avatarUrl) {
+        avatarImg.src = avatarUrl;
+        avatarImg.classList.add("has-img");
+        if (fallbackIcon) fallbackIcon.style.display = "none";
+      } else if (fallbackIcon) {
+        fallbackIcon.style.display = "inline-flex";
+      }
+
+      if (!sb || !userId) {
+        renderEmptyState();
+        return;
+      }
+
+      try {
+        const { data: likeRows, error: likesErr } = await sb
+          .from("reel_likes")
+          .select("reel_id, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
+
+        if (likesErr) throw likesErr;
+
+        const likedIds = Array.isArray(likeRows)
+          ? [...new Set(likeRows.map((row) => row.reel_id).filter((id) => id !== null && id !== undefined))]
+          : [];
+
+        if (!likedIds.length) {
+          renderEmptyState();
+          return;
+        }
+
+        const { data: reelsData, error: reelsErr } = await sb
+          .from("reels")
+          .select("*")
+          .in("id", likedIds);
+
+        if (reelsErr) throw reelsErr;
+
+        const reelMap = new Map((reelsData || []).map((r) => [String(r.id), r]));
+        const orderedReels = likedIds
+          .map((id) => reelMap.get(String(id)))
+          .filter(Boolean);
+
+        renderLikedReels(orderedReels);
+      } catch (err) {
+        console.warn("Failed to load liked reels from Supabase:", err);
+        renderEmptyState();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadLikedReelsAndProfile);
+  </script>
+</body>
+</html>
