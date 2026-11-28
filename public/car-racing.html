@@ -5,32 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Car Racing Arcade</title>
   <link rel="stylesheet" href="/theme.css" />
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* ========================================================================
        1. DESIGN TOKENS & SYSTEM LIGHT (#FFFFFF) / DARK (#202124) THEMES
        ======================================================================== */
     :root {
-      --ara-forest: #0B3D20;
-      --ara-emerald-deep: #0a7d3b;
-      --ara-emerald: #10b981;
-      --ara-gold: #f59e0b;
-      --ara-amber: #fbbf24;
+      --cr-forest: #0B3D20;
+      --cr-emerald-deep: #0a7d3b;
+      --cr-emerald: #10b981;
+      --cr-gold: #f59e0b;
+      --cr-amber: #fbbf24;
 
       --theme-bg: #202124;
-      --hud-bg: rgba(32, 33, 36, 0.94);
+      --hud-bg: rgba(32, 33, 36, 0.95);
       --hud-border: rgba(16, 185, 129, 0.45);
       --text-main: #ffffff;
       --text-sub: #bbf7d0;
       --modal-bg: #202124;
       --tile-bg: rgba(255, 255, 255, 0.06);
       --tile-border: rgba(255, 255, 255, 0.16);
+
+      --track-grass-a: #0a351d;
+      --track-grass-b: #082916;
+      --track-road: #1b2420;
+      --track-kerb-a: #10b981;
+      --track-kerb-b: #fbbf24;
+      --track-line: rgba(251, 191, 36, 0.52);
     }
 
     @media (prefers-color-scheme: light) {
       :root {
         --theme-bg: #FFFFFF;
-        --hud-bg: rgba(255, 255, 255, 0.96);
+        --hud-bg: rgba(255, 255, 255, 0.97);
         --hud-border: rgba(10, 125, 59, 0.35);
         --text-main: #062112;
         --text-sub: #0a7d3b;
@@ -42,7 +48,7 @@
 
     body[data-theme="dark"] {
       --theme-bg: #202124;
-      --hud-bg: rgba(32, 33, 36, 0.94);
+      --hud-bg: rgba(32, 33, 36, 0.95);
       --hud-border: rgba(16, 185, 129, 0.45);
       --text-main: #ffffff;
       --text-sub: #bbf7d0;
@@ -53,13 +59,41 @@
 
     body[data-theme="light"] {
       --theme-bg: #FFFFFF;
-      --hud-bg: rgba(255, 255, 255, 0.96);
+      --hud-bg: rgba(255, 255, 255, 0.97);
       --hud-border: rgba(10, 125, 59, 0.35);
       --text-main: #062112;
       --text-sub: #0a7d3b;
       --modal-bg: #FFFFFF;
       --tile-bg: rgba(11, 61, 32, 0.05);
       --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    /* Track Visual Themes */
+    body[data-track="CLUB_CIRCUIT"] {
+      --track-grass-a: #0d4224;
+      --track-grass-b: #09321b;
+      --track-road: #1e2923;
+      --track-kerb-a: #10b981;
+      --track-kerb-b: #fbbf24;
+      --track-line: rgba(251, 191, 36, 0.55);
+    }
+
+    body[data-track="EMERALD_GP"] {
+      --track-grass-a: #064e3b;
+      --track-grass-b: #04382a;
+      --track-road: #14221c;
+      --track-kerb-a: #34d399;
+      --track-kerb-b: #f59e0b;
+      --track-line: rgba(52, 211, 153, 0.55);
+    }
+
+    body[data-track="NIGHT_SPEEDWAY"] {
+      --track-grass-a: #061810;
+      --track-grass-b: #04110b;
+      --track-road: #111614;
+      --track-kerb-a: #fbbf24;
+      --track-kerb-b: #10b981;
+      --track-line: rgba(251, 191, 36, 0.68);
     }
 
     *, *::before, *::after {
@@ -76,12 +110,12 @@
       height: 100%;
       overflow: hidden;
       background-color: var(--theme-bg);
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
       color: var(--text-main);
       transition: background-color 0.2s ease, color 0.2s ease;
     }
 
-    #araArena {
+    #crArena {
       position: relative;
       width: 100vw;
       height: 100vh;
@@ -92,7 +126,7 @@
       justify-content: space-between;
       padding: max(5px, env(safe-area-inset-top)) 7px max(5px, env(safe-area-inset-bottom));
       background-color: var(--theme-bg);
-      background-image: radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.12) 48%, transparent 78%);
+      background-image: radial-gradient(circle at 50% 16%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.1) 52%, transparent 82%);
       overflow: hidden;
     }
 
@@ -102,15 +136,15 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--hud-border);
-      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
     }
 
     /* ========================================================================
-       2. TOP HUD BAR, SCOREBOARD, DRIVER CARDS & LIVE SPEED RADAR
+       2. TOP BROADCAST HUD & LAP / POSITION / SPEED RADAR / NITRO PILLS
        ======================================================================== */
     .top-bar {
       width: 100%;
-      max-width: 820px;
+      max-width: 740px;
       z-index: 20;
       display: flex;
       align-items: center;
@@ -125,9 +159,9 @@
     }
 
     .icon-circle-btn {
-      width: 34px;
-      height: 34px;
-      border-radius: 9999px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -139,39 +173,38 @@
       box-shadow: 0 4px 12px rgba(4, 20, 11, 0.35);
       text-decoration: none;
       cursor: pointer;
-      transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+      transition: transform 0.13s ease, border-color 0.13s ease, background 0.13s ease, box-shadow 0.13s ease;
     }
 
     .icon-circle-btn:hover {
       background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
-      border-color: var(--ara-amber);
+      border-color: var(--cr-amber);
       box-shadow: 0 0 12px rgba(251, 191, 36, 0.38);
     }
 
     .icon-circle-btn:active {
-      background: linear-gradient(145deg, #0B3D20 0%, #062614 100%);
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
       transform: scale(0.92);
     }
 
-    .scoreboard-center {
+    .brand-center-hud {
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 3px 9px;
       border-radius: 13px;
       flex: 1;
-      max-width: 420px;
+      max-width: 360px;
       border-color: rgba(251, 191, 36, 0.55);
       min-width: 0;
     }
 
-    .score-main-row {
+    .brand-main-row {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 11px;
       font-weight: 900;
-      font-variant-numeric: tabular-nums;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -181,9 +214,9 @@
     .hud-logo-badge {
       width: 20px;
       height: 20px;
-      border-radius: 9999px;
+      border-radius: 50%;
       background: linear-gradient(145deg, #0a7d3b, #0B3D20);
-      border: 1.5px solid var(--ara-amber);
+      border: 1.5px solid var(--cr-amber);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -195,7 +228,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 9999px;
+      border-radius: 50%;
       display: block;
     }
 
@@ -213,17 +246,8 @@
       display: block;
     }
 
-    .score-pill {
-      padding: 1px 7px;
-      border-radius: 7px;
-      background: rgba(16, 185, 129, 0.22);
-      border: 1px solid rgba(16, 185, 129, 0.55);
-      color: var(--ara-amber);
-      font-size: 10.5px;
-    }
-
-    .status-sub-row {
-      font-size: 8.6px;
+    .brand-sub-row {
+      font-size: 8.4px;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -234,202 +258,109 @@
       max-width: 100%;
     }
 
-    .drivers-radar-row {
+    .telemetry-strip {
       width: 100%;
-      max-width: 820px;
+      max-width: 740px;
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 5px;
-      align-items: center;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
       z-index: 16;
     }
 
-    .driver-panel {
-      padding: 4px 8px;
-      border-radius: 11px;
+    .hud-pill {
+      padding: 4px 7px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 5px;
-      min-width: 0;
-      border-width: 1.5px;
-    }
-
-    .d-meta {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    .d-name-line {
-      display: flex;
-      align-items: center;
       gap: 4px;
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 900;
+      font-variant-numeric: tabular-nums;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .badge-num {
-      padding: 1px 5px;
-      border-radius: 6px;
-      font-size: 8.5px;
-      font-weight: 900;
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.65);
-      flex-shrink: 0;
-    }
-
-    .d-sub-line {
-      font-size: 8.2px;
-      font-weight: 800;
-      text-transform: uppercase;
-      color: var(--text-sub);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .nitro-pill {
-      padding: 2px 6px;
-      border-radius: 7px;
-      background: rgba(245, 158, 11, 0.2);
-      border: 1px solid rgba(251, 191, 36, 0.55);
-      color: var(--ara-amber);
-      font-size: 9px;
-      font-weight: 900;
-      flex-shrink: 0;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .radar-box {
-      padding: 3px 8px;
-      border-radius: 11px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      border-color: rgba(251, 191, 36, 0.48);
-      min-width: 116px;
-    }
-
-    .radar-lbl {
-      font-size: 7.5px;
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ara-amber);
-    }
-
-    .radar-val {
-      font-size: 10.5px;
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .radar-sub {
+    .hud-pill-lbl {
+      color: var(--cr-gold);
       font-size: 7.8px;
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-      color: var(--text-sub);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
 
     /* ========================================================================
-       3. CENTER HIGH-DPI CIRCUIT CANVAS & TOUCH DRIVING CONTROLS
+       3. CENTER HIGH-DPI RACE CANVAS & TOUCH / NITRO DRIVE DECK
        ======================================================================== */
-    .circuit-stage {
+    .board-stage {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       flex: 1;
       width: 100%;
-      max-width: 820px;
-      max-height: 52dvh;
+      max-width: 740px;
+      min-height: 0;
       margin: 2px 0;
     }
 
     canvas#raceCanvas {
       display: block;
-      border-radius: 16px;
-      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+      width: 100%;
+      height: 100%;
+      border-radius: 15px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
       touch-action: none;
     }
 
-    .bottom-drive-deck {
+    .drive-deck {
       width: 100%;
-      max-width: 820px;
+      max-width: 740px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
       z-index: 18;
     }
 
-    .steer-cluster, .pedal-cluster {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
     .drive-btn {
-      padding: 10px 11px;
+      padding: 8.5px 10px;
+      min-width: 52px;
       border-radius: 11px;
       background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid rgba(16, 185, 129, 0.62);
+      box-shadow: 0 4px 12px rgba(4, 20, 11, 0.34);
       color: #ffffff;
-      border: 1.5px solid rgba(16, 185, 129, 0.65);
-      box-shadow: 0 5px 14px rgba(4, 20, 11, 0.38);
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 900;
       cursor: pointer;
-      min-width: 48px;
       text-align: center;
-      transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
     }
 
     .drive-btn:hover {
       background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
-      border-color: var(--ara-amber);
+      border-color: var(--cr-amber);
     }
 
-    .drive-btn:active {
-      background: linear-gradient(145deg, #0B3D20 0%, #062614 100%);
-      border-color: var(--ara-amber);
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
-      transform: scale(0.95);
-    }
-
-    .nitro-btn {
-      padding: 10px 12px;
-      border-radius: 11px;
-      background: linear-gradient(135deg, #0a7d3b 0%, #0B3D20 100%);
-      border: 1.5px solid var(--ara-amber);
-      box-shadow: 0 6px 16px rgba(11, 61, 32, 0.5);
-      color: #ffffff;
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-    }
-
-    .nitro-btn:hover {
-      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
-      box-shadow: 0 0 14px rgba(251, 191, 36, 0.4);
-    }
-
-    .nitro-btn:active {
+    .drive-btn:active,
+    .drive-btn.pressed {
       background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
+      border-color: var(--cr-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.42);
       transform: scale(0.95);
+    }
+
+    .drive-btn.nitro-btn {
+      border-color: var(--cr-amber);
+      color: #fde68a;
+      min-width: 72px;
     }
 
     /* ========================================================================
-       4. ANIMATED INTRO SPLASH SCREEN
+       4. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
        ======================================================================== */
-    #araIntroScreen {
+    #crIntroScreen {
       position: absolute;
       inset: 0;
       z-index: 60;
@@ -439,12 +370,12 @@
       justify-content: center;
       padding: 24px;
       background-color: var(--theme-bg);
-      background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.15) 55%, transparent 82%);
+      background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.14) 55%, transparent 82%);
       overflow: hidden;
-      transition: opacity 0.4s ease, visibility 0.4s ease;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
     }
 
-    #araIntroScreen.hidden {
+    #crIntroScreen.hidden {
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
@@ -462,12 +393,12 @@
 
     .ray-left {
       left: 10%;
-      animation: raySwingL 2.8s ease-in-out infinite alternate;
+      animation: raySwingL 2.6s ease-in-out infinite alternate;
     }
 
     .ray-right {
       right: 10%;
-      animation: raySwingR 2.8s ease-in-out infinite alternate;
+      animation: raySwingR 2.6s ease-in-out infinite alternate;
     }
 
     @keyframes raySwingL {
@@ -487,45 +418,44 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
-      max-width: 380px;
+      max-width: 360px;
       width: 100%;
     }
 
-    .ara-crest-badge {
+    .cr-crest-badge {
       width: 112px;
       height: 112px;
-      border-radius: 9999px;
+      border-radius: 50%;
       background: linear-gradient(145deg, #0a7d3b, #0B3D20);
-      border: 3px solid var(--ara-amber);
+      border: 3px solid var(--cr-amber);
       box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 16px;
       overflow: hidden;
-      position: relative;
       animation: crestPulse 1.5s ease-in-out infinite alternate;
     }
 
-    .ara-crest-logo-img {
+    .cr-crest-logo-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 9999px;
+      border-radius: 50%;
       display: block;
     }
 
-    .ara-crest-fallback-svg {
+    .cr-crest-fallback-svg {
       width: 64px;
       height: 64px;
       display: none;
     }
 
-    .ara-crest-badge.use-fallback .ara-crest-logo-img {
+    .cr-crest-badge.use-fallback .cr-crest-logo-img {
       display: none;
     }
 
-    .ara-crest-badge.use-fallback .ara-crest-fallback-svg {
+    .cr-crest-badge.use-fallback .cr-crest-fallback-svg {
       display: block;
     }
 
@@ -535,7 +465,7 @@
     }
 
     .intro-title {
-      font-size: 24px;
+      font-size: 25px;
       font-weight: 900;
       line-height: 1.15;
       color: var(--text-main);
@@ -545,7 +475,7 @@
       width: 100%;
       max-width: 240px;
       height: 6px;
-      border-radius: 9999px;
+      border-radius: 999px;
       background: rgba(16, 185, 129, 0.18);
       overflow: hidden;
       margin: 20px 0 18px;
@@ -554,12 +484,12 @@
     .intro-progress-fill {
       width: 0%;
       height: 100%;
-      border-radius: 9999px;
+      border-radius: 999px;
       background: linear-gradient(90deg, #10b981, #fbbf24);
     }
 
     /* ========================================================================
-       5. MODALS (SETUP, SCREENSHOT, PAUSE & STATS SUMMARY)
+       5. MODALS (SETUP, SCREENSHOT, PAUSE & RACE SUMMARY)
        ======================================================================== */
     .modal-backdrop {
       position: absolute;
@@ -581,7 +511,7 @@
 
     .modal-card {
       width: 100%;
-      max-width: 485px;
+      max-width: 460px;
       max-height: 93dvh;
       overflow-y: auto;
       border-radius: 22px;
@@ -594,7 +524,7 @@
 
     .modal-head {
       text-align: center;
-      margin-bottom: 9px;
+      margin-bottom: 10px;
     }
 
     .modal-title-row {
@@ -617,11 +547,11 @@
     }
 
     .setup-box {
-      padding: 7px 9px;
+      padding: 8px 10px;
       border-radius: 13px;
       background: var(--tile-bg);
       border: 1px solid var(--tile-border);
-      margin-bottom: 7px;
+      margin-bottom: 8px;
     }
 
     .setup-label {
@@ -629,73 +559,19 @@
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--ara-gold);
-      margin-bottom: 4px;
-    }
-
-    .grid-3-row {
-      display: grid;
-      grid-template-columns: 1fr 126px 54px;
-      gap: 6px;
+      color: var(--cr-gold);
       margin-bottom: 5px;
     }
 
-    .text-inp, .sel-inp {
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 9px;
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-      color: var(--text-main);
-      font-size: 10.5px;
-      font-weight: 800;
-      outline: none;
-      user-select: text;
-      -webkit-user-select: text;
-    }
-
-    .sel-inp option {
-      background: var(--modal-bg);
-      color: var(--text-main);
-    }
-
-    .star-chips {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
-
-    .star-chip {
-      padding: 4px 7px;
-      border-radius: 8px;
-      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
-      border: 1px solid rgba(16, 185, 129, 0.58);
-      color: #ffffff;
-      font-size: 8.8px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
-    }
-
-    .star-chip:hover {
-      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
-      border-color: var(--ara-amber);
-    }
-
-    .star-chip:active {
-      background: linear-gradient(145deg, #0B3D20 0%, #062614 100%);
-      transform: scale(0.95);
+    .pills-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
     }
 
     .pills-3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 5px;
-    }
-
-    .pills-4 {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
       gap: 5px;
     }
 
@@ -705,7 +581,7 @@
       background: #0B3D20;
       border: 1.5px solid rgba(16, 185, 129, 0.45);
       color: #ffffff;
-      font-size: 9.5px;
+      font-size: 9.4px;
       font-weight: 800;
       cursor: pointer;
       text-align: center;
@@ -714,7 +590,7 @@
 
     .choice-btn:hover {
       background: #0d4b28;
-      border-color: var(--ara-amber);
+      border-color: var(--cr-amber);
     }
 
     .choice-btn:active {
@@ -723,9 +599,9 @@
 
     .choice-btn.selected {
       background: linear-gradient(135deg, #0a7d3b 0%, #062815 100%);
-      border-color: var(--ara-amber);
+      border-color: var(--cr-amber);
       color: #ffffff;
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.32);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.34);
     }
 
     .btn-primary {
@@ -733,7 +609,7 @@
       padding: 10.5px 16px;
       border-radius: 13px;
       background: linear-gradient(135deg, #0a7d3b 0%, #0B3D20 100%);
-      border: 1.5px solid var(--ara-amber);
+      border: 1.5px solid var(--cr-amber);
       box-shadow: 0 6px 16px rgba(11, 61, 32, 0.5);
       color: #ffffff;
       font-size: 11.5px;
@@ -781,7 +657,7 @@
 
     .btn-secondary:hover {
       background: #0a7d3b;
-      border-color: var(--ara-amber);
+      border-color: var(--cr-amber);
     }
 
     .btn-secondary:active {
@@ -816,11 +692,11 @@
 
     .shot-preview-img {
       width: 100%;
-      max-height: 50dvh;
+      max-height: 48dvh;
       object-fit: contain;
       border-radius: 14px;
-      border: 1.5px solid var(--ara-amber);
-      background: var(--theme-bg);
+      border: 1.5px solid var(--cr-amber);
+      background: var(--track-road);
       margin: 8px 0;
     }
 
@@ -831,14 +707,14 @@
       transform: translateX(-50%) translateY(-8px);
       z-index: 45;
       padding: 5px 13px;
-      border-radius: 9999px;
+      border-radius: 999px;
       font-size: 10px;
       font-weight: 900;
       letter-spacing: 0.05em;
       text-transform: uppercase;
       color: #ffffff;
       background: rgba(11, 61, 32, 0.94);
-      border: 1px solid var(--ara-amber);
+      border: 1px solid var(--cr-amber);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease, transform 0.2s ease;
@@ -865,30 +741,30 @@
   </style>
 </head>
 <body>
-  <!-- Main full-viewport game arena -->
-  <div id="araArena">
+  <div id="crArena">
     <div id="shutterFlash" class="shutter-flash"></div>
     <div id="toastBanner" class="toast-banner">CAR RACING ARCADE</div>
 
-    <!-- TOP BAR WITH BACK LINK TO car-racing.html -->
+    <!-- TOP HUD BAR WITH HARD-RESET-TO-START '←' LINK TO car-racing.html -->
     <header class="top-bar">
       <div class="btn-group">
-        <button id="backToCarRacingLink" type="button" class="icon-circle-btn glass-hud" title="Return to Start" aria-label="Return to Start">&larr;</button>
+        <a id="backToCarRacingLink" href="car-racing.html" class="icon-circle-btn glass-hud" title="Reset to Start (car-racing.html)" aria-label="Reset to Start">&larr;</a>
       </div>
 
-      <div class="scoreboard-center glass-hud">
-        <div class="score-main-row">
-          <span class="hud-logo-badge js-car-logo-badge" aria-hidden="true">
-            <img src="autrobook-car-racing.png" alt="Car Racing Arcade Logo" class="hud-logo-img js-car-logo-img" />
+      <div class="brand-center-hud glass-hud">
+        <div class="brand-main-row">
+          <span class="hud-logo-badge js-cr-logo-badge" aria-hidden="true">
+            <img src="Autrobook-car-racing.png" alt="Car Racing Arcade Logo" class="hud-logo-img js-cr-logo-img" />
             <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
-              <circle cx="12" cy="12" r="4" stroke="#fbbf24" stroke-width="2"/>
+              <path d="M7.5 14L9 10.5H15L16.5 14V16.5H7.5V14Z" fill="#10b981" stroke="#fbbf24" stroke-width="1.3"/>
+              <circle cx="9.5" cy="16.5" r="1.4" fill="#fbbf24"/>
+              <circle cx="14.5" cy="16.5" r="1.4" fill="#fbbf24"/>
             </svg>
           </span>
           <span>Car Racing Arcade</span>
-          <span id="topPosBadge" class="score-pill">P1 &bull; LAP 1/3</span>
         </div>
-        <div id="statusBannerText" class="status-sub-row">3 LAPS SPRINT &bull; CLUB AI &bull; EMERALD CIRCUIT</div>
+        <div id="statusSubRow" class="brand-sub-row">1P VS AI (PRO) &bull; 3 LAPS SPRINT &bull; CLUB CIRCUIT</div>
       </div>
 
       <div class="btn-group">
@@ -899,79 +775,60 @@
       </div>
     </header>
 
-    <!-- DRIVER CARDS & LIVE SPEED RADAR -->
-    <section class="drivers-radar-row">
-      <div id="d1Card" class="driver-panel glass-hud">
-        <div class="d-meta">
-          <div class="d-name-line">
-            <span id="d1BadgeNum" class="badge-num" style="background:#0a7d3b;">#01</span>
-            <span id="d1DisplayName">RASHID KHAN</span>
-          </div>
-          <span id="d1SubLine" class="d-sub-line">BAN &bull; LAP 1</span>
-        </div>
-        <span id="d1NitroTag" class="nitro-pill">NITRO 100%</span>
+    <!-- LAP, POSITION, SPEED RADAR & NITRO TELEMETRY PILLS -->
+    <section class="telemetry-strip">
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">LAP</span>
+        <span id="lapPillVal">1 / 3</span>
       </div>
-
-      <div class="radar-box glass-hud">
-        <span class="radar-lbl">SPEED RADAR</span>
-        <span id="radarKmhText" class="radar-val">0.0 KM/H</span>
-        <span id="radarMphPeakText" class="radar-sub">0.0 MPH &bull; PK 0</span>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">POS</span>
+        <span id="posPillVal">1 / 4</span>
       </div>
-
-      <div id="d2Card" class="driver-panel glass-hud">
-        <div class="d-meta">
-          <div class="d-name-line">
-            <span id="d2BadgeNum" class="badge-num" style="background:#dc2626;">#07</span>
-            <span id="d2DisplayName">HARUTO SATO</span>
-          </div>
-          <span id="d2SubLine" class="d-sub-line">JPN &bull; LAP 1</span>
-        </div>
-        <span id="d2NitroTag" class="nitro-pill">NITRO 100%</span>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">RADAR</span>
+        <span id="speedPillVal">0 KM/H</span>
+      </div>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">NITRO</span>
+        <span id="nitroPillVal">100%</span>
       </div>
     </section>
 
-    <!-- CENTER HIGH-DPI GRAND PRIX CIRCUIT CANVAS -->
-    <main id="circuitStage" class="circuit-stage">
+    <!-- CENTER HIGH-DPI RESPONSIVE RACE CANVAS -->
+    <main id="boardStage" class="board-stage">
       <canvas id="raceCanvas"></canvas>
     </main>
 
-    <!-- RESPONSIVE ON-SCREEN DRIVING CONTROLS -->
-    <div class="bottom-drive-deck">
-      <div class="steer-cluster">
-        <button id="steerLeftBtn" type="button" class="drive-btn" aria-label="Steer Left">&larr; Left</button>
-        <button id="steerRightBtn" type="button" class="drive-btn" aria-label="Steer Right">Right &rarr;</button>
-      </div>
-
-      <button id="nitroTouchBtn" type="button" class="nitro-btn">&#9889; Nitro Boost</button>
-
-      <div class="pedal-cluster">
-        <button id="brakeTouchBtn" type="button" class="drive-btn" aria-label="Brake or Reverse">Brake</button>
-        <button id="gasTouchBtn" type="button" class="drive-btn" aria-label="Accelerate">Gas</button>
-      </div>
+    <!-- ON-SCREEN TOUCH / POINTER DRIVE & NITRO CONTROLS -->
+    <div id="driveDeck" class="drive-deck" role="group" aria-label="Car Controls">
+      <button id="steerLeftBtn" type="button" class="drive-btn" aria-label="Steer Left">&larr;</button>
+      <button id="gasBtn" type="button" class="drive-btn" aria-label="Accelerate">GAS</button>
+      <button id="brakeBtn" type="button" class="drive-btn" aria-label="Brake">BRK</button>
+      <button id="steerRightBtn" type="button" class="drive-btn" aria-label="Steer Right">&rarr;</button>
+      <button id="nitroBtn" type="button" class="drive-btn nitro-btn" aria-label="Nitro Boost">&#9889; NITRO</button>
     </div>
 
     <!-- ======================================================================
-         1. ANIMATED INTRO SPLASH SCREEN
+         1. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
          ====================================================================== -->
-    <section id="araIntroScreen">
+    <section id="crIntroScreen">
       <div class="spot-ray ray-left"></div>
       <div class="spot-ray ray-right"></div>
 
       <div class="intro-center">
-        <div id="araCrestBadge" class="ara-crest-badge js-car-logo-badge">
+        <div id="crCrestBadge" class="cr-crest-badge js-cr-logo-badge">
           <img
-            id="araIntroLogoImg"
-            src="autrobook-car-racing.png"
+            id="crIntroLogoImg"
+            src="Autrobook-car-racing.png"
             alt="Car Racing Arcade Logo"
-            class="ara-crest-logo-img js-car-logo-img"
+            class="cr-crest-logo-img js-cr-logo-img"
           />
-          <svg id="araIntroFallbackSvg" class="ara-crest-fallback-svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+          <svg id="crIntroFallbackSvg" class="cr-crest-fallback-svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
             <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
-            <circle cx="32" cy="33" r="14" stroke="#10b981" stroke-width="3.5"/>
-            <circle cx="32" cy="33" r="4" fill="#fbbf24"/>
-            <line x1="32" y1="33" x2="32" y2="19" stroke="#fbbf24" stroke-width="2.5"/>
-            <line x1="32" y1="33" x2="20" y2="41" stroke="#fbbf24" stroke-width="2.5"/>
-            <line x1="32" y1="33" x2="44" y2="41" stroke="#fbbf24" stroke-width="2.5"/>
+            <path d="M20 38L23.5 29H40.5L44 38V44H20V38Z" fill="#10b981" stroke="#fbbf24" stroke-width="2.2"/>
+            <circle cx="25" cy="44" r="3.4" fill="#fbbf24"/>
+            <circle cx="39" cy="44" r="3.4" fill="#fbbf24"/>
           </svg>
         </div>
 
@@ -988,78 +845,66 @@
     </section>
 
     <!-- ======================================================================
-         2. MATCH SETUP MODAL (10 NATIONS, DRIVERS, FORMATS & TRACKS)
+         2. MATCH SETUP MODAL (MODE, AI DIFFICULTY, FORMAT & TRACK)
          ====================================================================== -->
     <div id="setupModal" class="modal-backdrop">
       <div class="modal-card">
         <div class="modal-head">
           <div class="modal-title-row">
-            <span class="hud-logo-badge js-car-logo-badge" aria-hidden="true">
-              <img src="autrobook-car-racing.png" alt="Car Racing Arcade Logo" class="hud-logo-img js-car-logo-img" />
+            <span class="hud-logo-badge js-cr-logo-badge" aria-hidden="true">
+              <img src="Autrobook-car-racing.png" alt="Car Racing Arcade Logo" class="hud-logo-img js-cr-logo-img" />
               <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
-                <circle cx="12" cy="12" r="4" stroke="#fbbf24" stroke-width="2"/>
+                <circle cx="12" cy="12" r="3.5" fill="#fbbf24"/>
               </svg>
             </span>
-            <h2 class="modal-h2">Car Racing Arcade Setup</h2>
+            <h2 class="modal-h2">Match Setup</h2>
           </div>
-          <p class="modal-sub">10 Nations &bull; Driver Presets &bull; Match Formats &bull; Track Environments</p>
+          <p class="modal-sub">Mode &bull; AI Difficulty &bull; Format &bull; Track</p>
         </div>
 
         <div class="setup-box">
-          <div class="setup-label">Racing Mode &amp; AI Difficulty</div>
-          <div id="modeGroup" class="pills-4">
-            <button type="button" class="choice-btn" data-mode="AI_CASUAL">1P vs AI (Casual)</button>
-            <button type="button" class="choice-btn selected" data-mode="AI_CLUB">1P vs AI (Club)</button>
-            <button type="button" class="choice-btn" data-mode="AI_PRO">1P vs AI (Pro)</button>
-            <button type="button" class="choice-btn" data-mode="LOCAL_2P">2P Local</button>
+          <div class="setup-label">Mode</div>
+          <div id="modeGroup" class="pills-2">
+            <button type="button" class="choice-btn selected" data-mode="1P_VS_AI">1P vs AI</button>
+            <button type="button" class="choice-btn" data-mode="2P_LOCAL">2P Local</button>
           </div>
         </div>
 
-        <!-- Driver 1 Roster -->
-        <div class="setup-box">
-          <div class="setup-label">Driver 1 Roster</div>
-          <div class="grid-3-row">
-            <input id="d1NameInp" type="text" maxlength="14" value="RASHID KHAN" class="text-inp" />
-            <select id="d1NationSel" class="sel-inp"></select>
-            <input id="d1BadgeInp" type="number" min="1" max="99" value="1" class="text-inp" />
-          </div>
-          <div id="d1StarRow" class="star-chips"></div>
-        </div>
-
-        <!-- Driver 2 / AI Rival Roster -->
-        <div class="setup-box">
-          <div class="setup-label">Driver 2 / Rival Roster</div>
-          <div class="grid-3-row">
-            <input id="d2NameInp" type="text" maxlength="14" value="HARUTO SATO" class="text-inp" />
-            <select id="d2NationSel" class="sel-inp"></select>
-            <input id="d2BadgeInp" type="number" min="1" max="99" value="7" class="text-inp" />
-          </div>
-          <div id="d2StarRow" class="star-chips"></div>
-        </div>
-
-        <div class="setup-box">
-          <div class="setup-label">Match Format</div>
-          <div id="formatGroup" class="pills-4">
-            <button type="button" class="choice-btn selected" data-fmt="LAPS_3">3 Laps Sprint</button>
-            <button type="button" class="choice-btn" data-fmt="LAPS_5">5 Laps Grand Prix</button>
-            <button type="button" class="choice-btn" data-fmt="TIME_120">Time Trial (2 Min)</button>
-            <button type="button" class="choice-btn" data-fmt="ELIMINATION">Elimination Sprint</button>
+        <div id="aiDiffBox" class="setup-box">
+          <div class="setup-label">AI Difficulty</div>
+          <div id="aiDiffGroup" class="pills-3">
+            <button type="button" class="choice-btn" data-aidiff="ROOKIE">Rookie</button>
+            <button type="button" class="choice-btn selected" data-aidiff="PRO">Pro</button>
+            <button type="button" class="choice-btn" data-aidiff="ACE">Ace</button>
           </div>
         </div>
 
         <div class="setup-box">
-          <div class="setup-label">Track / Asphalt Environment</div>
+          <div class="setup-label">Format</div>
+          <div id="formatGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-format="3_LAPS_SPRINT">3 Laps Sprint</button>
+            <button type="button" class="choice-btn" data-format="5_LAPS_GP">5 Laps Grand Prix</button>
+            <button type="button" class="choice-btn" data-format="TIME_ATTACK">Time Attack</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Track</div>
           <div id="trackGroup" class="pills-3">
-            <button type="button" class="choice-btn selected" data-trk="EMERALD">Emerald Circuit</button>
-            <button type="button" class="choice-btn" data-trk="SUNSET">Sunset Coastal Track</button>
-            <button type="button" class="choice-btn" data-trk="NIGHT">Night Floodlit Grand Prix</button>
+            <button type="button" class="choice-btn selected" data-track="CLUB_CIRCUIT">Club Circuit</button>
+            <button type="button" class="choice-btn" data-track="EMERALD_GP">Emerald GP</button>
+            <button type="button" class="choice-btn" data-track="NIGHT_SPEEDWAY">Night Speedway</button>
           </div>
         </div>
 
         <button id="startRaceBtn" type="button" class="btn-primary">
           Start Race
         </button>
+
+        <div class="btn-stack" style="margin-top:6px;">
+          <button id="statsFromSetupBtn" type="button" class="btn-secondary">View Stats</button>
+        </div>
       </div>
     </div>
 
@@ -1069,19 +914,19 @@
     <div id="screenshotModal" class="modal-backdrop">
       <div class="modal-card" style="max-width:365px;text-align:center;">
         <div class="modal-head">
-          <h2 class="modal-h2">Circuit Screenshot</h2>
+          <h2 class="modal-h2">Car Racing Snapshot</h2>
           <p class="modal-sub">Car Racing Arcade</p>
         </div>
-        <img id="screenshotImg" class="shot-preview-img" alt="Car Racing Arcade Screenshot" />
+        <img id="screenshotImg" class="shot-preview-img" alt="Car Racing Screenshot" />
         <div class="btn-stack">
           <a id="downloadShotBtn" download="Car-Racing-Arcade.png" class="btn-primary">Download PNG</a>
-          <button id="closeShotBtn" type="button" class="btn-secondary">Resume</button>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Resume Race</button>
         </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         4. PAUSE MODAL (RESUME, RESTART RACE, MATCH SETUP, VIEW STATS, BACK)
+         4. PAUSE MODAL (NO EXTRA BOTTOM BACK BUTTON)
          ====================================================================== -->
     <div id="pauseModal" class="modal-backdrop">
       <div class="modal-card" style="max-width:335px;text-align:center;">
@@ -1090,47 +935,45 @@
           <p class="modal-sub">Car Racing Arcade</p>
         </div>
         <div class="btn-stack">
-          <button id="resumeBtn" type="button" class="btn-primary">Resume</button>
-          <button id="restartFromPauseBtn" type="button" class="btn-secondary">Restart Race</button>
-          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Match Setup</button>
-          <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
-          <button id="backFromPauseBtn" type="button" class="btn-secondary">BACK</button>
+          <button id="resumeRaceBtn" type="button" class="btn-primary">RESUME RACE</button>
+          <button id="restartRaceBtn" type="button" class="btn-secondary">RESTART RACE</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">MATCH SETUP</button>
+          <button id="statsFromPauseBtn" type="button" class="btn-secondary">VIEW STATS</button>
         </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         5. CAREER STATS & RACE SUMMARY MODAL
+         5. RACE SUMMARY & CAREER STATISTICS MODAL
          ====================================================================== -->
     <div id="summaryModal" class="modal-backdrop">
-      <div class="modal-card" style="max-width:360px;text-align:center;">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
         <div style="font-size:40px;margin-bottom:4px;">&#127937;</div>
-        <h2 id="summaryTitle" class="modal-h2">CAR RACING ARCADE STATS</h2>
+        <h2 id="summaryTitle" class="modal-h2">FINISH LINE!</h2>
         <p id="summarySub" class="modal-sub">Car Racing Arcade</p>
 
         <div class="stats-box">
           <div class="stats-row">
-            <span>Races Played</span>
-            <span id="statPlayedText" style="font-weight:900;color:var(--ara-amber);">0</span>
+            <span>Final Pos &bull; Race Time</span>
+            <span id="sumPosTimeVal" style="font-weight:900;color:var(--cr-gold);">P1 &bull; 00.0s</span>
           </div>
           <div class="stats-row">
-            <span>Wins</span>
-            <span id="statWinsText" style="font-weight:900;color:var(--ara-emerald);">0</span>
+            <span>Races Played &bull; Wins</span>
+            <span id="sumPlayedWinsVal" style="font-weight:900;color:var(--cr-emerald);">0 &bull; 0</span>
           </div>
           <div class="stats-row">
-            <span>Podiums / Best Lap</span>
-            <span id="statPodiumBestLap" style="font-weight:900;">0 &bull; --:--.-</span>
+            <span>Top Radar Speed</span>
+            <span id="sumTopSpeedVal" style="font-weight:900;">0 KM/H</span>
           </div>
           <div class="stats-row">
-            <span>All-Time Top Speed</span>
-            <span id="statTopSpeed" style="font-weight:900;color:var(--ara-amber);">0.0 KM/H</span>
+            <span>Best Race Time</span>
+            <span id="sumBestTimeVal" style="font-weight:900;color:var(--cr-gold);">--.-s</span>
           </div>
         </div>
 
-          <div class="btn-stack">
-          <button id="summaryActionBtn" type="button" class="btn-primary">Continue / Play Again</button>
+        <div class="btn-stack">
+          <button id="summaryPrimaryBtn" type="button" class="btn-primary">Race Again</button>
           <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
-          <button id="restartFromSummaryBtn" type="button" class="btn-secondary">&larr; Back to Start</button>
         </div>
       </div>
     </div>
@@ -1138,73 +981,34 @@
 
   <script>
     /* ========================================================================
-       10 NATIONS ROSTER, DRIVER PRESETS, FORMATS & TRACK ENVIRONMENTS
+       TRACK, AI DIFFICULTY & FORMAT CONSTANTS + PERSISTENT STATS SCHEMA
        ======================================================================== */
-    const ARA_NATIONS_10 = [
-      { code: 'BAN', name: 'Bangladesh', primary: '#10b981', secondary: '#065f46', kit: '#0a7d3b' },
-      { code: 'JPN', name: 'Japan', primary: '#ef4444', secondary: '#991b1b', kit: '#dc2626' },
-      { code: 'GER', name: 'Germany', primary: '#f59e0b', secondary: '#1e293b', kit: '#0f172a' },
-      { code: 'ITA', name: 'Italy', primary: '#22c55e', secondary: '#15803d', kit: '#15803d' },
-      { code: 'GBR', name: 'Great Britain', primary: '#3b82f6', secondary: '#1e3a8a', kit: '#1d4ed8' },
-      { code: 'USA', name: 'USA', primary: '#60a5fa', secondary: '#b91c1c', kit: '#1d4ed8' },
-      { code: 'BRA', name: 'Brazil', primary: '#facc15', secondary: '#15803d', kit: '#15803d' },
-      { code: 'FRA', name: 'France', primary: '#38bdf8', secondary: '#1d4ed8', kit: '#2563eb' },
-      { code: 'KOR', name: 'South Korea', primary: '#f43f5e', secondary: '#1e3a8a', kit: '#1d4ed8' },
-      { code: 'IND', name: 'India', primary: '#fb923c', secondary: '#c2410c', kit: '#ea580c' }
-    ];
-
-    const ARA_DRIVER_PRESETS = [
-      { name: 'RASHID KHAN', nation: 'BAN', badge: 1 },
-      { name: 'HARUTO SATO', nation: 'JPN', badge: 7 },
-      { name: 'LUKAS WEBER', nation: 'GER', badge: 11 },
-      { name: 'MARCO ROSSI', nation: 'ITA', badge: 16 },
-      { name: 'LIAM VANCE', nation: 'GBR', badge: 44 },
-      { name: 'GABRIEL SILVA', nation: 'BRA', badge: 10 }
-    ];
-
-    const TRACK_ENVIRONMENTS = {
-      EMERALD: {
-        offroadA: '#0b4724',
-        offroadB: '#08381c',
-        asphalt: '#1e293b',
-        kerbA: '#ef4444',
-        kerbB: '#f8fafc',
-        ambientOverlay: 'rgba(16, 185, 129, 0.04)',
-        headlights: false
-      },
-      SUNSET: {
-        offroadA: '#5c2d16',
-        offroadB: '#47210f',
-        asphalt: '#27272a',
-        kerbA: '#f59e0b',
-        kerbB: '#fffbeb',
-        ambientOverlay: 'rgba(245, 158, 11, 0.14)',
-        headlights: false
-      },
-      NIGHT: {
-        offroadA: '#061c12',
-        offroadB: '#04140d',
-        asphalt: '#111827',
-        kerbA: '#10b981',
-        kerbB: '#fbbf24',
-        ambientOverlay: 'rgba(2, 6, 23, 0.36)',
-        headlights: true
-      }
+    const TRACK_LENGTH = 2600;
+    const AI_DIFFICULTY_PROFILES = {
+      ROOKIE: { label: 'Rookie', speedFactor: 0.78, steerGain: 1.75 },
+      PRO: { label: 'Pro', speedFactor: 0.89, steerGain: 2.25 },
+      ACE: { label: 'Ace', speedFactor: 0.99, steerGain: 2.75 }
     };
-
-    const ARA_STATS_KEY = 'car_racing_arcade_stats_v1';
+    const FORMAT_CONFIG = {
+      '3_LAPS_SPRINT': { label: '3 Laps Sprint', targetLaps: 3, timeLimitSec: null },
+      '5_LAPS_GP': { label: '5 Laps Grand Prix', targetLaps: 5, timeLimitSec: null },
+      'TIME_ATTACK': { label: 'Time Attack', targetLaps: 99, timeLimitSec: 65 }
+    };
+    const TRACK_PROFILES = {
+      CLUB_CIRCUIT: { label: 'Club Circuit', curveAmp: 0.24, curveFreq: 0.0042, speedScale: 1.0 },
+      EMERALD_GP: { label: 'Emerald GP', curveAmp: 0.34, curveFreq: 0.0056, speedScale: 1.04 },
+      NIGHT_SPEEDWAY: { label: 'Night Speedway', curveAmp: 0.28, curveFreq: 0.0048, speedScale: 1.08 }
+    };
+    const CR_STATS_KEY = 'autrobook_car_racing_stats_v1';
 
     /* ========================================================================
-       WEB AUDIO API MOTORSPORT SOUND SYNTHESIZER
+       WEB AUDIO API ENGINE & NITRO / COLLISION SYNTHESIZER
        ======================================================================== */
-    class ARAAudioSynth {
+    class CRAudioSynth {
       constructor() {
         this.ctx = null;
         this.muted = false;
-        this.engineOsc = null;
-        this.engineGain = null;
-        this.screechOsc = null;
-        this.screechGain = null;
+        this.lastNitroTick = 0;
       }
 
       unlock() {
@@ -1216,256 +1020,167 @@
           if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume().catch(() => {});
           }
-          if (this.ctx && !this.engineOsc) {
-            this.engineOsc = this.ctx.createOscillator();
-            this.engineGain = this.ctx.createGain();
-            this.engineOsc.type = 'sawtooth';
-            this.engineOsc.frequency.setValueAtTime(65, this.ctx.currentTime);
-            this.engineGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
-            this.engineOsc.connect(this.engineGain);
-            this.engineGain.connect(this.ctx.destination);
-            this.engineOsc.start();
-
-            this.screechOsc = this.ctx.createOscillator();
-            this.screechGain = this.ctx.createGain();
-            this.screechOsc.type = 'triangle';
-            this.screechOsc.frequency.setValueAtTime(780, this.ctx.currentTime);
-            this.screechGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
-            this.screechOsc.connect(this.screechGain);
-            this.screechGain.connect(this.ctx.destination);
-            this.screechOsc.start();
-          }
         } catch (_e) {}
       }
 
       toggleMute() {
         this.muted = !this.muted;
-        if (this.muted) this.silenceContinuous();
         return this.muted;
-      }
-
-      silenceContinuous() {
-        if (!this.ctx) return;
-        try {
-          const now = this.ctx.currentTime;
-          if (this.engineGain) this.engineGain.gain.setTargetAtTime(0.0001, now, 0.04);
-          if (this.screechGain) this.screechGain.gain.setTargetAtTime(0.0001, now, 0.04);
-        } catch (_e) {}
       }
 
       playClick() {
         if (this.muted || !this.ctx) return;
-        try {
-          const now = this.ctx.currentTime;
-          const osc = this.ctx.createOscillator();
-          const g = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(660, now);
-          g.gain.setValueAtTime(0.08, now);
-          g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-          osc.connect(g);
-          g.connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.055);
-        } catch (_e) {}
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(560, now);
+        g.gain.setValueAtTime(0.06, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
       }
 
-      updateEngineAndDrift(speedRatio, isBoosting, isDrifting, activeRace) {
-        if (!this.ctx || !this.engineOsc || !this.engineGain) return;
-        try {
-          const now = this.ctx.currentTime;
-          if (this.muted || !activeRace) {
-            this.engineGain.gain.setTargetAtTime(0.0001, now, 0.05);
-            if (this.screechGain) this.screechGain.gain.setTargetAtTime(0.0001, now, 0.05);
-            return;
-          }
-          const rpmFreq = 58 + Math.min(1.4, speedRatio) * 145 + (isBoosting ? 42 : 0);
-          this.engineOsc.frequency.setTargetAtTime(rpmFreq, now, 0.05);
-          this.engineGain.gain.setTargetAtTime(0.025 + Math.min(0.6, speedRatio) * 0.03, now, 0.06);
-
-          if (this.screechOsc && this.screechGain) {
-            const targetScreech = isDrifting ? 0.022 : 0.0001;
-            this.screechOsc.frequency.setTargetAtTime(720 + speedRatio * 240, now, 0.05);
-            this.screechGain.gain.setTargetAtTime(targetScreech, now, 0.05);
-          }
-        } catch (_e) {}
-      }
-
-      playCollisionThud(intensity = 0.7) {
+      playNitroBurst() {
         if (this.muted || !this.ctx) return;
-        try {
-          const now = this.ctx.currentTime;
-          const osc = this.ctx.createOscillator();
-          const g = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(135, now);
-          osc.frequency.exponentialRampToValueAtTime(38, now + 0.16);
-          g.gain.setValueAtTime(Math.min(0.26, 0.12 + intensity * 0.14), now);
-          g.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
-          osc.connect(g);
-          g.connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.18);
-        } catch (_e) {}
+        const now = this.ctx.currentTime;
+        if (now - this.lastNitroTick < 0.14) return;
+        this.lastNitroTick = now;
+
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(340, now + 0.11);
+        g.gain.setValueAtTime(0.075, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
       }
 
       playLapChime() {
         if (this.muted || !this.ctx) return;
-        try {
-          const now = this.ctx.currentTime;
-          [659.25, 880].forEach((freq, idx) => {
-            const osc = this.ctx.createOscillator();
-            const g = this.ctx.createGain();
-            osc.type = 'triangle';
-            const t0 = now + idx * 0.08;
-            osc.frequency.setValueAtTime(freq, t0);
-            g.gain.setValueAtTime(0.15, t0);
-            g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18);
-            osc.connect(g);
-            g.connect(this.ctx.destination);
-            osc.start(t0);
-            osc.stop(t0 + 0.19);
-          });
-        } catch (_e) {}
-      }
-
-      playCountdownBeep(isGo = false) {
-        if (this.muted || !this.ctx) return;
-        try {
-          const now = this.ctx.currentTime;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
           const osc = this.ctx.createOscillator();
           const g = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(isGo ? 880 : 440, now);
-          g.gain.setValueAtTime(0.15, now);
-          g.gain.exponentialRampToValueAtTime(0.001, now + (isGo ? 0.25 : 0.12));
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.07;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.12, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18);
           osc.connect(g);
           g.connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + (isGo ? 0.26 : 0.13));
-        } catch (_e) {}
+          osc.start(t0);
+          osc.stop(t0 + 0.19);
+        });
+      }
+
+      playBump() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(135, now);
+        osc.frequency.exponentialRampToValueAtTime(62, now + 0.14);
+        g.gain.setValueAtTime(0.11, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
       }
 
       playFinishFanfare() {
         if (this.muted || !this.ctx) return;
-        this.silenceContinuous();
-        try {
-          const now = this.ctx.currentTime;
-          [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
-            const osc = this.ctx.createOscillator();
-            const g = this.ctx.createGain();
-            osc.type = 'triangle';
-            const t0 = now + idx * 0.1;
-            osc.frequency.setValueAtTime(freq, t0);
-            g.gain.setValueAtTime(0.16, t0);
-            g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
-            osc.connect(g);
-            g.connect(this.ctx.destination);
-            osc.start(t0);
-            osc.stop(t0 + 0.32);
-          });
-          this.playApplauseBurst(now + 0.25);
-        } catch (_e) {}
-      }
-
-      playApplauseBurst(startTime) {
-        if (this.muted || !this.ctx) return;
-        try {
-          const duration = 0.7;
-          const sampleCount = Math.floor(this.ctx.sampleRate * duration);
-          const buffer = this.ctx.createBuffer(1, sampleCount, this.ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < sampleCount; i++) {
-            const env = Math.sin((i / sampleCount) * Math.PI);
-            data[i] = (Math.random() * 2 - 1) * env * 0.2;
-          }
-          const src = this.ctx.createBufferSource();
-          src.buffer = buffer;
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(1650, startTime);
-          filter.Q.setValueAtTime(0.7, startTime);
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.16, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-          src.connect(filter);
-          filter.connect(gain);
-          gain.connect(this.ctx.destination);
-          src.start(startTime);
-        } catch (_e) {}
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.1;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.15, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.32);
+        });
       }
     }
 
     /* ========================================================================
-       CAR RACING ARCADE ENGINE (PHYSICS, CHECKPOINTS, AI, RADAR & STATS)
+       CAR RACING ARCADE ENGINE (1P VS AI / 2P LOCAL, NITRO, RADAR, MINI-MAP)
        ======================================================================== */
-    class ARAGrandPrixEngine {
+    class CarRacingEngine {
       constructor() {
         this.canvas = document.getElementById('raceCanvas');
         this.ctx = this.canvas.getContext('2d');
-        this.audio = new ARAAudioSynth();
+        this.audio = new CRAudioSynth();
 
-        this.mode = 'AI_CLUB';
-        this.formatKey = 'LAPS_3';
-        this.trackKey = 'EMERALD';
+        this.mode = '1P_VS_AI'; // 1P_VS_AI, 2P_LOCAL
+        this.aiDifficulty = 'PRO'; // ROOKIE, PRO, ACE
+        this.format = '3_LAPS_SPRINT'; // 3_LAPS_SPRINT, 5_LAPS_GP, TIME_ATTACK
+        this.track = 'CLUB_CIRCUIT'; // CLUB_CIRCUIT, EMERALD_GP, NIGHT_SPEEDWAY
 
         const saved = this.loadStats();
         this.stats = {
           played: saved.played || 0,
           wins: saved.wins || 0,
-          podiums: saved.podiums || 0,
-          bestLapMs: saved.bestLapMs || null,
-          topSpeedKmh: saved.topSpeedKmh || 0
+          topSpeedKmh: saved.topSpeedKmh || 0,
+          bestTimeSec: saved.bestTimeSec ?? null
         };
         this.countedRace = false;
 
-        this.d1Meta = { name: 'RASHID KHAN', nation: ARA_NATIONS_10[0], badge: 1 };
-        this.d2Meta = { name: 'HARUTO SATO', nation: ARA_NATIONS_10[1], badge: 7 };
-
-        this.canvasW = 640;
-        this.canvasH = 340;
-        this.dpr = 1;
-        this.trackPoints = [];
-        this.trackHalfWidth = 34;
-
         this.cars = [];
         this.particles = [];
-        this.tireMarks = [];
-
-        this.countdownTimer = 0;
-        this.lastBeepSecond = 4;
-        this.raceTimeMs = 0;
-        this.timeTrialLimitMs = 120000;
-        this.eliminationTimer = 18;
+        this.raceTimeSec = 0;
+        this.peakSessionSpeedKmh = 0;
         this.raceFinished = false;
 
-        this.speedKmh = 0;
-        this.peakSpeedKmh = 0;
-        this.lastFrameTime = 0;
+        this.canvasW = 360;
+        this.canvasH = 420;
+        this.dpr = 1;
 
         this.introActive = true;
         this.setupOpen = false;
         this.shotModalOpen = false;
         this.paused = false;
+        this.lastFrameTime = 0;
 
-        this.keys = {};
-        this.touchInput = { left: false, right: false, gas: false, brake: false, nitro: false };
+        this.keys = {
+          left: false,
+          right: false,
+          up: false,
+          down: false,
+          nitro: false,
+          p2Left: false,
+          p2Right: false,
+          p2Up: false,
+          p2Down: false,
+          p2Nitro: false
+        };
 
         this.renderAutrobookCarRacingLogo();
         this.syncThemeIcon();
-        this.populateSetupUI();
+        this.syncAiDifficultyBoxVisibility();
         this.bindEvents();
-        this.resizeCircuit();
-        this.initRaceState();
-        this.refreshHUD();
+        this.resizeCanvas();
+        this.resetRaceState();
         this.startIntro();
       }
 
       renderAutrobookCarRacingLogo() {
-        const logoSrc = 'autrobook-car-racing.png';
-        const badges = document.querySelectorAll('.js-car-logo-badge');
+        const logoSrc = 'Autrobook-car-racing.png';
+        const badges = document.querySelectorAll('.js-cr-logo-badge');
         badges.forEach((badge) => {
-          const img = badge.querySelector('.js-car-logo-img');
+          const img = badge.querySelector('.js-cr-logo-img');
           if (!img) return;
 
           const showFallback = () => badge.classList.add('use-fallback');
@@ -1485,7 +1200,7 @@
 
       loadStats() {
         try {
-          const raw = localStorage.getItem(ARA_STATS_KEY);
+          const raw = localStorage.getItem(CR_STATS_KEY);
           return raw ? JSON.parse(raw) : {};
         } catch (_e) {
           return {};
@@ -1494,16 +1209,8 @@
 
       saveStats() {
         try {
-          localStorage.setItem(ARA_STATS_KEY, JSON.stringify(this.stats));
+          localStorage.setItem(CR_STATS_KEY, JSON.stringify(this.stats));
         } catch (_e) {}
-      }
-
-      formatLapTime(ms) {
-        if (!ms || !Number.isFinite(ms)) return '--:--.-';
-        const totalSec = ms / 1000;
-        const mins = Math.floor(totalSec / 60);
-        const secs = (totalSec % 60).toFixed(1).padStart(4, '0');
-        return `${mins}:${secs}`;
       }
 
       syncThemeIcon() {
@@ -1512,12 +1219,18 @@
         document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
       }
 
+      syncAiDifficultyBoxVisibility() {
+        const aiBox = document.getElementById('aiDiffBox');
+        if (aiBox) {
+          aiBox.style.display = this.mode === '1P_VS_AI' ? 'block' : 'none';
+        }
+      }
+
       toggleTheme() {
         const isLight = document.body.dataset.theme === 'light' ||
           (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
         document.body.dataset.theme = isLight ? 'dark' : 'light';
         this.syncThemeIcon();
-        this.renderCircuit();
       }
 
       showToast(msg) {
@@ -1528,560 +1241,326 @@
         this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
       }
 
-      getTargetLaps() {
-        if (this.formatKey === 'LAPS_5') return 5;
-        if (this.formatKey === 'LAPS_3') return 3;
-        return 99;
-      }
-
-      populateSetupUI() {
-        const s1 = document.getElementById('d1NationSel');
-        const s2 = document.getElementById('d2NationSel');
-        s1.innerHTML = '';
-        s2.innerHTML = '';
-
-        ARA_NATIONS_10.forEach((nat, idx) => {
-          const o1 = document.createElement('option');
-          o1.value = nat.code;
-          o1.textContent = `${nat.code} • ${nat.name}`;
-          if (idx === 0) o1.selected = true;
-          s1.appendChild(o1);
-
-          const o2 = document.createElement('option');
-          o2.value = nat.code;
-          o2.textContent = `${nat.code} • ${nat.name}`;
-          if (idx === 1) o2.selected = true;
-          s2.appendChild(o2);
-        });
-
-        const buildStarRow = (containerId, isD1) => {
-          const wrap = document.getElementById(containerId);
-          wrap.innerHTML = '';
-          ARA_DRIVER_PRESETS.forEach((st) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'star-chip';
-            btn.textContent = `${st.name} (${st.nation})`;
-            btn.addEventListener('click', () => {
-              if (isD1) {
-                document.getElementById('d1NameInp').value = st.name;
-                document.getElementById('d1NationSel').value = st.nation;
-                document.getElementById('d1BadgeInp').value = String(st.badge);
-              } else {
-                document.getElementById('d2NameInp').value = st.name;
-                document.getElementById('d2NationSel').value = st.nation;
-                document.getElementById('d2BadgeInp').value = String(st.badge);
-              }
-              this.audio.unlock();
-              this.audio.playClick();
-            });
-            wrap.appendChild(btn);
-          });
-        };
-
-        buildStarRow('d1StarRow', true);
-        buildStarRow('d2StarRow', false);
-      }
-
-      getNation(code) {
-        return ARA_NATIONS_10.find((n) => n.code === code) || ARA_NATIONS_10[0];
-      }
-
-      buildClosedCircuitSpline(w, h) {
-        const cx = w * 0.5;
-        const cy = h * 0.51;
-        const rx = w * 0.37;
-        const ry = h * 0.34;
-        const rawControl = [
-          { x: cx - rx * 0.85, y: cy - ry * 0.85 },
-          { x: cx, y: cy - ry * 1.05 },
-          { x: cx + rx * 0.92, y: cy - ry * 0.78 },
-          { x: cx + rx * 1.05, y: cy + ry * 0.05 },
-          { x: cx + rx * 0.58, y: cy + ry * 0.95 },
-          { x: cx - rx * 0.08, y: cy + ry * 0.52 },
-          { x: cx - rx * 0.78, y: cy + ry * 0.96 },
-          { x: cx - rx * 1.05, y: cy + ry * 0.08 }
-        ];
-
-        const samples = [];
-        const stepsPerSeg = 24;
-        const n = rawControl.length;
-        for (let i = 0; i < n; i++) {
-          const p0 = rawControl[(i - 1 + n) % n];
-          const p1 = rawControl[i];
-          const p2 = rawControl[(i + 1) % n];
-          const p3 = rawControl[(i + 2) % n];
-          for (let s = 0; s < stepsPerSeg; s++) {
-            const t = s / stepsPerSeg;
-            const t2 = t * t;
-            const t3 = t2 * t;
-            const x = 0.5 * (
-              (2 * p1.x) +
-              (-p0.x + p2.x) * t +
-              (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
-              (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
-            );
-            const y = 0.5 * (
-              (2 * p1.y) +
-              (-p0.y + p2.y) * t +
-              (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
-              (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
-            );
-            samples.push({ x, y });
-          }
-        }
-        return samples;
-      }
-
-      resizeCircuit() {
-        const stage = document.getElementById('circuitStage').getBoundingClientRect();
-        const w = Math.floor(Math.max(300, stage.width - 4));
-        const h = Math.floor(Math.max(185, stage.height - 4));
-
+      resizeCanvas() {
+        const stage = document.getElementById('boardStage').getBoundingClientRect();
+        const w = Math.max(240, Math.floor(stage.width - 6));
+        const h = Math.max(240, Math.floor(stage.height - 6));
         this.canvasW = w;
         this.canvasH = h;
         this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-        this.canvas.style.width = `${w}px`;
-        this.canvas.style.height = `${h}px`;
         this.canvas.width = Math.floor(w * this.dpr);
         this.canvas.height = Math.floor(h * this.dpr);
         this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-
-        this.trackHalfWidth = Math.max(22, Math.min(w, h) * 0.085);
-        this.trackPoints = this.buildClosedCircuitSpline(w, h);
-
-        this.renderCircuit();
       }
 
-      nearestTrackInfo(x, y) {
-        let bestIdx = 0;
-        let bestDistSq = Infinity;
-        const pts = this.trackPoints;
-        for (let i = 0; i < pts.length; i++) {
-          const dx = x - pts[i].x;
-          const dy = y - pts[i].y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < bestDistSq) {
-            bestDistSq = d2;
-            bestIdx = i;
-          }
-        }
-        const curr = pts[bestIdx];
-        const next = pts[(bestIdx + 1) % pts.length];
-        const tangentAngle = Math.atan2(next.y - curr.y, next.x - curr.x);
-        return {
-          idx: bestIdx,
-          dist: Math.sqrt(bestDistSq),
-          tangentAngle,
-          center: curr
-        };
-      }
+      resetRaceState() {
+        const aiProfile = AI_DIFFICULTY_PROFILES[this.aiDifficulty] || AI_DIFFICULTY_PROFILES.PRO;
+        const aiTop = 640 * aiProfile.speedFactor;
 
-      createCarEntity(idx, meta, isAI, aiSkill, waypointIdx, laneOffset) {
-        const pts = this.trackPoints;
-        const p = pts[waypointIdx % pts.length];
-        const nxt = pts[(waypointIdx + 1) % pts.length];
-        const heading = Math.atan2(nxt.y - p.y, nxt.x - p.x);
-        const perpX = -Math.sin(heading);
-        const perpY = Math.cos(heading);
-
-        return {
-          idx,
-          meta: { ...meta },
-          isAI,
-          aiSkill,
-          x: p.x + perpX * laneOffset,
-          y: p.y + perpY * laneOffset,
-          vx: 0,
-          vy: 0,
-          angle: heading,
-          speed: 0,
-          nitro: 100,
-          isBoosting: false,
-          isDrifting: false,
-          onTrack: true,
-          lap: 1,
-          checkpointsHit: [false, false, false],
-          waypointIdx,
-          laneOffset,
-          lapStartMs: 0,
-          bestLapMs: null,
-          totalProgress: 0,
-          eliminated: false
-        };
-      }
-
-      initRaceState() {
-        if (!this.trackPoints.length) this.resizeCircuit();
-        this.raceFinished = false;
-        this.countedRace = false;
-        this.raceTimeMs = 0;
-        this.eliminationTimer = 18;
-        this.countdownTimer = 2.4;
-        this.lastBeepSecond = 4;
-        this.peakSpeedKmh = 0;
-        this.speedKmh = 0;
-        this.particles = [];
-        this.tireMarks = [];
-
-        const aiSkill = this.mode === 'AI_PRO' ? 1.0 : this.mode === 'AI_CLUB' ? 0.88 : 0.74;
         this.cars = [
-          this.createCarEntity(0, this.d1Meta, false, 1.0, 2, -this.trackHalfWidth * 0.34),
-          this.createCarEntity(1, this.d2Meta, this.mode !== 'LOCAL_2P', aiSkill, 0, this.trackHalfWidth * 0.34)
+          {
+            id: 'P1',
+            label: 'P1',
+            isHuman: true,
+            laneOffset: this.mode === '2P_LOCAL' ? -0.35 : -0.25,
+            speed: 0,
+            maxSpeed: 640,
+            nitro: 100,
+            totalDist: 0,
+            lap: 1,
+            color: '#10b981',
+            accent: '#fbbf24',
+            aiPhase: 0,
+            aiBaseSpeed: aiTop
+          },
+          {
+            id: this.mode === '2P_LOCAL' ? 'P2' : 'AI1',
+            label: this.mode === '2P_LOCAL' ? 'P2' : 'AI-1',
+            isHuman: this.mode === '2P_LOCAL',
+            laneOffset: this.mode === '2P_LOCAL' ? 0.35 : 0.25,
+            speed: 0,
+            maxSpeed: this.mode === '2P_LOCAL' ? 640 : aiTop,
+            nitro: 100,
+            totalDist: 0,
+            lap: 1,
+            color: this.mode === '2P_LOCAL' ? '#fbbf24' : '#38bdf8',
+            accent: '#ffffff',
+            aiPhase: 1.1,
+            aiBaseSpeed: aiTop * 0.96
+          },
+          {
+            id: 'AI2',
+            label: 'AI-2',
+            isHuman: false,
+            laneOffset: -0.58,
+            speed: 0,
+            maxSpeed: aiTop * 0.94,
+            nitro: 100,
+            totalDist: 0,
+            lap: 1,
+            color: '#f59e0b',
+            accent: '#062112',
+            aiPhase: 2.4,
+            aiBaseSpeed: aiTop * 0.92
+          },
+          {
+            id: 'AI3',
+            label: 'AI-3',
+            isHuman: false,
+            laneOffset: 0.58,
+            speed: 0,
+            maxSpeed: aiTop * 0.9,
+            nitro: 100,
+            totalDist: 0,
+            lap: 1,
+            color: '#a78bfa',
+            accent: '#ffffff',
+            aiPhase: 3.7,
+            aiBaseSpeed: aiTop * 0.88
+          }
         ];
 
+        this.particles = [];
+        this.raceTimeSec = 0;
+        this.peakSessionSpeedKmh = 0;
+        this.raceFinished = false;
+        this.countedRace = false;
         this.refreshHUD();
-        this.renderCircuit();
       }
 
-      spawnSparks(x, y, color, count = 4) {
-        for (let i = 0; i < count; i++) {
-          const ang = Math.random() * Math.PI * 2;
-          const spd = 25 + Math.random() * 55;
-          this.particles.push({
-            x,
-            y,
-            vx: Math.cos(ang) * spd,
-            vy: Math.sin(ang) * spd,
-            life: 0.25,
-            color,
-            size: 2.2
-          });
-        }
-      }
-
-      addTireMark(x, y, angle) {
-        this.tireMarks.push({ x, y, angle, life: 2.2 });
-        if (this.tireMarks.length > 260) {
-          this.tireMarks.shift();
-        }
-      }
-
-      stepCarPhysics(car, dt, canMove) {
-        if (car.eliminated) return;
-
-        const info = this.nearestTrackInfo(car.x, car.y);
-        car.onTrack = info.dist <= this.trackHalfWidth * 1.18;
-
-        let throttle = 0;
-        let brake = 0;
-        let steerInput = 0;
-        let wantNitro = false;
-
-        if (canMove) {
-          if (car.idx === 0) {
-            if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.touchInput.gas) throttle = 1;
-            if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.touchInput.brake) brake = 1;
-            if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.touchInput.left) steerInput -= 1;
-            if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.touchInput.right) steerInput += 1;
-            if (this.keys['Space'] || this.keys['ShiftLeft'] || this.touchInput.nitro) wantNitro = true;
-          } else if (this.mode === 'LOCAL_2P') {
-            if (this.keys['KeyI']) throttle = 1;
-            if (this.keys['KeyK']) brake = 1;
-            if (this.keys['KeyJ']) steerInput -= 1;
-            if (this.keys['KeyL']) steerInput += 1;
-            if (this.keys['Enter'] || this.keys['ShiftRight']) wantNitro = true;
-          } else if (car.isAI) {
-            const lookAhead = (info.idx + 14) % this.trackPoints.length;
-            const tgt = this.trackPoints[lookAhead];
-            const desiredAngle = Math.atan2(tgt.y - car.y, tgt.x - car.x);
-            let diff = desiredAngle - car.angle;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            steerInput = Math.max(-1, Math.min(1, diff * 2.4));
-            throttle = Math.abs(diff) > 0.75 ? 0.68 : 1.0;
-            wantNitro = Math.abs(diff) < 0.25 && car.nitro > 35 && Math.random() < 0.08;
-          }
-        }
-
-        if (wantNitro && car.nitro > 4 && throttle > 0) {
-          car.isBoosting = true;
-          car.nitro = Math.max(0, car.nitro - dt * 28);
-        } else {
-          car.isBoosting = false;
-          car.nitro = Math.min(100, car.nitro + dt * 11);
-        }
-
-        const baseMaxSpeed = Math.min(this.canvasW, this.canvasH) * (car.isAI ? 0.64 * car.aiSkill : 0.72);
-        const surfaceMult = car.onTrack ? 1.0 : 0.66;
-        const boostMult = car.isBoosting ? 1.32 : 1.0;
-        const maxSpeed = baseMaxSpeed * surfaceMult * boostMult;
-
-        const accelRate = baseMaxSpeed * 1.45 * (car.isBoosting ? 1.45 : 1.0);
-        const brakeRate = baseMaxSpeed * 1.85;
-
-        if (throttle > 0) {
-          car.speed = Math.min(maxSpeed, car.speed + throttle * accelRate * dt);
-        } else if (brake > 0) {
-          car.speed = Math.max(-maxSpeed * 0.35, car.speed - brake * brakeRate * dt);
-        } else {
-          car.speed *= Math.pow(0.28, dt);
-          if (Math.abs(car.speed) < 1.5) car.speed = 0;
-        }
-
-        const speedFactor = Math.min(1, Math.abs(car.speed) / Math.max(40, baseMaxSpeed * 0.45));
-        const turnRate = 3.25 * (0.35 + 0.65 * speedFactor) * (car.speed >= -1 ? 1 : -1);
-        car.angle += steerInput * turnRate * dt;
-
-        const forwardX = Math.cos(car.angle);
-        const forwardY = Math.sin(car.angle);
-        const targetVx = forwardX * car.speed;
-        const targetVy = forwardY * car.speed;
-
-        const grip = Math.abs(steerInput) > 0.4 && Math.abs(car.speed) > baseMaxSpeed * 0.55 ? 5.2 : 11.5;
-        car.vx += (targetVx - car.vx) * Math.min(1, grip * dt);
-        car.vy += (targetVy - car.vy) * Math.min(1, grip * dt);
-
-        const lateralSlip = Math.hypot(car.vx - targetVx, car.vy - targetVy);
-        car.isDrifting = lateralSlip > baseMaxSpeed * 0.16 && car.onTrack;
-
-        car.x = Math.max(12, Math.min(this.canvasW - 12, car.x + car.vx * dt));
-        car.y = Math.max(12, Math.min(this.canvasH - 12, car.y + car.vy * dt));
-
-        if (car.isDrifting) {
-          this.addTireMark(car.x - forwardX * 8, car.y - forwardY * 8, car.angle);
-        }
-
-        if (car.isBoosting || car.isDrifting) {
-          const tailX = car.x - forwardX * 11;
-          const tailY = car.y - forwardY * 11;
-          this.spawnSparks(tailX, tailY, car.isBoosting ? '#fbbf24' : '#e2e8f0', 1);
-        }
-
-        const nPts = this.trackPoints.length;
-        const cp1 = Math.floor(nPts * 0.25);
-        const cp2 = Math.floor(nPts * 0.55);
-        const cp3 = Math.floor(nPts * 0.82);
-
-        if (Math.abs(info.idx - cp1) < 8) car.checkpointsHit[0] = true;
-        if (Math.abs(info.idx - cp2) < 8) car.checkpointsHit[1] = true;
-        if (Math.abs(info.idx - cp3) < 8) car.checkpointsHit[2] = true;
-
-        if (car.waypointIdx > nPts * 0.8 && info.idx < nPts * 0.2) {
-          if (car.checkpointsHit[0] && car.checkpointsHit[1] && car.checkpointsHit[2]) {
-            const lapDuration = this.raceTimeMs - car.lapStartMs;
-            if (car.lapStartMs > 0 && (!car.bestLapMs || lapDuration < car.bestLapMs)) {
-              car.bestLapMs = lapDuration;
-              if (car.idx === 0 && (!this.stats.bestLapMs || lapDuration < this.stats.bestLapMs)) {
-                this.stats.bestLapMs = lapDuration;
-                this.saveStats();
-              }
-            }
-            car.lapStartMs = this.raceTimeMs;
-            car.lap++;
-            car.checkpointsHit = [false, false, false];
-            if (car.idx === 0) {
-              this.audio.playLapChime();
-              this.showToast(`LAP ${car.lap}`);
-            }
-          }
-        }
-
-        car.waypointIdx = info.idx;
-        car.totalProgress = (car.lap - 1) * nPts + info.idx;
-
-        if (car.idx === 0) {
-          const liveKmh = Math.min(285, (Math.hypot(car.vx, car.vy) / Math.max(220, this.canvasW)) * 215);
-          this.speedKmh = Number(liveKmh.toFixed(1));
-          if (this.speedKmh > this.peakSpeedKmh) {
-            this.peakSpeedKmh = this.speedKmh;
-          }
-          if (this.speedKmh > this.stats.topSpeedKmh) {
-            this.stats.topSpeedKmh = this.speedKmh;
-          }
-        }
-      }
-
-      resolveCarCollisions() {
-        const c1 = this.cars[0];
-        const c2 = this.cars[1];
-        if (!c1 || !c2 || c1.eliminated || c2.eliminated) return;
-
-        const dx = c2.x - c1.x;
-        const dy = c2.y - c1.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = 18;
-        if (dist > 0 && dist < minDist) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const overlap = (minDist - dist) * 0.5;
-          c1.x -= nx * overlap;
-          c1.y -= ny * overlap;
-          c2.x += nx * overlap;
-          c2.y += ny * overlap;
-
-          c1.vx -= nx * 35;
-          c1.vy -= ny * 35;
-          c2.vx += nx * 35;
-          c2.vy += ny * 35;
-
-          this.spawnSparks((c1.x + c2.x) * 0.5, (c1.y + c2.y) * 0.5, '#fbbf24', 5);
-          this.audio.playCollisionThud(0.75);
-        }
-      }
-
-      evaluateRaceCompletion() {
-        if (this.raceFinished) return;
-        const c1 = this.cars[0];
-        const c2 = this.cars[1];
-        const targetLaps = this.getTargetLaps();
-
-        if (this.formatKey === 'LAPS_3' || this.formatKey === 'LAPS_5') {
-          if ((c1 && c1.lap > targetLaps) || (c2 && c2.lap > targetLaps)) {
-            this.concludeRace('CHECKERED FLAG!');
-          }
-        } else if (this.formatKey === 'TIME_120') {
-          if (this.raceTimeMs >= this.timeTrialLimitMs) {
-            this.concludeRace('TIME TRIAL COMPLETE!');
-          }
-        } else if (this.formatKey === 'ELIMINATION') {
-          if (this.eliminationTimer <= 0 && c1 && c2) {
-            const trailer = c1.totalProgress <= c2.totalProgress ? c1 : c2;
-            trailer.eliminated = true;
-            this.concludeRace(`${trailer.meta.name} ELIMINATED!`);
-          }
-        }
-      }
-
-      concludeRace(reason) {
-        if (this.raceFinished) return;
-        this.raceFinished = true;
-        this.speedKmh = 0;
-        this.audio.playFinishFanfare();
-
-        const c1 = this.cars[0];
-        const c2 = this.cars[1];
-        const p1Won = c1 && c2 ? c1.totalProgress >= c2.totalProgress : true;
-
-        if (!this.countedRace) {
-          this.countedRace = true;
-          this.stats.played++;
-          if (p1Won) {
-            this.stats.wins++;
-            this.stats.podiums++;
-          } else if (this.mode !== 'LOCAL_2P') {
-            this.stats.podiums++;
-          }
-          this.saveStats();
-        }
-
-        this.openSummaryModal(p1Won ? `${c1.meta.name} WINS!` : `${c2.meta.name} WINS!`, reason, true);
-      }
-
-      returnToGameStart() {
+      // Full hard reset back to initial intro/start state
+      hardResetToStart() {
         this.audio.unlock();
         this.audio.playClick();
-        this.audio.silenceContinuous();
 
-        this.keys = {};
-        this.touchInput = { left: false, right: false, gas: false, brake: false, nitro: false };
-
+        document.getElementById('setupModal').classList.remove('open');
+        document.getElementById('screenshotModal').classList.remove('open');
         document.getElementById('pauseModal').classList.remove('open');
         document.getElementById('summaryModal').classList.remove('open');
-        document.getElementById('screenshotModal').classList.remove('open');
 
         this.setupOpen = false;
         this.shotModalOpen = false;
         this.paused = true;
-        this.raceFinished = false;
+        this.lastFrameTime = 0;
 
-        this.initRaceState();
+        Object.keys(this.keys).forEach((k) => {
+          this.keys[k] = false;
+        });
+
+        this.resetRaceState();
+
         this.introActive = true;
-        const introEl = document.getElementById('araIntroScreen');
-        introEl.classList.remove('hidden');
+        const bar = document.getElementById('introBarFill');
+        if (bar) bar.style.width = '0%';
+        document.getElementById('crIntroScreen').classList.remove('hidden');
         this.startIntro();
       }
 
-      openSummaryModal(title, sub, isRaceEnd) {
-        document.getElementById('summaryTitle').textContent = title;
-        document.getElementById('summarySub').textContent = sub;
-        document.getElementById('statPlayedText').textContent = String(this.stats.played);
-        document.getElementById('statWinsText').textContent = String(this.stats.wins);
-        document.getElementById('statPodiumBestLap').textContent =
-          `${this.stats.podiums} • ${this.formatLapTime(this.stats.bestLapMs)}`;
-        document.getElementById('statTopSpeed').textContent = `${this.stats.topSpeedKmh.toFixed(1)} KM/H`;
-        document.getElementById('summaryActionBtn').textContent = isRaceEnd ? 'Play Again' : 'Resume Race';
-        document.getElementById('summaryActionBtn').dataset.mode = isRaceEnd ? 'RESTART' : 'RESUME';
+      spawnExhaustParticle(x, y, color) {
+        this.particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 48,
+          vy: 30 + Math.random() * 55,
+          life: 0.28,
+          maxLife: 0.28,
+          color,
+          radius: 2.5 + Math.random() * 2.5
+        });
+      }
+
+      getRankedCars() {
+        return this.cars.slice().sort((a, b) => b.totalDist - a.totalDist);
+      }
+
+      getPlayerRank(carIdx = 0) {
+        const ranked = this.getRankedCars();
+        const target = this.cars[carIdx];
+        const idx = ranked.findIndex((c) => c === target);
+        return idx === -1 ? 1 : idx + 1;
+      }
+
+      updateSimulation(dt) {
+        if (!this.countedRace) {
+          this.countedRace = true;
+          this.stats.played++;
+          this.saveStats();
+        }
+
+        this.raceTimeSec += dt;
+        const fmt = FORMAT_CONFIG[this.format] || FORMAT_CONFIG['3_LAPS_SPRINT'];
+        const trk = TRACK_PROFILES[this.track] || TRACK_PROFILES.CLUB_CIRCUIT;
+        const aiProfile = AI_DIFFICULTY_PROFILES[this.aiDifficulty] || AI_DIFFICULTY_PROFILES.PRO;
+
+        for (let i = 0; i < this.cars.length; i++) {
+          const car = this.cars[i];
+          let throttle = 0.86;
+          let steerDir = 0;
+          let wantsNitro = false;
+
+          if (car.id === 'P1') {
+            if (this.keys.up) throttle = 1.0;
+            else if (this.keys.down) throttle = -0.55;
+            else throttle = 0.85;
+            if (this.keys.left) steerDir -= 1;
+            if (this.keys.right) steerDir += 1;
+            wantsNitro = this.keys.nitro;
+          } else if (car.id === 'P2' && this.mode === '2P_LOCAL') {
+            if (this.keys.p2Up) throttle = 1.0;
+            else if (this.keys.p2Down) throttle = -0.55;
+            else throttle = 0.85;
+            if (this.keys.p2Left) steerDir -= 1;
+            if (this.keys.p2Right) steerDir += 1;
+            wantsNitro = this.keys.p2Nitro;
+          } else {
+            const targetLane = Math.sin(this.raceTimeSec * 0.9 + car.aiPhase) * 0.56;
+            const deltaLane = targetLane - car.laneOffset;
+            steerDir = Math.max(-1, Math.min(1, deltaLane * aiProfile.steerGain));
+            throttle = Math.min(1.0, (car.aiBaseSpeed * trk.speedScale) / Math.max(1, car.maxSpeed));
+            if (car.nitro > 45 && Math.sin(this.raceTimeSec * 1.7 + car.aiPhase) > 0.72) {
+              wantsNitro = true;
+            }
+          }
+
+          let boostFactor = 1.0;
+          if (wantsNitro && car.nitro > 1 && throttle > 0) {
+            boostFactor = 1.32;
+            car.nitro = Math.max(0, car.nitro - 38 * dt);
+            if (car.isHuman) {
+              this.audio.playNitroBurst();
+            }
+          } else {
+            car.nitro = Math.min(100, car.nitro + 14 * dt);
+          }
+
+          const desiredSpeed = throttle * car.maxSpeed * trk.speedScale * boostFactor;
+          const accelRate = throttle >= 0 ? 520 : 680;
+          if (car.speed < desiredSpeed) {
+            car.speed = Math.min(desiredSpeed, car.speed + accelRate * dt);
+          } else if (car.speed > desiredSpeed) {
+            car.speed = Math.max(desiredSpeed, car.speed - accelRate * dt);
+          }
+
+          const isDrifting = Math.abs(steerDir) > 0.25 && car.speed > 260;
+          const steerRate = isDrifting ? 1.55 : 1.35;
+          car.laneOffset += steerDir * steerRate * dt;
+          if (Math.abs(car.laneOffset) > 0.78) {
+            car.laneOffset = Math.sign(car.laneOffset) * 0.78;
+            car.speed *= 0.95;
+            if (car.isHuman) this.audio.playBump();
+          }
+
+          const prevLap = car.lap;
+          car.totalDist += Math.max(0, car.speed) * dt;
+          car.lap = Math.floor(car.totalDist / TRACK_LENGTH) + 1;
+
+          if (car.isHuman && car.lap > prevLap && !this.raceFinished) {
+            this.audio.playLapChime();
+            if (fmt.targetLaps < 90) {
+              this.showToast(`LAP ${Math.min(car.lap, fmt.targetLaps)} / ${fmt.targetLaps}`);
+            } else {
+              this.showToast(`LAP ${car.lap}`);
+            }
+          }
+
+          if (car.id === 'P1') {
+            const kmh = Math.round(car.speed * 0.34);
+            if (kmh > this.peakSessionSpeedKmh) this.peakSessionSpeedKmh = kmh;
+            if (kmh > this.stats.topSpeedKmh) this.stats.topSpeedKmh = kmh;
+          }
+
+          if (car.isHuman && fmt.targetLaps < 90 && car.lap > fmt.targetLaps) {
+            this.finishRace(`${car.label} CROSSED FINISH LINE!`);
+            return;
+          }
+        }
+
+        if (fmt.timeLimitSec && this.raceTimeSec >= fmt.timeLimitSec) {
+          this.finishRace('TIME ATTACK COMPLETE!');
+          return;
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+          if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        this.refreshHUD();
+      }
+
+      finishRace(reasonText = 'RACE COMPLETE!') {
+        if (this.raceFinished) return;
+        this.raceFinished = true;
+        this.audio.playFinishFanfare();
+
+        const p1Rank = this.getPlayerRank(0);
+        const fmt = FORMAT_CONFIG[this.format] || FORMAT_CONFIG['3_LAPS_SPRINT'];
+        const wonRace = fmt.timeLimitSec ? this.peakSessionSpeedKmh >= 175 : p1Rank === 1;
+
+        if (wonRace) {
+          this.stats.wins++;
+          if (this.stats.bestTimeSec === null || this.raceTimeSec < this.stats.bestTimeSec) {
+            this.stats.bestTimeSec = Number(this.raceTimeSec.toFixed(1));
+          }
+        }
+        this.saveStats();
+
+        document.getElementById('summaryTitle').textContent = wonRace ? 'VICTORY PODIUM!' : 'FINISH LINE!';
+        document.getElementById('summarySub').textContent = `${reasonText} • ${TRACK_PROFILES[this.track].label}`;
+        document.getElementById('sumPosTimeVal').textContent = `P${p1Rank} • ${this.raceTimeSec.toFixed(1)}s`;
+        document.getElementById('sumPlayedWinsVal').textContent = `${this.stats.played} • ${this.stats.wins}`;
+        document.getElementById('sumTopSpeedVal').textContent = `${this.peakSessionSpeedKmh} KM/H`;
+        document.getElementById('sumBestTimeVal').textContent =
+          this.stats.bestTimeSec !== null ? `${this.stats.bestTimeSec.toFixed(1)}s` : '--.-s';
+
         document.getElementById('summaryModal').classList.add('open');
       }
 
       /* ======================================================================
-         HUD, SCREENSHOT & INPUT EVENTS
+         HUD, SCREENSHOT, INTRO & INPUT EVENTS
          ====================================================================== */
       refreshHUD() {
-        const c1 = this.cars[0];
-        const c2 = this.cars[1];
-        const p1Ahead = c1 && c2 ? c1.totalProgress >= c2.totalProgress : true;
-        const posLabel = p1Ahead ? 'P1' : 'P2';
-        const targetLaps = this.getTargetLaps();
+        const p1 = this.cars[0] || { lap: 1, speed: 0, nitro: 100 };
+        const fmt = FORMAT_CONFIG[this.format] || FORMAT_CONFIG['3_LAPS_SPRINT'];
 
-        if (this.formatKey === 'TIME_120') {
-          const remSec = Math.max(0, Math.ceil((this.timeTrialLimitMs - this.raceTimeMs) / 1000));
-          document.getElementById('topPosBadge').textContent = `${posLabel} • ${remSec}S`;
+        if (fmt.timeLimitSec) {
+          const rem = Math.max(0, Math.ceil(fmt.timeLimitSec - this.raceTimeSec));
+          document.getElementById('lapPillVal').textContent = `${rem}s LEFT`;
         } else {
-          document.getElementById('topPosBadge').textContent =
-            `${posLabel} • LAP ${Math.min(targetLaps, c1 ? c1.lap : 1)}/${targetLaps}`;
+          const shownLap = Math.min(p1.lap, fmt.targetLaps);
+          document.getElementById('lapPillVal').textContent = `${shownLap} / ${fmt.targetLaps}`;
         }
 
-        const fmtMap = {
-          LAPS_3: '3 LAPS SPRINT',
-          LAPS_5: '5 LAPS GRAND PRIX',
-          TIME_120: 'TIME TRIAL (2 MIN)',
-          ELIMINATION: `ELIMINATION ${Math.max(0, Math.ceil(this.eliminationTimer))}S`
-        };
-        const modeMap = {
-          AI_CASUAL: 'CASUAL AI',
-          AI_CLUB: 'CLUB AI',
-          AI_PRO: 'PRO AI',
-          LOCAL_2P: '2P LOCAL'
-        };
-        const trkMap = {
-          EMERALD: 'EMERALD CIRCUIT',
-          SUNSET: 'SUNSET COASTAL TRACK',
-          NIGHT: 'NIGHT FLOODLIT GRAND PRIX'
-        };
-        document.getElementById('statusBannerText').textContent =
-          `${fmtMap[this.formatKey]} • ${modeMap[this.mode]} • ${trkMap[this.trackKey]}`;
+        const pos = this.getPlayerRank(0);
+        document.getElementById('posPillVal').textContent = `P${pos} / ${this.cars.length}`;
+        document.getElementById('speedPillVal').textContent = `${Math.round(p1.speed * 0.34)} KM/H`;
+        document.getElementById('nitroPillVal').textContent = `${Math.round(p1.nitro)}%`;
 
-        if (c1) {
-          document.getElementById('d1DisplayName').textContent = c1.meta.name;
-          const b1 = document.getElementById('d1BadgeNum');
-          b1.textContent = `#${String(c1.meta.badge).padStart(2, '0')}`;
-          b1.style.background = c1.meta.nation.kit;
-          document.getElementById('d1SubLine').textContent = `${c1.meta.nation.code} • LAP ${c1.lap}`;
-          document.getElementById('d1NitroTag').textContent = `NITRO ${Math.round(c1.nitro)}%`;
-        }
-
-        if (c2) {
-          document.getElementById('d2DisplayName').textContent = c2.meta.name;
-          const b2 = document.getElementById('d2BadgeNum');
-          b2.textContent = `#${String(c2.meta.badge).padStart(2, '0')}`;
-          b2.style.background = c2.meta.nation.kit;
-          document.getElementById('d2SubLine').textContent = `${c2.meta.nation.code} • LAP ${c2.lap}`;
-          document.getElementById('d2NitroTag').textContent = `NITRO ${Math.round(c2.nitro)}%`;
-        }
-
-        const mph = this.speedKmh * 0.621371;
-        const peakMph = this.peakSpeedKmh * 0.621371;
-        document.getElementById('radarKmhText').textContent = `${this.speedKmh.toFixed(1)} KM/H`;
-        document.getElementById('radarMphPeakText').textContent = `${mph.toFixed(1)} MPH • PK ${peakMph.toFixed(0)}`;
+        const modeLabel = this.mode === '2P_LOCAL'
+          ? '2P LOCAL'
+          : `1P VS AI (${this.aiDifficulty})`;
+        const fmtLabel = fmt.label.toUpperCase();
+        const trkLabel = TRACK_PROFILES[this.track].label.toUpperCase();
+        document.getElementById('statusSubRow').textContent = `${modeLabel} • ${fmtLabel} • ${trkLabel}`;
       }
 
       captureScreenshot() {
         this.audio.unlock();
-        this.audio.playLapChime();
+        this.audio.playClick();
 
         const flash = document.getElementById('shutterFlash');
         flash.classList.add('active');
         setTimeout(() => flash.classList.remove('active'), 160);
 
-        this.renderCircuit();
+        this.renderCanvas();
         try {
           const url = this.canvas.toDataURL('image/png');
           this.paused = true;
           this.shotModalOpen = true;
-          this.audio.silenceContinuous();
           document.getElementById('screenshotImg').src = url;
           const link = document.getElementById('downloadShotBtn');
           link.href = url;
@@ -2091,21 +1570,57 @@
         } catch (_e) {}
       }
 
+      startIntro() {
+        const dur = 1800;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('crIntroScreen').classList.add('hidden');
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      bindHoldButton(btnId, keyName) {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        const press = (e) => {
+          e.preventDefault();
+          this.audio.unlock();
+          this.keys[keyName] = true;
+          btn.classList.add('pressed');
+        };
+        const release = (e) => {
+          if (e) e.preventDefault();
+          this.keys[keyName] = false;
+          btn.classList.remove('pressed');
+        };
+        btn.addEventListener('pointerdown', press);
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointerleave', release);
+        btn.addEventListener('pointercancel', release);
+      }
+
       bindEvents() {
-        window.addEventListener('resize', () => this.resizeCircuit());
+        window.addEventListener('resize', () => this.resizeCanvas());
 
         const backLink = document.getElementById('backToCarRacingLink');
         if (backLink) {
           backLink.addEventListener('click', (e) => {
             e.preventDefault();
-            this.returnToGameStart();
-          });
-        }
-
-        const restartFromSummaryBtn = document.getElementById('restartFromSummaryBtn');
-        if (restartFromSummaryBtn) {
-          restartFromSummaryBtn.addEventListener('click', () => {
-            this.returnToGameStart();
+            this.hardResetToStart();
           });
         }
 
@@ -2113,7 +1628,6 @@
           window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
             if (!document.body.dataset.theme) {
               this.syncThemeIcon();
-              this.renderCircuit();
             }
           });
         }
@@ -2132,56 +1646,60 @@
           btn.addEventListener('click', () => {
             this.mode = btn.dataset.mode;
             document.querySelectorAll('#modeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.syncAiDifficultyBoxVisibility();
+          });
+        });
+
+        document.querySelectorAll('#aiDiffGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.aiDifficulty = btn.dataset.aidiff;
+            document.querySelectorAll('#aiDiffGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
           });
         });
 
         document.querySelectorAll('#formatGroup .choice-btn').forEach((btn) => {
           btn.addEventListener('click', () => {
-            this.formatKey = btn.dataset.fmt;
+            this.format = btn.dataset.format;
             document.querySelectorAll('#formatGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
           });
         });
 
         document.querySelectorAll('#trackGroup .choice-btn').forEach((btn) => {
           btn.addEventListener('click', () => {
-            this.trackKey = btn.dataset.trk;
+            this.track = btn.dataset.track;
+            document.body.dataset.track = this.track;
             document.querySelectorAll('#trackGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
-            this.renderCircuit();
           });
         });
 
         document.getElementById('startRaceBtn').addEventListener('click', () => {
           this.audio.unlock();
-          const n1 = (document.getElementById('d1NameInp').value || '').trim().toUpperCase();
-          const n2 = (document.getElementById('d2NameInp').value || '').trim().toUpperCase();
-          this.d1Meta.name = (n1 || 'RASHID KHAN').slice(0, 14);
-          this.d2Meta.name = (n2 || 'HARUTO SATO').slice(0, 14);
-          this.d1Meta.nation = this.getNation(document.getElementById('d1NationSel').value);
-          this.d2Meta.nation = this.getNation(document.getElementById('d2NationSel').value);
-          this.d1Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('d1BadgeInp').value, 10) || 1));
-          this.d2Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('d2BadgeInp').value, 10) || 7));
-
           document.getElementById('setupModal').classList.remove('open');
           this.setupOpen = false;
           this.paused = false;
           this.lastFrameTime = performance.now();
-          this.initRaceState();
+          this.resetRaceState();
         });
 
-        const bindTouch = (id, prop) => {
-          const el = document.getElementById(id);
-          el.addEventListener('pointerdown', (e) => {
-            e.preventDefault(); this.audio.unlock(); this.touchInput[prop] = true;
-          });
-          el.addEventListener('pointerup', () => { this.touchInput[prop] = false; });
-          el.addEventListener('pointerleave', () => { this.touchInput[prop] = false; });
-          el.addEventListener('pointercancel', () => { this.touchInput[prop] = false; });
-        };
-        bindTouch('steerLeftBtn', 'left');
-        bindTouch('steerRightBtn', 'right');
-        bindTouch('gasTouchBtn', 'gas');
-        bindTouch('brakeTouchBtn', 'brake');
-        bindTouch('nitroTouchBtn', 'nitro');
+        document.getElementById('statsFromSetupBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          document.getElementById('summaryTitle').textContent = 'CAREER STATISTICS';
+          document.getElementById('summarySub').textContent = 'Car Racing Arcade';
+          document.getElementById('sumPosTimeVal').textContent = `P${this.getPlayerRank(0)} • ${this.raceTimeSec.toFixed(1)}s`;
+          document.getElementById('sumPlayedWinsVal').textContent = `${this.stats.played} • ${this.stats.wins}`;
+          document.getElementById('sumTopSpeedVal').textContent = `${this.stats.topSpeedKmh} KM/H`;
+          document.getElementById('sumBestTimeVal').textContent =
+            this.stats.bestTimeSec !== null ? `${this.stats.bestTimeSec.toFixed(1)}s` : '--.-s';
+          document.getElementById('summaryPrimaryBtn').textContent = 'Close Stats';
+          document.getElementById('summaryPrimaryBtn').dataset.action = 'CLOSE_ONLY';
+          document.getElementById('summaryModal').classList.add('open');
+        });
+
+        this.bindHoldButton('steerLeftBtn', 'left');
+        this.bindHoldButton('steerRightBtn', 'right');
+        this.bindHoldButton('gasBtn', 'up');
+        this.bindHoldButton('brakeBtn', 'down');
+        this.bindHoldButton('nitroBtn', 'nitro');
 
         document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
 
@@ -2201,29 +1719,20 @@
         document.getElementById('pauseBtn').addEventListener('click', () => {
           if (this.introActive || this.setupOpen || this.shotModalOpen || this.raceFinished) return;
           this.paused = true;
-          this.audio.silenceContinuous();
           document.getElementById('pauseModal').classList.add('open');
         });
 
-        document.getElementById('resumeBtn').addEventListener('click', () => {
+        document.getElementById('resumeRaceBtn').addEventListener('click', () => {
           document.getElementById('pauseModal').classList.remove('open');
           this.paused = false;
           this.lastFrameTime = performance.now();
         });
 
-        document.getElementById('backFromPauseBtn').addEventListener('click', () => {
-          this.audio.unlock();
-          this.audio.playClick();
+        document.getElementById('restartRaceBtn').addEventListener('click', () => {
           document.getElementById('pauseModal').classList.remove('open');
           this.paused = false;
           this.lastFrameTime = performance.now();
-        });
-
-        document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
-          document.getElementById('pauseModal').classList.remove('open');
-          this.paused = false;
-          this.lastFrameTime = performance.now();
-          this.initRaceState();
+          this.resetRaceState();
         });
 
         document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
@@ -2235,15 +1744,31 @@
 
         document.getElementById('statsFromPauseBtn').addEventListener('click', () => {
           document.getElementById('pauseModal').classList.remove('open');
-          this.openSummaryModal('CAREER TELEMETRY', 'Car Racing Arcade', false);
+          document.getElementById('summaryTitle').textContent = 'CAREER STATISTICS';
+          document.getElementById('summarySub').textContent = 'Car Racing Arcade';
+          document.getElementById('sumPosTimeVal').textContent = `P${this.getPlayerRank(0)} • ${this.raceTimeSec.toFixed(1)}s`;
+          document.getElementById('sumPlayedWinsVal').textContent = `${this.stats.played} • ${this.stats.wins}`;
+          document.getElementById('sumTopSpeedVal').textContent = `${this.stats.topSpeedKmh} KM/H`;
+          document.getElementById('sumBestTimeVal').textContent =
+            this.stats.bestTimeSec !== null ? `${this.stats.bestTimeSec.toFixed(1)}s` : '--.-s';
+          document.getElementById('summaryPrimaryBtn').textContent = 'Resume Race';
+          document.getElementById('summaryPrimaryBtn').dataset.action = 'CLOSE_ONLY';
+          document.getElementById('summaryModal').classList.add('open');
         });
 
-        document.getElementById('summaryActionBtn').addEventListener('click', () => {
-          const mode = document.getElementById('summaryActionBtn').dataset.mode;
+        document.getElementById('summaryPrimaryBtn').addEventListener('click', () => {
+          const act = document.getElementById('summaryPrimaryBtn').dataset.action;
           document.getElementById('summaryModal').classList.remove('open');
-          this.paused = false;
-          this.lastFrameTime = performance.now();
-          if (mode === 'RESTART') this.initRaceState();
+          if (act === 'CLOSE_ONLY') {
+            if (!this.setupOpen && !this.introActive && !this.raceFinished) {
+              this.paused = false;
+              this.lastFrameTime = performance.now();
+            }
+          } else {
+            this.paused = false;
+            this.lastFrameTime = performance.now();
+            this.resetRaceState();
+          }
         });
 
         document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
@@ -2254,224 +1779,212 @@
         });
 
         window.addEventListener('keydown', (e) => {
-          this.keys[e.code] = true;
+          if (this.introActive || this.setupOpen || this.shotModalOpen) return;
 
-          if (e.code === 'KeyR' && !this.introActive && !this.setupOpen && !this.shotModalOpen) {
+          if (e.code === 'KeyP' || e.code === 'Escape') {
+            if (!this.raceFinished) {
+              this.paused = !this.paused;
+              document.getElementById('pauseModal').classList.toggle('open', this.paused);
+              this.lastFrameTime = performance.now();
+            }
+            return;
+          }
+
+          if (e.code === 'KeyR') {
             e.preventDefault();
             this.audio.unlock();
             document.getElementById('pauseModal').classList.remove('open');
             document.getElementById('summaryModal').classList.remove('open');
             this.paused = false;
             this.lastFrameTime = performance.now();
-            this.initRaceState();
+            this.resetRaceState();
             this.showToast('RACE RESTARTED');
             return;
           }
 
-          if (e.code === 'KeyP' || e.code === 'Escape') {
-            if (!this.introActive && !this.setupOpen && !this.shotModalOpen && !this.raceFinished) {
-              this.paused = !this.paused;
-              if (this.paused) this.audio.silenceContinuous();
-              document.getElementById('pauseModal').classList.toggle('open', this.paused);
-              this.lastFrameTime = performance.now();
-            }
-          }
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true;
+          if (e.code === 'ArrowUp' || e.code === 'KeyW') this.keys.up = true;
+          if (e.code === 'ArrowDown' || e.code === 'KeyS') this.keys.down = true;
+          if (e.code === 'ShiftLeft' || e.code === 'Space') this.keys.nitro = true;
+
+          if (e.code === 'KeyJ') this.keys.p2Left = true;
+          if (e.code === 'KeyL') this.keys.p2Right = true;
+          if (e.code === 'KeyI') this.keys.p2Up = true;
+          if (e.code === 'KeyK') this.keys.p2Down = true;
+          if (e.code === 'ShiftRight' || e.code === 'Enter') this.keys.p2Nitro = true;
         });
 
         window.addEventListener('keyup', (e) => {
-          this.keys[e.code] = false;
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false;
+          if (e.code === 'ArrowUp' || e.code === 'KeyW') this.keys.up = false;
+          if (e.code === 'ArrowDown' || e.code === 'KeyS') this.keys.down = false;
+          if (e.code === 'ShiftLeft' || e.code === 'Space') this.keys.nitro = false;
+
+          if (e.code === 'KeyJ') this.keys.p2Left = false;
+          if (e.code === 'KeyL') this.keys.p2Right = false;
+          if (e.code === 'KeyI') this.keys.p2Up = false;
+          if (e.code === 'KeyK') this.keys.p2Down = false;
+          if (e.code === 'ShiftRight' || e.code === 'Enter') this.keys.p2Nitro = false;
         });
       }
 
       /* ======================================================================
-         INTRO & HIGH-DPI CIRCUIT + RACE CARS RENDERER
+         HIGH-DPI CANVAS RENDERER, MINI-MAP & ANIMATION LOOP
          ====================================================================== */
-      startIntro() {
-        const dur = 2000;
-        const start = performance.now();
-        const bar = document.getElementById('introBarFill');
-        const step = (now) => {
-          if (!this.introActive) return;
-          const pct = Math.min(100, ((now - start) / dur) * 100);
-          bar.style.width = pct + '%';
-          if (pct >= 100) this.finishIntro();
-          else requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      }
-
-      finishIntro() {
-        if (!this.introActive) return;
-        this.introActive = false;
-        document.getElementById('araIntroScreen').classList.add('hidden');
-        this.setupOpen = true;
-        this.paused = true;
-        document.getElementById('setupModal').classList.add('open');
-      }
-
-      traceCircuitPath(ctx) {
-        const pts = this.trackPoints;
-        if (!pts.length) return;
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i].x, pts[i].y);
-        }
-        ctx.closePath();
-      }
-
-      renderCircuit() {
+      renderCanvas() {
         const ctx = this.ctx;
         const w = this.canvasW;
         const h = this.canvasH;
-        const env = TRACK_ENVIRONMENTS[this.trackKey] || TRACK_ENVIRONMENTS.EMERALD;
         ctx.clearRect(0, 0, w, h);
 
-        const tile = 24;
-        for (let y = 0; y < h; y += tile) {
-          for (let x = 0; x < w; x += tile) {
-            const even = ((Math.floor(x / tile) + Math.floor(y / tile)) % 2) === 0;
-            ctx.fillStyle = even ? env.offroadA : env.offroadB;
-            ctx.fillRect(x, y, tile, tile);
-          }
+        const styles = getComputedStyle(document.body);
+        const grassA = styles.getPropertyValue('--track-grass-a').trim() || '#0a351d';
+        const grassB = styles.getPropertyValue('--track-grass-b').trim() || '#082916';
+        const roadCol = styles.getPropertyValue('--track-road').trim() || '#1b2420';
+        const kerbA = styles.getPropertyValue('--track-kerb-a').trim() || '#10b981';
+        const kerbB = styles.getPropertyValue('--track-kerb-b').trim() || '#fbbf24';
+        const lineCol = styles.getPropertyValue('--track-line').trim() || 'rgba(251,191,36,0.52)';
+
+        const trk = TRACK_PROFILES[this.track] || TRACK_PROFILES.CLUB_CIRCUIT;
+        const anchorCar = this.cars[0] || { totalDist: 0 };
+
+        const stripeH = 34;
+        const offsetStripe = Math.floor(anchorCar.totalDist * 0.25) % (stripeH * 2);
+        for (let y = -stripeH * 2 + offsetStripe; y < h + stripeH * 2; y += stripeH * 2) {
+          ctx.fillStyle = grassA;
+          ctx.fillRect(0, y, w, stripeH);
+          ctx.fillStyle = grassB;
+          ctx.fillRect(0, y + stripeH, w, stripeH);
         }
 
-        ctx.fillStyle = 'rgba(11, 61, 32, 0.72)';
-        ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
-        ctx.lineWidth = 1.5;
+        const roadHalfW = Math.min(w * 0.34, 150);
+        const roadCenterX = w * 0.5;
+        const roadLeft = roadCenterX - roadHalfW;
+        const roadRight = roadCenterX + roadHalfW;
+
+        ctx.fillStyle = roadCol;
+        ctx.fillRect(roadLeft, 0, roadHalfW * 2, h);
+
+        const kerbW = Math.max(7, roadHalfW * 0.08);
+        for (let y = -stripeH + (offsetStripe % stripeH); y < h + stripeH; y += stripeH) {
+          const isEven = Math.floor((y + anchorCar.totalDist * 0.25) / stripeH) % 2 === 0;
+          ctx.fillStyle = isEven ? kerbA : kerbB;
+          ctx.fillRect(roadLeft - kerbW, y, kerbW, stripeH);
+          ctx.fillRect(roadRight, y, kerbW, stripeH);
+        }
+
+        ctx.strokeStyle = lineCol;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([16, 16]);
+        ctx.lineDashOffset = -(anchorCar.totalDist * 0.25);
         ctx.beginPath();
-        ctx.roundRect(w * 0.34, h * 0.38, w * 0.32, h * 0.24, 10);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.save();
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-
-        this.traceCircuitPath(ctx);
-        ctx.strokeStyle = env.kerbA;
-        ctx.lineWidth = this.trackHalfWidth * 2 + 10;
-        ctx.stroke();
-
-        this.traceCircuitPath(ctx);
-        ctx.strokeStyle = env.kerbB;
-        ctx.setLineDash([12, 12]);
-        ctx.lineWidth = this.trackHalfWidth * 2 + 10;
+        ctx.moveTo(roadCenterX, 0);
+        ctx.lineTo(roadCenterX, h);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        this.traceCircuitPath(ctx);
-        ctx.strokeStyle = env.asphalt;
-        ctx.lineWidth = this.trackHalfWidth * 2;
-        ctx.stroke();
-        ctx.restore();
-
-        for (const tm of this.tireMarks) {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, (tm.life / 2.2) * 0.35);
-          ctx.translate(tm.x, tm.y);
-          ctx.rotate(tm.angle);
-          ctx.fillStyle = '#090d16';
-          ctx.fillRect(-3, -6, 6, 3);
-          ctx.fillRect(-3, 3, 6, 3);
-          ctx.restore();
+        const lapBoundary = Math.ceil(anchorCar.totalDist / TRACK_LENGTH) * TRACK_LENGTH;
+        const finishDeltaPx = (lapBoundary - anchorCar.totalDist) * 0.25;
+        if (finishDeltaPx >= -24 && finishDeltaPx <= h + 24) {
+          const fy = h * 0.72 - finishDeltaPx;
+          const sq = 10;
+          const cols = Math.floor((roadHalfW * 2) / sq);
+          for (let c = 0; c < cols; c++) {
+            for (let r = 0; r < 2; r++) {
+              ctx.fillStyle = (r + c) % 2 === 0 ? '#ffffff' : '#062112';
+              ctx.fillRect(roadLeft + c * sq, fy + r * sq, sq, sq);
+            }
+          }
         }
 
-        if (this.trackPoints.length > 2) {
-          const p0 = this.trackPoints[0];
-          const p1 = this.trackPoints[1];
-          const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-          const perpX = -Math.sin(ang);
-          const perpY = Math.cos(ang);
+        const playerScreenY = h * 0.72;
+        const carW = Math.max(22, Math.min(34, roadHalfW * 0.24));
+        const carH = Math.round(carW * 1.65);
 
-          ctx.save();
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(p0.x - perpX * this.trackHalfWidth, p0.y - perpY * this.trackHalfWidth);
-          ctx.lineTo(p0.x + perpX * this.trackHalfWidth, p0.y + perpY * this.trackHalfWidth);
-          ctx.stroke();
-          ctx.restore();
-        }
+        for (let i = this.cars.length - 1; i >= 0; i--) {
+          const car = this.cars[i];
+          const curveShift = Math.sin((car.totalDist * trk.curveFreq) + i * 0.35) * (roadHalfW * trk.curveAmp * 0.45);
+          const cx = roadCenterX + car.laneOffset * (roadHalfW * 0.78) + curveShift * 0.35;
+          const relDistPx = (car.totalDist - anchorCar.totalDist) * 0.25;
+          const cy = car.id === 'P1' ? playerScreenY : playerScreenY - relDistPx;
 
-        for (const car of this.cars) {
-          if (car.eliminated) continue;
-          ctx.save();
-          ctx.translate(car.x, car.y);
-          ctx.rotate(car.angle);
+          if (cy < -carH * 2 || cy > h + carH * 2) continue;
 
-          if (env.headlights) {
-            const beam = ctx.createLinearGradient(12, 0, 68, 0);
-            beam.addColorStop(0, 'rgba(254, 249, 195, 0.42)');
-            beam.addColorStop(1, 'rgba(254, 249, 195, 0)');
-            ctx.fillStyle = beam;
-            ctx.beginPath();
-            ctx.moveTo(12, -5);
-            ctx.lineTo(68, -22);
-            ctx.lineTo(68, 22);
-            ctx.lineTo(12, 5);
-            ctx.closePath();
-            ctx.fill();
+          if (car.speed > 120 && Math.random() < 0.35) {
+            this.spawnExhaustParticle(cx, cy + carH * 0.55, car.nitro < 99 ? '#fbbf24' : '#10b981');
           }
 
-          ctx.fillStyle = '#090d16';
-          [
-            [-8, -10],
-            [6, -10],
-            [-8, 7],
-            [6, 7]
-          ].forEach(([wx, wy]) => {
-            ctx.fillRect(wx, wy, 6, 3.5);
-          });
-
-          ctx.fillStyle = car.meta.nation.primary;
-          ctx.strokeStyle = car.isBoosting ? '#fbbf24' : '#ffffff';
-          ctx.lineWidth = car.isBoosting ? 2 : 1.2;
+          ctx.save();
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
           ctx.beginPath();
-          ctx.roundRect(-12, -7.5, 24, 15, 4.5);
+          ctx.roundRect(cx - carW * 0.5 + 2, cy - carH * 0.5 + 3, carW, carH, 6);
+          ctx.fill();
+
+          ctx.fillStyle = car.color;
+          ctx.strokeStyle = car.accent;
+          ctx.lineWidth = car.isHuman ? 2 : 1.2;
+          ctx.beginPath();
+          ctx.roundRect(cx - carW * 0.5, cy - carH * 0.5, carW, carH, 6);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = car.meta.nation.secondary;
-          ctx.fillRect(-5, -5, 9, 10);
+          ctx.fillStyle = '#062112';
+          ctx.fillRect(cx - carW * 0.34, cy - carH * 0.2, carW * 0.68, carH * 0.32);
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 7.5px Inter, sans-serif';
+          ctx.font = '900 9px Inter, sans-serif';
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(String(car.meta.badge), 1, 0.5);
-
+          ctx.fillText(car.label, cx, cy - carH * 0.62);
           ctx.restore();
         }
 
-        for (const pt of this.particles) {
+        for (const p of this.particles) {
           ctx.save();
-          ctx.globalAlpha = Math.max(0, pt.life / 0.25);
-          ctx.fillStyle = pt.color;
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
           ctx.beginPath();
-          ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
 
-        if (env.ambientOverlay) {
-          ctx.fillStyle = env.ambientOverlay;
-          ctx.fillRect(0, 0, w, h);
-        }
+        // Compact Top-Right Mini-Map Radar
+        const mmW = 34;
+        const mmH = Math.min(116, Math.max(76, h * 0.32));
+        const mmX = w - mmW - 10;
+        const mmY = 10;
+        ctx.save();
+        ctx.fillStyle = 'rgba(11, 61, 32, 0.85)';
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.72)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(mmX, mmY, mmW, mmH, 8);
+        ctx.fill();
+        ctx.stroke();
 
-        if (this.countdownTimer > 0 && !this.introActive && !this.setupOpen) {
-          const num = Math.max(1, Math.ceil(this.countdownTimer));
-          ctx.fillStyle = 'rgba(4, 20, 11, 0.72)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mmX + mmW * 0.5, mmY + 8);
+        ctx.lineTo(mmX + mmW * 0.5, mmY + mmH - 8);
+        ctx.stroke();
+
+        for (const car of this.cars) {
+          const lapFrac = (car.totalDist % TRACK_LENGTH) / TRACK_LENGTH;
+          const dotX = mmX + mmW * 0.5 + car.laneOffset * (mmW * 0.32);
+          const dotY = mmY + mmH - 10 - lapFrac * (mmH - 20);
+          ctx.fillStyle = car.color;
           ctx.beginPath();
-          ctx.roundRect(w * 0.5 - 64, h * 0.5 - 26, 128, 52, 14);
+          ctx.arc(dotX, dotY, car.isHuman ? 3.5 : 2.5, 0, Math.PI * 2);
           ctx.fill();
-
-          ctx.fillStyle = '#fbbf24';
-          ctx.font = '900 22px Inter, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(`GRID ${num}`, w * 0.5, h * 0.5);
         }
+        ctx.restore();
+
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(1.25, 1.25, w - 2.5, h - 2.5);
       }
 
       loop(now) {
@@ -2479,59 +1992,17 @@
         const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
         this.lastFrameTime = now;
 
-        if (!this.paused && !this.introActive && !this.setupOpen) {
-          if (this.countdownTimer > 0) {
-            this.countdownTimer = Math.max(0, this.countdownTimer - dt);
-            const ceilSec = Math.ceil(this.countdownTimer);
-            if (ceilSec > 0 && ceilSec < this.lastBeepSecond) {
-              this.lastBeepSecond = ceilSec;
-              this.audio.playCountdownBeep(false);
-            }
-            if (this.countdownTimer === 0) {
-              this.audio.playCountdownBeep(true);
-              this.showToast('LIGHTS OUT — GO!');
-            }
-            this.audio.updateEngineAndDrift(0, false, false, false);
-          } else if (!this.raceFinished) {
-            this.raceTimeMs += dt * 1000;
-            if (this.formatKey === 'ELIMINATION') {
-              this.eliminationTimer = Math.max(0, this.eliminationTimer - dt);
-            }
-
-            for (const car of this.cars) {
-              this.stepCarPhysics(car, dt, true);
-            }
-            this.resolveCarCollisions();
-            this.evaluateRaceCompletion();
-
-            const c1 = this.cars[0];
-            const ratio = c1 ? Math.abs(c1.speed) / Math.max(120, this.canvasW * 0.7) : 0;
-            this.audio.updateEngineAndDrift(ratio, Boolean(c1 && c1.isBoosting), Boolean(c1 && c1.isDrifting), true);
-          }
-
-          for (let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
-            p.life -= dt;
-            if (p.life <= 0) this.particles.splice(i, 1);
-          }
-
-          for (let i = this.tireMarks.length - 1; i >= 0; i--) {
-            this.tireMarks[i].life -= dt;
-            if (this.tireMarks[i].life <= 0) this.tireMarks.splice(i, 1);
-          }
-
-          this.refreshHUD();
+        if (!this.paused && !this.raceFinished && !this.introActive && !this.setupOpen && !this.shotModalOpen) {
+          this.updateSimulation(dt);
         }
 
-        this.renderCircuit();
+        this.renderCanvas();
         requestAnimationFrame((t) => this.loop(t));
       }
     }
 
     window.addEventListener('load', () => {
-      const app = new ARAGrandPrixEngine();
+      const app = new CarRacingEngine();
       requestAnimationFrame((t) => app.loop(t));
     });
   </script>
