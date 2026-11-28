@@ -775,10 +775,10 @@
     <div id="toastBanner" class="toast-banner">PUZZLE BLOCK</div>
     <div id="dragGhost" class="drag-ghost"></div>
 
-    <!-- TOP HUD BAR WITH DIRECT LINK TO puzzle-block.html -->
+    <!-- TOP HUD BAR WITH RESET-TO-START '←' LINK TO puzzle-block.html -->
     <header class="top-bar">
       <div class="btn-group">
-        <a id="backToPuzzleBlockLink" href="puzzle-block.html" class="icon-circle-btn glass-hud" title="Back to puzzle-block.html" aria-label="Back to puzzle-block.html">&larr;</a>
+        <a id="backToPuzzleBlockLink" href="puzzle-block.html" class="icon-circle-btn glass-hud" title="Reset to Start (puzzle-block.html)" aria-label="Reset to Start">&larr;</a>
       </div>
 
       <div class="brand-center-hud glass-hud">
@@ -953,7 +953,7 @@
     </div>
 
     <!-- ======================================================================
-         4. PAUSE MODAL
+         4. PAUSE MODAL (NO EXTRA SECONDARY BACK BUTTONS)
          ====================================================================== -->
     <div id="pauseModal" class="modal-backdrop">
       <div class="modal-card" style="max-width:335px;text-align:center;">
@@ -966,7 +966,6 @@
           <button id="restartFromPauseBtn" type="button" class="btn-secondary">Restart Game</button>
           <button id="setupFromPauseBtn" type="button" class="btn-secondary">Session Setup</button>
           <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
-          <button id="backFromPauseBtn" type="button" class="btn-secondary">Back</button>
         </div>
       </div>
     </div>
@@ -1002,7 +1001,6 @@
         <div class="btn-stack">
           <button id="summaryPrimaryBtn" type="button" class="btn-primary">Play Again</button>
           <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Session Setup</button>
-          <a href="puzzle-block.html" class="btn-secondary">&larr; Back to puzzle-block.html</a>
         </div>
       </div>
     </div>
@@ -1319,8 +1317,31 @@
         this.hoverCol = null;
         this.cursorRow = 3;
         this.cursorCol = 3;
+        this.dragState.active = false;
+        this.dragGhost.classList.remove('active');
         this.refillTray();
         this.refreshHUD();
+      }
+
+      hardResetToStart() {
+        this.audio.unlock();
+        this.audio.playClick();
+
+        document.getElementById('setupModal').classList.remove('open');
+        document.getElementById('screenshotModal').classList.remove('open');
+        document.getElementById('pauseModal').classList.remove('open');
+        document.getElementById('summaryModal').classList.remove('open');
+
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = true;
+        this.startNewSession();
+
+        this.introActive = true;
+        const bar = document.getElementById('introBarFill');
+        if (bar) bar.style.width = '0%';
+        document.getElementById('pbIntroScreen').classList.remove('hidden');
+        this.startIntro();
       }
 
       createRandomPiece() {
@@ -1705,7 +1726,7 @@
         if (backLink) {
           backLink.addEventListener('click', (e) => {
             e.preventDefault();
-            window.location.href = 'puzzle-block.html';
+            this.hardResetToStart();
           });
         }
 
@@ -1870,14 +1891,6 @@
         });
 
         document.getElementById('resumeBtn').addEventListener('click', () => {
-          document.getElementById('pauseModal').classList.remove('open');
-          this.paused = false;
-          this.lastFrameTime = performance.now();
-        });
-
-        document.getElementById('backFromPauseBtn').addEventListener('click', () => {
-          this.audio.unlock();
-          this.audio.playClick();
           document.getElementById('pauseModal').classList.remove('open');
           this.paused = false;
           this.lastFrameTime = performance.now();
