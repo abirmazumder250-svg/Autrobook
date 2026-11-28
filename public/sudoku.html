@@ -1059,7 +1059,6 @@
         <div class="btn-stack">
           <a id="downloadShotBtn" download="Sudoku-Board.png" class="btn-primary">Download PNG</a>
           <button id="closeShotBtn" type="button" class="btn-secondary">Resume Puzzle</button>
-          <a href="sudoku-board.html" class="btn-secondary">&larr; Back to sudoku-board.html</a>
         </div>
       </div>
     </div>
@@ -1075,10 +1074,9 @@
         </div>
         <div class="btn-stack">
           <button id="resumePuzzleBtn" type="button" class="btn-primary">Resume</button>
-          <button id="restartPuzzleBtn" type="button" class="btn-secondary">Restart Puzzle</button>
-          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Setup</button>
+          <button id="restartPuzzleBtn" type="button" class="btn-secondary">Restart Board</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Session Setup</button>
           <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
-          <a href="sudoku-board.html" class="btn-secondary">&larr; Back to sudoku-board.html</a>
         </div>
       </div>
     </div>
@@ -1114,8 +1112,7 @@
         <div class="btn-stack">
           <button id="summaryPrimaryBtn" type="button" class="btn-primary">Play Again</button>
           <button id="nextPuzzleBtn" type="button" class="btn-secondary">Next Puzzle</button>
-          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Setup</button>
-          <a href="sudoku-board.html" class="btn-secondary">&larr; Back to sudoku-board.html</a>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Session Setup</button>
         </div>
       </div>
     </div>
@@ -1527,6 +1524,31 @@
         this.renderBoard();
       }
 
+      // Full hard reset back to the animated intro/start screen
+      hardResetToStart() {
+        this.audio.unlock();
+        this.audio.playSelect();
+
+        document.getElementById('setupModal').classList.remove('open');
+        document.getElementById('screenshotModal').classList.remove('open');
+        document.getElementById('pauseModal').classList.remove('open');
+        document.getElementById('summaryModal').classList.remove('open');
+
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = true;
+        this.notesMode = false;
+
+        this.generatePuzzle(false);
+        this.refreshHUD();
+
+        this.introActive = true;
+        const bar = document.getElementById('introBarFill');
+        if (bar) bar.style.width = '0%';
+        document.getElementById('sbIntroScreen').classList.remove('hidden');
+        this.startIntro();
+      }
+
       ensurePlayCounted() {
         if (!this.countedPlay) {
           this.countedPlay = true;
@@ -1935,7 +1957,7 @@
         if (backLink) {
           backLink.addEventListener('click', (e) => {
             e.preventDefault();
-            window.location.href = 'sudoku-board.html';
+            this.hardResetToStart();
           });
         }
 
@@ -2088,6 +2110,17 @@
               this.paused = !this.paused;
               document.getElementById('pauseModal').classList.toggle('open', this.paused);
             }
+            return;
+          }
+
+          if (e.code === 'KeyR') {
+            e.preventDefault();
+            this.audio.unlock();
+            document.getElementById('pauseModal').classList.remove('open');
+            document.getElementById('summaryModal').classList.remove('open');
+            this.paused = false;
+            this.restartCurrentPuzzle();
+            this.showToast('BOARD RESTARTED');
             return;
           }
 
