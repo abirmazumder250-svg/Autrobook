@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Racing Association - Championship Grand Prix</title>
+  <style>
+    /* ========================================================================
+       1. ARA DESIGN TOKENS & SYSTEM LIGHT / DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --ara-forest: #0B3D20;
+      --ara-emerald-deep: #0a7d3b;
+      --ara-emerald: #10b981;
+      --ara-gold: #f59e0b;
+      --ara-amber: #fbbf24;
+
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --hud-bg: rgba(255, 255, 255, 0.94);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --hud-bg: rgba(255, 255, 255, 0.94);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04140b;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #araArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(5px, env(safe-area-inset-top)) 7px max(5px, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% 18%, #0a7d3b 0%, #0B3D20 58%, #031008 100%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP BAR, GRAND PRIX SCOREBOARD, DRIVER CARDS & LIVE SPEED RADAR
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 820px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-circle-btn {
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .icon-circle-btn:hover {
+      border-color: var(--ara-amber);
+    }
+
+    .icon-circle-btn:active {
+      transform: scale(0.92);
+    }
+
+    .scoreboard-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 13px;
+      flex: 1;
+      max-width: 390px;
+      border-color: rgba(251, 191, 36, 0.55);
+      min-width: 0;
+    }
+
+    .score-main-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .ara-mini-crest {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    .score-pill {
+      padding: 1px 7px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(16, 185, 129, 0.55);
+      color: var(--ara-amber);
+      font-size: 11px;
+    }
+
+    .status-sub-row {
+      font-size: 8.6px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .drivers-radar-row {
+      width: 100%;
+      max-width: 820px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 5px;
+      align-items: center;
+      z-index: 16;
+    }
+
+    .driver-panel {
+      padding: 4px 8px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      min-width: 0;
+      border-width: 1.5px;
+    }
+
+    .d-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .d-name-line {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-num {
+      padding: 1px 5px;
+      border-radius: 6px;
+      font-size: 8.5px;
+      font-weight: 900;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      flex-shrink: 0;
+    }
+
+    .d-sub-line {
+      font-size: 8.2px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nitro-pill {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: var(--ara-amber);
+      font-size: 9px;
+      font-weight: 900;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .radar-box {
+      padding: 3px 8px;
+      border-radius: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-color: rgba(251, 191, 36, 0.48);
+      min-width: 114px;
+    }
+
+    .radar-lbl {
+      font-size: 7.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ara-amber);
+    }
+
+    .radar-val {
+      font-size: 10.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .radar-sub {
+      font-size: 7.8px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-sub);
+    }
+
+    /* ========================================================================
+       3. CENTER HIGH-DPI CIRCUIT CANVAS & TOUCH DRIVING CONTROLS
+       ======================================================================== */
+    .circuit-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 820px;
+      max-height: 50dvh;
+      margin: 2px 0;
+    }
+
+    canvas#raceCanvas {
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65);
+      touch-action: none;
+    }
+
+    .bottom-drive-deck {
+      width: 100%;
+      max-width: 820px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 18;
+    }
+
+    .steer-cluster, .pedal-cluster {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .drive-btn {
+      padding: 9px 11px;
+      border-radius: 11px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      font-size: 10.5px;
+      font-weight: 900;
+      cursor: pointer;
+      min-width: 44px;
+      text-align: center;
+    }
+
+    .drive-btn:active {
+      background: rgba(16, 185, 129, 0.3);
+      border-color: var(--ara-amber);
+      transform: scale(0.95);
+    }
+
+    .nitro-btn {
+      padding: 9px 12px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--ara-amber);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .nitro-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK RACING ASSOCIATION (ARA) INTRO SCREEN
+       ======================================================================== */
+    #araIntroScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #araIntroScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spot-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-left {
+      left: 10%;
+      animation: raySwingL 2.8s ease-in-out infinite alternate;
+    }
+
+    .ray-right {
+      right: 10%;
+      animation: raySwingR 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes raySwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes raySwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 380px;
+      width: 100%;
+    }
+
+    .ara-crest-badge {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--ara-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ara-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-title {
+      font-size: 21.5px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-sub {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-progress-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE, STATS & GRAND PRIX SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 485px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 17px 15px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-head {
+      text-align: center;
+      margin-bottom: 9px;
+    }
+
+    .modal-h2 {
+      font-size: 18.5px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .setup-box {
+      padding: 7px 9px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 7px;
+    }
+
+    .setup-label {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ara-amber);
+      margin-bottom: 4px;
+    }
+
+    .grid-3-row {
+      display: grid;
+      grid-template-columns: 1fr 126px 54px;
+      gap: 6px;
+      margin-bottom: 5px;
+    }
+
+    .text-inp, .sel-inp {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.24);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 10.5px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .sel-inp option {
+      background: #072213;
+      color: #ffffff;
+    }
+
+    .star-chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .star-chip {
+      padding: 3.5px 6.5px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--text-main);
+      font-size: 8.8px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .pills-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .pills-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .choice-btn {
+      padding: 6.5px 5px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 9.5px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--ara-amber);
+      color: #ffffff;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 10.5px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--ara-amber);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 9.5px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 9px;
+    }
+
+    .stats-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .shot-preview-img {
+      width: 100%;
+      max-height: 50dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--ara-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--ara-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="araArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">AUTROBOOK GRAND PRIX</div>
+
+    <!-- TOP BAR WITH DIRECT LINK TO car-racing.html -->
+    <header class="top-bar">
+      <div class="btn-group">
+        <a href="car-racing.html" class="icon-circle-btn glass-hud" title="Back to car-racing.html" aria-label="Back to car-racing.html">&larr;</a>
+      </div>
+
+      <div class="scoreboard-center glass-hud">
+        <div class="score-main-row">
+          <svg class="ara-mini-crest" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+            <circle cx="12" cy="12" r="4" stroke="#fbbf24" stroke-width="2"/>
+          </svg>
+          <span>Autrobook Racing Association</span>
+          <span id="topPosBadge" class="score-pill">P1 &bull; LAP 1/3</span>
+        </div>
+        <div id="statusBannerText" class="status-sub-row">3 LAPS SPRINT &bull; CLUB AI &bull; EMERALD CIRCUIT</div>
+      </div>
+
+      <div class="btn-group">
+        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="muteBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Race (P)" aria-label="Pause Race">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- DRIVER CARDS & LIVE SPEED RADAR -->
+    <section class="drivers-radar-row">
+      <div id="d1Card" class="driver-panel glass-hud">
+        <div class="d-meta">
+          <div class="d-name-line">
+            <span id="d1BadgeNum" class="badge-num" style="background:#0a7d3b;">#01</span>
+            <span id="d1DisplayName">RASHID KHAN</span>
+          </div>
+          <span id="d1SubLine" class="d-sub-line">BAN &bull; LAP 1</span>
+        </div>
+        <span id="d1NitroTag" class="nitro-pill">NITRO 100%</span>
+      </div>
+
+      <div class="radar-box glass-hud">
+        <span class="radar-lbl">SPEED RADAR</span>
+        <span id="radarKmhText" class="radar-val">0.0 KM/H</span>
+        <span id="radarMphPeakText" class="radar-sub">0.0 MPH &bull; PK 0</span>
+      </div>
+
+      <div id="d2Card" class="driver-panel glass-hud">
+        <div class="d-meta">
+          <div class="d-name-line">
+            <span id="d2BadgeNum" class="badge-num" style="background:#dc2626;">#07</span>
+            <span id="d2DisplayName">HARUTO SATO</span>
+          </div>
+          <span id="d2SubLine" class="d-sub-line">JPN &bull; LAP 1</span>
+        </div>
+        <span id="d2NitroTag" class="nitro-pill">NITRO 100%</span>
+      </div>
+    </section>
+
+    <!-- CENTER HIGH-DPI GRAND PRIX CIRCUIT CANVAS -->
+    <div id="circuitStage" class="circuit-stage">
+      <canvas id="raceCanvas"></canvas>
+    </div>
+
+    <!-- RESPONSIVE ON-SCREEN DRIVING CONTROLS -->
+    <div class="bottom-drive-deck">
+      <div class="steer-cluster">
+        <button id="steerLeftBtn" type="button" class="drive-btn" aria-label="Steer Left">&larr; Left</button>
+        <button id="steerRightBtn" type="button" class="drive-btn" aria-label="Steer Right">Right &rarr;</button>
+      </div>
+
+      <button id="nitroTouchBtn" type="button" class="nitro-btn">&#9889; Nitro Boost</button>
+
+      <div class="pedal-cluster">
+        <button id="brakeTouchBtn" type="button" class="drive-btn" aria-label="Brake or Reverse">Brake</button>
+        <button id="gasTouchBtn" type="button" class="drive-btn" aria-label="Accelerate">Gas</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK RACING ASSOCIATION (ARA) INTRO SCREEN
+         ====================================================================== -->
+    <section id="araIntroScreen">
+      <div class="spot-ray ray-left"></div>
+      <div class="spot-ray ray-right"></div>
+
+      <div class="intro-center">
+        <div class="ara-crest-badge">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <circle cx="32" cy="33" r="14" stroke="#10b981" stroke-width="3.5"/>
+            <circle cx="32" cy="33" r="4" fill="#fbbf24"/>
+            <line x1="32" y1="33" x2="32" y2="19" stroke="#fbbf24" stroke-width="2.5"/>
+            <line x1="32" y1="33" x2="20" y2="41" stroke="#fbbf24" stroke-width="2.5"/>
+            <line x1="32" y1="33" x2="44" y2="41" stroke="#fbbf24" stroke-width="2.5"/>
+          </svg>
+        </div>
+
+        <div class="intro-kicker">OFFICIAL MOTORSPORT CIRCUIT</div>
+        <h1 class="intro-title">AUTROBOOK RACING ASSOCIATION</h1>
+        <p class="intro-sub">CHAMPIONSHIP GRAND PRIX</p>
+
+        <div class="intro-progress-track">
+          <div id="introBarFill" class="intro-progress-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. MATCH SETUP MODAL (10 NATIONS, DRIVERS, FORMATS & TRACKS)
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2 class="modal-h2">Grand Prix Match Setup</h2>
+          <p class="modal-sub">10 Nations &bull; Driver Presets &bull; Match Formats &bull; Track Environments</p>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Racing Mode &amp; AI Difficulty</div>
+          <div id="modeGroup" class="pills-4">
+            <button type="button" class="choice-btn" data-mode="AI_CASUAL">1P vs AI (Casual)</button>
+            <button type="button" class="choice-btn selected" data-mode="AI_CLUB">1P vs AI (Club)</button>
+            <button type="button" class="choice-btn" data-mode="AI_PRO">1P vs AI (Pro)</button>
+            <button type="button" class="choice-btn" data-mode="LOCAL_2P">2P Local</button>
+          </div>
+        </div>
+
+        <!-- Driver 1 Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Driver 1 Roster</div>
+          <div class="grid-3-row">
+            <input id="d1NameInp" type="text" maxlength="14" value="RASHID KHAN" class="text-inp" />
+            <select id="d1NationSel" class="sel-inp"></select>
+            <input id="d1BadgeInp" type="number" min="1" max="99" value="1" class="text-inp" />
+          </div>
+          <div id="d1StarRow" class="star-chips"></div>
+        </div>
+
+        <!-- Driver 2 / AI Rival Roster -->
+        <div class="setup-box">
+          <div class="setup-label">Driver 2 / Rival Roster</div>
+          <div class="grid-3-row">
+            <input id="d2NameInp" type="text" maxlength="14" value="HARUTO SATO" class="text-inp" />
+            <select id="d2NationSel" class="sel-inp"></select>
+            <input id="d2BadgeInp" type="number" min="1" max="99" value="7" class="text-inp" />
+          </div>
+          <div id="d2StarRow" class="star-chips"></div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Match Format</div>
+          <div id="formatGroup" class="pills-4">
+            <button type="button" class="choice-btn selected" data-fmt="LAPS_3">3 Laps Sprint</button>
+            <button type="button" class="choice-btn" data-fmt="LAPS_5">5 Laps Grand Prix</button>
+            <button type="button" class="choice-btn" data-fmt="TIME_120">Time Trial (2 Min)</button>
+            <button type="button" class="choice-btn" data-fmt="ELIMINATION">Elimination Sprint</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Track / Asphalt Environment</div>
+          <div id="trackGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-trk="EMERALD">Emerald Circuit</button>
+            <button type="button" class="choice-btn" data-trk="SUNSET">Sunset Coastal Track</button>
+            <button type="button" class="choice-btn" data-trk="NIGHT">Night Floodlit Grand Prix</button>
+          </div>
+        </div>
+
+        <button id="startRaceBtn" type="button" class="btn-primary">
+          Start Grand Prix
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Circuit Screenshot</h2>
+          <p class="modal-sub">Autrobook Racing Association</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="Grand Prix Screenshot" />
+        <div class="btn-stack">
+          <a id="downloadShotBtn" download="Autrobook-Grand-Prix.png" class="btn-primary">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Resume Race</button>
+          <a href="car-racing.html" class="btn-secondary">&larr; Back to car-racing.html</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL (RESUME, RESTART RACE, MATCH SETUP, VIEW STATS)
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:335px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Race Paused</h2>
+          <p class="modal-sub">Autrobook Racing Association</p>
+        </div>
+        <div class="btn-stack">
+          <button id="resumeBtn" type="button" class="btn-primary">Resume</button>
+          <button id="restartFromPauseBtn" type="button" class="btn-secondary">Restart Race</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Match Setup</button>
+          <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
+          <a href="car-racing.html" class="btn-secondary">&larr; Back to car-racing.html</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. CAREER STATS & GRAND PRIX SUMMARY MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:360px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:4px;">&#127937;</div>
+        <h2 id="summaryTitle" class="modal-h2">GRAND PRIX STATS</h2>
+        <p id="summarySub" class="modal-sub">Autrobook Racing Association</p>
+
+        <div class="stats-box">
+          <div class="stats-row">
+            <span>Races Played</span>
+            <span id="statPlayedText" style="font-weight:900;color:var(--ara-amber);">0</span>
+          </div>
+          <div class="stats-row">
+            <span>Wins</span>
+            <span id="statWinsText" style="font-weight:900;color:var(--ara-emerald);">0</span>
+          </div>
+          <div class="stats-row">
+            <span>Podiums / Best Lap</span>
+            <span id="statPodiumBestLap" style="font-weight:900;">0 &bull; --:--.-</span>
+          </div>
+          <div class="stats-row">
+            <span>All-Time Top Speed</span>
+            <span id="statTopSpeed" style="font-weight:900;color:var(--ara-amber);">0.0 KM/H</span>
+          </div>
+        </div>
+
+        <div class="btn-stack">
+          <button id="summaryActionBtn" type="button" class="btn-primary">Continue / Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
+          <a href="car-racing.html" class="btn-secondary">&larr; Back to car-racing.html</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       10 NATIONS ROSTER, DRIVER PRESETS, FORMATS & TRACK ENVIRONMENTS
+       ======================================================================== */
+    const ARA_NATIONS_10 = [
+      { code: 'BAN', name: 'Bangladesh', primary: '#10b981', secondary: '#065f46', kit: '#0a7d3b' },
+      { code: 'JPN', name: 'Japan', primary: '#ef4444', secondary: '#991b1b', kit: '#dc2626' },
+      { code: 'GER', name: 'Germany', primary: '#f59e0b', secondary: '#1e293b', kit: '#0f172a' },
+      { code: 'ITA', name: 'Italy', primary: '#22c55e', secondary: '#15803d', kit: '#15803d' },
+      { code: 'GBR', name: 'Great Britain', primary: '#3b82f6', secondary: '#1e3a8a', kit: '#1d4ed8' },
+      { code: 'USA', name: 'USA', primary: '#60a5fa', secondary: '#b91c1c', kit: '#1d4ed8' },
+      { code: 'BRA', name: 'Brazil', primary: '#facc15', secondary: '#15803d', kit: '#15803d' },
+      { code: 'FRA', name: 'France', primary: '#38bdf8', secondary: '#1d4ed8', kit: '#2563eb' },
+      { code: 'KOR', name: 'South Korea', primary: '#f43f5e', secondary: '#1e3a8a', kit: '#1d4ed8' },
+      { code: 'IND', name: 'India', primary: '#fb923c', secondary: '#c2410c', kit: '#ea580c' }
+    ];
+
+    const ARA_DRIVER_PRESETS = [
+      { name: 'RASHID KHAN', nation: 'BAN', badge: 1 },
+      { name: 'HARUTO SATO', nation: 'JPN', badge: 7 },
+      { name: 'LUKAS WEBER', nation: 'GER', badge: 11 },
+      { name: 'MARCO ROSSI', nation: 'ITA', badge: 16 },
+      { name: 'LIAM VANCE', nation: 'GBR', badge: 44 },
+      { name: 'GABRIEL SILVA', nation: 'BRA', badge: 10 }
+    ];
+
+    const TRACK_ENVIRONMENTS = {
+      EMERALD: {
+        offroadA: '#0b4724',
+        offroadB: '#08381c',
+        asphalt: '#1e293b',
+        kerbA: '#ef4444',
+        kerbB: '#f8fafc',
+        ambientOverlay: 'rgba(16, 185, 129, 0.04)',
+        headlights: false
+      },
+      SUNSET: {
+        offroadA: '#5c2d16',
+        offroadB: '#47210f',
+        asphalt: '#27272a',
+        kerbA: '#f59e0b',
+        kerbB: '#fffbeb',
+        ambientOverlay: 'rgba(245, 158, 11, 0.14)',
+        headlights: false
+      },
+      NIGHT: {
+        offroadA: '#061c12',
+        offroadB: '#04140d',
+        asphalt: '#111827',
+        kerbA: '#10b981',
+        kerbB: '#fbbf24',
+        ambientOverlay: 'rgba(2, 6, 23, 0.36)',
+        headlights: true
+      }
+    };
+
+    const ARA_STATS_KEY = 'ara_grand_prix_stats_v1';
+
+    /* ========================================================================
+       WEB AUDIO API MOTORSPORT SOUND SYNTHESIZER
+       ======================================================================== */
+    class ARAAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.engineOsc = null;
+        this.engineGain = null;
+        this.screechOsc = null;
+        this.screechGain = null;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+          if (this.ctx && !this.engineOsc) {
+            this.engineOsc = this.ctx.createOscillator();
+            this.engineGain = this.ctx.createGain();
+            this.engineOsc.type = 'sawtooth';
+            this.engineOsc.frequency.setValueAtTime(65, this.ctx.currentTime);
+            this.engineGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+            this.engineOsc.connect(this.engineGain);
+            this.engineGain.connect(this.ctx.destination);
+            this.engineOsc.start();
+
+            this.screechOsc = this.ctx.createOscillator();
+            this.screechGain = this.ctx.createGain();
+            this.screechOsc.type = 'triangle';
+            this.screechOsc.frequency.setValueAtTime(780, this.ctx.currentTime);
+            this.screechGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+            this.screechOsc.connect(this.screechGain);
+            this.screechGain.connect(this.ctx.destination);
+            this.screechOsc.start();
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        if (this.muted) this.silenceContinuous();
+        return this.muted;
+      }
+
+      silenceContinuous() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (this.engineGain) this.engineGain.gain.setTargetAtTime(0.0001, now, 0.04);
+        if (this.screechGain) this.screechGain.gain.setTargetAtTime(0.0001, now, 0.04);
+      }
+
+      updateEngineAndDrift(speedRatio, isBoosting, isDrifting, activeRace) {
+        if (!this.ctx || !this.engineOsc || !this.engineGain) return;
+        const now = this.ctx.currentTime;
+        if (this.muted || !activeRace) {
+          this.engineGain.gain.setTargetAtTime(0.0001, now, 0.05);
+          if (this.screechGain) this.screechGain.gain.setTargetAtTime(0.0001, now, 0.05);
+          return;
+        }
+        const rpmFreq = 58 + Math.min(1.4, speedRatio) * 145 + (isBoosting ? 42 : 0);
+        this.engineOsc.frequency.setTargetAtTime(rpmFreq, now, 0.05);
+        this.engineGain.gain.setTargetAtTime(0.025 + Math.min(0.6, speedRatio) * 0.03, now, 0.06);
+
+        if (this.screechOsc && this.screechGain) {
+          const targetScreech = isDrifting ? 0.022 : 0.0001;
+          this.screechOsc.frequency.setTargetAtTime(720 + speedRatio * 240, now, 0.05);
+          this.screechGain.gain.setTargetAtTime(targetScreech, now, 0.05);
+        }
+      }
+
+      playCollisionThud(intensity = 0.7) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(135, now);
+        osc.frequency.exponentialRampToValueAtTime(38, now + 0.16);
+        g.gain.setValueAtTime(Math.min(0.26, 0.12 + intensity * 0.14), now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      }
+
+      playLapChime() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [659.25, 880].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.08;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.15, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.19);
+        });
+      }
+
+      playCountdownBeep(isGo = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(isGo ? 880 : 440, now);
+        g.gain.setValueAtTime(0.15, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + (isGo ? 0.25 : 0.12));
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + (isGo ? 0.26 : 0.13));
+      }
+
+      playFinishFanfare() {
+        if (this.muted || !this.ctx) return;
+        this.silenceContinuous();
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.1;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.16, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.32);
+        });
+        this.playApplauseBurst(now + 0.25);
+      }
+
+      playApplauseBurst(startTime) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const duration = 0.7;
+          const sampleCount = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, sampleCount, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < sampleCount; i++) {
+            const env = Math.sin((i / sampleCount) * Math.PI);
+            data[i] = (Math.random() * 2 - 1) * env * 0.2;
+          }
+          const src = this.ctx.createBufferSource();
+          src.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1650, startTime);
+          filter.Q.setValueAtTime(0.7, startTime);
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.16, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          src.start(startTime);
+        } catch (_e) {}
+      }
+    }
+
+    /* ========================================================================
+       ARA GRAND PRIX RACING ENGINE (PHYSICS, CHECKPOINTS, AI, RADAR & STATS)
+       ======================================================================== */
+    class ARAGrandPrixEngine {
+      constructor() {
+        this.canvas = document.getElementById('raceCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new ARAAudioSynth();
+
+        this.mode = 'AI_CLUB'; // AI_CASUAL, AI_CLUB, AI_PRO, LOCAL_2P
+        this.formatKey = 'LAPS_3'; // LAPS_3, LAPS_5, TIME_120, ELIMINATION
+        this.trackKey = 'EMERALD'; // EMERALD, SUNSET, NIGHT
+
+        const saved = this.loadStats();
+        this.stats = {
+          played: saved.played || 0,
+          wins: saved.wins || 0,
+          podiums: saved.podiums || 0,
+          bestLapMs: saved.bestLapMs || null,
+          topSpeedKmh: saved.topSpeedKmh || 0
+        };
+        this.countedRace = false;
+
+        this.d1Meta = { name: 'RASHID KHAN', nation: ARA_NATIONS_10[0], badge: 1 };
+        this.d2Meta = { name: 'HARUTO SATO', nation: ARA_NATIONS_10[1], badge: 7 };
+
+        this.canvasW = 640;
+        this.canvasH = 340;
+        this.dpr = 1;
+        this.trackPoints = [];
+        this.trackHalfWidth = 34;
+
+        this.cars = [];
+        this.particles = []; // { x, y, vx, vy, life, color, size }
+
+        this.countdownTimer = 0;
+        this.lastBeepSecond = 4;
+        this.raceTimeMs = 0;
+        this.timeTrialLimitMs = 120000;
+        this.eliminationTimer = 18;
+        this.raceFinished = false;
+
+        this.speedKmh = 0;
+        this.peakSpeedKmh = 0;
+        this.lastFrameTime = 0;
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = false;
+
+        this.keys = {};
+        this.touchInput = { left: false, right: false, gas: false, brake: false, nitro: false };
+
+        this.syncThemeIcon();
+        this.populateSetupUI();
+        this.bindEvents();
+        this.resizeCircuit();
+        this.initRaceState();
+        this.refreshHUD();
+        this.startIntro();
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(ARA_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(ARA_STATS_KEY, JSON.stringify(this.stats));
+        } catch (_e) {}
+      }
+
+      formatLapTime(ms) {
+        if (!ms || !Number.isFinite(ms)) return '--:--.-';
+        const totalSec = ms / 1000;
+        const mins = Math.floor(totalSec / 60);
+        const secs = (totalSec % 60).toFixed(1).padStart(4, '0');
+        return `${mins}:${secs}`;
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.renderCircuit();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      getTargetLaps() {
+        if (this.formatKey === 'LAPS_5') return 5;
+        if (this.formatKey === 'LAPS_3') return 3;
+        return 99;
+      }
+
+      populateSetupUI() {
+        const s1 = document.getElementById('d1NationSel');
+        const s2 = document.getElementById('d2NationSel');
+        s1.innerHTML = '';
+        s2.innerHTML = '';
+
+        ARA_NATIONS_10.forEach((nat, idx) => {
+          const o1 = document.createElement('option');
+          o1.value = nat.code;
+          o1.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 0) o1.selected = true;
+          s1.appendChild(o1);
+
+          const o2 = document.createElement('option');
+          o2.value = nat.code;
+          o2.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 1) o2.selected = true;
+          s2.appendChild(o2);
+        });
+
+        const buildStarRow = (containerId, isD1) => {
+          const wrap = document.getElementById(containerId);
+          wrap.innerHTML = '';
+          ARA_DRIVER_PRESETS.forEach((st) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'star-chip';
+            btn.textContent = `${st.name} (${st.nation})`;
+            btn.addEventListener('click', () => {
+              if (isD1) {
+                document.getElementById('d1NameInp').value = st.name;
+                document.getElementById('d1NationSel').value = st.nation;
+                document.getElementById('d1BadgeInp').value = String(st.badge);
+              } else {
+                document.getElementById('d2NameInp').value = st.name;
+                document.getElementById('d2NationSel').value = st.nation;
+                document.getElementById('d2BadgeInp').value = String(st.badge);
+              }
+              this.audio.playClick();
+            });
+            wrap.appendChild(btn);
+          });
+        };
+
+        buildStarRow('d1StarRow', true);
+        buildStarRow('d2StarRow', false);
+      }
+
+      getNation(code) {
+        return ARA_NATIONS_10.find((n) => n.code === code) || ARA_NATIONS_10[0];
+      }
+
+      buildClosedCircuitSpline(w, h) {
+        const cx = w * 0.5;
+        const cy = h * 0.51;
+        const rx = w * 0.37;
+        const ry = h * 0.34;
+        const rawControl = [
+          { x: cx - rx * 0.85, y: cy - ry * 0.85 },
+          { x: cx, y: cy - ry * 1.05 },
+          { x: cx + rx * 0.92, y: cy - ry * 0.78 },
+          { x: cx + rx * 1.05, y: cy + ry * 0.05 },
+          { x: cx + rx * 0.58, y: cy + ry * 0.95 },
+          { x: cx - rx * 0.08, y: cy + ry * 0.52 },
+          { x: cx - rx * 0.78, y: cy + ry * 0.96 },
+          { x: cx - rx * 1.05, y: cy + ry * 0.08 }
+        ];
+
+        const samples = [];
+        const stepsPerSeg = 24;
+        const n = rawControl.length;
+        for (let i = 0; i < n; i++) {
+          const p0 = rawControl[(i - 1 + n) % n];
+          const p1 = rawControl[i];
+          const p2 = rawControl[(i + 1) % n];
+          const p3 = rawControl[(i + 2) % n];
+          for (let s = 0; s < stepsPerSeg; s++) {
+            const t = s / stepsPerSeg;
+            const t2 = t * t;
+            const t3 = t2 * t;
+            const x = 0.5 * (
+              (2 * p1.x) +
+              (-p0.x + p2.x) * t +
+              (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+              (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
+            );
+            const y = 0.5 * (
+              (2 * p1.y) +
+              (-p0.y + p2.y) * t +
+              (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+              (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
+            );
+            samples.push({ x, y });
+          }
+        }
+        return samples;
+      }
+
+      resizeCircuit() {
+        const stage = document.getElementById('circuitStage').getBoundingClientRect();
+        const w = Math.floor(Math.max(300, stage.width - 4));
+        const h = Math.floor(Math.max(185, stage.height - 4));
+
+        this.canvasW = w;
+        this.canvasH = h;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${w}px`;
+        this.canvas.style.height = `${h}px`;
+        this.canvas.width = Math.floor(w * this.dpr);
+        this.canvas.height = Math.floor(h * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        this.trackHalfWidth = Math.max(22, Math.min(w, h) * 0.085);
+        this.trackPoints = this.buildClosedCircuitSpline(w, h);
+
+        this.renderCircuit();
+      }
+
+      nearestTrackInfo(x, y) {
+        let bestIdx = 0;
+        let bestDistSq = Infinity;
+        const pts = this.trackPoints;
+        for (let i = 0; i < pts.length; i++) {
+          const dx = x - pts[i].x;
+          const dy = y - pts[i].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < bestDistSq) {
+            bestDistSq = d2;
+            bestIdx = i;
+          }
+        }
+        const curr = pts[bestIdx];
+        const next = pts[(bestIdx + 1) % pts.length];
+        const tangentAngle = Math.atan2(next.y - curr.y, next.x - curr.x);
+        return {
+          idx: bestIdx,
+          dist: Math.sqrt(bestDistSq),
+          tangentAngle,
+          center: curr
+        };
+      }
+
+      createCarEntity(idx, meta, isAI, aiSkill, waypointIdx, laneOffset) {
+        const pts = this.trackPoints;
+        const p = pts[waypointIdx % pts.length];
+        const nxt = pts[(waypointIdx + 1) % pts.length];
+        const heading = Math.atan2(nxt.y - p.y, nxt.x - p.x);
+        const perpX = -Math.sin(heading);
+        const perpY = Math.cos(heading);
+
+        return {
+          idx,
+          meta: { ...meta },
+          isAI,
+          aiSkill,
+          x: p.x + perpX * laneOffset,
+          y: p.y + perpY * laneOffset,
+          vx: 0,
+          vy: 0,
+          angle: heading,
+          speed: 0,
+          nitro: 100,
+          isBoosting: false,
+          isDrifting: false,
+          onTrack: true,
+          lap: 1,
+          checkpointsHit: [false, false, false],
+          waypointIdx,
+          laneOffset,
+          lapStartMs: 0,
+          bestLapMs: null,
+          totalProgress: 0,
+          eliminated: false
+        };
+      }
+
+      initRaceState() {
+        if (!this.trackPoints.length) this.resizeCircuit();
+        this.raceFinished = false;
+        this.countedRace = false;
+        this.raceTimeMs = 0;
+        this.eliminationTimer = 18;
+        this.countdownTimer = 2.6;
+        this.lastBeepSecond = 4;
+        this.peakSpeedKmh = 0;
+        this.speedKmh = 0;
+        this.particles = [];
+
+        const aiSkill = this.mode === 'AI_PRO' ? 1.0 : this.mode === 'AI_CLUB' ? 0.88 : 0.74;
+        this.cars = [
+          this.createCarEntity(0, this.d1Meta, false, 1.0, 2, -this.trackHalfWidth * 0.34),
+          this.createCarEntity(1, this.d2Meta, this.mode !== 'LOCAL_2P', aiSkill, 0, this.trackHalfWidth * 0.34)
+        ];
+
+        this.refreshHUD();
+        this.renderCircuit();
+      }
+
+      spawnSparks(x, y, color, count = 4) {
+        for (let i = 0; i < count; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 25 + Math.random() * 55;
+          this.particles.push({
+            x,
+            y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 0.25,
+            color,
+            size: 2.2
+          });
+        }
+      }
+
+      stepCarPhysics(car, dt, canMove) {
+        if (car.eliminated) return;
+
+        const info = this.nearestTrackInfo(car.x, car.y);
+        car.onTrack = info.dist <= this.trackHalfWidth * 1.18;
+
+        let throttle = 0;
+        let brake = 0;
+        let steerInput = 0;
+        let wantNitro = false;
+
+        if (canMove) {
+          if (car.idx === 0) {
+            if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.touchInput.gas) throttle = 1;
+            if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.touchInput.brake) brake = 1;
+            if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.touchInput.left) steerInput -= 1;
+            if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.touchInput.right) steerInput += 1;
+            if (this.keys['Space'] || this.keys['ShiftLeft'] || this.touchInput.nitro) wantNitro = true;
+          } else if (this.mode === 'LOCAL_2P') {
+            if (this.keys['KeyI'] || this.keys['ArrowUp']) throttle = 1;
+            if (this.keys['KeyK'] || this.keys['ArrowDown']) brake = 1;
+            if (this.keys['KeyJ'] || this.keys['ArrowLeft']) steerInput -= 1;
+            if (this.keys['KeyL'] || this.keys['ArrowRight']) steerInput += 1;
+            if (this.keys['Enter'] || this.keys['ShiftRight']) wantNitro = true;
+          } else if (car.isAI) {
+            const lookAhead = (info.idx + 14) % this.trackPoints.length;
+            const tgt = this.trackPoints[lookAhead];
+            const desiredAngle = Math.atan2(tgt.y - car.y, tgt.x - car.x);
+            let diff = desiredAngle - car.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            steerInput = Math.max(-1, Math.min(1, diff * 2.4));
+            throttle = Math.abs(diff) > 0.75 ? 0.68 : 1.0;
+            wantNitro = Math.abs(diff) < 0.25 && car.nitro > 35 && Math.random() < 0.08;
+          }
+        }
+
+        if (wantNitro && car.nitro > 4 && throttle > 0) {
+          car.isBoosting = true;
+          car.nitro = Math.max(0, car.nitro - dt * 28);
+        } else {
+          car.isBoosting = false;
+          car.nitro = Math.min(100, car.nitro + dt * 11);
+        }
+
+        const baseMaxSpeed = Math.min(this.canvasW, this.canvasH) * (car.isAI ? 0.64 * car.aiSkill : 0.72);
+        const surfaceMult = car.onTrack ? 1.0 : 0.66;
+        const boostMult = car.isBoosting ? 1.32 : 1.0;
+        const maxSpeed = baseMaxSpeed * surfaceMult * boostMult;
+
+        const accelRate = baseMaxSpeed * 1.45 * (car.isBoosting ? 1.45 : 1.0);
+        const brakeRate = baseMaxSpeed * 1.85;
+
+        if (throttle > 0) {
+          car.speed = Math.min(maxSpeed, car.speed + throttle * accelRate * dt);
+        } else if (brake > 0) {
+          car.speed = Math.max(-maxSpeed * 0.35, car.speed - brake * brakeRate * dt);
+        } else {
+          car.speed *= Math.pow(0.28, dt);
+          if (Math.abs(car.speed) < 1.5) car.speed = 0;
+        }
+
+        const speedFactor = Math.min(1, Math.abs(car.speed) / Math.max(40, baseMaxSpeed * 0.45));
+        const turnRate = 3.25 * (0.35 + 0.65 * speedFactor) * (car.speed >= -1 ? 1 : -1);
+        car.angle += steerInput * turnRate * dt;
+
+        const forwardX = Math.cos(car.angle);
+        const forwardY = Math.sin(car.angle);
+        const targetVx = forwardX * car.speed;
+        const targetVy = forwardY * car.speed;
+
+        // Drift / lateral grip blending
+        const grip = Math.abs(steerInput) > 0.4 && Math.abs(car.speed) > baseMaxSpeed * 0.55 ? 5.2 : 11.5;
+        car.vx += (targetVx - car.vx) * Math.min(1, grip * dt);
+        car.vy += (targetVy - car.vy) * Math.min(1, grip * dt);
+
+        const lateralSlip = Math.hypot(car.vx - targetVx, car.vy - targetVy);
+        car.isDrifting = lateralSlip > baseMaxSpeed * 0.16 && car.onTrack;
+
+        car.x = Math.max(12, Math.min(this.canvasW - 12, car.x + car.vx * dt));
+        car.y = Math.max(12, Math.min(this.canvasH - 12, car.y + car.vy * dt));
+
+        if (car.isBoosting || car.isDrifting) {
+          const tailX = car.x - forwardX * 11;
+          const tailY = car.y - forwardY * 11;
+          this.spawnSparks(tailX, tailY, car.isBoosting ? '#fbbf24' : '#e2e8f0', 1);
+        }
+
+        // Checkpoints & Lap progression
+        const nPts = this.trackPoints.length;
+        const cp1 = Math.floor(nPts * 0.25);
+        const cp2 = Math.floor(nPts * 0.55);
+        const cp3 = Math.floor(nPts * 0.82);
+
+        if (Math.abs(info.idx - cp1) < 8) car.checkpointsHit[0] = true;
+        if (Math.abs(info.idx - cp2) < 8) car.checkpointsHit[1] = true;
+        if (Math.abs(info.idx - cp3) < 8) car.checkpointsHit[2] = true;
+
+        if (car.waypointIdx > nPts * 0.8 && info.idx < nPts * 0.2) {
+          if (car.checkpointsHit[0] && car.checkpointsHit[1] && car.checkpointsHit[2]) {
+            const lapDuration = this.raceTimeMs - car.lapStartMs;
+            if (car.lapStartMs > 0 && (!car.bestLapMs || lapDuration < car.bestLapMs)) {
+              car.bestLapMs = lapDuration;
+              if (car.idx === 0 && (!this.stats.bestLapMs || lapDuration < this.stats.bestLapMs)) {
+                this.stats.bestLapMs = lapDuration;
+                this.saveStats();
+              }
+            }
+            car.lapStartMs = this.raceTimeMs;
+            car.lap++;
+            car.checkpointsHit = [false, false, false];
+            if (car.idx === 0) {
+              this.audio.playLapChime();
+              this.showToast(`LAP ${car.lap}`);
+            }
+          }
+        }
+
+        car.waypointIdx = info.idx;
+        car.totalProgress = (car.lap - 1) * nPts + info.idx;
+
+        if (car.idx === 0) {
+          const liveKmh = Math.min(285, (Math.hypot(car.vx, car.vy) / Math.max(220, this.canvasW)) * 215);
+          this.speedKmh = Number(liveKmh.toFixed(1));
+          if (this.speedKmh > this.peakSpeedKmh) {
+            this.peakSpeedKmh = this.speedKmh;
+          }
+          if (this.speedKmh > this.stats.topSpeedKmh) {
+            this.stats.topSpeedKmh = this.speedKmh;
+          }
+        }
+      }
+
+      resolveCarCollisions() {
+        const c1 = this.cars[0];
+        const c2 = this.cars[1];
+        if (!c1 || !c2 || c1.eliminated || c2.eliminated) return;
+
+        const dx = c2.x - c1.x;
+        const dy = c2.y - c1.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = 18;
+        if (dist > 0 && dist < minDist) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const overlap = (minDist - dist) * 0.5;
+          c1.x -= nx * overlap;
+          c1.y -= ny * overlap;
+          c2.x += nx * overlap;
+          c2.y += ny * overlap;
+
+          c1.vx -= nx * 35;
+          c1.vy -= ny * 35;
+          c2.vx += nx * 35;
+          c2.vy += ny * 35;
+
+          this.spawnSparks((c1.x + c2.x) * 0.5, (c1.y + c2.y) * 0.5, '#fbbf24', 5);
+          this.audio.playCollisionThud(0.75);
+        }
+      }
+
+      evaluateRaceCompletion() {
+        if (this.raceFinished) return;
+        const c1 = this.cars[0];
+        const c2 = this.cars[1];
+        const targetLaps = this.getTargetLaps();
+
+        if (this.formatKey === 'LAPS_3' || this.formatKey === 'LAPS_5') {
+          if ((c1 && c1.lap > targetLaps) || (c2 && c2.lap > targetLaps)) {
+            this.concludeRace('CHECKERED FLAG!');
+          }
+        } else if (this.formatKey === 'TIME_120') {
+          if (this.raceTimeMs >= this.timeTrialLimitMs) {
+            this.concludeRace('TIME TRIAL COMPLETE!');
+          }
+        } else if (this.formatKey === 'ELIMINATION') {
+          if (this.eliminationTimer <= 0 && c1 && c2) {
+            const trailer = c1.totalProgress <= c2.totalProgress ? c1 : c2;
+            trailer.eliminated = true;
+            this.concludeRace(`${trailer.meta.name} ELIMINATED!`);
+          }
+        }
+      }
+
+      concludeRace(reason) {
+        if (this.raceFinished) return;
+        this.raceFinished = true;
+        this.speedKmh = 0;
+        this.audio.playFinishFanfare();
+
+        const c1 = this.cars[0];
+        const c2 = this.cars[1];
+        const p1Won = c1 && c2 ? c1.totalProgress >= c2.totalProgress : true;
+
+        if (!this.countedRace) {
+          this.countedRace = true;
+          this.stats.played++;
+          if (p1Won) {
+            this.stats.wins++;
+            this.stats.podiums++;
+          } else if (this.mode !== 'LOCAL_2P') {
+            this.stats.podiums++;
+          }
+          this.saveStats();
+        }
+
+        this.openSummaryModal(p1Won ? `${c1.meta.name} WINS!` : `${c2.meta.name} WINS!`, reason, true);
+      }
+
+      openSummaryModal(title, sub, isRaceEnd) {
+        document.getElementById('summaryTitle').textContent = title;
+        document.getElementById('summarySub').textContent = sub;
+        document.getElementById('statPlayedText').textContent = String(this.stats.played);
+        document.getElementById('statWinsText').textContent = String(this.stats.wins);
+        document.getElementById('statPodiumBestLap').textContent =
+          `${this.stats.podiums} • ${this.formatLapTime(this.stats.bestLapMs)}`;
+        document.getElementById('statTopSpeed').textContent = `${this.stats.topSpeedKmh.toFixed(1)} KM/H`;
+        document.getElementById('summaryActionBtn').textContent = isRaceEnd ? 'Play Again' : 'Resume Race';
+        document.getElementById('summaryActionBtn').dataset.mode = isRaceEnd ? 'RESTART' : 'RESUME';
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         HUD, SCREENSHOT & INPUT EVENTS
+         ====================================================================== */
+      refreshHUD() {
+        const c1 = this.cars[0];
+        const c2 = this.cars[1];
+        const p1Ahead = c1 && c2 ? c1.totalProgress >= c2.totalProgress : true;
+        const posLabel = p1Ahead ? 'P1' : 'P2';
+        const targetLaps = this.getTargetLaps();
+
+        if (this.formatKey === 'TIME_120') {
+          const remSec = Math.max(0, Math.ceil((this.timeTrialLimitMs - this.raceTimeMs) / 1000));
+          document.getElementById('topPosBadge').textContent = `${posLabel} • ${remSec}S`;
+        } else {
+          document.getElementById('topPosBadge').textContent =
+            `${posLabel} • LAP ${Math.min(targetLaps, c1 ? c1.lap : 1)}/${targetLaps}`;
+        }
+
+        const fmtMap = {
+          LAPS_3: '3 LAPS SPRINT',
+          LAPS_5: '5 LAPS GRAND PRIX',
+          TIME_120: 'TIME TRIAL (2 MIN)',
+          ELIMINATION: `ELIMINATION ${Math.max(0, Math.ceil(this.eliminationTimer))}S`
+        };
+        const modeMap = {
+          AI_CASUAL: 'CASUAL AI',
+          AI_CLUB: 'CLUB AI',
+          AI_PRO: 'PRO AI',
+          LOCAL_2P: '2P LOCAL'
+        };
+        const trkMap = {
+          EMERALD: 'EMERALD CIRCUIT',
+          SUNSET: 'SUNSET COASTAL TRACK',
+          NIGHT: 'NIGHT FLOODLIT GRAND PRIX'
+        };
+        document.getElementById('statusBannerText').textContent =
+          `${fmtMap[this.formatKey]} • ${modeMap[this.mode]} • ${trkMap[this.trackKey]}`;
+
+        if (c1) {
+          document.getElementById('d1DisplayName').textContent = c1.meta.name;
+          const b1 = document.getElementById('d1BadgeNum');
+          b1.textContent = `#${String(c1.meta.badge).padStart(2, '0')}`;
+          b1.style.background = c1.meta.nation.kit;
+          document.getElementById('d1SubLine').textContent = `${c1.meta.nation.code} • LAP ${c1.lap}`;
+          document.getElementById('d1NitroTag').textContent = `NITRO ${Math.round(c1.nitro)}%`;
+        }
+
+        if (c2) {
+          document.getElementById('d2DisplayName').textContent = c2.meta.name;
+          const b2 = document.getElementById('d2BadgeNum');
+          b2.textContent = `#${String(c2.meta.badge).padStart(2, '0')}`;
+          b2.style.background = c2.meta.nation.kit;
+          document.getElementById('d2SubLine').textContent = `${c2.meta.nation.code} • LAP ${c2.lap}`;
+          document.getElementById('d2NitroTag').textContent = `NITRO ${Math.round(c2.nitro)}%`;
+        }
+
+        const mph = this.speedKmh * 0.621371;
+        const peakMph = this.peakSpeedKmh * 0.621371;
+        document.getElementById('radarKmhText').textContent = `${this.speedKmh.toFixed(1)} KM/H`;
+        document.getElementById('radarMphPeakText').textContent = `${mph.toFixed(1)} MPH • PK ${peakMph.toFixed(0)}`;
+      }
+
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playLapChime();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderCircuit();
+        try {
+          const url = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotModalOpen = true;
+          this.audio.silenceContinuous();
+          document.getElementById('screenshotImg').src = url;
+          const link = document.getElementById('downloadShotBtn');
+          link.href = url;
+          link.download = `Autrobook-Grand-Prix-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_e) {}
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeCircuit());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.renderCircuit();
+            }
+          });
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#modeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.mode = btn.dataset.mode;
+            document.querySelectorAll('#modeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#formatGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.formatKey = btn.dataset.fmt;
+            document.querySelectorAll('#formatGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#trackGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.trackKey = btn.dataset.trk;
+            document.querySelectorAll('#trackGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.renderCircuit();
+          });
+        });
+
+        document.getElementById('startRaceBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const n1 = (document.getElementById('d1NameInp').value || '').trim().toUpperCase();
+          const n2 = (document.getElementById('d2NameInp').value || '').trim().toUpperCase();
+          this.d1Meta.name = (n1 || 'RASHID KHAN').slice(0, 14);
+          this.d2Meta.name = (n2 || 'HARUTO SATO').slice(0, 14);
+          this.d1Meta.nation = this.getNation(document.getElementById('d1NationSel').value);
+          this.d2Meta.nation = this.getNation(document.getElementById('d2NationSel').value);
+          this.d1Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('d1BadgeInp').value, 10) || 1));
+          this.d2Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('d2BadgeInp').value, 10) || 7));
+
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.initRaceState();
+        });
+
+        // Touch controls
+        const bindTouch = (id, prop) => {
+          const el = document.getElementById(id);
+          el.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); this.audio.unlock(); this.touchInput[prop] = true;
+          });
+          el.addEventListener('pointerup', () => { this.touchInput[prop] = false; });
+          el.addEventListener('pointerleave', () => { this.touchInput[prop] = false; });
+          el.addEventListener('pointercancel', () => { this.touchInput[prop] = false; });
+        };
+        bindTouch('steerLeftBtn', 'left');
+        bindTouch('steerRightBtn', 'right');
+        bindTouch('gasTouchBtn', 'gas');
+        bindTouch('brakeTouchBtn', 'brake');
+        bindTouch('nitroTouchBtn', 'nitro');
+
+        document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotModalOpen = false;
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen || this.raceFinished) return;
+          this.paused = true;
+          this.audio.silenceContinuous();
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.initRaceState();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
+        });
+
+        document.getElementById('statsFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSummaryModal('CAREER TELEMETRY', 'Autrobook Racing Association', false);
+        });
+
+        document.getElementById('summaryActionBtn').addEventListener('click', () => {
+          const mode = document.getElementById('summaryActionBtn').dataset.mode;
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+          if (mode === 'RESTART') this.initRaceState();
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
+        });
+
+        window.addEventListener('keydown', (e) => {
+          this.keys[e.code] = true;
+          if (e.code === 'KeyP') {
+            if (!this.introActive && !this.setupOpen && !this.shotModalOpen && !this.raceFinished) {
+              this.paused = !this.paused;
+              if (this.paused) this.audio.silenceContinuous();
+              document.getElementById('pauseModal').classList.toggle('open', this.paused);
+              this.lastFrameTime = performance.now();
+            }
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          this.keys[e.code] = false;
+        });
+      }
+
+      /* ======================================================================
+         INTRO & HIGH-DPI CIRCUIT + RACE CARS RENDERER
+         ====================================================================== */
+      startIntro() {
+        const dur = 2200;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('araIntroScreen').classList.add('hidden');
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      traceCircuitPath(ctx) {
+        const pts = this.trackPoints;
+        if (!pts.length) return;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        ctx.closePath();
+      }
+
+      renderCircuit() {
+        const ctx = this.ctx;
+        const w = this.canvasW;
+        const h = this.canvasH;
+        const env = TRACK_ENVIRONMENTS[this.trackKey] || TRACK_ENVIRONMENTS.EMERALD;
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. Off-road Turf / Sand / Night Terrain
+        const tile = 24;
+        for (let y = 0; y < h; y += tile) {
+          for (let x = 0; x < w; x += tile) {
+            const even = ((Math.floor(x / tile) + Math.floor(y / tile)) % 2) === 0;
+            ctx.fillStyle = even ? env.offroadA : env.offroadB;
+            ctx.fillRect(x, y, tile, tile);
+          }
+        }
+
+        // Grandstand & Apex Markers inside infield
+        ctx.fillStyle = 'rgba(11, 61, 32, 0.72)';
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(w * 0.34, h * 0.38, w * 0.32, h * 0.24, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '900 10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('AUTROBOOK GRAND PRIX', w * 0.5, h * 0.52);
+
+        // 2. Kerb / Rumble Strip & Asphalt Ribbon
+        ctx.save();
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        this.traceCircuitPath(ctx);
+        ctx.strokeStyle = env.kerbA;
+        ctx.lineWidth = this.trackHalfWidth * 2 + 10;
+        ctx.stroke();
+
+        this.traceCircuitPath(ctx);
+        ctx.strokeStyle = env.kerbB;
+        ctx.setLineDash([12, 12]);
+        ctx.lineWidth = this.trackHalfWidth * 2 + 10;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        this.traceCircuitPath(ctx);
+        ctx.strokeStyle = env.asphalt;
+        ctx.lineWidth = this.trackHalfWidth * 2;
+        ctx.stroke();
+
+        // Racing center dashed line
+        this.traceCircuitPath(ctx);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.24)';
+        ctx.setLineDash([8, 10]);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // 3. Start / Finish Gantry Line at waypoint 0
+        if (this.trackPoints.length > 2) {
+          const p0 = this.trackPoints[0];
+          const p1 = this.trackPoints[1];
+          const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+          const perpX = -Math.sin(ang);
+          const perpY = Math.cos(ang);
+
+          ctx.save();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(p0.x - perpX * this.trackHalfWidth, p0.y - perpY * this.trackHalfWidth);
+          ctx.lineTo(p0.x + perpX * this.trackHalfWidth, p0.y + perpY * this.trackHalfWidth);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 4. Race Cars with Wheels, Livery, Car Number & Night Headlights
+        for (const car of this.cars) {
+          if (car.eliminated) continue;
+          ctx.save();
+          ctx.translate(car.x, car.y);
+          ctx.rotate(car.angle);
+
+          if (env.headlights) {
+            const beam = ctx.createLinearGradient(12, 0, 68, 0);
+            beam.addColorStop(0, 'rgba(254, 249, 195, 0.42)');
+            beam.addColorStop(1, 'rgba(254, 249, 195, 0)');
+            ctx.fillStyle = beam;
+            ctx.beginPath();
+            ctx.moveTo(12, -5);
+            ctx.lineTo(68, -22);
+            ctx.lineTo(68, 22);
+            ctx.lineTo(12, 5);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          // 4 Tires
+          ctx.fillStyle = '#090d16';
+          [
+            [-8, -10],
+            [6, -10],
+            [-8, 7],
+            [6, 7]
+          ].forEach(([wx, wy]) => {
+            ctx.fillRect(wx, wy, 6, 3.5);
+          });
+
+          // Chassis
+          ctx.fillStyle = car.meta.nation.primary;
+          ctx.strokeStyle = car.isBoosting ? '#fbbf24' : '#ffffff';
+          ctx.lineWidth = car.isBoosting ? 2 : 1.2;
+          ctx.beginPath();
+          ctx.roundRect(-12, -7.5, 24, 15, 4.5);
+          ctx.fill();
+          ctx.stroke();
+
+          // Cockpit & Wing stripe
+          ctx.fillStyle = car.meta.nation.secondary;
+          ctx.fillRect(-5, -5, 9, 10);
+
+          // Car badge number
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 7.5px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(car.meta.badge), 1, 0.5);
+
+          ctx.restore();
+        }
+
+        // 5. Boost & Drift Particles
+        for (const pt of this.particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, pt.life / 0.25);
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 6. Track Atmosphere Overlay & Countdown Banner
+        if (env.ambientOverlay) {
+          ctx.fillStyle = env.ambientOverlay;
+          ctx.fillRect(0, 0, w, h);
+        }
+
+        if (this.countdownTimer > 0 && !this.introActive && !this.setupOpen) {
+          const num = Math.max(1, Math.ceil(this.countdownTimer));
+          ctx.fillStyle = 'rgba(4, 20, 11, 0.72)';
+          ctx.beginPath();
+          ctx.roundRect(w * 0.5 - 64, h * 0.5 - 26, 128, 52, 14);
+          ctx.fill();
+
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = '900 22px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`GRID ${num}`, w * 0.5, h * 0.5);
+        }
+      }
+
+      loop(now) {
+        if (!this.lastFrameTime) this.lastFrameTime = now;
+        const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
+        this.lastFrameTime = now;
+
+        if (!this.paused && !this.introActive && !this.setupOpen) {
+          if (this.countdownTimer > 0) {
+            this.countdownTimer = Math.max(0, this.countdownTimer - dt);
+            const ceilSec = Math.ceil(this.countdownTimer);
+            if (ceilSec > 0 && ceilSec < this.lastBeepSecond) {
+              this.lastBeepSecond = ceilSec;
+              this.audio.playCountdownBeep(false);
+            }
+            if (this.countdownTimer === 0) {
+              this.audio.playCountdownBeep(true);
+              this.showToast('LIGHTS OUT — GO!');
+            }
+            this.audio.updateEngineAndDrift(0, false, false, false);
+          } else if (!this.raceFinished) {
+            this.raceTimeMs += dt * 1000;
+            if (this.formatKey === 'ELIMINATION') {
+              this.eliminationTimer = Math.max(0, this.eliminationTimer - dt);
+            }
+
+            for (const car of this.cars) {
+              this.stepCarPhysics(car, dt, true);
+            }
+            this.resolveCarCollisions();
+            this.evaluateRaceCompletion();
+
+            const c1 = this.cars[0];
+            const ratio = c1 ? Math.abs(c1.speed) / Math.max(120, this.canvasW * 0.7) : 0;
+            this.audio.updateEngineAndDrift(ratio, Boolean(c1 && c1.isBoosting), Boolean(c1 && c1.isDrifting), true);
+          }
+
+          for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt;
+            if (p.life <= 0) this.particles.splice(i, 1);
+          }
+
+          this.refreshHUD();
+        }
+
+        this.renderCircuit();
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const app = new ARAGrandPrixEngine();
+      requestAnimationFrame((t) => app.loop(t));
+    });
+  </script>
+</body>
+</html>
