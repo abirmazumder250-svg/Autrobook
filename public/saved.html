@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Saved — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="/theme.css" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #FFFFFF;
+      --surface: #f3f4f6;
+      --card: #FFFFFF;
+      --elevated: #f8f9fa;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e5e7eb;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --pill-active-bg: rgba(10, 125, 59, 0.16);
+      --pill-active-text: #0a7d3b;
+      --chip-bg: #eef0f2;
+      --chip-text: #202124;
+      --ash-toggle: #9ca3af;
+      --shadow: 0 8px 24px rgba(32, 33, 36, 0.16);
+    }
+
+    :root[data-theme="dark"],
+    body.dark-theme {
+      color-scheme: dark;
+      --bg: #202124;
+      --surface: #28292c;
+      --card: #202124;
+      --elevated: #2c2d31;
+      --text: #FFFFFF;
+      --muted: #9aa0a6;
+      --border: #383a3f;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --pill-active-bg: rgba(16, 185, 129, 0.22);
+      --pill-active-text: #34d399;
+      --chip-bg: #303134;
+      --chip-text: #e8eaed;
+      --ash-toggle: #6b7280;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #202124;
+        --surface: #28292c;
+        --card: #202124;
+        --elevated: #2c2d31;
+        --text: #FFFFFF;
+        --muted: #9aa0a6;
+        --border: #383a3f;
+        --dark-green: #0B3D20;
+        --emerald: #0a7d3b;
+        --emerald-bright: #10b981;
+        --pill-active-bg: rgba(16, 185, 129, 0.22);
+        --pill-active-text: #34d399;
+        --chip-bg: #303134;
+        --chip-text: #e8eaed;
+        --ash-toggle: #6b7280;
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 48px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .top-bar {
+      height: 56px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 19px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .icon-btn:hover {
+      background: var(--surface);
+    }
+
+    .page-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    /* Main Tabs */
+    .main-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px 10px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .main-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .main-tab {
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .main-tab:hover {
+      background: var(--surface);
+    }
+
+    .main-tab.active {
+      background: var(--pill-active-bg);
+      color: var(--pill-active-text);
+    }
+
+    /* Filter Pills Row (Liked / Watched / Shared) */
+    .filter-chips-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .filter-chips-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-chip {
+      border: 1px solid var(--border);
+      background: var(--chip-bg);
+      color: var(--chip-text);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      border-color: var(--emerald);
+    }
+
+    .filter-chip.active {
+      background: var(--dark-green);
+      color: #ffffff;
+      border-color: var(--emerald);
+    }
+
+    /* Main Container */
+    .main-container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* Empty State Box */
+    .empty-box {
+      background: var(--surface);
+      padding: 40px 20px 44px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .clapper-svg {
+      width: 82px;
+      height: 82px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .empty-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .empty-desc {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 340px;
+      line-height: 1.45;
+    }
+
+    /* Collections View (Screenshot 2 & 3 style) */
+    .collections-view {
+      padding: 18px 14px 28px;
+      display: none;
+    }
+
+    .collections-view.active {
+      display: block;
+    }
+
+    .section-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .section-heading {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .new-collection-link {
+      border: none;
+      background: transparent;
+      color: var(--emerald-bright);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+
+    :root[data-theme="light"] .new-collection-link,
+    body:not(.dark-theme) .new-collection-link {
+      color: var(--emerald);
+    }
+
+    .new-collection-link:hover {
+      background: var(--pill-active-bg);
+    }
+
+    .collections-empty-center {
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 14px;
+      padding: 20px 10px;
+    }
+
+    .create-collection-cta-btn {
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      background: var(--dark-green);
+      color: #ffffff;
+      border-radius: 8px;
+      padding: 11px 22px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .create-collection-cta-btn:hover {
+      background: var(--emerald);
+    }
+
+    .create-collection-cta-btn:active {
+      transform: scale(0.97);
+    }
+
+    .first-collection-hint {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 2px;
+    }
+
+    .collections-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .collection-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .collection-card-title {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .collection-card-meta {
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    /* Saved Items List */
+    .saved-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px;
+    }
+
+    .saved-item-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .saved-item-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .saved-item-sub {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Create a Collection Bottom Sheet Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.52);
+      z-index: 120;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 640px;
+      background: var(--elevated);
+      color: var(--text);
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
+      border-top: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 10px 16px 28px;
+    }
+
+    .sheet-grabber {
+      width: 38px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--muted);
+      opacity: 0.45;
+      margin: 0 auto 12px;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+    }
+
+    .sheet-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .done-btn {
+      border: none;
+      background: var(--dark-green);
+      color: #ffffff;
+      font-size: 14.5px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+
+    .done-btn:hover:not(:disabled) {
+      background: var(--emerald);
+    }
+
+    .done-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .collection-input-wrap {
+      margin-top: 4px;
+    }
+
+    .collection-input {
+      width: 100%;
+      height: 54px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      padding: 0 14px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .collection-input:focus {
+      border-color: var(--emerald);
+    }
+
+    .required-hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+      margin-bottom: 18px;
+    }
+
+    /* Ash Toggle Buttons that turn Dark Green once name is entered */
+    .toggle-option-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 0;
+    }
+
+    .toggle-option-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .toggle-option-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .ash-toggle-btn {
+      position: relative;
+      width: 50px;
+      height: 28px;
+      border-radius: 999px;
+      border: none;
+      background: var(--ash-toggle);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s ease;
+    }
+
+    .ash-toggle-btn.active {
+      background: var(--dark-green);
+    }
+
+    .ash-toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
+      transition: transform 0.2s ease;
+    }
+
+    .ash-toggle-btn.active .ash-toggle-thumb {
+      transform: translateX(22px);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--dark-green);
+      color: #ffffff;
+      border: 1px solid var(--emerald);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      display: none;
+      z-index: 250;
+      box-shadow: var(--shadow);
+      max-width: 90vw;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="top-header">
+    <div class="top-bar">
+      <button
+        type="button"
+        class="icon-btn"
+        id="backToReelsBtn"
+        aria-label="Back to Reels"
+        onclick="goBackToReels()"
+      >
+        <i class="fas fa-chevron-left"></i>
+      </button>
+
+      <h1 class="page-title">Saved</h1>
+
+      <button
+        type="button"
+        class="icon-btn"
+        id="searchBarBtn"
+        aria-label="Search"
+        onclick="openSearchBarPage()"
+      >
+        <i class="fas fa-search"></i>
+      </button>
+    </div>
+
+    <div class="main-tabs" role="tablist">
+      <button type="button" class="main-tab" data-tab="all" onclick="switchSavedTab('all', this)">All</button>
+      <button type="button" class="main-tab active" data-tab="reels" onclick="switchSavedTab('reels', this)">Reels</button>
+      <button type="button" class="main-tab" data-tab="posts" onclick="switchSavedTab('posts', this)">Posts</button>
+      <button type="button" class="main-tab" data-tab="marketplace" onclick="switchSavedTab('marketplace', this)">Marketplace</button>
+      <button type="button" class="main-tab" data-tab="collections" onclick="switchSavedTab('collections', this)">Collections</button>
+      <button type="button" class="main-tab" data-tab="local" onclick="switchSavedTab('local', this)">Local</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-container">
+    <div class="filter-chips-row" id="filterChipsRow">
+      <button type="button" class="filter-chip" id="likedFilterChip" onclick="navigateToLikedPage()">
+        <i class="far fa-thumbs-up"></i>
+        <span>Liked</span>
+      </button>
+      <button type="button" class="filter-chip" id="watchedFilterChip" onclick="navigateToWatchedPage()">
+        <i class="far fa-play-circle"></i>
+        <span>Watched</span>
+      </button>
+      <button type="button" class="filter-chip" id="sharedFilterChip" onclick="navigateToSharedPage()">
+        <i class="fas fa-share"></i>
+        <span>Shared</span>
+      </button>
+    </div>
+
+    <div id="savedFeedContent"></div>
+
+    <!-- Collections View (Shown when Collections tab is active) -->
+    <section class="collections-view" id="collectionsView">
+      <div class="section-top-row">
+        <h2 class="section-heading">Your collections</h2>
+        <button type="button" class="new-collection-link" id="newCollectionBtn" onclick="openCreateCollectionModal()">
+          New collection
+        </button>
+      </div>
+
+      <div id="collectionsDynamicContainer"></div>
+    </section>
+  </main>
+
+  <!-- Create a Collection Modal Sheet -->
+  <div id="createCollectionBackdrop" class="modal-backdrop" onclick="handleBackdropClick(event)">
+    <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="createCollectionTitle">
+      <div class="sheet-grabber"></div>
+      <div class="sheet-header">
+        <button
+          type="button"
+          class="icon-btn"
+          id="closeCollectionSheetBtn"
+          aria-label="Back to Collections"
+          onclick="returnToCollectionsFromModal()"
+        >
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <h2 class="sheet-title" id="createCollectionTitle">Create a collection</h2>
+        <button type="button" class="done-btn" id="saveCollectionDoneBtn" disabled onclick="saveCollectionToSupabase()">
+          Done
+        </button>
+      </div>
+
+      <div class="collection-input-wrap">
+        <input
+          type="text"
+          id="collectionNameInput"
+          class="collection-input"
+          placeholder="Collection name"
+          maxlength="80"
+          oninput="handleCollectionNameInput()"
+        />
+      </div>
+      <div class="required-hint">Required</div>
+
+      <div class="toggle-option-row">
+        <div>
+          <div class="toggle-option-title">Set the collection to public</div>
+          <div class="toggle-option-sub">Visible to anyone on or off Autrobook</div>
+        </div>
+        <button
+          type="button"
+          class="ash-toggle-btn"
+          id="publicToggleBtn"
+          aria-pressed="false"
+          aria-label="Set the collection to public"
+          onclick="toggleAshOption('public', this)"
+        >
+          <span class="ash-toggle-thumb"></span>
+        </button>
+      </div>
+
+      <div class="toggle-option-row">
+        <div>
+          <div class="toggle-option-title">Add contributors</div>
+          <div class="toggle-option-sub">Build a collection with friends</div>
+        </div>
+        <button
+          type="button"
+          class="ash-toggle-btn"
+          id="contributorsToggleBtn"
+          aria-pressed="false"
+          aria-label="Add contributors"
+          onclick="toggleAshOption('contributors', this)"
+        >
+          <span class="ash-toggle-thumb"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastBanner" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+
+    const sb = (window.supabase && typeof window.supabase.createClient === "function")
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    let currentTab = "reels";
+    let currentUserId = null;
+    let savedItems = [];
+    let userCollections = [];
+    let isPublicSelected = false;
+    let isContributorsSelected = false;
+
+    function goBackToReels() {
+      window.location.href = "reels.html";
+    }
+
+    function openSearchBarPage() {
+      window.location.href = "search-bar.html";
+    }
+
+    function navigateToLikedPage() {
+      window.location.href = "liked.html";
+    }
+
+    function navigateToWatchedPage() {
+      window.location.href = "watched.html";
+    }
+
+    function navigateToSharedPage() {
+      window.location.href = "shared.html";
+    }
+
+    function escapeHtml(val) {
+      return String(val ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toastBanner");
+      if (!el) return;
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(window._savedToastTimer);
+      window._savedToastTimer = setTimeout(() => {
+        el.style.display = "none";
+      }, 2800);
+    }
+
+    function renderCollectionsView() {
+      const container = document.getElementById("collectionsDynamicContainer");
+      if (!container) return;
+
+      const sheetOpen = document.getElementById("createCollectionBackdrop")?.classList.contains("open");
+
+      if (!userCollections.length) {
+        container.innerHTML = `
+          <div class="collections-empty-center">
+            <button
+              type="button"
+              class="create-collection-cta-btn"
+              id="createCollectionCenterBtn"
+              onclick="openCreateCollectionModal()"
+            >Create collection</button>
+            ${sheetOpen ? `
+              <svg class="clapper-svg" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <g transform="rotate(-12 44 44)">
+                  <rect x="14" y="34" width="60" height="38" rx="7" fill="#0a7d3b" stroke="#0B3D20" stroke-width="2.5"/>
+                  <path d="M16 21C15.5 17.5 18 14.5 21.5 14L67.5 8C71 7.5 74 10 74.5 13.5L76 23L17.5 30.5L16 21Z" fill="#0B3D20" stroke="#10b981" stroke-width="2"/>
+                  <path d="M27 13L34 28M42 11L49 26M57 9L64 24" stroke="#34d399" stroke-width="4" stroke-linecap="round"/>
+                  <polygon points="39,44 39,62 55,53" fill="#ffffff"/>
+                </g>
+              </svg>
+              <div class="first-collection-hint">Create your first collection</div>
+            ` : ""}
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="collections-grid">
+          ${userCollections.map((col) => {
+            const title = col.name || "Untitled Collection";
+            const badges = [];
+            if (col.is_public) badges.push("Public");
+            if (col.allow_contributors) badges.push("Contributors");
+            return `
+              <div class="collection-card">
+                <div class="collection-card-title">${escapeHtml(title)}</div>
+                <div class="collection-card-meta">${escapeHtml(badges.length ? badges.join(" • ") : "Private")}</div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function openCreateCollectionModal() {
+      isPublicSelected = false;
+      isContributorsSelected = false;
+
+      const input = document.getElementById("collectionNameInput");
+      const pubBtn = document.getElementById("publicToggleBtn");
+      const contribBtn = document.getElementById("contributorsToggleBtn");
+      const doneBtn = document.getElementById("saveCollectionDoneBtn");
+
+      if (input) input.value = "";
+      if (pubBtn) {
+        pubBtn.classList.remove("active");
+        pubBtn.setAttribute("aria-pressed", "false");
+      }
+      if (contribBtn) {
+        contribBtn.classList.remove("active");
+        contribBtn.setAttribute("aria-pressed", "false");
+      }
+      if (doneBtn) doneBtn.disabled = true;
+
+      document.getElementById("createCollectionBackdrop")?.classList.add("open");
+      if (currentTab === "collections") {
+        renderCollectionsView();
+      }
+      setTimeout(() => input?.focus(), 60);
+    }
+
+    function returnToCollectionsFromModal() {
+      document.getElementById("createCollectionBackdrop")?.classList.remove("open");
+      if (currentTab !== "collections") {
+        const colTabBtn = document.querySelector('.main-tab[data-tab="collections"]');
+        switchSavedTab("collections", colTabBtn);
+      } else {
+        renderCollectionsView();
+      }
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target && e.target.id === "createCollectionBackdrop") {
+        returnToCollectionsFromModal();
+      }
+    }
+
+    function handleCollectionNameInput() {
+      const input = document.getElementById("collectionNameInput");
+      const doneBtn = document.getElementById("saveCollectionDoneBtn");
+      const pubBtn = document.getElementById("publicToggleBtn");
+      const contribBtn = document.getElementById("contributorsToggleBtn");
+
+      const hasName = Boolean((input?.value || "").trim());
+      if (doneBtn) doneBtn.disabled = !hasName;
+
+      if (hasName) {
+        isPublicSelected = true;
+        isContributorsSelected = true;
+        if (pubBtn) {
+          pubBtn.classList.add("active");
+          pubBtn.setAttribute("aria-pressed", "true");
+        }
+        if (contribBtn) {
+          contribBtn.classList.add("active");
+          contribBtn.setAttribute("aria-pressed", "true");
+        }
+      } else {
+        isPublicSelected = false;
+        isContributorsSelected = false;
+        if (pubBtn) {
+          pubBtn.classList.remove("active");
+          pubBtn.setAttribute("aria-pressed", "false");
+        }
+        if (contribBtn) {
+          contribBtn.classList.remove("active");
+          contribBtn.setAttribute("aria-pressed", "false");
+        }
+      }
+    }
+
+    function toggleAshOption(type, btnEl) {
+      if (!btnEl) return;
+      if (type === "public") {
+        isPublicSelected = !isPublicSelected;
+        btnEl.classList.toggle("active", isPublicSelected);
+        btnEl.setAttribute("aria-pressed", String(isPublicSelected));
+      } else if (type === "contributors") {
+        isContributorsSelected = !isContributorsSelected;
+        btnEl.classList.toggle("active", isContributorsSelected);
+        btnEl.setAttribute("aria-pressed", String(isContributorsSelected));
+      }
+    }
+
+    async function saveCollectionToSupabase() {
+      const input = document.getElementById("collectionNameInput");
+      const name = (input?.value || "").trim();
+      if (!name) {
+        showToast("Please enter a collection name.");
+        return;
+      }
+
+      if (!sb) {
+        showToast("Supabase connection unavailable.");
+        return;
+      }
+
+      try {
+        if (!currentUserId) {
+          const { data: sess } = await sb.auth.getSession();
+          currentUserId = sess?.session?.user?.id || localStorage.getItem("autro_user_id") || null;
+        }
+
+        const payload = {
+          name,
+          is_public: isPublicSelected,
+          allow_contributors: isContributorsSelected
+        };
+        if (currentUserId) payload.user_id = currentUserId;
+
+        const { data, error } = await sb
+          .from("saved_collections")
+          .insert(payload)
+          .select()
+          .maybeSingle();
+
+        if (error) throw error;
+
+        userCollections.unshift(data || { id: Date.now(), ...payload });
+        document.getElementById("createCollectionBackdrop")?.classList.remove("open");
+        renderCollectionsView();
+        showToast("Collection saved.");
+      } catch (err) {
+        console.warn("Save collection error:", err);
+        showToast("Could not save collection.");
+      }
+    }
+
+    function renderSavedContent() {
+      const container = document.getElementById("savedFeedContent");
+      const chipsRow = document.getElementById("filterChipsRow");
+      const collectionsView = document.getElementById("collectionsView");
+      if (!container) return;
+
+      if (currentTab === "collections") {
+        if (chipsRow) chipsRow.style.display = "none";
+        container.innerHTML = "";
+        if (collectionsView) collectionsView.classList.add("active");
+        renderCollectionsView();
+        return;
+      }
+
+      if (collectionsView) collectionsView.classList.remove("active");
+      if (chipsRow) chipsRow.style.display = currentTab === "reels" ? "flex" : "none";
+
+      const filtered = savedItems.filter((item) => {
+        const itemType = String(item.item_type || item.type || "reels").toLowerCase();
+        if (currentTab === "all") return true;
+        return itemType === currentTab;
+      });
+
+      if (!filtered.length) {
+        const titleMap = {
+          all: "No saved items yet",
+          reels: "No saved reels yet",
+          posts: "No saved posts yet",
+          marketplace: "No saved items yet",
+          local: "No saved local items yet"
+        };
+
+        const descMap = {
+          all: "Save posts, reels, or items to organize them into collections.",
+          reels: "Save reels to a collection, share with others, or watch again.",
+          posts: "Save posts to read or revisit them anytime.",
+          marketplace: "Save listings you want to check out later.",
+          local: "Save places and local spots to revisit later."
+        };
+
+        container.innerHTML = `
+          <div class="empty-box" id="emptySavedBox">
+            <svg class="clapper-svg" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g transform="rotate(-12 44 44)">
+                <rect x="14" y="34" width="60" height="38" rx="7" fill="#0a7d3b" stroke="#0B3D20" stroke-width="2.5"/>
+                <path d="M16 21C15.5 17.5 18 14.5 21.5 14L67.5 8C71 7.5 74 10 74.5 13.5L76 23L17.5 30.5L16 21Z" fill="#0B3D20" stroke="#10b981" stroke-width="2"/>
+                <path d="M27 13L34 28M42 11L49 26M57 9L64 24" stroke="#34d399" stroke-width="4" stroke-linecap="round"/>
+                <polygon points="39,44 39,62 55,53" fill="#ffffff"/>
+              </g>
+            </svg>
+            <div class="empty-title">${escapeHtml(titleMap[currentTab] || "No saved items yet")}</div>
+            <div class="empty-desc">${escapeHtml(descMap[currentTab] || "Save reels to a collection, share with others, or watch again.")}</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `<div class="saved-items-list">${filtered.map((item) => {
+        const title = item.title || item.caption || "Saved Item";
+        const typeLabel = item.item_type || item.type || "Saved";
+        return `
+          <div class="saved-item-card">
+            <div>
+              <div class="saved-item-title">${escapeHtml(title)}</div>
+              <div class="saved-item-sub">${escapeHtml(typeLabel)}</div>
+            </div>
+            <i class="fas fa-bookmark" style="color: var(--emerald-bright);"></i>
+          </div>
+        `;
+      }).join("")}</div>`;
+    }
+
+    function switchSavedTab(tabName, btnEl) {
+      currentTab = tabName;
+      document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      renderSavedContent();
+    }
+
+    async function loadSavedDataFromSupabase() {
+      if (!sb) {
+        renderSavedContent();
+        renderCollectionsView();
+        return;
+      }
+
+      try {
+        const { data: sess } = await sb.auth.getSession();
+        currentUserId = sess?.session?.user?.id || localStorage.getItem("autro_user_id") || null;
+
+        let colsQuery = sb.from("saved_collections").select("*").order("created_at", { ascending: false });
+        if (currentUserId) colsQuery = colsQuery.eq("user_id", currentUserId);
+        const { data: colsData } = await colsQuery;
+        if (Array.isArray(colsData)) userCollections = colsData;
+
+        let itemsQuery = sb.from("saved_items").select("*").order("created_at", { ascending: false });
+        if (currentUserId) itemsQuery = itemsQuery.eq("user_id", currentUserId);
+        const { data: itemsData } = await itemsQuery;
+        if (Array.isArray(itemsData)) savedItems = itemsData;
+      } catch (err) {
+        console.warn("Supabase saved load warning:", err);
+      }
+
+      renderSavedContent();
+      renderCollectionsView();
+    }
+
+    document.addEventListener("DOMContentLoaded", loadSavedDataFromSupabase);
+  </script>
+</body>
+            </html>
