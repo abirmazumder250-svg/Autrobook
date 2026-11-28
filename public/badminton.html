@@ -1,0 +1,2584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Badminton Association - Championship Rally</title>
+  <style>
+    /* ========================================================================
+       1. DESIGN TOKENS & SYSTEM LIGHT/DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --aba-deep: #0B3D20;
+      --aba-mid: #0a7d3b;
+      --aba-emerald: #10b981;
+      --aba-gold: #f59e0b;
+      --aba-amber: #fbbf24;
+
+      --panel-bg: rgba(7, 29, 17, 0.88);
+      --panel-border: rgba(16, 185, 129, 0.36);
+      --text-primary: #ffffff;
+      --text-muted: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --panel-bg: rgba(255, 255, 255, 0.92);
+        --panel-border: rgba(10, 125, 59, 0.35);
+        --text-primary: #062112;
+        --text-muted: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --panel-bg: rgba(7, 29, 17, 0.88);
+      --panel-border: rgba(16, 185, 129, 0.36);
+      --text-primary: #ffffff;
+      --text-muted: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --panel-bg: rgba(255, 255, 255, 0.92);
+      --panel-border: rgba(10, 125, 59, 0.35);
+      --text-primary: #062112;
+      --text-muted: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04150c;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-primary);
+      touch-action: none;
+    }
+
+    #arenaFrame {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 22%, #0a7d3b 0%, #0B3D20 58%, #031109 100%);
+    }
+
+    canvas#courtCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .glass-hud {
+      background: var(--panel-bg);
+      color: var(--text-primary);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP SCOREBOARD & UTILITY BUTTONS
+       ======================================================================== */
+    .hud-top {
+      position: absolute;
+      top: max(8px, env(safe-area-inset-top));
+      left: 8px;
+      right: 8px;
+      z-index: 20;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      pointer-events: auto;
+    }
+
+    .round-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text-primary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .round-icon-btn:hover {
+      border-color: var(--aba-amber);
+    }
+
+    .round-icon-btn:active {
+      transform: scale(0.92);
+    }
+
+    .match-scoreboard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5px 11px;
+      border-radius: 15px;
+      min-width: 184px;
+      pointer-events: auto;
+    }
+
+    .score-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+    }
+
+    .pts-chip {
+      padding: 1px 7px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.24);
+      border: 1px solid rgba(16, 185, 129, 0.55);
+      color: var(--aba-amber);
+      font-size: 13.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .serve-pip {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--aba-amber);
+      box-shadow: 0 0 8px var(--aba-amber);
+    }
+
+    .score-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 6px;
+      margin-top: 2px;
+      font-size: 8.8px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* Telemetry Strip: Rally Streak & Shuttle Radar */
+    .radar-strip {
+      position: absolute;
+      top: calc(max(8px, env(safe-area-inset-top)) + 52px);
+      left: 8px;
+      right: 8px;
+      z-index: 18;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .rally-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+
+    .shuttle-radar-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      pointer-events: auto;
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+
+    .radar-speed {
+      color: var(--aba-amber);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ========================================================================
+       3. BOTTOM SHOT & COURT MOVEMENT CONTROLS
+       ======================================================================== */
+    .bottom-deck {
+      position: absolute;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      width: 94%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .shot-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+    }
+
+    .shot-trigger {
+      padding: 8px 4px;
+      border-radius: 11px;
+      background: var(--panel-bg);
+      color: var(--text-primary);
+      border: 1.5px solid var(--panel-border);
+      font-size: 9.8px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
+    }
+
+    .shot-trigger:active {
+      transform: scale(0.95);
+    }
+
+    .shot-trigger.active-shot {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--aba-amber);
+      color: #ffffff;
+    }
+
+    .shot-trigger.boost-on {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-color: #fef08a;
+      color: #062112;
+    }
+
+    .move-pad-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .move-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--panel-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--panel-border);
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+
+    .move-btn:active {
+      transform: scale(0.95);
+      background: rgba(16, 185, 129, 0.25);
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK BADMINTON ASSOCIATION INTRO SCREEN
+       ======================================================================== */
+    #abaIntroOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #abaIntroOverlay.fade-out {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spotlight-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-w {
+      left: 10%;
+      animation: swingW 2.8s ease-in-out infinite alternate;
+    }
+
+    .ray-e {
+      right: 10%;
+      animation: swingE 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes swingW {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes swingE {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-box {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 345px;
+      width: 100%;
+    }
+
+    .aba-crest-ring {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--aba-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      overflow: hidden;
+      animation: crestFloat 1.5s ease-in-out infinite alternate;
+    }
+
+    .logo-img-crest {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hud-logo-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--aba-amber);
+      display: block;
+    }
+
+    .modal-logo-badge {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--aba-amber);
+      margin: 0 auto 8px;
+      display: block;
+    }
+
+    @keyframes crestFloat {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-badge {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--aba-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-heading {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-tagline {
+      margin-top: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-progress-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT PREVIEW, PAUSE, MATCH SUMMARY)
+       ======================================================================== */
+    .modal-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-layer.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 420px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 18px 16px;
+      background: var(--modal-bg);
+      color: var(--text-primary);
+      border: 1.5px solid var(--panel-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .field-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .field-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--aba-amber);
+    }
+
+    .name-num-grid {
+      display: grid;
+      grid-template-columns: 1fr 84px;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .text-input, .dropdown-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 11px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-primary);
+      font-size: 12.5px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .dropdown-input option {
+      background: #072213;
+      color: #ffffff;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .choice-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-primary);
+      font-size: 10.2px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--aba-amber);
+      color: #ffffff;
+    }
+
+    .country-card {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 8px;
+      border-radius: 11px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-primary);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .country-card.selected {
+      background: rgba(16, 185, 129, 0.24);
+      border-color: var(--aba-amber);
+    }
+
+    .country-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .country-name {
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .country-star {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .kit-badge {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.75);
+      flex-shrink: 0;
+    }
+
+    .btn-primary-gold {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--aba-amber);
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary-link {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-primary);
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .action-column {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .summary-table {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .capture-img {
+      width: 100%;
+      max-height: 52dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--aba-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 104px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      z-index: 45;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--aba-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="arenaFrame">
+    <canvas id="courtCanvas"></canvas>
+
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">SCREENSHOT SAVED</div>
+
+    <!-- TOP BROADCAST HUD -->
+    <header class="hud-top">
+      <div class="hud-group">
+        <a href="badminton.html" class="round-icon-btn glass-hud" title="Back to Badminton Hub" aria-label="Back to Badminton Hub">&larr;</a>
+        <img
+          src="badminton.png"
+          alt="Autrobook Badminton Logo"
+          class="hud-logo-thumb"
+          onerror="this.onerror=null;this.replaceWith(createLogoSvg(22));"
+        />
+      </div>
+
+      <div class="match-scoreboard glass-hud">
+        <div class="score-line">
+          <span id="hudPlayerServePip" class="serve-pip"></span>
+          <span id="hudPlayerFlag">🇧🇩</span>
+          <span id="hudPlayerCode">BAN</span>
+          <span id="hudScoreText" class="pts-chip">0 - 0</span>
+          <span id="hudOppCode">IND</span>
+          <span id="hudOppFlag">🇮🇳</span>
+          <span id="hudOppServePip" class="serve-pip" style="display:none;"></span>
+        </div>
+        <div class="score-meta-row">
+          <span id="hudFormatLabel">21 PTS • ABA</span>
+          <span id="hudSetsLabel">SET 1 (0-0)</span>
+          <span id="hudBestRallyLabel">BEST RALLY 0</span>
+        </div>
+      </div>
+
+      <div class="hud-group">
+        <button id="themeBtn" type="button" class="round-icon-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="snapBtn" type="button" class="round-icon-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="setupBtn" type="button" class="round-icon-btn glass-hud" title="Match & Squad Setup" aria-label="Match and Squad Setup">&#9998;</button>
+        <button id="muteBtn" type="button" class="round-icon-btn glass-hud" title="Mute / Unmute Audio" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="round-icon-btn glass-hud" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- TELEMETRY RADAR STRIP -->
+    <div class="radar-strip">
+      <div class="rally-badge glass-hud">
+        <span>RALLY</span>
+        <span id="rallyStreakText" style="color:var(--aba-emerald);">0</span>
+      </div>
+
+      <button id="unitSwitchBtn" type="button" class="shuttle-radar-pill glass-hud" title="Toggle KM/H and MPH">
+        <span>SHUTTLE</span>
+        <span id="liveSpeedText" class="radar-speed">0 KM/H</span>
+        <span id="peakSmashText" style="font-size:8.5px;color:var(--text-muted);">SMASH MAX 0</span>
+      </button>
+    </div>
+
+    <!-- BOTTOM SHOT & COURT MOVEMENT CONTROLS -->
+    <div class="bottom-deck">
+      <div class="shot-row">
+        <button id="smashBtn" type="button" class="shot-trigger active-shot" title="Smash (Key: 1 / S)">SMASH</button>
+        <button id="clearBtn" type="button" class="shot-trigger" title="Clear / Lob (Key: 2 / C)">CLEAR</button>
+        <button id="dropBtn" type="button" class="shot-trigger" title="Drop Shot (Key: 3 / D)">DROP</button>
+        <button id="driveBtn" type="button" class="shot-trigger" title="Flat Drive (Key: 4 / F)">DRIVE</button>
+        <button id="boostBtn" type="button" class="shot-trigger" title="Power Boost (Key: Shift / B)">&#9889; PWR+</button>
+      </div>
+
+      <div class="move-pad-row">
+        <button id="moveLeftBtn" type="button" class="move-btn">&larr; Left</button>
+        <button id="moveFwdBtn" type="button" class="move-btn">&uarr; Net</button>
+        <button id="moveBackBtn" type="button" class="move-btn">&darr; Back</button>
+        <button id="moveRightBtn" type="button" class="move-btn">Right &rarr;</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK BADMINTON ASSOCIATION INTRO SCREEN
+         ====================================================================== -->
+    <section id="abaIntroOverlay">
+      <div class="spotlight-ray ray-w"></div>
+      <div class="spotlight-ray ray-e"></div>
+
+      <div class="intro-box">
+        <div class="aba-crest-ring">
+          <img
+            src="badminton.png"
+            alt="Autrobook Badminton Association Logo"
+            class="logo-img-crest"
+            onerror="this.onerror=null;this.replaceWith(createLogoSvg(64));"
+          />
+        </div>
+
+        <div class="intro-badge">OFFICIAL RALLY CIRCUIT</div>
+        <h1 class="intro-heading">Autrobook Badminton Association</h1>
+        <p class="intro-tagline">CHAMPIONSHIP RALLY SERIES</p>
+
+        <div class="intro-progress-track">
+          <div id="introProgressFill" class="intro-progress-bar"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary-gold" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. SETUP MODAL (1P vs AI / 2P LOCAL, 10 NATIONS, STARS, FORMAT)
+         ====================================================================== -->
+    <div id="setupModal" class="modal-layer">
+      <div class="modal-card">
+        <div class="modal-header">
+          <img
+            src="badminton.png"
+            alt="ABA Emblem"
+            class="modal-logo-badge"
+            onerror="this.onerror=null;this.replaceWith(createLogoSvg(54));"
+          />
+          <h2 class="modal-title">ABA Match &amp; Squad Setup</h2>
+          <p class="modal-sub">Two Players Across the Net • 10 Nations • Renowned Stars</p>
+        </div>
+
+        <div class="name-num-grid">
+          <div class="field-block" style="margin-bottom:0;">
+            <label for="playerNameInput" class="field-title">Player 1 Name</label>
+            <input id="playerNameInput" type="text" maxlength="14" value="SALMAN KHAN" class="text-input" />
+          </div>
+          <div class="field-block" style="margin-bottom:0;">
+            <label for="playerJerseyInput" class="field-title">Jersey #</label>
+            <input id="playerJerseyInput" type="number" min="1" max="99" value="10" class="text-input" />
+          </div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-title">Players Mode</span>
+          <div id="playersModeOptions" class="grid-2">
+            <button type="button" class="choice-btn selected" data-pmode="AI">1P vs AI</button>
+            <button type="button" class="choice-btn" data-pmode="LOCAL_2P">2P Local (Shared)</button>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-title">Match Format</span>
+          <div id="formatOptions" class="grid-2">
+            <button type="button" class="choice-btn" data-format="11">11 Points Sprint</button>
+            <button type="button" class="choice-btn" data-format="15">15 Points Rally</button>
+            <button type="button" class="choice-btn selected" data-format="21">21 Points Championship</button>
+            <button type="button" class="choice-btn" data-format="BO3">Best of 3 Sets (21)</button>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-title">Difficulty Level</span>
+          <div id="difficultyOptions" class="grid-3">
+            <button type="button" class="choice-btn" data-diff="CLUB">Club</button>
+            <button type="button" class="choice-btn selected" data-diff="PRO">Pro</button>
+            <button type="button" class="choice-btn" data-diff="WORLD_TOUR">World Tour</button>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-title">Court Lighting</span>
+          <div id="lightingOptions" class="grid-3">
+            <button type="button" class="choice-btn selected" data-light="ARENA">Arena Floodlights</button>
+            <button type="button" class="choice-btn" data-light="GOLD">Championship Gold</button>
+            <button type="button" class="choice-btn" data-light="MIDNIGHT">Midnight Court</button>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-title">Select Player 1 Nation (10 Countries)</span>
+          <div id="nationGrid" class="grid-2"></div>
+        </div>
+
+        <div class="field-block">
+          <label for="starPresetSelect" class="field-title">Renowned Badminton Star</label>
+          <select id="starPresetSelect" class="dropdown-input"></select>
+        </div>
+
+        <div class="field-block">
+          <label for="opponentNationSelect" class="field-title">Opponent Nation (Far Court)</label>
+          <select id="opponentNationSelect" class="dropdown-input">
+            <option value="RANDOM">Random Opponent Nation</option>
+          </select>
+        </div>
+
+        <button id="startRallyBtn" type="button" class="btn-primary-gold">
+          Start Championship Match
+        </button>
+        <div class="action-column" style="margin-top:6px;">
+          <a href="badminton.html" class="btn-secondary-link">&larr; Back to Badminton Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-layer">
+      <div class="modal-card" style="max-width:370px;text-align:center;">
+        <div class="modal-header">
+          <h2 class="modal-title">Court Screenshot</h2>
+          <p class="modal-sub">Autrobook Badminton Association</p>
+        </div>
+        <img id="capturePreviewImg" class="capture-img" alt="Badminton Screenshot Preview" />
+        <div class="action-column">
+          <a id="downloadShotBtn" download="Autrobook-Badminton-Rally.png" class="btn-primary-gold">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary-link">Resume Match</button>
+          <a href="badminton.html" class="btn-secondary-link">&larr; Back to Badminton Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-layer">
+      <div class="modal-card" style="max-width:330px;text-align:center;">
+        <div class="modal-header">
+          <h2 class="modal-title">Match Paused</h2>
+          <p id="pauseMatchMeta" class="modal-sub">BAN vs IND • 21 Points Championship</p>
+        </div>
+        <div class="action-column">
+          <button id="resumeBtn" type="button" class="btn-primary-gold">Resume Rally</button>
+          <button id="restartBtn" type="button" class="btn-secondary-link">Restart Match</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary-link">Squad &amp; Format Setup</button>
+          <a href="badminton.html" class="btn-secondary-link">&larr; Back to Badminton Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. MATCH SUMMARY MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-layer">
+      <div class="modal-card" style="max-width:355px;text-align:center;">
+        <div id="summaryTrophyIcon" style="font-size:42px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="summaryTitle" class="modal-title">CHAMPIONSHIP VICTORY!</h2>
+        <p id="summarySubtitle" class="modal-sub">Autrobook Badminton Association</p>
+
+        <div class="summary-table">
+          <div class="summary-item">
+            <span>Final Points</span>
+            <span id="sumPointsVal" style="font-weight:900;">0 - 0</span>
+          </div>
+          <div class="summary-item">
+            <span>Sets Won</span>
+            <span id="sumSetsVal" style="font-weight:900;color:var(--aba-amber);">0 - 0</span>
+          </div>
+          <div class="summary-item">
+            <span>Peak Smash Speed</span>
+            <span id="sumPeakSmashVal" style="font-weight:900;color:var(--aba-emerald);">0 KM/H</span>
+          </div>
+          <div class="summary-item">
+            <span>Best Rally Streak</span>
+            <span id="sumBestRallyVal" style="font-weight:900;">0</span>
+          </div>
+        </div>
+
+        <div class="action-column">
+          <button id="playAgainBtn" type="button" class="btn-primary-gold">Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary-link">Change Nation / Format</button>
+          <a href="badminton.html" class="btn-secondary-link">&larr; Back to Badminton Hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       10 BADMINTON NATIONS WITH JERSEYS, SHORTS/TRIM & RENOWNED STARS
+       ======================================================================== */
+    const BADMINTON_NATIONS = [
+      {
+        code: 'ENG',
+        name: 'England',
+        flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+        jersey: '#DC2626',
+        shorts: '#1E293B',
+        trim: '#FFFFFF',
+        stars: [
+          { name: 'BEN LANE', num: 7 },
+          { name: 'SEAN VENDY', num: 14 },
+          { name: 'CALLUM HEMMING', num: 21 }
+        ]
+      },
+      {
+        code: 'BAN',
+        name: 'Bangladesh',
+        flag: '🇧🇩',
+        jersey: '#006A4E',
+        shorts: '#064E3B',
+        trim: '#F42A41',
+        stars: [
+          { name: 'SALMAN KHAN', num: 10 },
+          { name: 'MANGAL SING', num: 8 },
+          { name: 'AKBAR KHAN', num: 19 }
+        ]
+      },
+      {
+        code: 'IND',
+        name: 'India',
+        flag: '🇮🇳',
+        jersey: '#1D4ED8',
+        shorts: '#0F172A',
+        trim: '#F97316',
+        stars: [
+          { name: 'LAKSHYA SEN', num: 9 },
+          { name: 'HS PRANNOY', num: 12 },
+          { name: 'SATWIK RANKIREDDY', num: 27 }
+        ]
+      },
+      {
+        code: 'INA',
+        name: 'Indonesia',
+        flag: '🇮🇩',
+        jersey: '#B91C1C',
+        shorts: '#111827',
+        trim: '#FACC15',
+        stars: [
+          { name: 'JONATAN CHRISTIE', num: 15 },
+          { name: 'ANTHONY GINTING', num: 7 },
+          { name: 'FAJAR ALFIAN', num: 23 }
+        ]
+      },
+      {
+        code: 'CHN',
+        name: 'China',
+        flag: '🇨🇳',
+        jersey: '#EF4444',
+        shorts: '#1E3A8A',
+        trim: '#FDE047',
+        stars: [
+          { name: 'SHI YUQI', num: 5 },
+          { name: 'LI SHIFENG', num: 18 },
+          { name: 'LIANG WEIKENG', num: 88 }
+        ]
+      },
+      {
+        code: 'MAS',
+        name: 'Malaysia',
+        flag: '🇲🇾',
+        jersey: '#FACC15',
+        shorts: '#1E293B',
+        trim: '#DC2626',
+        stars: [
+          { name: 'LEE ZII JIA', num: 1 },
+          { name: 'AARON CHIA', num: 16 },
+          { name: 'SOH WOOI YIK', num: 24 }
+        ]
+      },
+      {
+        code: 'JPN',
+        name: 'Japan',
+        flag: '🇯🇵',
+        jersey: '#FFFFFF',
+        shorts: '#0F172A',
+        trim: '#E11D48',
+        stars: [
+          { name: 'KODAI NARAOKA', num: 4 },
+          { name: 'KENTA NISHIMOTO', num: 13 },
+          { name: 'TAKURO HOKI', num: 22 }
+        ]
+      },
+      {
+        code: 'DEN',
+        name: 'Denmark',
+        flag: '🇩🇰',
+        jersey: '#C8102E',
+        shorts: '#FFFFFF',
+        trim: '#FFFFFF',
+        stars: [
+          { name: 'VIKTOR AXELSEN', num: 11 },
+          { name: 'ANDERS ANTONSEN', num: 6 },
+          { name: 'KIM ASTRUP', num: 17 }
+        ]
+      },
+      {
+        code: 'KOR',
+        name: 'South Korea',
+        flag: '🇰🇷',
+        jersey: '#2563EB',
+        shorts: '#111827',
+        trim: '#EF4444',
+        stars: [
+          { name: 'SEO SEUNG JAE', num: 3 },
+          { name: 'KANG MIN HYUK', num: 20 },
+          { name: 'JEON HYEOK JIN', num: 14 }
+        ]
+      },
+      {
+        code: 'THA',
+        name: 'Thailand',
+        flag: '🇹🇭',
+        jersey: '#1E40AF',
+        shorts: '#DC2626',
+        trim: '#F8FAFC',
+        stars: [
+          { name: 'KUNLAVUT VITIDSARN', num: 2 },
+          { name: 'KANTAPHON WANGCHAROEN', num: 12 },
+          { name: 'DECHAPOL PUAVARANUKROH', num: 8 }
+        ]
+      }
+    ];
+
+    const DIFFICULTY_SETTINGS = {
+      CLUB: { aiSpeed: 0.72, aiErrorRate: 0.22 },
+      PRO: { aiSpeed: 0.98, aiErrorRate: 0.13 },
+      WORLD_TOUR: { aiSpeed: 1.28, aiErrorRate: 0.06 }
+    };
+
+    const COURT_LIGHTING_MODES = {
+      ARENA: {
+        hallTop: '#061a10',
+        hallMid: '#0B3D20',
+        courtOuter: '#0d7a3c',
+        courtInner: '#138f47',
+        lineColor: '#ffffff'
+      },
+      GOLD: {
+        hallTop: '#1c1507',
+        hallMid: '#3d2c0a',
+        courtOuter: '#0c6d35',
+        courtInner: '#138443',
+        lineColor: '#fde68a'
+      },
+      MIDNIGHT: {
+        hallTop: '#030b14',
+        hallMid: '#072219',
+        courtOuter: '#095c2e',
+        courtInner: '#0f733b',
+        lineColor: '#e2e8f0'
+      }
+    };
+
+    const STATS_STORAGE_KEY = 'aba_badminton_rally_stats_v2';
+
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class BadmintonSoundSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.crowdStarted = false;
+        this.crowdGain = null;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+          if (this.ctx && !this.crowdStarted) {
+            this.initCrowdAmbience();
+          }
+        } catch (_err) {}
+      }
+
+      initCrowdAmbience() {
+        if (!this.ctx || this.crowdStarted) return;
+        this.crowdStarted = true;
+        const len = this.ctx.sampleRate * 3;
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          ch[i] = Math.random() * 2 - 1;
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 320;
+
+        const gain = this.ctx.createGain();
+        gain.gain.value = this.muted ? 0 : 0.025;
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        src.start();
+        this.crowdGain = gain;
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        if (this.crowdGain && this.ctx) {
+          this.crowdGain.gain.setTargetAtTime(this.muted ? 0 : 0.025, this.ctx.currentTime, 0.06);
+        }
+        return this.muted;
+      }
+
+      playShuttleHit(isSmash = false, boosted = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = isSmash ? 'sawtooth' : 'triangle';
+        const baseFreq = isSmash ? (boosted ? 620 : 520) : 360;
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + (isSmash ? 0.12 : 0.08));
+
+        gain.gain.setValueAtTime(isSmash ? 0.28 : 0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (isSmash ? 0.13 : 0.09));
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      }
+
+      playNetRustle() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const len = Math.floor(this.ctx.sampleRate * 0.16);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1800, now);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        src.start(now);
+      }
+
+      playPointCheer(isSmashPoint = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const dur = isSmashPoint ? 1.05 : 0.72;
+        const len = Math.floor(this.ctx.sampleRate * dur);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          ch[i] = (Math.random() * 2 - 1) * Math.sin((i / len) * Math.PI);
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(840, now);
+        filter.Q.value = 0.85;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(isSmashPoint ? 0.22 : 0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.002, now + dur);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        src.start(now);
+      }
+
+      playWhistle() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2860, now);
+        osc.frequency.exponentialRampToValueAtTime(2600, now + 0.2);
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.21);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+
+      playShutter() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1350, now);
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.06);
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      playWinFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.12;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.15, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.32);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.34);
+        });
+      }
+    }
+
+    /* ========================================================================
+       TWO-PLAYER COURT RALLY ENGINE (NEAR COURT vs FAR COURT ACROSS NET)
+       ======================================================================== */
+    class ABAChampionshipBadminton {
+      constructor() {
+        this.canvas = document.getElementById('courtCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.sound = new BadmintonSoundSynth();
+
+        // Squad & Match Configuration
+        this.userNation = BADMINTON_NATIONS.find((n) => n.code === 'BAN') || BADMINTON_NATIONS[1];
+        this.oppNation = BADMINTON_NATIONS.find((n) => n.code === 'CHN') || BADMINTON_NATIONS[4];
+        this.oppMode = 'RANDOM';
+        this.starIndex = 0;
+        this.twoPlayerLocal = false;
+
+        this.playerName = this.userNation.stars[0].name;
+        this.jerseyNumber = String(this.userNation.stars[0].num);
+        this.formatMode = '21'; // 11, 15, 21, BO3
+        this.difficultyKey = 'PRO';
+        this.lightingKey = 'ARENA';
+        this.speedUnit = 'KM/H';
+
+        this.selectedShot = 'SMASH';
+        this.powerBoost = false;
+
+        const saved = this.loadStats();
+        this.bestRallyStreak = saved.bestRally || 0;
+        this.peakSmashKmh = saved.peakSmash || 0;
+        this.liveShuttleKmh = 0;
+
+        this.playerPoints = 0;
+        this.oppPoints = 0;
+        this.playerSets = 0;
+        this.oppSets = 0;
+        this.currentSet = 1;
+        this.rallyStreak = 0;
+        this.server = 'PLAYER'; // PLAYER (near court) or OPP (far court)
+        this.phase = 'SERVE_READY'; // SERVE_READY, IN_RALLY, POINT_PAUSE, MATCH_OVER
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotPreviewOpen = false;
+        this.paused = false;
+
+        this.width = 0;
+        this.height = 0;
+        this.dpr = 1;
+        this.court = { topX1: 0, topX2: 0, botX1: 0, botX2: 0, netY: 0, topY: 0, botY: 0 };
+
+        // Near-court Player 1 (side: 'NEAR', courtYNorm: 0..1 from net to near baseline)
+        this.player = {
+          normX: 0.06,
+          courtYNorm: 0.68,
+          swingT: 0,
+          swinging: false,
+          lastShot: 'SMASH'
+        };
+
+        // Far-court Opponent Player 2 (side: 'FAR', courtYNorm: 0..1 from net to far baseline)
+        this.opponent = {
+          normX: -0.04,
+          courtYNorm: 0.62,
+          swingT: 0,
+          swinging: false,
+          lastShot: 'CLEAR'
+        };
+
+        this.shuttle = {
+          x: 0,
+          y: 0,
+          z: 24,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+          hitter: 'PLAYER',
+          shotType: 'CLEAR',
+          spin: 0,
+          trail: []
+        };
+
+        this.netVibration = 0;
+        this.particles = [];
+        this.crowd = [];
+        this.keysDown = new Set();
+        this.touchMoveDir = { x: 0, y: 0 };
+        this.lastFrameTime = 0;
+
+        this.syncThemeIcon();
+        this.buildSetupUI();
+        this.bindEvents();
+        this.handleResize();
+        this.initSpectators();
+        this.resetShuttleToServer();
+        this.refreshHUD();
+        this.runIntro();
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(STATS_STORAGE_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      persistStats() {
+        try {
+          localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify({
+            bestRally: this.bestRallyStreak,
+            peakSmash: this.peakSmashKmh
+          }));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+      }
+
+      formatShuttleSpeed(kmh) {
+        if (kmh <= 0) return this.speedUnit === 'MPH' ? '0 MPH' : '0 KM/H';
+        if (this.speedUnit === 'MPH') {
+          return `${Math.round(kmh * 0.621371)} MPH`;
+        }
+        return `${Math.round(kmh)} KM/H`;
+      }
+
+      updateRadarDisplay() {
+        document.getElementById('liveSpeedText').textContent = this.formatShuttleSpeed(this.liveShuttleKmh);
+        document.getElementById('peakSmashText').textContent =
+          this.peakSmashKmh > 0
+            ? `SMASH MAX ${Math.round(this.speedUnit === 'MPH' ? this.peakSmashKmh * 0.621371 : this.peakSmashKmh)}`
+            : 'SMASH MAX 0';
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1400);
+      }
+
+      /* ========================================================================
+         SETUP UI & EVENT BINDINGS
+         ======================================================================== */
+      buildSetupUI() {
+        const grid = document.getElementById('nationGrid');
+        const oppSel = document.getElementById('opponentNationSelect');
+        grid.innerHTML = '';
+
+        BADMINTON_NATIONS.forEach((nation) => {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'country-card' + (nation.code === this.userNation.code ? ' selected' : '');
+          card.dataset.code = nation.code;
+          card.innerHTML = `
+            <span style="font-size:17px;line-height:1;">${nation.flag}</span>
+            <span class="country-text">
+              <span class="country-name">${nation.name}</span>
+              <span class="country-star">${nation.stars[0].name}</span>
+            </span>
+            <span class="kit-badge" style="background:linear-gradient(135deg,${nation.jersey} 55%,${nation.trim} 55%);"></span>
+          `;
+          card.addEventListener('click', () => {
+            this.userNation = nation;
+            this.starIndex = 0;
+            grid.querySelectorAll('.country-card').forEach((el) => {
+              el.classList.toggle('selected', el.dataset.code === nation.code);
+            });
+            this.populateStarDropdown(nation);
+          });
+          grid.appendChild(card);
+
+          const opt = document.createElement('option');
+          opt.value = nation.code;
+          opt.textContent = `${nation.flag} ${nation.name} (${nation.code})`;
+          oppSel.appendChild(opt);
+        });
+
+        this.populateStarDropdown(this.userNation);
+
+        document.getElementById('starPresetSelect').addEventListener('change', (e) => {
+          const idx = parseInt(e.target.value, 10) || 0;
+          this.starIndex = idx;
+          const star = this.userNation.stars[idx] || this.userNation.stars[0];
+          this.playerName = star.name;
+          this.jerseyNumber = String(star.num);
+          document.getElementById('playerNameInput').value = this.playerName;
+          document.getElementById('playerJerseyInput').value = this.jerseyNumber;
+        });
+
+        document.querySelectorAll('#playersModeOptions .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.twoPlayerLocal = btn.dataset.pmode === 'LOCAL_2P';
+            document.querySelectorAll('#playersModeOptions .choice-btn').forEach((b) => {
+              b.classList.toggle('selected', b === btn);
+            });
+          });
+        });
+
+        document.querySelectorAll('#formatOptions .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.formatMode = btn.dataset.format;
+            document.querySelectorAll('#formatOptions .choice-btn').forEach((b) => {
+              b.classList.toggle('selected', b === btn);
+            });
+          });
+        });
+
+        document.querySelectorAll('#difficultyOptions .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.difficultyKey = btn.dataset.diff;
+            document.querySelectorAll('#difficultyOptions .choice-btn').forEach((b) => {
+              b.classList.toggle('selected', b === btn);
+            });
+          });
+        });
+
+        document.querySelectorAll('#lightingOptions .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.lightingKey = btn.dataset.light;
+            document.querySelectorAll('#lightingOptions .choice-btn').forEach((b) => {
+              b.classList.toggle('selected', b === btn);
+            });
+          });
+        });
+      }
+
+      populateStarDropdown(nation) {
+        const sel = document.getElementById('starPresetSelect');
+        sel.innerHTML = '';
+        nation.stars.forEach((st, idx) => {
+          const opt = document.createElement('option');
+          opt.value = String(idx);
+          opt.textContent = `#${st.num} ${st.name}`;
+          sel.appendChild(opt);
+        });
+        const first = nation.stars[0];
+        this.playerName = first.name;
+        this.jerseyNumber = String(first.num);
+        document.getElementById('playerNameInput').value = this.playerName;
+        document.getElementById('playerJerseyInput').value = this.jerseyNumber;
+      }
+
+      openSetup() {
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('playerNameInput').value = this.playerName;
+        document.getElementById('playerJerseyInput').value = this.jerseyNumber;
+        document.getElementById('opponentNationSelect').value = this.oppMode;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      applySetupAndStart() {
+        this.sound.unlock();
+        const rawName = (document.getElementById('playerNameInput').value || '').trim().toUpperCase();
+        this.playerName = (rawName || this.userNation.stars[this.starIndex]?.name || 'PLAYER').slice(0, 14);
+
+        let jNum = parseInt(document.getElementById('playerJerseyInput').value, 10);
+        if (isNaN(jNum) || jNum < 1) jNum = 11;
+        if (jNum > 99) jNum = 99;
+        this.jerseyNumber = String(jNum);
+
+        this.oppMode = document.getElementById('opponentNationSelect').value;
+        if (this.oppMode === 'RANDOM' || this.oppMode === this.userNation.code) {
+          const pool = BADMINTON_NATIONS.filter((n) => n.code !== this.userNation.code);
+          this.oppNation = pool[Math.floor(Math.random() * pool.length)];
+        } else {
+          this.oppNation = BADMINTON_NATIONS.find((n) => n.code === this.oppMode) || BADMINTON_NATIONS[4];
+        }
+
+        document.getElementById('setupModal').classList.remove('open');
+        this.setupOpen = false;
+        this.paused = false;
+        this.lastFrameTime = performance.now();
+        this.resetFullMatch();
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.handleResize());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) this.syncThemeIcon();
+          });
+        }
+
+        document.getElementById('themeBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.sound.unlock();
+          this.completeIntro();
+        });
+
+        document.getElementById('startRallyBtn').addEventListener('click', () => {
+          this.applySetupAndStart();
+        });
+
+        document.getElementById('setupBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetup();
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.sound.unlock();
+          const m = this.sound.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('unitSwitchBtn').addEventListener('click', () => {
+          this.speedUnit = this.speedUnit === 'KM/H' ? 'MPH' : 'KM/H';
+          this.updateRadarDisplay();
+        });
+
+        document.getElementById('snapBtn').addEventListener('click', () => {
+          this.captureScreenshot();
+        });
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotPreviewOpen = false;
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotPreviewOpen || this.phase === 'MATCH_OVER') return;
+          this.paused = true;
+          document.getElementById('pauseMatchMeta').textContent =
+            `${this.userNation.code} vs ${this.oppNation.code} • ${this.getFormatTitle()}`;
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.resetFullMatch();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSetup();
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.resetFullMatch();
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.openSetup();
+        });
+
+        const bindShotBtn = (id, shotType) => {
+          document.getElementById(id).addEventListener('click', () => {
+            this.sound.unlock();
+            this.selectedShot = shotType;
+            document.querySelectorAll('#smashBtn,#clearBtn,#dropBtn,#driveBtn').forEach((b) => {
+              b.classList.toggle('active-shot', b.id === id);
+            });
+            if (this.phase === 'SERVE_READY' && this.server === 'PLAYER') {
+              this.launchServe('PLAYER');
+            } else if (this.phase === 'IN_RALLY' && this.shuttle.hitter === 'OPP') {
+              this.attemptShot('PLAYER', this.selectedShot);
+            }
+          });
+        };
+
+        bindShotBtn('smashBtn', 'SMASH');
+        bindShotBtn('clearBtn', 'CLEAR');
+        bindShotBtn('dropBtn', 'DROP');
+        bindShotBtn('driveBtn', 'DRIVE');
+
+        document.getElementById('boostBtn').addEventListener('click', () => {
+          this.sound.unlock();
+          this.powerBoost = !this.powerBoost;
+          const btn = document.getElementById('boostBtn');
+          btn.classList.toggle('boost-on', this.powerBoost);
+          btn.textContent = this.powerBoost ? '⚡ PWR: ON' : '⚡ PWR+';
+        });
+
+        const bindHoldMove = (id, dx, dy) => {
+          const el = document.getElementById(id);
+          const setDir = (active) => {
+            this.touchMoveDir.x = active ? dx : 0;
+            this.touchMoveDir.y = active ? dy : 0;
+          };
+          el.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            this.sound.unlock();
+            setDir(true);
+          });
+          el.addEventListener('pointerup', () => setDir(false));
+          el.addEventListener('pointerleave', () => setDir(false));
+          el.addEventListener('pointercancel', () => setDir(false));
+        };
+
+        bindHoldMove('moveLeftBtn', -1, 0);
+        bindHoldMove('moveRightBtn', 1, 0);
+        bindHoldMove('moveFwdBtn', 0, -1);
+        bindHoldMove('moveBackBtn', 0, 1);
+
+        this.canvas.addEventListener('pointerdown', (e) => {
+          this.sound.unlock();
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          const normX = Math.max(-0.76, Math.min(0.76, ((px - this.width * 0.5) / (this.width * 0.36))));
+
+          if (py < this.court.netY && this.twoPlayerLocal) {
+            this.opponent.normX = normX;
+            if (this.phase === 'SERVE_READY' && this.server === 'OPP') {
+              this.launchServe('OPP');
+            } else if (this.phase === 'IN_RALLY' && this.shuttle.hitter === 'PLAYER') {
+              this.attemptShot('OPP', this.selectedShot);
+            }
+            return;
+          }
+
+          this.player.normX = normX;
+          if (this.phase === 'SERVE_READY' && this.server === 'PLAYER') {
+            this.launchServe('PLAYER');
+          } else if (this.phase === 'IN_RALLY' && this.shuttle.hitter === 'OPP') {
+            this.attemptShot('PLAYER', this.selectedShot);
+          }
+        });
+
+        window.addEventListener('keydown', (e) => {
+          this.keysDown.add(e.code);
+          if (e.code === 'Space') {
+            e.preventDefault();
+            this.sound.unlock();
+            if (this.phase === 'SERVE_READY' && this.server === 'PLAYER') {
+              this.launchServe('PLAYER');
+            } else if (this.phase === 'IN_RALLY' && this.shuttle.hitter === 'OPP') {
+              this.attemptShot('PLAYER', this.selectedShot);
+            }
+          } else if (this.twoPlayerLocal && e.code === 'Enter') {
+            e.preventDefault();
+            if (this.phase === 'SERVE_READY' && this.server === 'OPP') {
+              this.launchServe('OPP');
+            } else if (this.phase === 'IN_RALLY' && this.shuttle.hitter === 'PLAYER') {
+              this.attemptShot('OPP', this.selectedShot);
+            }
+          } else if (e.code === 'Digit1' || e.code === 'KeyS') {
+            document.getElementById('smashBtn').click();
+          } else if (e.code === 'Digit2' || e.code === 'KeyC') {
+            document.getElementById('clearBtn').click();
+          } else if (e.code === 'Digit3' || e.code === 'KeyD') {
+            document.getElementById('dropBtn').click();
+          } else if (e.code === 'Digit4' || e.code === 'KeyF') {
+            document.getElementById('driveBtn').click();
+          } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyB') {
+            document.getElementById('boostBtn').click();
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          this.keysDown.delete(e.code);
+        });
+      }
+
+      /* ========================================================================
+         INTRO, COURT GEOMETRY & CROWD SETUP
+         ======================================================================== */
+      runIntro() {
+        const ms = 2400;
+        const start = performance.now();
+        const bar = document.getElementById('introProgressFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / ms) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.completeIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      completeIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('abaIntroOverlay').classList.add('fade-out');
+        this.openSetup();
+      }
+
+      handleResize() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.width = Math.max(300, rect.width);
+        this.height = Math.max(460, rect.height);
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.width = Math.floor(this.width * this.dpr);
+        this.canvas.height = Math.floor(this.height * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        const topY = this.height * 0.27;
+        const botY = this.height * 0.85;
+        const netY = topY + (botY - topY) * 0.48;
+
+        this.court = {
+          topX1: this.width * 0.24,
+          topX2: this.width * 0.76,
+          botX1: this.width * 0.08,
+          botX2: this.width * 0.92,
+          netY,
+          topY,
+          botY
+        };
+      }
+
+      initSpectators() {
+        this.crowd = [];
+        const rows = 4;
+        const cols = 28;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            this.crowd.push({
+              row: r,
+              colRatio: (c + (r % 2) * 0.5) / cols,
+              phase: Math.random() * Math.PI * 2,
+              seed: (r * 7 + c * 3) % 5
+            });
+          }
+        }
+      }
+
+      /* ========================================================================
+         TWO-SIDE COORDINATE PROJECTION & RALLY MECHANICS
+         ======================================================================== */
+      getSideCoords(side, normX, courtYNorm) {
+        const c = this.court;
+        const clampedNorm = Math.max(0.08, Math.min(0.92, courtYNorm));
+        const y = side === 'NEAR'
+          ? c.netY + (c.botY - c.netY) * clampedNorm
+          : c.netY - (c.netY - c.topY) * clampedNorm;
+
+        const rowT = Math.max(0, Math.min(1, (y - c.topY) / Math.max(1, c.botY - c.topY)));
+        const leftX = c.topX1 + (c.botX1 - c.topX1) * rowT;
+        const rightX = c.topX2 + (c.botX2 - c.topX2) * rowT;
+        const midX = (leftX + rightX) * 0.5;
+        const halfW = (rightX - leftX) * 0.43;
+
+        return {
+          x: midX + normX * halfW,
+          y
+        };
+      }
+
+      getTargetPoints() {
+        if (this.formatMode === '11') return 11;
+        if (this.formatMode === '15') return 15;
+        return 21;
+      }
+
+      getFormatTitle() {
+        if (this.formatMode === '11') return '11 PTS SPRINT';
+        if (this.formatMode === '15') return '15 PTS RALLY';
+        if (this.formatMode === 'BO3') return 'BEST OF 3 SETS';
+        return '21 PTS CHAMPIONSHIP';
+      }
+
+      resetFullMatch() {
+        this.playerPoints = 0;
+        this.oppPoints = 0;
+        this.playerSets = 0;
+        this.oppSets = 0;
+        this.currentSet = 1;
+        this.rallyStreak = 0;
+        this.server = 'PLAYER';
+        this.phase = 'SERVE_READY';
+        this.particles = [];
+        this.resetShuttleToServer();
+        this.sound.playWhistle();
+        this.refreshHUD();
+      }
+
+      resetShuttleToServer() {
+        this.phase = 'SERVE_READY';
+        this.shuttle.trail = [];
+        this.liveShuttleKmh = 0;
+        this.updateRadarDisplay();
+
+        if (this.server === 'PLAYER') {
+          this.shuttle.hitter = 'OPP';
+          const pScreen = this.getSideCoords('NEAR', this.player.normX, this.player.courtYNorm);
+          this.shuttle.x = pScreen.x;
+          this.shuttle.y = pScreen.y - 10;
+          this.shuttle.z = 26;
+          this.shuttle.vx = 0;
+          this.shuttle.vy = 0;
+          this.shuttle.vz = 0;
+        } else {
+          this.shuttle.hitter = 'PLAYER';
+          const oScreen = this.getSideCoords('FAR', this.opponent.normX, this.opponent.courtYNorm);
+          this.shuttle.x = oScreen.x;
+          this.shuttle.y = oScreen.y - 6;
+          this.shuttle.z = 22;
+          this.shuttle.vx = 0;
+          this.shuttle.vy = 0;
+          this.shuttle.vz = 0;
+
+          if (!this.twoPlayerLocal) {
+            setTimeout(() => {
+              if (!this.paused && !this.setupOpen && !this.shotPreviewOpen && this.phase === 'SERVE_READY' && this.server === 'OPP') {
+                this.launchServe('OPP');
+              }
+            }, 650);
+          }
+        }
+      }
+
+      launchServe(bySide) {
+        this.phase = 'IN_RALLY';
+        this.attemptShot(bySide, bySide === 'PLAYER' ? this.selectedShot : 'CLEAR');
+      }
+
+      attemptShot(bySide, shotType) {
+        const isNear = bySide === 'PLAYER';
+        const actor = isNear ? this.player : this.opponent;
+        const origin = this.getSideCoords(isNear ? 'NEAR' : 'FAR', actor.normX, actor.courtYNorm);
+
+        actor.swinging = true;
+        actor.swingT = 0;
+        actor.lastShot = shotType;
+
+        const destNormX = Math.max(-0.74, Math.min(0.74, actor.normX * -0.75 + (Math.random() - 0.5) * 0.55));
+        const destNormY = shotType === 'DROP' ? 0.24 : (shotType === 'CLEAR' ? 0.82 : 0.56);
+        const dest = this.getSideCoords(isNear ? 'FAR' : 'NEAR', destNormX, destNormY);
+
+        const flightTime = shotType === 'SMASH'
+          ? (this.powerBoost && isNear ? 0.46 : 0.55)
+          : shotType === 'DROP'
+            ? 0.78
+            : shotType === 'DRIVE'
+              ? 0.58
+              : 0.84;
+
+        const peakZ = shotType === 'CLEAR' ? 76 : (shotType === 'SMASH' ? 32 : 24);
+        const speedKmh = shotType === 'SMASH'
+          ? (this.powerBoost && isNear ? 352 : 304) + Math.random() * 22
+          : shotType === 'DRIVE'
+            ? 226 + Math.random() * 24
+            : shotType === 'DROP'
+              ? 116 + Math.random() * 18
+              : 168 + Math.random() * 24;
+
+        this.liveShuttleKmh = Math.round(speedKmh);
+        if (shotType === 'SMASH' && this.liveShuttleKmh > this.peakSmashKmh) {
+          this.peakSmashKmh = this.liveShuttleKmh;
+          this.persistStats();
+        }
+        this.updateRadarDisplay();
+
+        this.shuttle.hitter = bySide;
+        this.shuttle.shotType = shotType;
+        this.shuttle.x = origin.x;
+        this.shuttle.y = origin.y - (isNear ? 12 : 6);
+        this.shuttle.z = isNear ? 26 : 22;
+        this.shuttle.vx = (dest.x - this.shuttle.x) / flightTime;
+        this.shuttle.vy = (dest.y - this.shuttle.y) / flightTime;
+        this.shuttle.vz = ((peakZ - this.shuttle.z) + 0.5 * 210 * flightTime * flightTime) / flightTime;
+        this.shuttle.spin = (Math.random() - 0.5) * 16;
+
+        this.rallyStreak++;
+        if (this.rallyStreak > this.bestRallyStreak) {
+          this.bestRallyStreak = this.rallyStreak;
+          this.persistStats();
+        }
+
+        this.sound.playShuttleHit(shotType === 'SMASH', this.powerBoost && isNear);
+        if (shotType === 'SMASH') {
+          this.emitSparks(this.shuttle.x, this.shuttle.y - this.shuttle.z, '#fbbf24', 16);
+        }
+        this.refreshHUD();
+      }
+
+      awardPointTo(winnerSide, isSmashPoint = false) {
+        if (this.phase === 'POINT_PAUSE' || this.phase === 'MATCH_OVER') return;
+        this.phase = 'POINT_PAUSE';
+        this.server = winnerSide;
+        this.rallyStreak = 0;
+
+        if (winnerSide === 'PLAYER') this.playerPoints++;
+        else this.oppPoints++;
+
+        this.sound.playPointCheer(isSmashPoint);
+        this.refreshHUD();
+
+        if (this.checkSetOrMatchWin()) return;
+
+        setTimeout(() => {
+          if (!this.paused && !this.setupOpen && !this.shotPreviewOpen && this.phase === 'POINT_PAUSE') {
+            this.resetShuttleToServer();
+            this.refreshHUD();
+          }
+        }, 850);
+      }
+
+      checkSetOrMatchWin() {
+        const cap = this.getTargetPoints();
+        const hardCap = cap + 9;
+        const pWinSet =
+          (this.playerPoints >= cap && this.playerPoints - this.oppPoints >= 2) ||
+          this.playerPoints >= hardCap;
+        const oWinSet =
+          (this.oppPoints >= cap && this.oppPoints - this.playerPoints >= 2) ||
+          this.oppPoints >= hardCap;
+
+        if (!pWinSet && !oWinSet) return false;
+
+        if (pWinSet) this.playerSets++;
+        else this.oppSets++;
+
+        const neededSets = this.formatMode === 'BO3' ? 2 : 1;
+        if (this.playerSets >= neededSets || this.oppSets >= neededSets) {
+          this.phase = 'MATCH_OVER';
+          const wonMatch = this.playerSets >= neededSets;
+          if (wonMatch) this.sound.playWinFanfare();
+          this.openSummaryModal(wonMatch);
+          return true;
+        }
+
+        this.currentSet++;
+        this.playerPoints = 0;
+        this.oppPoints = 0;
+        setTimeout(() => {
+          if (!this.paused && !this.setupOpen && !this.shotPreviewOpen) {
+            this.sound.playWhistle();
+            this.resetShuttleToServer();
+            this.refreshHUD();
+          }
+        }, 950);
+        return true;
+      }
+
+      openSummaryModal(wonMatch) {
+        document.getElementById('summaryTrophyIcon').textContent = wonMatch ? '🏆' : '🥈';
+        document.getElementById('summaryTitle').textContent = wonMatch ? 'CHAMPIONSHIP VICTORY!' : 'MATCH CONCLUDED';
+        document.getElementById('summarySubtitle').textContent =
+          `${this.playerName} #${this.jerseyNumber} • ${this.userNation.name} vs ${this.oppNation.name}`;
+        document.getElementById('sumPointsVal').textContent = `${this.playerPoints} - ${this.oppPoints}`;
+        document.getElementById('sumSetsVal').textContent = `${this.playerSets} - ${this.oppSets}`;
+        document.getElementById('sumPeakSmashVal').textContent = this.formatShuttleSpeed(this.peakSmashKmh);
+        document.getElementById('sumBestRallyVal').textContent = String(this.bestRallyStreak);
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      refreshHUD() {
+        document.getElementById('hudPlayerFlag').textContent = this.userNation.flag;
+        document.getElementById('hudPlayerCode').textContent = this.userNation.code;
+        document.getElementById('hudOppCode').textContent = this.oppNation.code;
+        document.getElementById('hudOppFlag').textContent = this.oppNation.flag;
+
+        document.getElementById('hudScoreText').textContent = `${this.playerPoints} - ${this.oppPoints}`;
+        document.getElementById('hudFormatLabel').textContent = this.getFormatTitle();
+        document.getElementById('hudSetsLabel').textContent = `SET ${this.currentSet} (${this.playerSets}-${this.oppSets})`;
+        document.getElementById('hudBestRallyLabel').textContent = `BEST RALLY ${this.bestRallyStreak}`;
+        document.getElementById('rallyStreakText').textContent = String(this.rallyStreak);
+
+        document.getElementById('hudPlayerServePip').style.display = this.server === 'PLAYER' ? 'inline-block' : 'none';
+        document.getElementById('hudOppServePip').style.display = this.server === 'OPP' ? 'inline-block' : 'none';
+      }
+
+      /* ========================================================================
+         SCREENSHOT CAPTURE WITH SHUTTER FLASH & PNG DOWNLOAD
+         ======================================================================== */
+      captureScreenshot() {
+        this.sound.unlock();
+        this.sound.playShutter();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderCourtScene(performance.now());
+
+        try {
+          const dataUrl = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotPreviewOpen = true;
+          document.getElementById('capturePreviewImg').src = dataUrl;
+          const dl = document.getElementById('downloadShotBtn');
+          dl.href = dataUrl;
+          dl.download = `ABA-Badminton-${this.userNation.code}-vs-${this.oppNation.code}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_err) {
+          this.showToast('CAPTURE UNAVAILABLE');
+        }
+      }
+
+      emitSparks(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 45 + Math.random() * 150;
+          this.particles.push({
+            x,
+            y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 40,
+            life: 0.4 + Math.random() * 0.25,
+            maxLife: 0.65,
+            size: 2.5 + Math.random() * 2.5,
+            color
+          });
+        }
+      }
+
+      /* ========================================================================
+         PHYSICS STEP & TWO-PLAYER COURT RENDERING
+         ======================================================================== */
+      updatePhysics(dt) {
+        // Near-court Player 1 movement
+        let mx = this.touchMoveDir.x;
+        let my = this.touchMoveDir.y;
+        if (this.keysDown.has('ArrowLeft') || this.keysDown.has('KeyA')) mx -= 1;
+        if (this.keysDown.has('ArrowRight') || this.keysDown.has('KeyD')) mx += 1;
+        if (this.keysDown.has('ArrowUp') || this.keysDown.has('KeyW')) my -= 1;
+        if (this.keysDown.has('ArrowDown') || this.keysDown.has('KeyS')) my += 1;
+
+        this.player.normX = Math.max(-0.78, Math.min(0.78, this.player.normX + mx * 1.15 * dt));
+        this.player.courtYNorm = Math.max(0.2, Math.min(0.88, this.player.courtYNorm + my * 1.05 * dt));
+
+        // Far-court Player 2 movement (2P Local keys J/L/I/K or AI tracking)
+        if (this.twoPlayerLocal) {
+          let ox = 0;
+          let oy = 0;
+          if (this.keysDown.has('KeyJ')) ox -= 1;
+          if (this.keysDown.has('KeyL')) ox += 1;
+          if (this.keysDown.has('KeyI')) oy -= 1;
+          if (this.keysDown.has('KeyK')) oy += 1;
+          this.opponent.normX = Math.max(-0.78, Math.min(0.78, this.opponent.normX + ox * 1.15 * dt));
+          this.opponent.courtYNorm = Math.max(0.2, Math.min(0.88, this.opponent.courtYNorm + oy * 1.05 * dt));
+        }
+
+        if (this.player.swinging) {
+          this.player.swingT = Math.min(1, this.player.swingT + dt / 0.22);
+          if (this.player.swingT >= 1) this.player.swinging = false;
+        }
+
+        if (this.opponent.swinging) {
+          this.opponent.swingT = Math.min(1, this.opponent.swingT + dt / 0.22);
+          if (this.opponent.swingT >= 1) this.opponent.swinging = false;
+        }
+
+        if (this.netVibration > 0) {
+          this.netVibration = Math.max(0, this.netVibration - dt * 18);
+        }
+
+        if (this.phase === 'IN_RALLY') {
+          const prevY = this.shuttle.y;
+          const drag = Math.pow(0.76, dt);
+          this.shuttle.vx *= drag;
+          this.shuttle.vy *= drag;
+          this.shuttle.vx += this.shuttle.spin * dt;
+          this.shuttle.vz -= 210 * dt;
+
+          this.shuttle.x += this.shuttle.vx * dt;
+          this.shuttle.y += this.shuttle.vy * dt;
+          this.shuttle.z += this.shuttle.vz * dt;
+
+          this.shuttle.trail.push({ x: this.shuttle.x, y: this.shuttle.y - this.shuttle.z });
+          if (this.shuttle.trail.length > 10) this.shuttle.trail.shift();
+
+          const crossedNet =
+            (prevY > this.court.netY && this.shuttle.y <= this.court.netY) ||
+            (prevY < this.court.netY && this.shuttle.y >= this.court.netY);
+
+          if (crossedNet && this.shuttle.z < 22) {
+            this.sound.playNetRustle();
+            this.netVibration = 5.5;
+            if (Math.random() < 0.65) {
+              this.awardPointTo(this.shuttle.hitter === 'PLAYER' ? 'OPP' : 'PLAYER', false);
+              return;
+            }
+          }
+
+          if (this.shuttle.z <= 0) {
+            this.shuttle.z = 0;
+            const landedOnNearCourt = this.shuttle.y >= this.court.netY;
+            const inBounds =
+              this.shuttle.y >= this.court.topY &&
+              this.shuttle.y <= this.court.botY &&
+              Math.abs(this.shuttle.x - this.width * 0.5) <= this.width * 0.45;
+
+            if (!inBounds) {
+              this.awardPointTo(this.shuttle.hitter === 'PLAYER' ? 'OPP' : 'PLAYER', false);
+            } else if (landedOnNearCourt) {
+              this.awardPointTo('OPP', this.shuttle.shotType === 'SMASH');
+            } else {
+              this.awardPointTo('PLAYER', this.shuttle.shotType === 'SMASH');
+            }
+            return;
+          }
+
+          // Far-court AI Opponent Tracking & Return when not in 2P Local mode
+          const diff = DIFFICULTY_SETTINGS[this.difficultyKey] || DIFFICULTY_SETTINGS.PRO;
+          if (!this.twoPlayerLocal && this.shuttle.hitter === 'PLAYER' && this.shuttle.y < this.court.netY + 8) {
+            const desiredNorm = Math.max(-0.75, Math.min(0.75, ((this.shuttle.x - this.width * 0.5) / (this.width * 0.34))));
+            this.opponent.normX += (desiredNorm - this.opponent.normX) * Math.min(1, diff.aiSpeed * 4.8 * dt);
+
+            const oppScreen = this.getSideCoords('FAR', this.opponent.normX, this.opponent.courtYNorm);
+            const dist = Math.hypot(this.shuttle.x - oppScreen.x, (this.shuttle.y - this.shuttle.z) - (oppScreen.y - 20));
+            if (dist < 44 && this.shuttle.y < this.court.netY - 6) {
+              if (Math.random() < diff.aiErrorRate) {
+                this.awardPointTo('PLAYER', false);
+              } else {
+                const aiShot = Math.random() < 0.36 ? 'SMASH' : (Math.random() < 0.5 ? 'CLEAR' : 'DROP');
+                this.attemptShot('OPP', aiShot);
+              }
+            }
+          }
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const pt = this.particles[i];
+          pt.x += pt.vx * dt;
+          pt.y += pt.vy * dt;
+          pt.vy += 220 * dt;
+          pt.life -= dt;
+          if (pt.life <= 0) this.particles.splice(i, 1);
+        }
+      }
+
+      renderCourtScene(now) {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.width, this.height);
+
+        const light = COURT_LIGHTING_MODES[this.lightingKey] || COURT_LIGHTING_MODES.ARENA;
+        const c = this.court;
+
+        // 1. Arena Hall & Crowd Stands
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, c.topY);
+        bgGrad.addColorStop(0, light.hallTop);
+        bgGrad.addColorStop(1, light.hallMid);
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, this.width, c.topY);
+
+        const crowdCols = [
+          this.userNation.jersey,
+          this.userNation.trim,
+          this.oppNation.jersey,
+          this.oppNation.trim,
+          '#fbbf24'
+        ];
+        const tWave = now * 0.004;
+        for (const dot of this.crowd) {
+          const sx = dot.colRatio * this.width;
+          const sy = this.height * 0.1 + dot.row * 13 + Math.sin(tWave + dot.phase) * 1.8;
+          ctx.fillStyle = crowdCols[dot.seed];
+          ctx.beginPath();
+          ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 2. Court Turf & Boundary Lines
+        const turfGrad = ctx.createLinearGradient(0, c.topY, 0, this.height);
+        turfGrad.addColorStop(0, light.courtOuter);
+        turfGrad.addColorStop(0.6, light.courtInner);
+        turfGrad.addColorStop(1, '#094a24');
+        ctx.fillStyle = turfGrad;
+        ctx.fillRect(0, c.topY, this.width, this.height - c.topY);
+
+        ctx.fillStyle = '#0d7a3c';
+        ctx.beginPath();
+        ctx.moveTo(c.topX1, c.topY);
+        ctx.lineTo(c.topX2, c.topY);
+        ctx.lineTo(c.botX2, c.botY);
+        ctx.lineTo(c.botX1, c.botY);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = light.lineColor;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        const midTopX = (c.topX1 + c.topX2) * 0.5;
+        const midBotX = (c.botX1 + c.botX2) * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(midTopX, c.topY);
+        ctx.lineTo(midBotX, c.botY);
+        ctx.stroke();
+
+        const shortTopY = c.topY + (c.netY - c.topY) * 0.65;
+        const shortBotY = c.netY + (c.botY - c.netY) * 0.35;
+        ctx.beginPath();
+        ctx.moveTo(c.topX1, shortTopY);
+        ctx.lineTo(c.topX2, shortTopY);
+        ctx.moveTo(c.botX1, shortBotY);
+        ctx.lineTo(c.botX2, shortBotY);
+        ctx.stroke();
+
+        // 3. Far-Court Opponent Player (Facing Toward Near Court)
+        const oppPos = this.getSideCoords('FAR', this.opponent.normX, this.opponent.courtYNorm);
+        this.drawCourtAthlete(ctx, oppPos.x, oppPos.y, 0.78, this.oppNation, '9', false);
+
+        // 4. Center Net Separating Both Players
+        const sag = Math.sin(now * 0.04) * this.netVibration;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.lineWidth = 1.2;
+        for (let gx = c.botX1 - 12; gx <= c.botX2 + 12; gx += 12) {
+          ctx.beginPath();
+          ctx.moveTo(gx, c.netY - 22 + sag);
+          ctx.lineTo(gx, c.netY);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(c.botX1 - 14, c.netY - 22 + sag);
+        ctx.lineTo(c.botX2 + 14, c.netY - 22 + sag);
+        ctx.stroke();
+
+        // 5. Shuttlecock Trail & Shuttlecock
+        if (this.shuttle.trail.length > 1) {
+          ctx.save();
+          for (let i = 1; i < this.shuttle.trail.length; i++) {
+            const p0 = this.shuttle.trail[i - 1];
+            const p1 = this.shuttle.trail[i];
+            ctx.strokeStyle = this.shuttle.shotType === 'SMASH'
+              ? `rgba(251, 191, 36, ${(i / this.shuttle.trail.length) * 0.65})`
+              : `rgba(255, 255, 255, ${(i / this.shuttle.trail.length) * 0.45})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        const drawY = this.shuttle.y - this.shuttle.z;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(this.shuttle.x, this.shuttle.y + 3, 7, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(this.shuttle.x, drawY, 5.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(this.shuttle.x, drawY + 2.5, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 6. Near-Court Player 1 (Facing Toward Far Court)
+        const pPos = this.getSideCoords('NEAR', this.player.normX, this.player.courtYNorm);
+        this.drawCourtAthlete(ctx, pPos.x, pPos.y, 1.02, this.userNation, this.jerseyNumber, true);
+
+        // 7. Sparks
+        for (const pt of this.particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      drawCourtAthlete(ctx, x, y, scale, nation, jerseyNum, isNearPlayer) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 34 * scale, 17 * scale, 5.2 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        const swingAngle = isNearPlayer
+          ? (this.player.swinging ? -0.65 + Math.sin(this.player.swingT * Math.PI) * 1.75 : -0.45)
+          : (this.opponent.swinging ? 0.55 - Math.sin(this.opponent.swingT * Math.PI) * 1.65 : 0.35);
+
+        ctx.fillStyle = '#e0ac69';
+        ctx.fillRect(-7, 6, 5, 21);
+        ctx.fillRect(2, 6, 5, 21);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(-8, 25, 7, 4.5);
+        ctx.fillRect(1, 25, 7, 4.5);
+
+        ctx.fillStyle = nation.shorts;
+        ctx.beginPath();
+        ctx.roundRect(-10, -2, 20, 10, 3);
+        ctx.fill();
+
+        ctx.fillStyle = nation.jersey;
+        ctx.beginPath();
+        ctx.roundRect(-12, -24, 24, 23, 5);
+        ctx.fill();
+        ctx.strokeStyle = nation.trim;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 9px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(jerseyNum, 0, -9);
+
+        ctx.fillStyle = '#e0ac69';
+        ctx.beginPath();
+        ctx.arc(0, -31, 6.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#18181b';
+        ctx.beginPath();
+        ctx.arc(0, -32.5, 7, Math.PI, Math.PI * 2);
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(12, -16);
+        ctx.rotate(swingAngle);
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(14, -14);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(18, -18, 6, 8.5, Math.PI / 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.restore();
+      }
+
+      loop(now) {
+        if (!this.lastFrameTime) this.lastFrameTime = now;
+        const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
+        this.lastFrameTime = now;
+
+        if (!this.paused) {
+          this.updatePhysics(dt);
+          this.renderCourtScene(now);
+        }
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    function createLogoSvg(size) {
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('width', String(size));
+      svg.setAttribute('height', String(size));
+      svg.setAttribute('viewBox', '0 0 64 64');
+      svg.setAttribute('fill', 'none');
+      svg.style.margin = size === 54 ? '0 auto 8px' : '0';
+      svg.style.display = 'block';
+
+      const shield = document.createElementNS(svgNS, 'path');
+      shield.setAttribute('d', 'M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z');
+      shield.setAttribute('fill', '#0B3D20');
+      shield.setAttribute('stroke', '#fbbf24');
+      shield.setAttribute('stroke-width', '3');
+
+      const cork = document.createElementNS(svgNS, 'circle');
+      cork.setAttribute('cx', '32');
+      cork.setAttribute('cy', '41.5');
+      cork.setAttribute('r', '4.2');
+      cork.setAttribute('fill', '#f59e0b');
+      cork.setAttribute('stroke', '#ffffff');
+      cork.setAttribute('stroke-width', '1.4');
+
+      const skirt = document.createElementNS(svgNS, 'path');
+      skirt.setAttribute('d', 'M24 24L28.5 39H35.5L40 24');
+      skirt.setAttribute('stroke', '#fde68a');
+      skirt.setAttribute('stroke-width', '2');
+      skirt.setAttribute('fill', 'rgba(255,255,255,0.2)');
+
+      svg.appendChild(shield);
+      svg.appendChild(skirt);
+      svg.appendChild(cork);
+      return svg;
+    }
+
+    window.addEventListener('load', () => {
+      const game = new ABAChampionshipBadminton();
+      requestAnimationFrame((t) => game.loop(t));
+    });
+  </script>
+</body>
+</html>
