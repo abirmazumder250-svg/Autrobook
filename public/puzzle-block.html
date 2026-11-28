@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Puzzle Block</title>
+  <link rel="stylesheet" href="/theme.css" />
+  <style>
+    /* ========================================================================
+       1. DESIGN TOKENS & SYSTEM LIGHT (#FFFFFF) / DARK (#202124) THEMES
+       ======================================================================== */
+    :root {
+      --pb-forest: #0B3D20;
+      --pb-emerald-deep: #0a7d3b;
+      --pb-emerald: #10b981;
+      --pb-gold: #f59e0b;
+      --pb-amber: #fbbf24;
+
+      --theme-bg: #202124;
+      --hud-bg: rgba(32, 33, 36, 0.95);
+      --hud-border: rgba(16, 185, 129, 0.45);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #202124;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+      --grid-bg: #0a2a19;
+      --grid-cell: #0f3b23;
+      --grid-line: rgba(16, 185, 129, 0.28);
+      --grid-border: #fbbf24;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --theme-bg: #FFFFFF;
+        --hud-bg: rgba(255, 255, 255, 0.97);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #FFFFFF;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+        --grid-bg: #eaf8f0;
+        --grid-cell: #ffffff;
+        --grid-line: rgba(10, 125, 59, 0.22);
+        --grid-border: #0a7d3b;
+      }
+    }
+
+    body[data-theme="dark"] {
+      --theme-bg: #202124;
+      --hud-bg: rgba(32, 33, 36, 0.95);
+      --hud-border: rgba(16, 185, 129, 0.45);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #202124;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+      --grid-bg: #0a2a19;
+      --grid-cell: #0f3b23;
+      --grid-line: rgba(16, 185, 129, 0.28);
+      --grid-border: #fbbf24;
+    }
+
+    body[data-theme="light"] {
+      --theme-bg: #FFFFFF;
+      --hud-bg: rgba(255, 255, 255, 0.97);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #FFFFFF;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+      --grid-bg: #eaf8f0;
+      --grid-cell: #ffffff;
+      --grid-line: rgba(10, 125, 59, 0.22);
+      --grid-border: #0a7d3b;
+    }
+
+    /* Grid Style Themes */
+    body[data-grid-style="CLASSIC_BOARD"] {
+      --grid-bg: #17271d;
+      --grid-cell: #22382b;
+      --grid-line: rgba(251, 191, 36, 0.24);
+      --grid-border: #f59e0b;
+    }
+
+    body[data-grid-style="MIDNIGHT_PITCH"] {
+      --grid-bg: #061810;
+      --grid-cell: #092418;
+      --grid-line: rgba(16, 185, 129, 0.34);
+      --grid-border: #10b981;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--theme-bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    #pbArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(5px, env(safe-area-inset-top)) 7px max(5px, env(safe-area-inset-bottom));
+      background-color: var(--theme-bg);
+      background-image: radial-gradient(circle at 50% 16%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.1) 52%, transparent 82%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+    }
+
+    /* ========================================================================
+       2. TOP HUD BAR & LIVE SCORE / BEST / COMBO TELEMETRY
+       ======================================================================== */
+    .top-bar {
+      width: 100%;
+      max-width: 720px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-circle-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      color: #ffffff;
+      border: 1.5px solid rgba(251, 191, 36, 0.62);
+      box-shadow: 0 4px 12px rgba(4, 20, 11, 0.35);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.13s ease, border-color 0.13s ease, background 0.13s ease, box-shadow 0.13s ease;
+    }
+
+    .icon-circle-btn:hover {
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
+      border-color: var(--pb-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.38);
+    }
+
+    .icon-circle-btn:active {
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
+      transform: scale(0.92);
+    }
+
+    .brand-center-hud {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 13px;
+      flex: 1;
+      max-width: 360px;
+      border-color: rgba(251, 191, 36, 0.55);
+      min-width: 0;
+    }
+
+    .brand-main-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .hud-logo-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 1.5px solid var(--pb-amber);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .hud-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .hud-logo-fallback {
+      width: 13px;
+      height: 13px;
+      display: none;
+    }
+
+    .hud-logo-badge.use-fallback .hud-logo-img {
+      display: none;
+    }
+
+    .hud-logo-badge.use-fallback .hud-logo-fallback {
+      display: block;
+    }
+
+    .brand-sub-row {
+      font-size: 8.4px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .telemetry-strip {
+      width: 100%;
+      max-width: 720px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      z-index: 16;
+    }
+
+    .hud-pill {
+      padding: 4px 8px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hud-pill-lbl {
+      color: var(--pb-gold);
+      font-size: 8px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ========================================================================
+       3. CENTER 8x8 CANVAS STAGE & 3-PIECE POLYOMINO TRAY
+       ======================================================================== */
+    .board-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 720px;
+      min-height: 0;
+      margin: 2px 0;
+    }
+
+    canvas#puzzleCanvas {
+      display: block;
+      border-radius: 15px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+      touch-action: none;
+      cursor: pointer;
+    }
+
+    .tray-section {
+      width: 100%;
+      max-width: 720px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      z-index: 18;
+    }
+
+    .tray-slot {
+      position: relative;
+      height: 74px;
+      border-radius: 13px;
+      background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid rgba(16, 185, 129, 0.55);
+      box-shadow: 0 5px 14px rgba(4, 20, 11, 0.32);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      touch-action: none;
+      transition: transform 0.13s ease, border-color 0.13s ease, box-shadow 0.13s ease, opacity 0.15s ease;
+    }
+
+    .tray-slot:hover:not(.used) {
+      border-color: var(--pb-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.32);
+    }
+
+    .tray-slot.selected:not(.used) {
+      border-color: var(--pb-amber);
+      box-shadow: 0 0 16px rgba(251, 191, 36, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .tray-slot.used {
+      opacity: 0.25;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .tray-key-badge {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      font-size: 8.5px;
+      font-weight: 900;
+      color: var(--pb-amber);
+      background: rgba(6, 33, 18, 0.72);
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+
+    .tray-piece-grid {
+      display: grid;
+      gap: 2px;
+      pointer-events: none;
+    }
+
+    .tray-mini-cell {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .tray-mini-cell.filled {
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.35);
+    }
+
+    /* Floating drag ghost when dragging a tray piece */
+    .drag-ghost {
+      position: fixed;
+      z-index: 46;
+      pointer-events: none;
+      display: none;
+      transform: translate(-50%, -65%);
+      filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.48));
+    }
+
+    .drag-ghost.active {
+      display: grid;
+    }
+
+    /* ========================================================================
+       4. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
+       ======================================================================== */
+    #pbIntroScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-color: var(--theme-bg);
+      background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.14) 55%, transparent 82%);
+      overflow: hidden;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+
+    #pbIntroScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spot-ray {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .ray-left {
+      left: 10%;
+      animation: raySwingL 2.6s ease-in-out infinite alternate;
+    }
+
+    .ray-right {
+      right: 10%;
+      animation: raySwingR 2.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes raySwingL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes raySwingR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .pb-crest-badge {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--pb-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      overflow: hidden;
+      animation: crestPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    .pb-crest-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .pb-crest-fallback-svg {
+      width: 64px;
+      height: 64px;
+      display: none;
+    }
+
+    .pb-crest-badge.use-fallback .pb-crest-logo-img {
+      display: none;
+    }
+
+    .pb-crest-badge.use-fallback .pb-crest-fallback-svg {
+      display: block;
+    }
+
+    @keyframes crestPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-title {
+      font-size: 25px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: var(--text-main);
+    }
+
+    .intro-progress-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.18);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE & GAME OVER SUMMARY)
+       ======================================================================== */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 455px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 17px 15px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-head {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .modal-title-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .modal-h2 {
+      font-size: 18.5px;
+      font-weight: 900;
+    }
+
+    .modal-sub {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .setup-box {
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 8px;
+    }
+
+    .setup-label {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--pb-gold);
+      margin-bottom: 5px;
+    }
+
+    .pills-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .choice-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: #0B3D20;
+      border: 1.5px solid rgba(16, 185, 129, 0.45);
+      color: #ffffff;
+      font-size: 9.6px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+    }
+
+    .choice-btn:hover {
+      background: #0d4b28;
+      border-color: var(--pb-amber);
+    }
+
+    .choice-btn:active {
+      transform: scale(0.97);
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(135deg, #0a7d3b 0%, #062815 100%);
+      border-color: var(--pb-amber);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.34);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 10.5px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #0a7d3b 0%, #0B3D20 100%);
+      border: 1.5px solid var(--pb-amber);
+      box-shadow: 0 6px 16px rgba(11, 61, 32, 0.5);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0d9446 0%, #0B3D20 100%);
+      box-shadow: 0 0 15px rgba(251, 191, 36, 0.42);
+    }
+
+    .btn-primary:active {
+      background: linear-gradient(135deg, #0B3D20 0%, #051f10 100%);
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 9.5px 14px;
+      border-radius: 13px;
+      background: #0B3D20;
+      border: 1.5px solid rgba(16, 185, 129, 0.55);
+      color: #ffffff;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    }
+
+    .btn-secondary:hover {
+      background: #0a7d3b;
+      border-color: var(--pb-amber);
+    }
+
+    .btn-secondary:active {
+      background: #062815;
+      transform: scale(0.98);
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 9px;
+    }
+
+    .stats-box {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .shot-preview-img {
+      width: 100%;
+      max-height: 48dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--pb-amber);
+      background: var(--grid-bg);
+      margin: 8px 0;
+    }
+
+    .toast-banner {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--pb-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="pbArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastBanner" class="toast-banner">PUZZLE BLOCK</div>
+    <div id="dragGhost" class="drag-ghost"></div>
+
+    <!-- TOP HUD BAR WITH DIRECT LINK TO puzzle-block.html -->
+    <header class="top-bar">
+      <div class="btn-group">
+        <a id="backToPuzzleBlockLink" href="puzzle-block.html" class="icon-circle-btn glass-hud" title="Back to puzzle-block.html" aria-label="Back to puzzle-block.html">&larr;</a>
+      </div>
+
+      <div class="brand-center-hud glass-hud">
+        <div class="brand-main-row">
+          <span class="hud-logo-badge js-pb-logo-badge" aria-hidden="true">
+            <img src="autrobook-puzzle-block.png" alt="Puzzle Block Logo" class="hud-logo-img js-pb-logo-img" />
+            <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+              <rect x="8" y="8" width="3.5" height="3.5" rx="0.8" fill="#fbbf24"/>
+              <rect x="12.5" y="8" width="3.5" height="3.5" rx="0.8" fill="#10b981"/>
+              <rect x="8" y="12.5" width="3.5" height="3.5" rx="0.8" fill="#10b981"/>
+              <rect x="12.5" y="12.5" width="3.5" height="3.5" rx="0.8" fill="#f59e0b"/>
+            </svg>
+          </span>
+          <span>Puzzle Block</span>
+        </div>
+        <div id="statusSubRow" class="brand-sub-row">CLASSIC ENDLESS &bull; EMERALD &amp; GOLD</div>
+      </div>
+
+      <div class="btn-group">
+        <button id="themeToggleBtn" type="button" class="icon-circle-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="screenshotBtn" type="button" class="icon-circle-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="muteBtn" type="button" class="icon-circle-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseBtn" type="button" class="icon-circle-btn glass-hud" title="Pause Game (P)" aria-label="Pause Game">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- SCORE, BEST & COMBO TELEMETRY PILLS -->
+    <section class="telemetry-strip">
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">SCORE</span>
+        <span id="scorePillVal">0</span>
+      </div>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">BEST</span>
+        <span id="bestPillVal">0</span>
+      </div>
+      <div class="hud-pill glass-hud">
+        <span class="hud-pill-lbl">COMBO</span>
+        <span id="comboPillVal">0x</span>
+      </div>
+    </section>
+
+    <!-- CENTER 8x8 HIGH-DPI CANVAS STAGE -->
+    <main id="boardStage" class="board-stage">
+      <canvas id="puzzleCanvas"></canvas>
+    </main>
+
+    <!-- 3-PIECE POLYOMINO TRAY -->
+    <section id="pieceTray" class="tray-section" aria-label="Selectable Block Tray">
+      <button id="traySlot0" type="button" class="tray-slot selected" data-slot="0" aria-label="Block Piece 1">
+        <span class="tray-key-badge">1</span>
+        <div id="trayContent0"></div>
+      </button>
+      <button id="traySlot1" type="button" class="tray-slot" data-slot="1" aria-label="Block Piece 2">
+        <span class="tray-key-badge">2</span>
+        <div id="trayContent1"></div>
+      </button>
+      <button id="traySlot2" type="button" class="tray-slot" data-slot="2" aria-label="Block Piece 3">
+        <span class="tray-key-badge">3</span>
+        <div id="trayContent2"></div>
+      </button>
+    </section>
+
+    <!-- ======================================================================
+         1. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
+         ====================================================================== -->
+    <section id="pbIntroScreen">
+      <div class="spot-ray ray-left"></div>
+      <div class="spot-ray ray-right"></div>
+
+      <div class="intro-center">
+        <div id="pbCrestBadge" class="pb-crest-badge js-pb-logo-badge">
+          <img
+            id="pbIntroLogoImg"
+            src="autrobook-puzzle-block.png"
+            alt="Puzzle Block Logo"
+            class="pb-crest-logo-img js-pb-logo-img"
+          />
+          <svg id="pbIntroFallbackSvg" class="pb-crest-fallback-svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <rect x="20" y="20" width="10" height="10" rx="2" fill="#fbbf24"/>
+            <rect x="34" y="20" width="10" height="10" rx="2" fill="#10b981"/>
+            <rect x="20" y="34" width="10" height="10" rx="2" fill="#10b981"/>
+            <rect x="34" y="34" width="10" height="10" rx="2" fill="#f59e0b"/>
+          </svg>
+        </div>
+
+        <h1 class="intro-title">Puzzle Block</h1>
+
+        <div class="intro-progress-track">
+          <div id="introBarFill" class="intro-progress-fill"></div>
+        </div>
+
+        <button id="skipIntroBtn" type="button" class="btn-primary" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. SESSION SETUP MODAL (MODE, GRID STYLE & BLOCK THEME)
+         ====================================================================== -->
+    <div id="setupModal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div class="modal-title-row">
+            <span class="hud-logo-badge js-pb-logo-badge" aria-hidden="true">
+              <img src="autrobook-puzzle-block.png" alt="Puzzle Block Logo" class="hud-logo-img js-pb-logo-img" />
+              <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
+                <rect x="8" y="8" width="8" height="8" rx="1.5" stroke="#fbbf24" stroke-width="1.6"/>
+              </svg>
+            </span>
+            <h2 class="modal-h2">Puzzle Block Setup</h2>
+          </div>
+          <p class="modal-sub">Game Mode &bull; Grid Style &bull; Block Theme</p>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Game Mode</div>
+          <div id="modeGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-mode="CLASSIC_ENDLESS">Classic Endless</button>
+            <button type="button" class="choice-btn" data-mode="COMBO_RUSH">Combo Rush</button>
+            <button type="button" class="choice-btn" data-mode="ZEN_RELAX">Zen Relax</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Grid Style</div>
+          <div id="gridStyleGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-gstyle="EMERALD_GRID">Emerald Grid</button>
+            <button type="button" class="choice-btn" data-gstyle="CLASSIC_BOARD">Classic Board</button>
+            <button type="button" class="choice-btn" data-gstyle="MIDNIGHT_PITCH">Midnight Pitch</button>
+          </div>
+        </div>
+
+        <div class="setup-box">
+          <div class="setup-label">Block Theme</div>
+          <div id="blockThemeGroup" class="pills-3">
+            <button type="button" class="choice-btn selected" data-btheme="EMERALD_GOLD">Emerald &amp; Gold</button>
+            <button type="button" class="choice-btn" data-btheme="VIBRANT_GEM">Vibrant Gem</button>
+            <button type="button" class="choice-btn" data-btheme="ROYAL_JADE">Royal Jade</button>
+          </div>
+        </div>
+
+        <button id="startPuzzleBlockBtn" type="button" class="btn-primary">
+          Start Puzzle Block
+        </button>
+
+        <div class="btn-stack" style="margin-top:6px;">
+          <button id="statsFromSetupBtn" type="button" class="btn-secondary">View Stats</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Puzzle Block Snapshot</h2>
+          <p class="modal-sub">Puzzle Block</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview-img" alt="Puzzle Block Screenshot" />
+        <div class="btn-stack">
+          <a id="downloadShotBtn" download="Puzzle-Block.png" class="btn-primary">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Resume</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:335px;text-align:center;">
+        <div class="modal-head">
+          <h2 class="modal-h2">Game Paused</h2>
+          <p class="modal-sub">Puzzle Block</p>
+        </div>
+        <div class="btn-stack">
+          <button id="resumeBtn" type="button" class="btn-primary">Resume</button>
+          <button id="restartFromPauseBtn" type="button" class="btn-secondary">Restart Game</button>
+          <button id="setupFromPauseBtn" type="button" class="btn-secondary">Session Setup</button>
+          <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
+          <button id="backFromPauseBtn" type="button" class="btn-secondary">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. GAME OVER & CAREER STATISTICS MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-backdrop">
+      <div class="modal-card" style="max-width:365px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:4px;">&#129513;</div>
+        <h2 id="summaryTitle" class="modal-h2">NO MOVES LEFT!</h2>
+        <p id="summarySub" class="modal-sub">Puzzle Block</p>
+
+        <div class="stats-box">
+          <div class="stats-row">
+            <span>Session Score &bull; Lines</span>
+            <span id="sumScoreLinesVal" style="font-weight:900;color:var(--pb-gold);">0 &bull; 0</span>
+          </div>
+          <div class="stats-row">
+            <span>Games Played</span>
+            <span id="sumPlayedVal" style="font-weight:900;color:var(--pb-emerald);">0</span>
+          </div>
+          <div class="stats-row">
+            <span>Best Score &bull; Best Combo</span>
+            <span id="sumBestComboVal" style="font-weight:900;">0 &bull; 0x</span>
+          </div>
+          <div class="stats-row">
+            <span>Total Lines Cleared</span>
+            <span id="sumTotalLinesVal" style="font-weight:900;color:var(--pb-gold);">0</span>
+          </div>
+        </div>
+
+        <div class="btn-stack">
+          <button id="summaryPrimaryBtn" type="button" class="btn-primary">Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Session Setup</button>
+          <a href="puzzle-block.html" class="btn-secondary">&larr; Back to puzzle-block.html</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       POLYOMINO SHAPES, BLOCK THEMES & PERSISTENT STATS SCHEMA
+       ======================================================================== */
+    const POLYOMINO_SHAPES = [
+      [[1]],
+      [[1, 1]],
+      [[1], [1]],
+      [[1, 1, 1]],
+      [[1], [1], [1]],
+      [[1, 1], [1, 1]],
+      [[1, 0], [1, 1]],
+      [[0, 1], [1, 1]],
+      [[1, 1], [1, 0]],
+      [[1, 1], [0, 1]],
+      [[1, 1, 1], [0, 1, 0]],
+      [[0, 1, 0], [1, 1, 1]],
+      [[1, 1, 1], [1, 0, 0]],
+      [[1, 1, 1], [0, 0, 1]],
+      [[1, 1, 0], [0, 1, 1]],
+      [[0, 1, 1], [1, 1, 0]],
+      [[1, 1, 1, 1]],
+      [[1], [1], [1], [1]]
+    ];
+
+    const BLOCK_THEMES = {
+      EMERALD_GOLD: ['#10b981', '#fbbf24', '#0a7d3b', '#f59e0b', '#34d399', '#eab308'],
+      VIBRANT_GEM: ['#10b981', '#38bdf8', '#f59e0b', '#f43f5e', '#a855f7', '#fbbf24'],
+      ROYAL_JADE: ['#059669', '#fbbf24', '#047857', '#d97706', '#6ee7b7', '#fcd34d']
+    };
+
+    const PB_STATS_KEY = 'autrobook_puzzle_block_stats_v1';
+    const GRID_SIZE = 8;
+
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class PBAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playClick() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(560, now);
+        g.gain.setValueAtTime(0.06, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+
+      playSelect() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(620, now);
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }
+
+      playPlace() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(340, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.08);
+        g.gain.setValueAtTime(0.12, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.095);
+      }
+
+      playLineClear(comboCount = 1) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const base = 523.25 + Math.min(6, comboCount) * 45;
+        [base, base * 1.25, base * 1.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.065;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.14, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.22);
+        });
+      }
+
+      playComboFanfare() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [587.33, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sine';
+          const t0 = now + idx * 0.07;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.13, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.25);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.26);
+        });
+      }
+
+      playGameOver() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [392.0, 329.63, 261.63].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          const t0 = now + idx * 0.12;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.1, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.25);
+        });
+      }
+    }
+
+    /* ========================================================================
+       PUZZLE BLOCK 8x8 HIGH-DPI CANVAS & TRAY GAME ENGINE
+       ======================================================================== */
+    class PuzzleBlockGame {
+      constructor() {
+        this.canvas = document.getElementById('puzzleCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new PBAudioSynth();
+        this.dragGhost = document.getElementById('dragGhost');
+
+        this.mode = 'CLASSIC_ENDLESS'; // CLASSIC_ENDLESS, COMBO_RUSH, ZEN_RELAX
+        this.gridStyle = 'EMERALD_GRID'; // EMERALD_GRID, CLASSIC_BOARD, MIDNIGHT_PITCH
+        this.blockTheme = 'EMERALD_GOLD'; // EMERALD_GOLD, VIBRANT_GEM, ROYAL_JADE
+
+        const saved = this.loadStats();
+        this.stats = {
+          played: saved.played || 0,
+          bestScore: saved.bestScore || 0,
+          bestCombo: saved.bestCombo || 0,
+          totalLines: saved.totalLines || 0
+        };
+        this.countedGame = false;
+
+        this.grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+        this.tray = [null, null, null];
+        this.selectedSlot = 0;
+        this.cursorRow = 3;
+        this.cursorCol = 3;
+        this.hoverRow = null;
+        this.hoverCol = null;
+
+        this.score = 0;
+        this.combo = 0;
+        this.linesClearedInRun = 0;
+        this.particles = [];
+        this.floatingTexts = [];
+
+        this.dragState = {
+          active: false,
+          slotIdx: -1,
+          clientX: 0,
+          clientY: 0
+        };
+
+        this.canvasSize = 320;
+        this.dpr = 1;
+        this.gameOver = false;
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = false;
+        this.lastFrameTime = 0;
+
+        this.renderAutrobookPuzzleBlockLogo();
+        this.syncThemeIcon();
+        this.bindEvents();
+        this.resizeBoard();
+        this.startNewSession();
+        this.startIntro();
+      }
+
+      renderAutrobookPuzzleBlockLogo() {
+        const logoSrc = 'autrobook-puzzle-block.png';
+        const badges = document.querySelectorAll('.js-pb-logo-badge');
+        badges.forEach((badge) => {
+          const img = badge.querySelector('.js-pb-logo-img');
+          if (!img) return;
+
+          const showFallback = () => badge.classList.add('use-fallback');
+          const showLogo = () => badge.classList.remove('use-fallback');
+
+          img.onerror = showFallback;
+          img.onload = showLogo;
+
+          if (img.getAttribute('src') !== logoSrc) {
+            img.src = logoSrc;
+          }
+          if (img.complete && img.naturalWidth === 0) {
+            showFallback();
+          }
+        });
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(PB_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(PB_STATS_KEY, JSON.stringify(this.stats));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.renderTray();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastBanner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      resizeBoard() {
+        const stage = document.getElementById('boardStage').getBoundingClientRect();
+        const availW = Math.max(220, stage.width - 10);
+        const availH = Math.max(220, stage.height - 10);
+        const side = Math.floor(Math.min(availW, availH, 420));
+
+        this.canvasSize = side;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${side}px`;
+        this.canvas.style.height = `${side}px`;
+        this.canvas.width = Math.floor(side * this.dpr);
+        this.canvas.height = Math.floor(side * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      }
+
+      startNewSession() {
+        this.grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+        this.score = 0;
+        this.combo = 0;
+        this.linesClearedInRun = 0;
+        this.particles = [];
+        this.floatingTexts = [];
+        this.gameOver = false;
+        this.countedGame = false;
+        this.hoverRow = null;
+        this.hoverCol = null;
+        this.cursorRow = 3;
+        this.cursorCol = 3;
+        this.refillTray();
+        this.refreshHUD();
+      }
+
+      createRandomPiece() {
+        const palette = BLOCK_THEMES[this.blockTheme] || BLOCK_THEMES.EMERALD_GOLD;
+        const maxShapeIdx = this.mode === 'ZEN_RELAX' ? 10 : POLYOMINO_SHAPES.length;
+        const shape = POLYOMINO_SHAPES[Math.floor(Math.random() * maxShapeIdx)];
+        const color = palette[Math.floor(Math.random() * palette.length)];
+        return {
+          matrix: shape.map((r) => r.slice()),
+          color,
+          used: false
+        };
+      }
+
+      refillTray() {
+        this.tray = [
+          this.createRandomPiece(),
+          this.createRandomPiece(),
+          this.createRandomPiece()
+        ];
+        this.selectedSlot = 0;
+        this.renderTray();
+      }
+
+      selectTraySlot(slotIdx) {
+        if (this.paused || this.gameOver) return;
+        const piece = this.tray[slotIdx];
+        if (!piece || piece.used) return;
+        this.selectedSlot = slotIdx;
+        this.audio.playSelect();
+        this.renderTray();
+      }
+
+      canPlacePiece(piece, anchorRow, anchorCol) {
+        if (!piece || piece.used) return false;
+        const rows = piece.matrix.length;
+        const cols = piece.matrix[0].length;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (!piece.matrix[r][c]) continue;
+            const gr = anchorRow + r;
+            const gc = anchorCol + c;
+            if (gr < 0 || gr >= GRID_SIZE || gc < 0 || gc >= GRID_SIZE) return false;
+            if (this.grid[gr][gc] !== null) return false;
+          }
+        }
+        return true;
+      }
+
+      hasAnyValidMoveForPiece(piece) {
+        if (!piece || piece.used) return false;
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            if (this.canPlacePiece(piece, r, c)) return true;
+          }
+        }
+        return false;
+      }
+
+      hasAnyMovesRemaining() {
+        return this.tray.some((p) => p && !p.used && this.hasAnyValidMoveForPiece(p));
+      }
+
+      spawnClearParticles(gr, gc, color) {
+        const cell = this.canvasSize / GRID_SIZE;
+        const cx = (gc + 0.5) * cell;
+        const cy = (gr + 0.5) * cell;
+        for (let i = 0; i < 6; i++) {
+          const ang = (Math.PI * 2 * i) / 6 + Math.random() * 0.4;
+          const spd = 40 + Math.random() * 85;
+          this.particles.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 0.36,
+            maxLife: 0.36,
+            color,
+            size: Math.max(2.5, cell * 0.11)
+          });
+        }
+      }
+
+      spawnFloatingText(text, x, y, color = '#fbbf24') {
+        this.floatingTexts.push({
+          text,
+          x,
+          y,
+          vy: -34,
+          life: 0.85,
+          maxLife: 0.85,
+          color
+        });
+      }
+
+      attemptPlacePiece(slotIdx, anchorRow, anchorCol) {
+        if (this.paused || this.gameOver) return false;
+        const piece = this.tray[slotIdx];
+        if (!piece || piece.used) return false;
+        if (!this.canPlacePiece(piece, anchorRow, anchorCol)) return false;
+
+        if (!this.countedGame) {
+          this.countedGame = true;
+          this.stats.played++;
+          this.saveStats();
+        }
+
+        let placedCells = 0;
+        const rows = piece.matrix.length;
+        const cols = piece.matrix[0].length;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (piece.matrix[r][c]) {
+              this.grid[anchorRow + r][anchorCol + c] = piece.color;
+              placedCells++;
+            }
+          }
+        }
+
+        piece.used = true;
+        this.audio.playPlace();
+
+        const fullRows = [];
+        const fullCols = [];
+
+        for (let r = 0; r < GRID_SIZE; r++) {
+          if (this.grid[r].every((v) => v !== null)) fullRows.push(r);
+        }
+        for (let c = 0; c < GRID_SIZE; c++) {
+          let allFilled = true;
+          for (let r = 0; r < GRID_SIZE; r++) {
+            if (this.grid[r][c] === null) {
+              allFilled = false;
+              break;
+            }
+          }
+          if (allFilled) fullCols.push(c);
+        }
+
+        const clearedCellsSet = new Set();
+        for (const r of fullRows) {
+          for (let c = 0; c < GRID_SIZE; c++) clearedCellsSet.add(`${r},${c}`);
+        }
+        for (const c of fullCols) {
+          for (let r = 0; r < GRID_SIZE; r++) clearedCellsSet.add(`${r},${c}`);
+        }
+
+        const linesNow = fullRows.length + fullCols.length;
+        if (linesNow > 0) {
+          this.combo++;
+          this.linesClearedInRun += linesNow;
+          this.stats.totalLines += linesNow;
+          if (this.combo > this.stats.bestCombo) {
+            this.stats.bestCombo = this.combo;
+          }
+
+          clearedCellsSet.forEach((key) => {
+            const [cr, cc] = key.split(',').map(Number);
+            const pColor = this.grid[cr][cc] || '#fbbf24';
+            this.spawnClearParticles(cr, cc, pColor);
+            this.grid[cr][cc] = null;
+          });
+
+          const modeMult = this.mode === 'COMBO_RUSH' ? 1.5 : 1.0;
+          const linePts = Math.round(linesNow * 100 * (1 + (this.combo - 1) * 0.35) * modeMult);
+          this.score += placedCells * 10 + linePts;
+
+          if (this.combo >= 2 || linesNow >= 2) {
+            this.audio.playComboFanfare();
+            this.showToast(`${linesNow} LINE${linesNow > 1 ? 'S' : ''} • ${this.combo}X COMBO!`);
+          } else {
+            this.audio.playLineClear(this.combo);
+            this.showToast(`+${linePts} PTS`);
+          }
+
+          const midX = ((anchorCol + cols * 0.5) / GRID_SIZE) * this.canvasSize;
+          const midY = ((anchorRow + rows * 0.5) / GRID_SIZE) * this.canvasSize;
+          this.spawnFloatingText(
+            this.combo > 1 ? `+${linePts} (${this.combo}X)` : `+${linePts}`,
+            midX,
+            midY,
+            '#fbbf24'
+          );
+        } else {
+          if (this.mode !== 'ZEN_RELAX') {
+            this.combo = 0;
+          }
+          this.score += placedCells * 10;
+        }
+
+        if (this.score > this.stats.bestScore) {
+          this.stats.bestScore = this.score;
+        }
+        this.saveStats();
+
+        if (this.tray.every((p) => !p || p.used)) {
+          this.refillTray();
+        } else {
+          const nextAvail = this.tray.findIndex((p) => p && !p.used);
+          if (nextAvail !== -1) this.selectedSlot = nextAvail;
+          this.renderTray();
+        }
+
+        this.refreshHUD();
+
+        if (!this.hasAnyMovesRemaining()) {
+          this.triggerGameOver();
+        }
+
+        return true;
+      }
+
+      triggerGameOver() {
+        if (this.gameOver) return;
+        this.gameOver = true;
+        this.audio.playGameOver();
+
+        document.getElementById('summaryTitle').textContent = 'NO MOVES LEFT!';
+        document.getElementById('summarySub').textContent = `${this.mode.replace('_', ' ')} • Final Session`;
+        document.getElementById('sumScoreLinesVal').textContent = `${this.score} • ${this.linesClearedInRun}`;
+        document.getElementById('sumPlayedVal').textContent = String(this.stats.played);
+        document.getElementById('sumBestComboVal').textContent = `${this.stats.bestScore} • ${this.stats.bestCombo}x`;
+        document.getElementById('sumTotalLinesVal').textContent = String(this.stats.totalLines);
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      /* ======================================================================
+         TRAY DOM RENDERER, DRAG GHOST & HUD REFRESH
+         ====================================================================== */
+      renderTray() {
+        for (let s = 0; s < 3; s++) {
+          const slotEl = document.getElementById(`traySlot${s}`);
+          const contentEl = document.getElementById(`trayContent${s}`);
+          const piece = this.tray[s];
+          contentEl.innerHTML = '';
+
+          if (!piece || piece.used) {
+            slotEl.classList.add('used');
+            slotEl.classList.remove('selected');
+            continue;
+          }
+
+          slotEl.classList.remove('used');
+          slotEl.classList.toggle('selected', s === this.selectedSlot);
+
+          const rows = piece.matrix.length;
+          const cols = piece.matrix[0].length;
+          const gridDiv = document.createElement('div');
+          gridDiv.className = 'tray-piece-grid';
+          gridDiv.style.gridTemplateColumns = `repeat(${cols}, 12px)`;
+          gridDiv.style.gridTemplateRows = `repeat(${rows}, 12px)`;
+
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const cell = document.createElement('div');
+              cell.className = 'tray-mini-cell' + (piece.matrix[r][c] ? ' filled' : '');
+              if (piece.matrix[r][c]) {
+                cell.style.background = piece.color;
+              }
+              gridDiv.appendChild(cell);
+            }
+          }
+          contentEl.appendChild(gridDiv);
+        }
+      }
+
+      updateDragGhost() {
+        const piece = this.dragState.active ? this.tray[this.dragState.slotIdx] : null;
+        if (!piece || piece.used) {
+          this.dragGhost.classList.remove('active');
+          return;
+        }
+        const rows = piece.matrix.length;
+        const cols = piece.matrix[0].length;
+        const size = Math.max(18, Math.floor(this.canvasSize / GRID_SIZE * 0.85));
+
+        this.dragGhost.innerHTML = '';
+        this.dragGhost.style.left = `${this.dragState.clientX}px`;
+        this.dragGhost.style.top = `${this.dragState.clientY}px`;
+        this.dragGhost.style.gridTemplateColumns = `repeat(${cols}, ${size}px)`;
+        this.dragGhost.style.gridTemplateRows = `repeat(${rows}, ${size}px)`;
+        this.dragGhost.style.gap = '2px';
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const d = document.createElement('div');
+            if (piece.matrix[r][c]) {
+              d.style.width = `${size}px`;
+              d.style.height = `${size}px`;
+              d.style.borderRadius = '4px';
+              d.style.background = piece.color;
+              d.style.border = '1px solid rgba(255,255,255,0.7)';
+            }
+            this.dragGhost.appendChild(d);
+          }
+        }
+        this.dragGhost.classList.add('active');
+      }
+
+      refreshHUD() {
+        document.getElementById('scorePillVal').textContent = String(this.score);
+        document.getElementById('bestPillVal').textContent = String(Math.max(this.score, this.stats.bestScore));
+        document.getElementById('comboPillVal').textContent = `${this.combo}x`;
+
+        const modeNames = {
+          CLASSIC_ENDLESS: 'CLASSIC ENDLESS',
+          COMBO_RUSH: 'COMBO RUSH',
+          ZEN_RELAX: 'ZEN RELAX'
+        };
+        const themeNames = {
+          EMERALD_GOLD: 'EMERALD & GOLD',
+          VIBRANT_GEM: 'VIBRANT GEM',
+          ROYAL_JADE: 'ROYAL JADE'
+        };
+        document.getElementById('statusSubRow').textContent =
+          `${modeNames[this.mode]} • ${themeNames[this.blockTheme]}`;
+      }
+
+      /* ======================================================================
+         SCREENSHOT, INTRO, EVENTS & HIGH-DPI CANVAS LOOP
+         ====================================================================== */
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playClick();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderCanvas();
+        try {
+          const url = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotModalOpen = true;
+          document.getElementById('screenshotImg').src = url;
+          const link = document.getElementById('downloadShotBtn');
+          link.href = url;
+          link.download = `Puzzle-Block-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_e) {}
+      }
+
+      clientToGridCell(clientX, clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        const x = ((clientX - rect.left) / rect.width) * this.canvasSize;
+        const y = ((clientY - rect.top) / rect.height) * this.canvasSize;
+        const col = Math.floor((x / this.canvasSize) * GRID_SIZE);
+        const row = Math.floor((y / this.canvasSize) * GRID_SIZE);
+        if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) return null;
+        return { row, col };
+      }
+
+      startIntro() {
+        const dur = 1800;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('pbIntroScreen').classList.add('hidden');
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeBoard());
+
+        const backLink = document.getElementById('backToPuzzleBlockLink');
+        if (backLink) {
+          backLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = 'puzzle-block.html';
+          });
+        }
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.renderTray();
+            }
+          });
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.toggleTheme();
+        });
+
+        document.getElementById('skipIntroBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#modeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.mode = btn.dataset.mode;
+            document.querySelectorAll('#modeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#gridStyleGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.gridStyle = btn.dataset.gstyle;
+            document.body.dataset.gridStyle = this.gridStyle;
+            document.querySelectorAll('#gridStyleGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#blockThemeGroup .choice-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.blockTheme = btn.dataset.btheme;
+            document.querySelectorAll('#blockThemeGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.getElementById('startPuzzleBlockBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.startNewSession();
+        });
+
+        document.getElementById('statsFromSetupBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          document.getElementById('summaryTitle').textContent = 'CAREER STATISTICS';
+          document.getElementById('summarySub').textContent = 'Puzzle Block';
+          document.getElementById('sumScoreLinesVal').textContent = `${this.score} • ${this.linesClearedInRun}`;
+          document.getElementById('sumPlayedVal').textContent = String(this.stats.played);
+          document.getElementById('sumBestComboVal').textContent = `${this.stats.bestScore} • ${this.stats.bestCombo}x`;
+          document.getElementById('sumTotalLinesVal').textContent = String(this.stats.totalLines);
+          document.getElementById('summaryPrimaryBtn').textContent = 'Close Stats';
+          document.getElementById('summaryPrimaryBtn').dataset.action = 'CLOSE_ONLY';
+          document.getElementById('summaryModal').classList.add('open');
+        });
+
+        for (let s = 0; s < 3; s++) {
+          const slotEl = document.getElementById(`traySlot${s}`);
+          slotEl.addEventListener('pointerdown', (e) => {
+            if (this.paused || this.gameOver) return;
+            const p = this.tray[s];
+            if (!p || p.used) return;
+            this.audio.unlock();
+            this.selectedSlot = s;
+            this.renderTray();
+            this.dragState = {
+              active: true,
+              slotIdx: s,
+              clientX: e.clientX,
+              clientY: e.clientY
+            };
+            this.updateDragGhost();
+          });
+        }
+
+        window.addEventListener('pointermove', (e) => {
+          if (this.dragState.active) {
+            this.dragState.clientX = e.clientX;
+            this.dragState.clientY = e.clientY;
+            this.updateDragGhost();
+            const cell = this.clientToGridCell(e.clientX, e.clientY - 26);
+            if (cell) {
+              this.hoverRow = cell.row;
+              this.hoverCol = cell.col;
+              this.cursorRow = cell.row;
+              this.cursorCol = cell.col;
+            } else {
+              this.hoverRow = null;
+              this.hoverCol = null;
+            }
+          }
+        });
+
+        window.addEventListener('pointerup', (e) => {
+          if (!this.dragState.active) return;
+          const slotIdx = this.dragState.slotIdx;
+          const cell = this.clientToGridCell(e.clientX, e.clientY - 26);
+          this.dragState.active = false;
+          this.dragGhost.classList.remove('active');
+          if (cell) {
+            this.attemptPlacePiece(slotIdx, cell.row, cell.col);
+          }
+        });
+
+        this.canvas.addEventListener('pointermove', (e) => {
+          if (this.paused || this.gameOver) return;
+          const cell = this.clientToGridCell(e.clientX, e.clientY);
+          if (cell) {
+            this.hoverRow = cell.row;
+            this.hoverCol = cell.col;
+            this.cursorRow = cell.row;
+            this.cursorCol = cell.col;
+          }
+        });
+
+        this.canvas.addEventListener('pointerleave', () => {
+          if (!this.dragState.active) {
+            this.hoverRow = null;
+            this.hoverCol = null;
+          }
+        });
+
+        this.canvas.addEventListener('click', (e) => {
+          if (this.paused || this.gameOver) return;
+          this.audio.unlock();
+          const cell = this.clientToGridCell(e.clientX, e.clientY);
+          if (cell) {
+            this.cursorRow = cell.row;
+            this.cursorCol = cell.col;
+            this.attemptPlacePiece(this.selectedSlot, cell.row, cell.col);
+          }
+        });
+
+        document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotModalOpen = false;
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('muteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen || this.gameOver) return;
+          this.paused = true;
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('backFromPauseBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.audio.playClick();
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastFrameTime = performance.now();
+        });
+
+        document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.startNewSession();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
+        });
+
+        document.getElementById('statsFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          document.getElementById('summaryTitle').textContent = 'CAREER STATISTICS';
+          document.getElementById('summarySub').textContent = 'Puzzle Block';
+          document.getElementById('sumScoreLinesVal').textContent = `${this.score} • ${this.linesClearedInRun}`;
+          document.getElementById('sumPlayedVal').textContent = String(this.stats.played);
+          document.getElementById('sumBestComboVal').textContent = `${this.stats.bestScore} • ${this.stats.bestCombo}x`;
+          document.getElementById('sumTotalLinesVal').textContent = String(this.stats.totalLines);
+          document.getElementById('summaryPrimaryBtn').textContent = 'Resume';
+          document.getElementById('summaryPrimaryBtn').dataset.action = 'CLOSE_ONLY';
+          document.getElementById('summaryModal').classList.add('open');
+        });
+
+        document.getElementById('summaryPrimaryBtn').addEventListener('click', () => {
+          const act = document.getElementById('summaryPrimaryBtn').dataset.action;
+          document.getElementById('summaryModal').classList.remove('open');
+          if (act === 'CLOSE_ONLY') {
+            if (!this.setupOpen && !this.introActive && !this.gameOver) {
+              this.paused = false;
+              this.lastFrameTime = performance.now();
+            }
+          } else {
+            this.paused = false;
+            this.startNewSession();
+          }
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.setupOpen = true;
+          this.paused = true;
+          document.getElementById('setupModal').classList.add('open');
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen) return;
+
+          if (e.code === 'KeyP' || e.code === 'Escape') {
+            if (!this.gameOver) {
+              this.paused = !this.paused;
+              document.getElementById('pauseModal').classList.toggle('open', this.paused);
+              this.lastFrameTime = performance.now();
+            }
+            return;
+          }
+
+          if (e.code === 'KeyR') {
+            e.preventDefault();
+            this.audio.unlock();
+            document.getElementById('summaryModal').classList.remove('open');
+            this.paused = false;
+            this.startNewSession();
+            this.showToast('SESSION RESTARTED');
+            return;
+          }
+
+          if (this.paused || this.gameOver) return;
+
+          if (e.key === '1' || e.key === '2' || e.key === '3') {
+            this.audio.unlock();
+            this.selectTraySlot(parseInt(e.key, 10) - 1);
+          } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+            e.preventDefault();
+            this.cursorRow = Math.max(0, this.cursorRow - 1);
+            this.hoverRow = this.cursorRow;
+            this.hoverCol = this.cursorCol;
+          } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+            e.preventDefault();
+            this.cursorRow = Math.min(GRID_SIZE - 1, this.cursorRow + 1);
+            this.hoverRow = this.cursorRow;
+            this.hoverCol = this.cursorCol;
+          } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+            e.preventDefault();
+            this.cursorCol = Math.max(0, this.cursorCol - 1);
+            this.hoverRow = this.cursorRow;
+            this.hoverCol = this.cursorCol;
+          } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+            e.preventDefault();
+            this.cursorCol = Math.min(GRID_SIZE - 1, this.cursorCol + 1);
+            this.hoverRow = this.cursorRow;
+            this.hoverCol = this.cursorCol;
+          } else if (e.code === 'Enter' || e.code === 'Space') {
+            e.preventDefault();
+            this.audio.unlock();
+            this.attemptPlacePiece(this.selectedSlot, this.cursorRow, this.cursorCol);
+          }
+        });
+      }
+
+      renderCanvas() {
+        const ctx = this.ctx;
+        const size = this.canvasSize;
+        const cell = size / GRID_SIZE;
+        ctx.clearRect(0, 0, size, size);
+
+        const styles = getComputedStyle(document.body);
+        const gridBg = styles.getPropertyValue('--grid-bg').trim() || '#0a2a19';
+        const cellBg = styles.getPropertyValue('--grid-cell').trim() || '#0f3b23';
+        const lineCol = styles.getPropertyValue('--grid-line').trim() || 'rgba(16,185,129,0.28)';
+        const borderCol = styles.getPropertyValue('--grid-border').trim() || '#fbbf24';
+
+        ctx.fillStyle = gridBg;
+        ctx.fillRect(0, 0, size, size);
+
+        const pad = Math.max(2, cell * 0.08);
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            const x = c * cell + pad;
+            const y = r * cell + pad;
+            const w = cell - pad * 2;
+            const h = cell - pad * 2;
+
+            ctx.fillStyle = this.grid[r][c] || cellBg;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, Math.max(3, cell * 0.14));
+            ctx.fill();
+
+            if (this.grid[r][c]) {
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+            } else {
+              ctx.strokeStyle = lineCol;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+        }
+
+        const activePiece = this.tray[this.selectedSlot];
+        const previewR = this.hoverRow !== null ? this.hoverRow : this.cursorRow;
+        const previewC = this.hoverCol !== null ? this.hoverCol : this.cursorCol;
+
+        if (activePiece && !activePiece.used && !this.gameOver) {
+          const valid = this.canPlacePiece(activePiece, previewR, previewC);
+          const rows = activePiece.matrix.length;
+          const cols = activePiece.matrix[0].length;
+
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (!activePiece.matrix[r][c]) continue;
+              const gr = previewR + r;
+              const gc = previewC + c;
+              if (gr < 0 || gr >= GRID_SIZE || gc < 0 || gc >= GRID_SIZE) continue;
+
+              const x = gc * cell + pad;
+              const y = gr * cell + pad;
+              const w = cell - pad * 2;
+              const h = cell - pad * 2;
+
+              ctx.save();
+              ctx.globalAlpha = 0.46;
+              ctx.fillStyle = valid ? activePiece.color : '#ef4444';
+              ctx.beginPath();
+              ctx.roundRect(x, y, w, h, Math.max(3, cell * 0.14));
+              ctx.fill();
+              ctx.globalAlpha = 0.9;
+              ctx.strokeStyle = valid ? '#fbbf24' : '#ef4444';
+              ctx.lineWidth = 1.8;
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+        }
+
+        ctx.strokeStyle = borderCol;
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(1.25, 1.25, size - 2.5, size - 2.5);
+
+        for (const p of this.particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        for (const ft of this.floatingTexts) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife);
+          ctx.font = `900 ${Math.max(12, Math.round(cell * 0.36))}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#062112';
+          ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+      }
+
+      loop(now) {
+        if (!this.lastFrameTime) this.lastFrameTime = now;
+        const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
+        this.lastFrameTime = now;
+
+        if (!this.paused) {
+          for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt;
+            if (p.life <= 0) this.particles.splice(i, 1);
+          }
+
+          for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = this.floatingTexts[i];
+            ft.y += ft.vy * dt;
+            ft.life -= dt;
+            if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+          }
+        }
+
+        this.renderCanvas();
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const app = new PuzzleBlockGame();
+      requestAnimationFrame((t) => app.loop(t));
+    });
+  </script>
+</body>
+</html>
