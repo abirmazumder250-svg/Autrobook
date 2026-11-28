@@ -1,0 +1,2135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Autrobook Table Tennis Association - Championship Rally</title>
+  <style>
+    /* ========================================================================
+       1. DESIGN TOKENS & SYSTEM LIGHT / DARK THEME SUPPORT
+       ======================================================================== */
+    :root {
+      --atta-forest: #0B3D20;
+      --atta-emerald-deep: #0a7d3b;
+      --atta-emerald: #10b981;
+      --atta-gold: #f59e0b;
+      --atta-amber: #fbbf24;
+
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --hud-bg: rgba(255, 255, 255, 0.93);
+        --hud-border: rgba(10, 125, 59, 0.35);
+        --text-main: #062112;
+        --text-sub: #0a7d3b;
+        --modal-bg: #f3fdf7;
+        --tile-bg: rgba(11, 61, 32, 0.05);
+        --tile-border: rgba(10, 125, 59, 0.22);
+      }
+    }
+
+    body[data-theme="dark"] {
+      --hud-bg: rgba(7, 29, 17, 0.9);
+      --hud-border: rgba(16, 185, 129, 0.38);
+      --text-main: #ffffff;
+      --text-sub: #bbf7d0;
+      --modal-bg: #072213;
+      --tile-bg: rgba(255, 255, 255, 0.06);
+      --tile-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body[data-theme="light"] {
+      --hud-bg: rgba(255, 255, 255, 0.93);
+      --hud-border: rgba(10, 125, 59, 0.35);
+      --text-main: #062112;
+      --text-sub: #0a7d3b;
+      --modal-bg: #f3fdf7;
+      --tile-bg: rgba(11, 61, 32, 0.05);
+      --tile-border: rgba(10, 125, 59, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04140b;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #attaArena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(7px, env(safe-area-inset-top)) 8px max(7px, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% 18%, #0a7d3b 0%, #0B3D20 58%, #031008 100%);
+      overflow: hidden;
+    }
+
+    .glass-hud {
+      background: var(--hud-bg);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+    }
+
+    /* ========================================================================
+       2. TOP BROADCAST HUD, RALLY COUNTER, RADAR & PLAYER STRIPS
+       ======================================================================== */
+    .top-header {
+      width: 100%;
+      max-width: 640px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .circle-icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .circle-icon-btn:hover {
+      border-color: var(--atta-amber);
+    }
+
+    .circle-icon-btn:active {
+      transform: scale(0.92);
+    }
+
+    .score-center-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 14px;
+      flex: 1;
+      max-width: 300px;
+      border-color: rgba(251, 191, 36, 0.52);
+    }
+
+    .score-line {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score-digits {
+      padding: 1px 8px;
+      border-radius: 7px;
+      background: rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(16, 185, 129, 0.52);
+      color: var(--atta-amber);
+      font-size: 13.5px;
+    }
+
+    .match-meta-line {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .players-radar-strip {
+      width: 100%;
+      max-width: 640px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 6px;
+      align-items: center;
+      z-index: 16;
+    }
+
+    .player-badge-card {
+      padding: 5px 8px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      min-width: 0;
+      border-width: 1.5px;
+    }
+
+    .player-badge-card.active-server {
+      border-color: var(--atta-amber);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.28);
+    }
+
+    .p-identity {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .p-top-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .jersey-pill {
+      padding: 1px 5px;
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 900;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      flex-shrink: 0;
+    }
+
+    .p-nation-line {
+      font-size: 8.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sets-pill {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: var(--atta-amber);
+      font-size: 9.5px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    .speed-radar-box {
+      padding: 4px 9px;
+      border-radius: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-color: rgba(251, 191, 36, 0.45);
+      min-width: 118px;
+    }
+
+    .radar-kicker {
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--atta-amber);
+    }
+
+    .radar-speed-val {
+      font-size: 11.5px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+    }
+
+    .radar-peak-val {
+      font-size: 8.2px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-sub);
+    }
+
+    /* ========================================================================
+       3. CENTER 2.5D TABLE TENNIS COURT & SHOT / ON-SCREEN CONTROLS
+       ======================================================================== */
+    .court-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      max-width: 640px;
+      max-height: 55dvh;
+      margin: 2px 0;
+    }
+
+    canvas#ttCourtCanvas {
+      display: block;
+      border-radius: 16px;
+      border: 2px solid var(--atta-amber);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .bottom-deck {
+      width: 100%;
+      max-width: 640px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 18;
+    }
+
+    .shot-modes-bar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+
+    .shot-type-btn {
+      padding: 6px 4px;
+      border-radius: 9px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.2px solid var(--hud-border);
+      font-size: 9px;
+      font-weight: 900;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .shot-type-btn.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--atta-amber);
+      color: #ffffff;
+    }
+
+    .touch-pad-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .pad-action-btn {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--hud-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .pad-action-btn:active {
+      transform: scale(0.95);
+      border-color: var(--atta-amber);
+    }
+
+    /* ========================================================================
+       4. AUTROBOOK TABLE TENNIS ASSOCIATION (ATTA) INTRO SCREEN
+       ======================================================================== */
+    #attaIntroOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 34%, #0a7d3b 0%, #0B3D20 58%, #020c06 100%);
+      overflow: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #attaIntroOverlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spot-beam {
+      position: absolute;
+      top: -25%;
+      width: 220px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(16, 185, 129, 0.12) 55%, transparent 100%);
+      filter: blur(14px);
+      pointer-events: none;
+    }
+
+    .spot-left {
+      left: 10%;
+      animation: spotSweepL 2.8s ease-in-out infinite alternate;
+    }
+
+    .spot-right {
+      right: 10%;
+      animation: spotSweepR 2.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes spotSweepL {
+      0% { transform: rotate(-24deg); }
+      100% { transform: rotate(15deg); }
+    }
+
+    @keyframes spotSweepR {
+      0% { transform: rotate(24deg); }
+      100% { transform: rotate(-15deg); }
+    }
+
+    .intro-box {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 350px;
+      width: 100%;
+    }
+
+    .atta-emblem {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0a7d3b, #0B3D20);
+      border: 3px solid var(--atta-amber);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: emblemPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes emblemPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.04); }
+    }
+
+    .intro-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--atta-amber);
+      margin-bottom: 6px;
+    }
+
+    .intro-title {
+      font-size: 23px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .intro-sub {
+      margin-top: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #6ee7b7;
+      letter-spacing: 0.06em;
+    }
+
+    .intro-track {
+      width: 100%;
+      max-width: 240px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      margin: 20px 0 18px;
+    }
+
+    .intro-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+    }
+
+    /* ========================================================================
+       5. MODALS (SETUP, SCREENSHOT, PAUSE, SUMMARY)
+       ======================================================================== */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(3, 15, 8, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 455px;
+      max-height: 93dvh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 18px 16px;
+      background: var(--modal-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--hud-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .sheet-header {
+      text-align: center;
+      margin-bottom: 11px;
+    }
+
+    .sheet-h2 {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .sheet-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .roster-box {
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      margin-bottom: 9px;
+    }
+
+    .roster-title {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--atta-amber);
+      margin-bottom: 6px;
+    }
+
+    .roster-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 92px 56px;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .input-control, .select-control {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.24);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 800;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .select-control option {
+      background: #072213;
+      color: #ffffff;
+    }
+
+    .star-row {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .star-chip {
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--text-main);
+      font-size: 9.5px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .pills-row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .pills-row-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .choice-pill {
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: var(--tile-bg);
+      border: 1.5px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .choice-pill.selected {
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border-color: var(--atta-amber);
+      color: #ffffff;
+    }
+
+    .primary-btn {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #0a7d3b 100%);
+      border: 1.5px solid var(--atta-amber);
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .secondary-btn {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 13px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      color: var(--text-main);
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-col-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .summary-card {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .shot-preview {
+      width: 100%;
+      max-height: 50dvh;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1.5px solid var(--atta-amber);
+      background: #041209;
+      margin: 8px 0;
+    }
+
+    .toast-pop {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      z-index: 45;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: rgba(11, 61, 32, 0.94);
+      border: 1px solid var(--atta-amber);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast-pop.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .shutter-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 48;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+
+    .shutter-flash.active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="attaArena">
+    <div id="shutterFlash" class="shutter-flash"></div>
+    <div id="toastPop" class="toast-pop">ATTA RALLY</div>
+
+    <!-- TOP BROADCAST HUD WITH BACK LINK TO table-tennis.html -->
+    <header class="top-header">
+      <div class="btn-row">
+        <a href="table-tennis.html" class="circle-icon-btn glass-hud" title="Back to Table Tennis Hub" aria-label="Back to Table Tennis Hub">&larr;</a>
+      </div>
+
+      <div class="score-center-pill glass-hud">
+        <div class="score-line">
+          <span id="hudP1Code">CHN</span>
+          <span id="hudPointsScore" class="score-digits">0 - 0</span>
+          <span id="hudP2Code">JPN</span>
+        </div>
+        <div id="hudFormatMeta" class="match-meta-line">BEST OF 3 SETS • RALLY 0 • AI CLUB</div>
+      </div>
+
+      <div class="btn-row">
+        <button id="themeToggleBtn" type="button" class="circle-icon-btn glass-hud" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">&#9788;</button>
+        <button id="captureShotBtn" type="button" class="circle-icon-btn glass-hud" title="Capture Screenshot" aria-label="Capture Screenshot">&#128247;</button>
+        <button id="openSetupBtn" type="button" class="circle-icon-btn glass-hud" title="Match Setup &amp; Roster" aria-label="Match Setup">&#9998;</button>
+        <button id="soundMuteBtn" type="button" class="circle-icon-btn glass-hud" title="Mute / Unmute Sound" aria-label="Toggle Sound">&#128266;</button>
+        <button id="pauseGameBtn" type="button" class="circle-icon-btn glass-hud" title="Pause Match" aria-label="Pause Match">&#10074;&#10074;</button>
+      </div>
+    </header>
+
+    <!-- PLAYERS & LIVE BALL SPEED RADAR STRIP -->
+    <section class="players-radar-strip">
+      <div id="p1PlayerCard" class="player-badge-card glass-hud active-server">
+        <div class="p-identity">
+          <div class="p-top-row">
+            <span id="p1JerseyTag" class="jersey-pill" style="background:#dc2626;">#07</span>
+            <span id="p1DisplayName">FAN ZHEN</span>
+          </div>
+          <span id="p1NationLabel" class="p-nation-line">CHINA • FAR</span>
+        </div>
+        <span id="p1SetsBadge" class="sets-pill">0S</span>
+      </div>
+
+      <div class="speed-radar-box glass-hud">
+        <span class="radar-kicker">BALL RADAR</span>
+        <span id="liveSpeedReadout" class="radar-speed-val">0.0 KM/H</span>
+        <span id="peakSpeedReadout" class="radar-peak-val">0.0 MPH • PEAK 0</span>
+      </div>
+
+      <div id="p2PlayerCard" class="player-badge-card glass-hud">
+        <div class="p-identity">
+          <div class="p-top-row">
+            <span id="p2JerseyTag" class="jersey-pill" style="background:#2563eb;">#11</span>
+            <span id="p2DisplayName">TOMOKAZU</span>
+          </div>
+          <span id="p2NationLabel" class="p-nation-line">JAPAN • NEAR</span>
+        </div>
+        <span id="p2SetsBadge" class="sets-pill">0S</span>
+      </div>
+    </section>
+
+    <!-- CENTER 2.5D TABLE TENNIS COURT CANVAS -->
+    <div id="courtStage" class="court-stage">
+      <canvas id="ttCourtCanvas"></canvas>
+    </div>
+
+    <!-- SHOT SELECTION & TOUCH / ON-SCREEN CONTROLS -->
+    <div class="bottom-deck">
+      <div id="shotModesRow" class="shot-modes-bar">
+        <button type="button" class="shot-type-btn selected" data-shot="LOOP">Topspin Loop</button>
+        <button type="button" class="shot-type-btn" data-shot="DRIVE">Fast Drive</button>
+        <button type="button" class="shot-type-btn" data-shot="PUSH">Push / Block</button>
+        <button type="button" class="shot-type-btn" data-shot="SMASH">Smash</button>
+        <button type="button" class="shot-type-btn" data-shot="POWER">Power+ Boost</button>
+      </div>
+
+      <div class="touch-pad-row">
+        <button id="moveLeftBtn" type="button" class="pad-action-btn">&larr; Left (A)</button>
+        <button id="moveRightBtn" type="button" class="pad-action-btn">Right (D) &rarr;</button>
+        <button id="serveStrikeBtn" type="button" class="pad-action-btn">&#127955; Serve / Hit</button>
+        <button id="powerBoostBtn" type="button" class="pad-action-btn">&#9889; Power+ (Shift)</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         1. AUTROBOOK TABLE TENNIS ASSOCIATION (ATTA) INTRO SCREEN
+         ====================================================================== -->
+    <section id="attaIntroOverlay">
+      <div class="spot-beam spot-left"></div>
+      <div class="spot-beam spot-right"></div>
+
+      <div class="intro-box">
+        <div class="atta-emblem">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
+            <ellipse cx="30" cy="28" rx="11" ry="13" transform="rotate(-24 30 28)" fill="#dc2626" stroke="#ffffff" stroke-width="2"/>
+            <rect x="34" y="36" width="5" height="13" rx="2.5" transform="rotate(-24 34 36)" fill="#fbbf24"/>
+            <circle cx="44" cy="21" r="4.5" fill="#ffffff" stroke="#064e3b" stroke-width="1.5"/>
+          </svg>
+        </div>
+
+        <div class="intro-kicker">OFFICIAL RALLY CIRCUIT</div>
+        <h1 class="intro-title">Autrobook Table Tennis Association</h1>
+        <p class="intro-sub">CHAMPIONSHIP RALLY SERIES</p>
+
+        <div class="intro-track">
+          <div id="introBarFill" class="intro-fill"></div>
+        </div>
+
+        <button id="skipIntroAction" type="button" class="primary-btn" style="max-width:220px;">
+          Skip Intro
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         2. MATCH SETUP & 10-NATION ROSTER MODAL
+         ====================================================================== -->
+    <div id="setupModal" class="modal-overlay">
+      <div class="modal-sheet">
+        <div class="sheet-header">
+          <h2 class="sheet-h2">ATTA Championship Setup</h2>
+          <p class="sheet-sub">10 Nations • Stars • Match Format • Table Surface</p>
+        </div>
+
+        <div class="roster-box">
+          <div class="roster-title">Match Mode &amp; AI Difficulty</div>
+          <div id="modeSelectGroup" class="pills-row-4">
+            <button type="button" class="choice-pill" data-mode="AI_CASUAL">1P vs AI (Casual)</button>
+            <button type="button" class="choice-pill selected" data-mode="AI_CLUB">1P vs AI (Club)</button>
+            <button type="button" class="choice-pill" data-mode="AI_WORLD">1P vs AI (World Tour)</button>
+            <button type="button" class="choice-pill" data-mode="LOCAL_2P">2P Local</button>
+          </div>
+        </div>
+
+        <!-- Player 1 Roster -->
+        <div class="roster-box">
+          <div class="roster-title">Player 1 (Far / Top)</div>
+          <div class="roster-grid-3">
+            <input id="p1NameInput" type="text" maxlength="14" value="FAN ZHEN" class="input-control" />
+            <select id="p1NationSelect" class="select-control"></select>
+            <input id="p1JerseyInput" type="number" min="1" max="99" value="7" class="input-control" />
+          </div>
+          <div id="p1StarPresets" class="star-row"></div>
+        </div>
+
+        <!-- Player 2 Roster -->
+        <div class="roster-box">
+          <div class="roster-title">Player 2 / AI Opponent (Near / Bottom)</div>
+          <div class="roster-grid-3">
+            <input id="p2NameInput" type="text" maxlength="14" value="TOMOKAZU" class="input-control" />
+            <select id="p2NationSelect" class="select-control"></select>
+            <input id="p2JerseyInput" type="number" min="1" max="99" value="11" class="input-control" />
+          </div>
+          <div id="p2StarPresets" class="star-row"></div>
+        </div>
+
+        <div class="roster-box">
+          <div class="roster-title">Match Format</div>
+          <div id="formatSelectGroup" class="pills-row-4">
+            <button type="button" class="choice-pill" data-format="11_PT">11 Points Sprint</button>
+            <button type="button" class="choice-pill" data-format="21_PT">21 Points Classic</button>
+            <button type="button" class="choice-pill selected" data-format="BO3_11">Best of 3 Sets to 11</button>
+            <button type="button" class="choice-pill" data-format="BO5_11">Best of 5 Sets to 11</button>
+          </div>
+        </div>
+
+        <div class="roster-box">
+          <div class="roster-title">Table Surface Color</div>
+          <div id="surfaceSelectGroup" class="pills-row-3">
+            <button type="button" class="choice-pill selected" data-surface="BLUE">Tournament Blue</button>
+            <button type="button" class="choice-pill" data-surface="EMERALD">Emerald Pro</button>
+            <button type="button" class="choice-pill" data-surface="CLASSIC">Classic Green</button>
+          </div>
+        </div>
+
+        <button id="beginRallyMatchBtn" type="button" class="primary-btn">
+          Start Championship Rally
+        </button>
+
+        <div class="btn-col-stack" style="margin-top:6px;">
+          <a href="table-tennis.html" class="secondary-btn">&larr; Back to Table Tennis Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         ====================================================================== -->
+    <div id="screenshotModal" class="modal-overlay">
+      <div class="modal-sheet" style="max-width:365px;text-align:center;">
+        <div class="sheet-header">
+          <h2 class="sheet-h2">Rally Screenshot</h2>
+          <p class="sheet-sub">Autrobook Table Tennis Association</p>
+        </div>
+        <img id="screenshotImg" class="shot-preview" alt="Table Tennis Screenshot" />
+        <div class="btn-col-stack">
+          <a id="downloadShotAnchor" download="Autrobook-Table-Tennis.png" class="primary-btn">Download PNG</a>
+          <button id="closeShotBtn" type="button" class="secondary-btn">Resume Rally</button>
+          <a href="table-tennis.html" class="secondary-btn">&larr; Back to Table Tennis Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         4. PAUSE MODAL
+         ====================================================================== -->
+    <div id="pauseModal" class="modal-overlay">
+      <div class="modal-sheet" style="max-width:325px;text-align:center;">
+        <div class="sheet-header">
+          <h2 class="sheet-h2">Rally Paused</h2>
+          <p class="sheet-sub">Autrobook Table Tennis Association</p>
+        </div>
+        <div class="btn-col-stack">
+          <button id="resumeRallyBtn" type="button" class="primary-btn">Resume Match</button>
+          <button id="restartMatchBtn" type="button" class="secondary-btn">Restart Match</button>
+          <button id="setupFromPauseBtn" type="button" class="secondary-btn">Match Setup</button>
+          <a href="table-tennis.html" class="secondary-btn">&larr; Back to Table Tennis Hub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         5. CHAMPIONSHIP SUMMARY MODAL
+         ====================================================================== -->
+    <div id="summaryModal" class="modal-overlay">
+      <div class="modal-sheet" style="max-width:355px;text-align:center;">
+        <div style="font-size:42px;margin-bottom:4px;">&#127942;</div>
+        <h2 id="championHeading" class="sheet-h2">CHAMPIONSHIP WINNER!</h2>
+        <p id="championSubtext" class="sheet-sub">Autrobook Table Tennis Association</p>
+
+        <div class="summary-card">
+          <div class="summary-line">
+            <span>Sets Won</span>
+            <span id="sumSetsScore" style="font-weight:900;color:var(--atta-amber);">0 - 0</span>
+          </div>
+          <div class="summary-line">
+            <span>Peak Ball Speed</span>
+            <span id="sumPeakRadar" style="font-weight:900;color:var(--atta-emerald);">0.0 KM/H</span>
+          </div>
+          <div class="summary-line">
+            <span>Total Rallies</span>
+            <span id="sumRalliesCount" style="font-weight:900;">0</span>
+          </div>
+          <div class="summary-line">
+            <span>Matches Played / Won</span>
+            <span id="sumCareerStats" style="font-weight:900;color:var(--atta-amber);">0 / 0</span>
+          </div>
+        </div>
+
+        <div class="btn-col-stack">
+          <button id="playAgainBtn" type="button" class="primary-btn">Play Again</button>
+          <button id="setupFromSummaryBtn" type="button" class="secondary-btn">Match Setup</button>
+          <a href="table-tennis.html" class="secondary-btn">&larr; Back to Table Tennis Hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       10 NATIONS ROSTER, STAR PRESETS & TABLE SURFACE PALETTES
+       ======================================================================== */
+    const NATIONS_10 = [
+      { code: 'CHN', name: 'China', jersey: '#dc2626', blade: '#ef4444' },
+      { code: 'JPN', name: 'Japan', jersey: '#2563eb', blade: '#10b981' },
+      { code: 'KOR', name: 'South Korea', jersey: '#1d4ed8', blade: '#f59e0b' },
+      { code: 'GER', name: 'Germany', jersey: '#0f172a', blade: '#eab308' },
+      { code: 'SWE', name: 'Sweden', jersey: '#0284c7', blade: '#fbbf24' },
+      { code: 'ENG', name: 'England', jersey: '#b91c1c', blade: '#f8fafc' },
+      { code: 'BAN', name: 'Bangladesh', jersey: '#0a7d3b', blade: '#dc2626' },
+      { code: 'IND', name: 'India', jersey: '#ea580c', blade: '#0284c7' },
+      { code: 'FRA', name: 'France', jersey: '#1e40af', blade: '#e11d48' },
+      { code: 'BRA', name: 'Brazil', jersey: '#15803d', blade: '#facc15' }
+    ];
+
+    const STAR_PRESETS = [
+      { name: 'FAN ZHEN', nationCode: 'CHN', jersey: 7 },
+      { name: 'TOMOKAZU', nationCode: 'JPN', jersey: 11 },
+      { name: 'JONG HOON', nationCode: 'KOR', jersey: 9 },
+      { name: 'TIMO BOLL', nationCode: 'GER', jersey: 4 },
+      { name: 'TRULS MORE', nationCode: 'SWE', jersey: 19 },
+      { name: 'LIAM PITCH', nationCode: 'ENG', jersey: 14 }
+    ];
+
+    const TABLE_SURFACES = {
+      BLUE: {
+        topColor: '#1d6fd6',
+        botColor: '#134e9e',
+        lineColor: '#ffffff',
+        netColor: 'rgba(255, 255, 255, 0.9)'
+      },
+      EMERALD: {
+        topColor: '#10b981',
+        botColor: '#065f46',
+        lineColor: '#ffffff',
+        netColor: 'rgba(255, 255, 255, 0.9)'
+      },
+      CLASSIC: {
+        topColor: '#15803d',
+        botColor: '#0B3D20',
+        lineColor: '#fef08a',
+        netColor: 'rgba(255, 255, 255, 0.9)'
+      }
+    };
+
+    const ATTA_STATS_KEY = 'atta_championship_rally_stats_v1';
+
+    /* ========================================================================
+       WEB AUDIO API SOUND SYNTHESIZER
+       ======================================================================== */
+    class ATTASoundSynth {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        } catch (_e) {}
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playClick() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(620, now);
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playPaddleHit(isPower = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = isPower ? 'sawtooth' : 'triangle';
+        osc.frequency.setValueAtTime(isPower ? 540 : 410, now);
+        osc.frequency.exponentialRampToValueAtTime(160, now + 0.075);
+        g.gain.setValueAtTime(isPower ? 0.2 : 0.14, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.085);
+      }
+
+      playTableBounce() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(285, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.055);
+        g.gain.setValueAtTime(0.11, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.065);
+      }
+
+      playNetClip() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(190, now);
+        osc.frequency.linearRampToValueAtTime(95, now + 0.12);
+        g.gain.setValueAtTime(0.14, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      }
+
+      playPointFanfare(isMatchWin = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = isMatchWin ? [523.25, 659.25, 783.99, 1046.5] : [587.33, 880];
+        notes.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          const t0 = now + idx * 0.085;
+          osc.frequency.setValueAtTime(f, t0);
+          g.gain.setValueAtTime(0.15, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.25);
+        });
+      }
+    }
+
+    /* ========================================================================
+       AUTROBOOK TABLE TENNIS ASSOCIATION (ATTA) RALLY ENGINE
+       ======================================================================== */
+    class ATTAChampionshipEngine {
+      constructor() {
+        this.canvas = document.getElementById('ttCourtCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new ATTASoundSynth();
+
+        this.mode = 'AI_CLUB'; // AI_CASUAL, AI_CLUB, AI_WORLD, LOCAL_2P
+        this.format = 'BO3_11'; // 11_PT, 21_PT, BO3_11, BO5_11
+        this.surface = 'BLUE'; // BLUE, EMERALD, CLASSIC
+
+        this.p1 = {
+          name: 'FAN ZHEN',
+          nation: NATIONS_10[0],
+          jersey: 7,
+          points: 0,
+          sets: 0,
+          paddleX: 0,
+          paddleY: 0
+        };
+
+        this.p2 = {
+          name: 'TOMOKAZU',
+          nation: NATIONS_10[1],
+          jersey: 11,
+          points: 0,
+          sets: 0,
+          paddleX: 0,
+          paddleY: 0
+        };
+
+        const saved = this.loadStats();
+        this.matchesPlayed = saved.played || 0;
+        this.matchesWon = saved.won || 0;
+        this.countedWin = false;
+
+        this.shotMode = 'LOOP'; // LOOP, DRIVE, PUSH, SMASH, POWER
+        this.powerBoostArmed = false;
+        this.serverIdx = 0; // 0 = P1 (Far/Top), 1 = P2 (Near/Bottom)
+        this.servingState = true;
+        this.lastHitter = 0;
+        this.currentRallyHits = 0;
+        this.totalRallies = 0;
+
+        this.ball = {
+          x: 0,
+          y: 0,
+          z: 18,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+          spin: 0,
+          r: 6.5,
+          speedKmh: 0,
+          peakKmh: 0
+        };
+
+        this.keys = new Set();
+        this.holdLeft = false;
+        this.holdRight = false;
+
+        this.introActive = true;
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = false;
+        this.matchOver = false;
+
+        this.canvasW = 480;
+        this.canvasH = 320;
+        this.dpr = 1;
+        this.tableRect = { left: 60, right: 420, top: 64, bottom: 256, netY: 160 };
+        this.lastTick = 0;
+
+        this.syncThemeIcon();
+        this.populateRosterControls();
+        this.bindEvents();
+        this.resizeCourt();
+        this.resetBallForServe();
+        this.refreshHUD();
+        this.startIntro();
+      }
+
+      loadStats() {
+        try {
+          const raw = localStorage.getItem(ATTA_STATS_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      }
+
+      saveStats() {
+        try {
+          localStorage.setItem(ATTA_STATS_KEY, JSON.stringify({
+            played: this.matchesPlayed,
+            won: this.matchesWon
+          }));
+        } catch (_e) {}
+      }
+
+      syncThemeIcon() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.getElementById('themeToggleBtn').innerHTML = isLight ? '&#9790;' : '&#9788;';
+      }
+
+      toggleTheme() {
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.body.dataset.theme = isLight ? 'dark' : 'light';
+        this.syncThemeIcon();
+        this.renderCourt();
+      }
+
+      showToast(msg) {
+        const el = document.getElementById('toastPop');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      /* ======================================================================
+         ROSTER SETUP (10 NATIONS & STAR PRESETS)
+         ====================================================================== */
+      populateRosterControls() {
+        const s1 = document.getElementById('p1NationSelect');
+        const s2 = document.getElementById('p2NationSelect');
+        s1.innerHTML = '';
+        s2.innerHTML = '';
+
+        NATIONS_10.forEach((nat, idx) => {
+          const opt1 = document.createElement('option');
+          opt1.value = nat.code;
+          opt1.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 0) opt1.selected = true;
+          s1.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = nat.code;
+          opt2.textContent = `${nat.code} • ${nat.name}`;
+          if (idx === 1) opt2.selected = true;
+          s2.appendChild(opt2);
+        });
+
+        const buildStars = (containerId, isP1) => {
+          const box = document.getElementById(containerId);
+          box.innerHTML = '';
+          STAR_PRESETS.forEach((st) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'star-chip';
+            chip.textContent = `${st.name} (${st.nationCode})`;
+            chip.addEventListener('click', () => {
+              if (isP1) {
+                document.getElementById('p1NameInput').value = st.name;
+                document.getElementById('p1NationSelect').value = st.nationCode;
+                document.getElementById('p1JerseyInput').value = String(st.jersey);
+              } else {
+                document.getElementById('p2NameInput').value = st.name;
+                document.getElementById('p2NationSelect').value = st.nationCode;
+                document.getElementById('p2JerseyInput').value = String(st.jersey);
+              }
+              this.audio.playClick();
+            });
+            box.appendChild(chip);
+          });
+        };
+
+        buildStars('p1StarPresets', true);
+        buildStars('p2StarPresets', false);
+      }
+
+      getNationByCode(code) {
+        return NATIONS_10.find((n) => n.code === code) || NATIONS_10[0];
+      }
+
+      getPointsPerSet() {
+        return this.format === '21_PT' ? 21 : 11;
+      }
+
+      getSetsToWin() {
+        if (this.format === '11_PT' || this.format === '21_PT') return 1;
+        if (this.format === 'BO5_11') return 3;
+        return 2;
+      }
+
+      /* ======================================================================
+         COURT GEOMETRY, SERVE & 2.5D BALL PHYSICS
+         ====================================================================== */
+      resizeCourt() {
+        const box = document.getElementById('courtStage').getBoundingClientRect();
+        const w = Math.floor(Math.max(280, box.width - 6));
+        const h = Math.floor(Math.max(240, box.height - 6));
+        this.canvasW = w;
+        this.canvasH = h;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        this.canvas.style.width = `${w}px`;
+        this.canvas.style.height = `${h}px`;
+        this.canvas.width = Math.floor(w * this.dpr);
+        this.canvas.height = Math.floor(h * this.dpr);
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        const padX = Math.max(24, w * 0.11);
+        const padY = Math.max(46, h * 0.19);
+        this.tableRect = {
+          left: padX,
+          right: w - padX,
+          top: padY,
+          bottom: h - padY,
+          netY: h * 0.5
+        };
+
+        this.ball.r = Math.max(5, Math.min(w, h) * 0.02);
+        this.p1.paddleY = this.tableRect.top - Math.max(12, h * 0.048);
+        this.p2.paddleY = this.tableRect.bottom + Math.max(12, h * 0.048);
+        this.p1.paddleX = Math.max(this.tableRect.left, Math.min(this.tableRect.right, this.p1.paddleX || w * 0.5));
+        this.p2.paddleX = Math.max(this.tableRect.left, Math.min(this.tableRect.right, this.p2.paddleX || w * 0.5));
+
+        if (this.servingState) {
+          this.resetBallForServe();
+        }
+        this.renderCourt();
+      }
+
+      resetBallForServe() {
+        this.servingState = true;
+        this.currentRallyHits = 0;
+        const server = this.serverIdx === 0 ? this.p1 : this.p2;
+        this.ball.x = server.paddleX;
+        this.ball.y = this.serverIdx === 0 ? server.paddleY + 14 : server.paddleY - 14;
+        this.ball.z = 16;
+        this.ball.vx = 0;
+        this.ball.vy = 0;
+        this.ball.vz = 0;
+        this.ball.spin = 0;
+        this.ball.speedKmh = 0;
+        this.refreshHUD();
+
+        if (!this.matchOver && !this.paused && this.servingState && this.serverIdx === 0 && this.mode.startsWith('AI_')) {
+          setTimeout(() => {
+            if (!this.paused && !this.matchOver && this.servingState && this.serverIdx === 0 && this.mode.startsWith('AI_')) {
+              this.strikeBall(0, true);
+            }
+          }, 520);
+        }
+      }
+
+      strikeBall(hitterIdx, isServe = false) {
+        if (this.matchOver || this.paused) return;
+        this.audio.unlock();
+
+        const usePower = this.powerBoostArmed || this.shotMode === 'POWER';
+        const shotSpeedMap = {
+          PUSH: 0.72,
+          LOOP: 0.96,
+          DRIVE: 1.14,
+          SMASH: 1.32,
+          POWER: 1.48
+        };
+        const mult = (shotSpeedMap[this.shotMode] || 1.0) * (usePower && this.shotMode !== 'POWER' ? 1.2 : 1.0);
+        const baseVy = this.canvasH * 0.86 * mult;
+        const dirY = hitterIdx === 0 ? 1 : -1;
+
+        const targetCenter = (this.tableRect.left + this.tableRect.right) * 0.5;
+        const offsetFromCenter = (this.ball.x - targetCenter) / ((this.tableRect.right - this.tableRect.left) * 0.5);
+        const aimVx = -offsetFromCenter * this.canvasW * 0.42 + (Math.random() - 0.5) * this.canvasW * 0.14;
+
+        this.ball.vx = aimVx;
+        this.ball.vy = dirY * baseVy;
+        this.ball.vz = isServe ? 130 : (this.shotMode === 'LOOP' ? 145 : 95);
+        this.ball.spin = this.shotMode === 'LOOP' ? (hitterIdx === 0 ? 160 : -160) : (this.shotMode === 'PUSH' ? -70 : 40);
+        this.servingState = false;
+        this.lastHitter = hitterIdx;
+        this.currentRallyHits++;
+        this.totalRallies++;
+
+        if (this.powerBoostArmed) {
+          this.powerBoostArmed = false;
+          this.showToast('POWER+ BOOST FIRED');
+        }
+
+        this.audio.playPaddleHit(usePower);
+      }
+
+      stepPhysics(dt) {
+        if (this.servingState) {
+          const server = this.serverIdx === 0 ? this.p1 : this.p2;
+          this.ball.x = server.paddleX;
+          this.ball.y = this.serverIdx === 0 ? server.paddleY + 14 : server.paddleY - 14;
+          this.ball.speedKmh = 0;
+          return;
+        }
+
+        const gravity = 460;
+        const prevY = this.ball.y;
+
+        this.ball.x += (this.ball.vx + this.ball.spin * 0.25) * dt;
+        this.ball.y += this.ball.vy * dt;
+        this.ball.z += this.ball.vz * dt;
+        this.ball.vz -= gravity * dt;
+
+        const linearPxPerSec = Math.hypot(this.ball.vx, this.ball.vy);
+        const speedKmh = Math.min(148, (linearPxPerSec / Math.max(120, this.canvasH)) * 96);
+        this.ball.speedKmh = speedKmh;
+        if (speedKmh > this.ball.peakKmh) {
+          this.ball.peakKmh = speedKmh;
+        }
+
+        // Net cord/fault check at netY
+        const netY = this.tableRect.netY;
+        const crossedNet = (prevY < netY && this.ball.y >= netY) || (prevY > netY && this.ball.y <= netY);
+        if (crossedNet) {
+          if (this.ball.z < 12) {
+            this.audio.playNetClip();
+            this.showToast('NET FAULT!');
+            const loser = this.lastHitter;
+            this.awardPointTo(loser === 0 ? 1 : 0);
+            return;
+          }
+        }
+
+        // Table surface bounce & out detection when z <= 0
+        if (this.ball.z <= 0) {
+          this.ball.z = 0;
+          const onTable =
+            this.ball.x >= this.tableRect.left &&
+            this.ball.x <= this.tableRect.right &&
+            this.ball.y >= this.tableRect.top &&
+            this.ball.y <= this.tableRect.bottom;
+
+          if (onTable) {
+            this.ball.vz = Math.abs(this.ball.vz) * 0.78;
+            this.ball.vx += (this.ball.spin * 0.35) * dt;
+            this.audio.playTableBounce();
+          } else {
+            this.showToast('BALL OUT!');
+            const loser = this.lastHitter;
+            this.awardPointTo(loser === 0 ? 1 : 0);
+            return;
+          }
+        }
+
+        // Paddle collision checks (P1 = top/far, P2 = bottom/near)
+        const paddleW = Math.max(46, (this.tableRect.right - this.tableRect.left) * 0.17);
+        const paddleHitRadius = paddleW * 0.56;
+
+        if (this.ball.vy < 0 && Math.abs(this.ball.y - this.p1.paddleY) < 14) {
+          if (Math.abs(this.ball.x - this.p1.paddleX) <= paddleHitRadius) {
+            this.ball.y = this.p1.paddleY + 14;
+            this.strikeBall(0, false);
+            return;
+          }
+        }
+
+        if (this.ball.vy > 0 && Math.abs(this.ball.y - this.p2.paddleY) < 14) {
+          if (Math.abs(this.ball.x - this.p2.paddleX) <= paddleHitRadius) {
+            this.ball.y = this.p2.paddleY - 14;
+            this.strikeBall(1, false);
+            return;
+          }
+        }
+
+        // Missed ball past baseline
+        if (this.ball.y < this.tableRect.top - 34) {
+          this.awardPointTo(1);
+        } else if (this.ball.y > this.tableRect.bottom + 34) {
+          this.awardPointTo(0);
+        }
+      }
+
+      awardPointTo(winnerIdx) {
+        if (this.matchOver) return;
+        const scorer = winnerIdx === 0 ? this.p1 : this.p2;
+        scorer.points++;
+
+        const ptsTarget = this.getPointsPerSet();
+        const setsNeeded = this.getSetsToWin();
+        const diff = Math.abs(this.p1.points - this.p2.points);
+
+        if (scorer.points >= ptsTarget && diff >= 2) {
+          scorer.sets++;
+          this.showToast(`${scorer.name} WINS SET!`);
+          this.p1.points = 0;
+          this.p2.points = 0;
+
+          if (scorer.sets >= setsNeeded) {
+            this.finishChampionship(winnerIdx);
+            return;
+          }
+        } else {
+          this.audio.playPointFanfare(false);
+        }
+
+        this.serverIdx = (this.serverIdx + 1) % 2;
+        this.refreshHUD();
+        this.resetBallForServe();
+      }
+
+      finishChampionship(winnerIdx) {
+        this.matchOver = true;
+        this.paused = true;
+        const winner = winnerIdx === 0 ? this.p1 : this.p2;
+        const p1Won = winnerIdx === 0;
+        this.audio.playPointFanfare(true);
+
+        if (!this.countedWin) {
+          this.countedWin = true;
+          this.matchesPlayed++;
+          if (p1Won) this.matchesWon++;
+          this.saveStats();
+        }
+
+        document.getElementById('championHeading').textContent = `${winner.name} (${winner.nation.code}) WINS!`;
+        document.getElementById('championSubtext').textContent = 'Autrobook Table Tennis Association Champion';
+        document.getElementById('sumSetsScore').textContent = `${this.p1.sets} - ${this.p2.sets}`;
+        document.getElementById('sumPeakRadar').textContent = `${this.ball.peakKmh.toFixed(1)} KM/H`;
+        document.getElementById('sumRalliesCount').textContent = String(this.totalRallies);
+        document.getElementById('sumCareerStats').textContent = `${this.matchesWon} / ${this.matchesPlayed}`;
+        document.getElementById('summaryModal').classList.add('open');
+      }
+
+      updatePaddles(dt) {
+        const moveSpeed = this.canvasW * 0.92;
+        const minX = this.tableRect.left + 18;
+        const maxX = this.tableRect.right - 18;
+
+        const p2Left = this.keys.has('ArrowLeft') || (this.mode === 'LOCAL_2P' && this.keys.has('KeyA')) || this.holdLeft;
+        const p2Right = this.keys.has('ArrowRight') || (this.mode === 'LOCAL_2P' && this.keys.has('KeyD')) || this.holdRight;
+
+        if (p2Left) this.p2.paddleX -= moveSpeed * dt;
+        if (p2Right) this.p2.paddleX += moveSpeed * dt;
+        this.p2.paddleX = Math.max(minX, Math.min(maxX, this.p2.paddleX));
+
+        if (this.mode === 'LOCAL_2P') {
+          if (this.keys.has('KeyA')) this.p1.paddleX -= moveSpeed * dt;
+          if (this.keys.has('KeyD')) this.p1.paddleX += moveSpeed * dt;
+        } else {
+          const aiSpeedMult = this.mode === 'AI_WORLD' ? 1.05 : this.mode === 'AI_CLUB' ? 0.82 : 0.62;
+          const desiredX = this.servingState && this.serverIdx === 0
+            ? (minX + maxX) * 0.5
+            : this.ball.x;
+          const diffX = desiredX - this.p1.paddleX;
+          const step = Math.sign(diffX) * Math.min(Math.abs(diffX), moveSpeed * aiSpeedMult * dt);
+          this.p1.paddleX += step;
+        }
+        this.p1.paddleX = Math.max(minX, Math.min(maxX, this.p1.paddleX));
+      }
+
+      /* ======================================================================
+         HUD, SCREENSHOT & INPUT BINDINGS
+         ====================================================================== */
+      refreshHUD() {
+        document.getElementById('hudP1Code').textContent = this.p1.nation.code;
+        document.getElementById('hudP2Code').textContent = this.p2.nation.code;
+        document.getElementById('hudPointsScore').textContent = `${this.p1.points} - ${this.p2.points}`;
+
+        const fmtLabels = {
+          '11_PT': '11 PTS SPRINT',
+          '21_PT': '21 PTS CLASSIC',
+          'BO3_11': 'BEST OF 3 SETS',
+          'BO5_11': 'BEST OF 5 SETS'
+        };
+        const modeTag = this.mode === 'LOCAL_2P' ? '2P LOCAL' : this.mode.replace('AI_', 'AI ');
+        document.getElementById('hudFormatMeta').textContent =
+          `${fmtLabels[this.format] || 'BO3'} • RALLY ${this.currentRallyHits} • ${modeTag}`;
+
+        document.getElementById('p1DisplayName').textContent = this.p1.name;
+        document.getElementById('p2DisplayName').textContent = this.p2.name;
+        document.getElementById('p1NationLabel').textContent = `${this.p1.nation.name.toUpperCase()} • FAR`;
+        document.getElementById('p2NationLabel').textContent = `${this.p2.nation.name.toUpperCase()} • NEAR`;
+
+        const j1 = document.getElementById('p1JerseyTag');
+        j1.textContent = `#${String(this.p1.jersey).padStart(2, '0')}`;
+        j1.style.background = this.p1.nation.jersey;
+
+        const j2 = document.getElementById('p2JerseyTag');
+        j2.textContent = `#${String(this.p2.jersey).padStart(2, '0')}`;
+        j2.style.background = this.p2.nation.jersey;
+
+        document.getElementById('p1SetsBadge').textContent = `${this.p1.sets}S`;
+        document.getElementById('p2SetsBadge').textContent = `${this.p2.sets}S`;
+
+        document.getElementById('p1PlayerCard').classList.toggle('active-server', this.serverIdx === 0);
+        document.getElementById('p2PlayerCard').classList.toggle('active-server', this.serverIdx === 1);
+
+        const kmh = this.ball.speedKmh;
+        const mph = kmh * 0.621371;
+        const peakMph = this.ball.peakKmh * 0.621371;
+        document.getElementById('liveSpeedReadout').textContent = `${kmh.toFixed(1)} KM/H`;
+        document.getElementById('peakSpeedReadout').textContent = `${mph.toFixed(1)} MPH • PEAK ${peakMph.toFixed(0)}`;
+      }
+
+      captureScreenshot() {
+        this.audio.unlock();
+        this.audio.playClick();
+
+        const flash = document.getElementById('shutterFlash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 160);
+
+        this.renderCourt();
+        try {
+          const url = this.canvas.toDataURL('image/png');
+          this.paused = true;
+          this.shotModalOpen = true;
+          document.getElementById('screenshotImg').src = url;
+          const a = document.getElementById('downloadShotAnchor');
+          a.href = url;
+          a.download = `Autrobook-Table-Tennis-${Date.now()}.png`;
+          document.getElementById('screenshotModal').classList.add('open');
+          this.showToast('SCREENSHOT CAPTURED');
+        } catch (_e) {}
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.resizeCourt());
+
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (!document.body.dataset.theme) {
+              this.syncThemeIcon();
+              this.renderCourt();
+            }
+          });
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => this.toggleTheme());
+
+        document.getElementById('skipIntroAction').addEventListener('click', () => {
+          this.audio.unlock();
+          this.finishIntro();
+        });
+
+        document.querySelectorAll('#modeSelectGroup .choice-pill').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.mode = btn.dataset.mode;
+            document.querySelectorAll('#modeSelectGroup .choice-pill').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#formatSelectGroup .choice-pill').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.format = btn.dataset.format;
+            document.querySelectorAll('#formatSelectGroup .choice-pill').forEach((b) => b.classList.toggle('selected', b === btn));
+          });
+        });
+
+        document.querySelectorAll('#surfaceSelectGroup .choice-pill').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.surface = btn.dataset.surface;
+            document.querySelectorAll('#surfaceSelectGroup .choice-pill').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.renderCourt();
+          });
+        });
+
+        document.querySelectorAll('#shotModesRow .shot-type-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.shotMode = btn.dataset.shot;
+            document.querySelectorAll('#shotModesRow .shot-type-btn').forEach((b) => b.classList.toggle('selected', b === btn));
+            this.audio.playClick();
+          });
+        });
+
+        document.getElementById('openSetupBtn').addEventListener('click', () => {
+          if (!this.introActive) this.openSetup();
+        });
+
+        document.getElementById('beginRallyMatchBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const n1 = (document.getElementById('p1NameInput').value || '').trim().toUpperCase();
+          const n2 = (document.getElementById('p2NameInput').value || '').trim().toUpperCase();
+          this.p1.name = (n1 || 'FAN ZHEN').slice(0, 14);
+          this.p2.name = (n2 || 'TOMOKAZU').slice(0, 14);
+          this.p1.nation = this.getNationByCode(document.getElementById('p1NationSelect').value);
+          this.p2.nation = this.getNationByCode(document.getElementById('p2NationSelect').value);
+          this.p1.jersey = Math.max(1, Math.min(99, parseInt(document.getElementById('p1JerseyInput').value, 10) || 7));
+          this.p2.jersey = Math.max(1, Math.min(99, parseInt(document.getElementById('p2JerseyInput').value, 10) || 11));
+
+          document.getElementById('setupModal').classList.remove('open');
+          this.setupOpen = false;
+          this.paused = false;
+          this.startNewMatch();
+        });
+
+        document.getElementById('captureShotBtn').addEventListener('click', () => this.captureScreenshot());
+
+        document.getElementById('closeShotBtn').addEventListener('click', () => {
+          document.getElementById('screenshotModal').classList.remove('open');
+          this.shotModalOpen = false;
+          this.paused = false;
+          this.lastTick = performance.now();
+        });
+
+        document.getElementById('soundMuteBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          const m = this.audio.toggleMute();
+          document.getElementById('soundMuteBtn').innerHTML = m ? '&#128263;' : '&#128266;';
+        });
+
+        document.getElementById('pauseGameBtn').addEventListener('click', () => {
+          if (this.introActive || this.setupOpen || this.shotModalOpen || this.matchOver) return;
+          this.paused = true;
+          document.getElementById('pauseModal').classList.add('open');
+        });
+
+        document.getElementById('resumeRallyBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.lastTick = performance.now();
+        });
+
+        document.getElementById('restartMatchBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.paused = false;
+          this.startNewMatch();
+        });
+
+        document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
+          document.getElementById('pauseModal').classList.remove('open');
+          this.openSetup();
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.paused = false;
+          this.startNewMatch();
+        });
+
+        document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
+          document.getElementById('summaryModal').classList.remove('open');
+          this.openSetup();
+        });
+
+        const bindHold = (btnId, prop) => {
+          const btn = document.getElementById(btnId);
+          btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            this.audio.unlock();
+            this[prop] = true;
+          });
+          btn.addEventListener('pointerup', () => { this[prop] = false; });
+          btn.addEventListener('pointerleave', () => { this[prop] = false; });
+          btn.addEventListener('pointercancel', () => { this[prop] = false; });
+        };
+
+        bindHold('moveLeftBtn', 'holdLeft');
+        bindHold('moveRightBtn', 'holdRight');
+
+        document.getElementById('serveStrikeBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          if (this.servingState) {
+            this.strikeBall(this.serverIdx, true);
+          } else {
+            this.strikeBall(1, false);
+          }
+        });
+
+        document.getElementById('powerBoostBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.powerBoostArmed = !this.powerBoostArmed;
+          this.showToast(this.powerBoostArmed ? 'POWER+ ARMED' : 'POWER+ OFF');
+        });
+
+        this.canvas.addEventListener('pointermove', (e) => {
+          if (this.paused || this.matchOver) return;
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const clamped = Math.max(this.tableRect.left + 18, Math.min(this.tableRect.right - 18, px));
+          if (this.mode === 'LOCAL_2P') {
+            const py = e.clientY - rect.top;
+            if (py < this.tableRect.netY) this.p1.paddleX = clamped;
+            else this.p2.paddleX = clamped;
+          } else {
+            this.p2.paddleX = clamped;
+          }
+        });
+
+        this.canvas.addEventListener('pointerdown', (e) => {
+          this.audio.unlock();
+          if (this.paused || this.matchOver) return;
+          const rect = this.canvas.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const clamped = Math.max(this.tableRect.left + 18, Math.min(this.tableRect.right - 18, px));
+          this.p2.paddleX = clamped;
+
+          if (this.servingState && this.serverIdx === 1) {
+            this.strikeBall(1, true);
+          }
+        });
+
+        window.addEventListener('keydown', (e) => {
+          this.keys.add(e.code);
+          if (e.code === 'Space' || e.code === 'KeyE') {
+            if (!this.introActive && !this.setupOpen && !this.shotModalOpen && !this.paused && !this.matchOver) {
+              e.preventDefault();
+              this.audio.unlock();
+              if (this.servingState) this.strikeBall(this.serverIdx, true);
+              else this.strikeBall(1, false);
+            }
+          } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyQ') {
+            this.powerBoostArmed = true;
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          this.keys.delete(e.code);
+        });
+      }
+
+      openSetup() {
+        this.setupOpen = true;
+        this.paused = true;
+        document.getElementById('setupModal').classList.add('open');
+      }
+
+      startNewMatch() {
+        this.p1.points = 0;
+        this.p1.sets = 0;
+        this.p2.points = 0;
+        this.p2.sets = 0;
+        this.serverIdx = 0;
+        this.totalRallies = 0;
+        this.ball.peakKmh = 0;
+        this.countedWin = false;
+        this.matchOver = false;
+        this.resetBallForServe();
+        this.refreshHUD();
+      }
+
+      /* ======================================================================
+         INTRO & 2.5D BROADCAST TABLE TENNIS RENDERER
+         ====================================================================== */
+      startIntro() {
+        const dur = 2200;
+        const start = performance.now();
+        const bar = document.getElementById('introBarFill');
+        const step = (now) => {
+          if (!this.introActive) return;
+          const pct = Math.min(100, ((now - start) / dur) * 100);
+          bar.style.width = pct + '%';
+          if (pct >= 100) this.finishIntro();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      finishIntro() {
+        if (!this.introActive) return;
+        this.introActive = false;
+        document.getElementById('attaIntroOverlay').classList.add('hidden');
+        this.openSetup();
+      }
+
+      drawHumanAthlete(ctx, player, isNear, timeSec) {
+        const t = this.tableRect;
+        const scale = Math.max(0.75, Math.min(1.22, this.canvasW / 440));
+        const px = player.paddleX;
+        const stride = Math.sin(timeSec * 11 + (isNear ? 1.2 : 0)) * 3.2 * scale;
+        const swingDir = isNear ? -1 : 1;
+        const swingAngle = (this.servingState && ((isNear && this.serverIdx === 1) || (!isNear && this.serverIdx === 0))
+          ? Math.sin(timeSec * 5) * 0.25
+          : Math.sin(timeSec * 14) * 0.35) * swingDir;
+
+        const hipY = isNear ? this.canvasH - 15 * scale : 26 * scale;
+        const shoulderY = hipY - 16 * scale;
+        const headY = shoulderY - 12 * scale;
+        const headR = 7.2 * scale;
+
+        ctx.save();
+
+        // Ground shadow beneath athlete
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(px, hipY + 12 * scale, 16 * scale, 4.2 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shoes & Legs/Shorts
+        const leftFootX = px - 6.5 * scale + stride;
+        const rightFootX = px + 6.5 * scale - stride;
+        const footY = hipY + 10.5 * scale;
+
+        ctx.strokeStyle = '#f5d0a9';
+        ctx.lineWidth = 3.2 * scale;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(px - 4.5 * scale, hipY);
+        ctx.lineTo(leftFootX, footY);
+        ctx.moveTo(px + 4.5 * scale, hipY);
+        ctx.lineTo(rightFootX, footY);
+        ctx.stroke();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.roundRect(px - 8.5 * scale, hipY - 2 * scale, 17 * scale, 7 * scale, 3 * scale);
+        ctx.fill();
+
+        // Jersey Torso & Number
+        ctx.fillStyle = player.nation.jersey;
+        ctx.beginPath();
+        ctx.roundRect(px - 10 * scale, shoulderY, 20 * scale, 16 * scale, 5 * scale);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.4 * scale;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `900 ${Math.max(7, Math.round(7.5 * scale))}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(player.jersey), px, shoulderY + 8.5 * scale);
+
+        // Neck & Head
+        ctx.fillStyle = '#f5d0a9';
+        ctx.fillRect(px - 2.4 * scale, headY + headR - 1 * scale, 4.8 * scale, 4 * scale);
+
+        ctx.beginPath();
+        ctx.arc(px, headY, headR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 1.1 * scale;
+        ctx.stroke();
+
+        // Hair / Visor Cap
+        ctx.fillStyle = isNear ? '#111827' : '#1e293b';
+        ctx.beginPath();
+        ctx.arc(px, headY - 1.2 * scale, headR * 1.02, Math.PI * 1.05, Math.PI * 1.95);
+        ctx.fill();
+
+        // Face / Eyes
+        const eyeY = headY + (isNear ? 0.5 * scale : 1.5 * scale);
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(px - 2.6 * scale, eyeY, 1.25 * scale, 0, Math.PI * 2);
+        ctx.arc(px + 2.6 * scale, eyeY, 1.25 * scale, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Free hand & Paddle arm
+        const freeHandX = px - 12.5 * scale;
+        const freeHandY = shoulderY + 7 * scale - stride * 0.4;
+        ctx.strokeStyle = '#f5d0a9';
+        ctx.lineWidth = 3 * scale;
+        ctx.beginPath();
+        ctx.moveTo(px - 9.5 * scale, shoulderY + 2 * scale);
+        ctx.lineTo(freeHandX, freeHandY);
+        ctx.stroke();
+
+        const paddleW = Math.max(46, (t.right - t.left) * 0.17);
+        const paddleX = player.paddleX;
+        const paddleY = player.paddleY;
+
+        ctx.strokeStyle = '#f5d0a9';
+        ctx.lineWidth = 3.3 * scale;
+        ctx.beginPath();
+        ctx.moveTo(px + 9.5 * scale, shoulderY + 2 * scale);
+        ctx.lineTo(paddleX, paddleY + 4 * scale);
+        ctx.stroke();
+
+        // Table-Tennis Paddle / Blade
+        ctx.save();
+        ctx.translate(paddleX, paddleY);
+        ctx.rotate(swingAngle);
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(paddleW * 0.45, -2.5 * scale, 8 * scale, 5 * scale);
+        ctx.fillStyle = player.nation.blade;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, paddleW * 0.48, 6.2 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = isNear ? '#fbbf24' : '#ffffff';
+        ctx.lineWidth = 2 * scale;
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.restore();
+      }
+
+      renderCourt() {
+        const ctx = this.ctx;
+        const w = this.canvasW;
+        const h = this.canvasH;
+        const t = this.tableRect;
+        const surf = TABLE_SURFACES[this.surface] || TABLE_SURFACES.BLUE;
+        const nowSec = performance.now() * 0.001;
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.fillStyle = '#072213';
+        ctx.fillRect(0, 0, w, h);
+
+        const tableGrad = ctx.createLinearGradient(0, t.top, 0, t.bottom);
+        tableGrad.addColorStop(0, surf.topColor);
+        tableGrad.addColorStop(1, surf.botColor);
+        ctx.fillStyle = tableGrad;
+        ctx.beginPath();
+        ctx.roundRect(t.left, t.top, t.right - t.left, t.bottom - t.top, 6);
+        ctx.fill();
+
+        ctx.fillStyle = '#04140b';
+        ctx.fillRect(t.left, t.bottom, t.right - t.left, 7);
+
+        ctx.strokeStyle = surf.lineColor;
+        ctx.lineWidth = 2.2;
+        ctx.strokeRect(t.left + 4, t.top + 4, (t.right - t.left) - 8, (t.bottom - t.top) - 8);
+
+        const midX = (t.left + t.right) * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(midX, t.top + 4);
+        ctx.lineTo(midX, t.bottom - 4);
+        ctx.stroke();
+
+        // Both human players standing on opposite sides of the table
+        this.drawHumanAthlete(ctx, this.p1, false, nowSec);
+        this.drawHumanAthlete(ctx, this.p2, true, nowSec);
+
+        // Net across center of table
+        ctx.save();
+        ctx.strokeStyle = surf.netColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(t.left - 8, t.netY);
+        ctx.lineTo(t.right + 8, t.netY);
+        ctx.stroke();
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(t.left - 11, t.netY - 7, 6, 14);
+        ctx.fillRect(t.right + 5, t.netY - 7, 6, 14);
+        ctx.restore();
+
+        const shadowOffset = Math.min(18, this.ball.z * 0.35);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
+        ctx.beginPath();
+        ctx.ellipse(this.ball.x + shadowOffset * 0.4, this.ball.y + shadowOffset, this.ball.r * 0.85, this.ball.r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const visualR = this.ball.r * (1 + Math.min(0.35, this.ball.z / 120));
+        const visualY = this.ball.y - Math.min(20, this.ball.z * 0.35);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(this.ball.x, visualY, visualR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+      }
+
+      loop(now) {
+        if (!this.lastTick) this.lastTick = now;
+        const dt = Math.min(0.04, (now - this.lastTick) / 1000);
+        this.lastTick = now;
+
+        if (!this.paused) {
+          this.updatePaddles(dt);
+          this.stepPhysics(dt);
+          this.refreshHUD();
+          this.renderCourt();
+        }
+
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const app = new ATTAChampionshipEngine();
+      requestAnimationFrame((t) => app.loop(t));
+    });
+  </script>
+</body>
+</html>
