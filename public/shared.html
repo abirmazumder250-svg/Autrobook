@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Shared Reels — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="/theme.css" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #FFFFFF;
+      --surface: #f3f4f6;
+      --card: #FFFFFF;
+      --elevated: #f8f9fa;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e5e7eb;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --btn-secondary: #eef0f2;
+      --btn-hover: #e2e5e9;
+      --shadow: 0 8px 24px rgba(32, 33, 36, 0.14);
+    }
+
+    :root[data-theme="dark"],
+    body.dark-theme {
+      color-scheme: dark;
+      --bg: #202124;
+      --surface: #28292c;
+      --card: #202124;
+      --elevated: #2c2d31;
+      --text: #FFFFFF;
+      --muted: #9aa0a6;
+      --border: #383a3f;
+      --dark-green: #0B3D20;
+      --emerald: #0a7d3b;
+      --emerald-bright: #10b981;
+      --btn-secondary: #303134;
+      --btn-hover: #3c4043;
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #202124;
+        --surface: #28292c;
+        --card: #202124;
+        --elevated: #2c2d31;
+        --text: #FFFFFF;
+        --muted: #9aa0a6;
+        --border: #383a3f;
+        --dark-green: #0B3D20;
+        --emerald: #0a7d3b;
+        --emerald-bright: #10b981;
+        --btn-secondary: #303134;
+        --btn-hover: #3c4043;
+        --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 48px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      height: 56px;
+      padding: 0 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .back-btn:hover {
+      background: var(--surface);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    /* Main Content */
+    .main-container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 12px 10px;
+    }
+
+    /* Shared Reels Grid */
+    .shared-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .shared-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .shared-media {
+      position: relative;
+      aspect-ratio: 9 / 14.5;
+      background: var(--dark-green);
+      overflow: hidden;
+    }
+
+    .shared-media img,
+    .shared-media video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .shared-creator-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 10px;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.62), transparent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shared-creator-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--dark-green);
+      border: 1.5px solid rgba(255, 255, 255, 0.85);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffffff;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .shared-creator-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .shared-creator-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shared-footer {
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--elevated);
+      border-top: 1px solid var(--border);
+    }
+
+    .shared-reactions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .reaction-dots {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .reaction-dot {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #ffffff;
+      border: 1.5px solid var(--elevated);
+      margin-left: -4px;
+    }
+
+    .reaction-dot:first-child {
+      margin-left: 0;
+    }
+
+    .share-action-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 15px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .share-action-btn:hover {
+      color: var(--emerald-bright);
+      background: var(--surface);
+    }
+
+    /* Empty State (Screenshot 2 style with dark green button) */
+    .empty-state {
+      min-height: 68vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 36px 20px;
+      gap: 18px;
+    }
+
+    .empty-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .dark-green-btn {
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      background: var(--dark-green);
+      color: #ffffff;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .dark-green-btn:hover {
+      background: var(--emerald);
+    }
+
+    .dark-green-btn:active {
+      transform: scale(0.97);
+    }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <button
+      type="button"
+      class="back-btn"
+      id="backToSaveBtn"
+      aria-label="Back to Saved"
+      onclick="goToSavePage()"
+    >
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <h1 class="header-title">Shared reels</h1>
+  </header>
+
+  <main class="main-container" id="sharedReelsContainer"></main>
+
+  <script>
+    const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+
+    const sb = (window.supabase && typeof window.supabase.createClient === "function")
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    function goToSavePage() {
+      window.location.href = "save.html";
+    }
+
+    function goToReelsPage() {
+      window.location.href = "reels.html";
+    }
+
+    function escapeHtml(val) {
+      return String(val ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
+
+    function formatCount(num) {
+      const n = Number(num || 0);
+      if (!Number.isFinite(n) || n <= 0) return "0";
+      if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+      if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+      return String(n);
+    }
+
+    function renderEmptyShared() {
+      const container = document.getElementById("sharedReelsContainer");
+      if (!container) return;
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-title">No shared reels yet</div>
+          <button type="button" class="dark-green-btn" onclick="goToReelsPage()">
+            Explore Reels
+          </button>
+        </div>
+      `;
+    }
+
+    function renderSharedReels(items) {
+      const container = document.getElementById("sharedReelsContainer");
+      if (!container) return;
+
+      if (!Array.isArray(items) || items.length === 0) {
+        renderEmptyShared();
+        return;
+      }
+
+      container.innerHTML = `<div class="shared-grid">${items.map((item) => {
+        const creator = item.creator_name || item.author_name || item.username || "Creator";
+        const initial = escapeHtml(creator.trim().charAt(0).toUpperCase() || "R");
+        const creatorAvatar = item.creator_avatar || item.author_avatar || "";
+        const mediaUrl = item.thumbnail_url || item.video_url || item.media_url || "";
+        const countLabel = formatCount(item.reactions_count ?? item.shares_count ?? item.likes_count ?? 0);
+        const reelHref = item.reel_id ? `reels.html?reel=${encodeURIComponent(item.reel_id)}` : "reels.html";
+
+        const mediaHtml = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl) && !item.thumbnail_url
+          ? `<video src="${escapeHtml(mediaUrl)}" muted preload="metadata"></video>`
+          : mediaUrl
+            ? `<img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(creator)}" />`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#34d399;font-size:28px;"><i class="fas fa-clapperboard"></i></div>`;
+
+        return `
+          <a href="${escapeHtml(reelHref)}" class="shared-card">
+            <div class="shared-media">
+              ${mediaHtml}
+              <div class="shared-creator-overlay">
+                <span class="shared-creator-avatar">
+                  ${creatorAvatar ? `<img src="${escapeHtml(creatorAvatar)}" alt="${escapeHtml(creator)}" />` : initial}
+                </span>
+                <span class="shared-creator-name">${escapeHtml(creator)}</span>
+              </div>
+            </div>
+            <div class="shared-footer">
+              <span class="shared-reactions">
+                <span class="reaction-dots">
+                  <span class="reaction-dot" style="background:#0a7d3b;"><i class="fas fa-thumbs-up"></i></span>
+                  <span class="reaction-dot" style="background:#ef4444;"><i class="fas fa-heart"></i></span>
+                  <span class="reaction-dot" style="background:#f59e0b;"><i class="fas fa-face-laugh"></i></span>
+                </span>
+                <span>${escapeHtml(countLabel)}</span>
+              </span>
+              <span class="share-action-btn" aria-hidden="true"><i class="fas fa-share"></i></span>
+            </div>
+          </a>
+        `;
+      }).join("")}</div>`;
+    }
+
+    async function loadSharedReelsFromSupabase() {
+      if (!sb) {
+        renderEmptyShared();
+        return;
+      }
+
+      try {
+        const { data: sess } = await sb.auth.getSession();
+        const userId = sess?.session?.user?.id || localStorage.getItem("autro_user_id") || null;
+
+        let query = sb
+          .from("reel_shares")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (userId) {
+          query = query.eq("user_id", userId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        renderSharedReels(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.warn("Failed to load shared reels:", err);
+        renderEmptyShared();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadSharedReelsFromSupabase);
+  </script>
+</body>
+</html>
