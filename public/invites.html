@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Invites — Autrobook</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="/theme.css" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #FFFFFF;
+      --surface: #f3f4f6;
+      --card: #FFFFFF;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e5e7eb;
+      --join-bg: #0B3D20;
+      --join-hover: #0a7d3b;
+      --join-active: #062613;
+      --joined-bg: #e5e7eb;
+      --joined-text: #202124;
+      --btn-icon-bg: #f1f3f4;
+      --btn-icon-hover: #e4e7eb;
+    }
+
+    :root[data-theme="dark"],
+    body.dark-theme {
+      color-scheme: dark;
+      --bg: #202124;
+      --surface: #292a2d;
+      --card: #202124;
+      --text: #FFFFFF;
+      --muted: #9aa0a6;
+      --border: #383a3f;
+      --join-bg: #0a7d3b;
+      --join-hover: #10b981;
+      --join-active: #0B3D20;
+      --joined-bg: #303134;
+      --joined-text: #e8eaed;
+      --btn-icon-bg: #2c2d31;
+      --btn-icon-hover: #383a3f;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #202124;
+        --surface: #292a2d;
+        --card: #202124;
+        --text: #FFFFFF;
+        --muted: #9aa0a6;
+        --border: #383a3f;
+        --join-bg: #0a7d3b;
+        --join-hover: #10b981;
+        --join-active: #0B3D20;
+        --joined-bg: #303134;
+        --joined-text: #e8eaed;
+        --btn-icon-bg: #2c2d31;
+        --btn-icon-hover: #383a3f;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 36px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      height: 56px;
+      padding: 0 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .back-link {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 19px;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .back-link:hover {
+      background: var(--btn-icon-bg);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .header-search-input {
+      flex: 1;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 0 14px;
+      font-size: 14.5px;
+      outline: none;
+      display: none;
+    }
+
+    .header-search-input.active {
+      display: block;
+    }
+
+    .header-title.hidden {
+      display: none;
+    }
+
+    .icon-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .icon-action-btn:hover {
+      background: var(--btn-icon-bg);
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 14px 16px;
+    }
+
+    .status-note {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 18px;
+      font-weight: 500;
+    }
+
+    .section-heading {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    /* Group List */
+    .groups-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .group-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 0;
+    }
+
+    .group-main {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .group-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--join-hover);
+      overflow: hidden;
+    }
+
+    .group-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .group-meta {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .group-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.28;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .group-sub {
+      font-size: 13.5px;
+      color: var(--muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .join-btn {
+      background: var(--join-bg);
+      color: #FFFFFF;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 14.5px;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .join-btn:hover:not(:disabled) {
+      background: var(--join-hover);
+    }
+
+    .join-btn:active:not(:disabled) {
+      background: var(--join-active);
+      transform: scale(0.97);
+    }
+
+    .join-btn.joined {
+      background: var(--joined-bg);
+      color: var(--joined-text);
+      border-color: var(--border);
+    }
+
+    .join-btn:disabled {
+      opacity: 0.7;
+      cursor: default;
+    }
+
+    .not-found-box {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--muted);
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--join-bg);
+      color: #FFFFFF;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      display: none;
+      z-index: 200;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+      max-width: 90vw;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <div class="header-left">
+      <a href="groups.html" id="backNavLink" class="back-link" aria-label="Back">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+      <h1 id="pageTitle" class="header-title">Invites</h1>
+      <input
+        type="search"
+        id="groupSearchInput"
+        class="header-search-input"
+        placeholder="Search groups..."
+        oninput="renderGroups()"
+      />
+    </div>
+
+    <button type="button" class="icon-action-btn" id="toggleSearchBtn" aria-label="Search groups" onclick="toggleSearch()">
+      <i class="fas fa-search"></i>
+    </button>
+  </header>
+
+  <main class="container">
+    <p class="status-note">No pending invites</p>
+    <h2 class="section-heading">Groups for you</h2>
+    <div id="groupsContainer" class="groups-list">
+      <div class="not-found-box">Loading...</div>
+    </div>
+  </main>
+
+  <div id="toastEl" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = "https://gemyqaniztqrsilayblx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FuH8FWiYVK5CnylcjLDIKQ_exLB_Du_";
+
+    const sb = (window.supabase && typeof window.supabase.createClient === "function")
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    let allGroups = [];
+    let currentUserId = null;
+    let joinedGroupIds = new Set();
+
+    function configureBackLink() {
+      const backEl = document.getElementById("backNavLink");
+      if (!backEl) return;
+      const params = new URLSearchParams(window.location.search);
+      const fromParam = (params.get("from") || "").toLowerCase();
+      const ref = (document.referrer || "").toLowerCase();
+
+      if (fromParam === "games" || ref.includes("games.html")) {
+        backEl.href = "games.html";
+      } else {
+        backEl.href = "groups.html";
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toastEl");
+      if (!el) return;
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(window._inviteToastTimer);
+      window._inviteToastTimer = setTimeout(() => {
+        el.style.display = "none";
+      }, 2800);
+    }
+
+    function toggleSearch() {
+      const input = document.getElementById("groupSearchInput");
+      const title = document.getElementById("pageTitle");
+      if (!input || !title) return;
+      const isActive = input.classList.toggle("active");
+      title.classList.toggle("hidden", isActive);
+      if (isActive) {
+        input.focus();
+      } else {
+        input.value = "";
+        renderGroups();
+      }
+    }
+
+    function formatGroupSubtitle(group) {
+      const parts = [];
+      const memberCount = group.members_count ?? group.member_count ?? group.total_members;
+      if (memberCount !== undefined && memberCount !== null && memberCount !== "") {
+        const num = Number(memberCount);
+        const formatted = Number.isFinite(num) && num >= 1000
+          ? `${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1).replace(/\.0$/, "")}K`
+          : String(memberCount);
+        parts.push(`${formatted} members`);
+      }
+      if (group.posts_per_day) {
+        parts.push(String(group.posts_per_day));
+      } else if (group.category) {
+        parts.push(String(group.category));
+      }
+      return parts.length ? parts.join(" • ") : "Saved Group";
+    }
+
+    function renderGroups() {
+      const container = document.getElementById("groupsContainer");
+      if (!container) return;
+
+      const query = (document.getElementById("groupSearchInput")?.value || "").trim().toLowerCase();
+      const filtered = allGroups.filter((g) => {
+        const name = String(g.name || g.title || "").toLowerCase();
+        const desc = String(g.description || g.category || "").toLowerCase();
+        return !query || name.includes(query) || desc.includes(query);
+      });
+
+      if (!filtered.length) {
+        container.innerHTML = `<div class="not-found-box">Not found</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map((group, idx) => {
+        const groupId = String(group.id ?? idx);
+        const name = String(group.name || group.title || "Untitled Group");
+        const imageUrl = group.avatar_url || group.cover_url || group.image_url || "";
+        const initial = escapeHtml(name.trim().charAt(0).toUpperCase() || "G");
+        const isJoined = joinedGroupIds.has(groupId);
+        const href = group.id !== undefined ? `group.html?id=${encodeURIComponent(group.id)}` : "groups.html";
+
+        return `
+          <div class="group-row">
+            <a href="${escapeHtml(href)}" class="group-main">
+              <div class="group-avatar">
+                ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(name)}" onerror="this.remove(); this.parentElement.textContent='${initial}';" />` : initial}
+              </div>
+              <div class="group-meta">
+                <div class="group-name">${escapeHtml(name)}</div>
+                <div class="group-sub">${escapeHtml(formatGroupSubtitle(group))}</div>
+              </div>
+            </a>
+            <button
+              type="button"
+              class="join-btn ${isJoined ? "joined" : ""}"
+              data-group-id="${escapeHtml(groupId)}"
+              onclick="handleJoinGroup('${escapeHtml(groupId)}', this)"
+            >${isJoined ? "Joined" : "Join"}</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function handleJoinGroup(groupId, btnEl) {
+      if (!sb) {
+        showToast("Supabase connection unavailable.");
+        return;
+      }
+
+      if (!currentUserId) {
+        const { data: sessionData } = await sb.auth.getSession();
+        currentUserId = sessionData?.session?.user?.id || null;
+      }
+
+      if (!currentUserId) {
+        showToast("Please sign in to join a group.");
+        return;
+      }
+
+      const alreadyJoined = joinedGroupIds.has(String(groupId));
+      if (btnEl) btnEl.disabled = true;
+
+      try {
+        if (alreadyJoined) {
+          const { error } = await sb
+            .from("group_members")
+            .delete()
+            .eq("group_id", groupId)
+            .eq("user_id", currentUserId);
+          if (error) throw error;
+          joinedGroupIds.delete(String(groupId));
+          showToast("Left group.");
+        } else {
+          const { error } = await sb
+            .from("group_members")
+            .insert({ group_id: groupId, user_id: currentUserId });
+          if (error) throw error;
+          joinedGroupIds.add(String(groupId));
+          showToast("Joined group.");
+        }
+        renderGroups();
+      } catch (err) {
+        console.warn("Join group update error:", err);
+        showToast("Could not update membership.");
+        if (btnEl) btnEl.disabled = false;
+      }
+    }
+
+    async function loadSavedGroups() {
+      const container = document.getElementById("groupsContainer");
+      if (!sb) {
+        if (container) container.innerHTML = `<div class="not-found-box">Not found</div>`;
+        return;
+      }
+
+      try {
+        const { data: sessionData } = await sb.auth.getSession();
+        currentUserId = sessionData?.session?.user?.id || null;
+
+        const { data: groupsData, error } = await sb
+          .from("groups")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        allGroups = Array.isArray(groupsData) ? groupsData : [];
+
+        if (currentUserId && allGroups.length > 0) {
+          const { data: memberRows } = await sb
+            .from("group_members")
+            .select("group_id")
+            .eq("user_id", currentUserId);
+
+          if (Array.isArray(memberRows)) {
+            joinedGroupIds = new Set(memberRows.map((r) => String(r.group_id)));
+          }
+        }
+
+        renderGroups();
+      } catch (err) {
+        console.warn("Failed to load groups from Supabase:", err);
+        allGroups = [];
+        renderGroups();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      configureBackLink();
+      loadSavedGroups();
+    });
+  </script>
+</body>
+</html>
