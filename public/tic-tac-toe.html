@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Tic Tac Toe</title>
   <link rel="stylesheet" href="/theme.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* ========================================================================
        1. DESIGN TOKENS & SYSTEM LIGHT (#FFFFFF) / DARK (#202124) THEMES
@@ -24,12 +25,9 @@
       --modal-bg: #202124;
       --tile-bg: rgba(255, 255, 255, 0.06);
       --tile-border: rgba(255, 255, 255, 0.16);
-      --arena-surface: #0c3b20;
-      --arena-cell: #0f4a28;
-      --arena-cell-alt: #0b391f;
-      --arena-border: #fbbf24;
-      --x-color: #fbbf24;
-      --o-color: #34d399;
+      --board-bg: #082616;
+      --cell-bg: #0c361f;
+      --cell-border: rgba(16, 185, 129, 0.34);
     }
 
     @media (prefers-color-scheme: light) {
@@ -42,12 +40,9 @@
         --modal-bg: #FFFFFF;
         --tile-bg: rgba(11, 61, 32, 0.05);
         --tile-border: rgba(10, 125, 59, 0.22);
-        --arena-surface: #e8f8ee;
-        --arena-cell: #ffffff;
-        --arena-cell-alt: #f3fcf7;
-        --arena-border: #0a7d3b;
-        --x-color: #d97706;
-        --o-color: #0a7d3b;
+        --board-bg: #e7f7ee;
+        --cell-bg: #ffffff;
+        --cell-border: rgba(10, 125, 59, 0.26);
       }
     }
 
@@ -60,12 +55,9 @@
       --modal-bg: #202124;
       --tile-bg: rgba(255, 255, 255, 0.06);
       --tile-border: rgba(255, 255, 255, 0.16);
-      --arena-surface: #0c3b20;
-      --arena-cell: #0f4a28;
-      --arena-cell-alt: #0b391f;
-      --arena-border: #fbbf24;
-      --x-color: #fbbf24;
-      --o-color: #34d399;
+      --board-bg: #082616;
+      --cell-bg: #0c361f;
+      --cell-border: rgba(16, 185, 129, 0.34);
     }
 
     body[data-theme="light"] {
@@ -77,27 +69,9 @@
       --modal-bg: #FFFFFF;
       --tile-bg: rgba(11, 61, 32, 0.05);
       --tile-border: rgba(10, 125, 59, 0.22);
-      --arena-surface: #e8f8ee;
-      --arena-cell: #ffffff;
-      --arena-cell-alt: #f3fcf7;
-      --arena-border: #0a7d3b;
-      --x-color: #d97706;
-      --o-color: #0a7d3b;
-    }
-
-    /* Arena / Board Theme Variants */
-    body[data-arena-theme="TURF"] {
-      --arena-surface: #0d4b26;
-      --arena-cell: #136133;
-      --arena-cell-alt: #0f522a;
-      --arena-border: #f59e0b;
-    }
-
-    body[data-arena-theme="MIDNIGHT"] {
-      --arena-surface: #072214;
-      --arena-cell: #0a2e1b;
-      --arena-cell-alt: #082616;
-      --arena-border: #10b981;
+      --board-bg: #e7f7ee;
+      --cell-bg: #ffffff;
+      --cell-border: rgba(10, 125, 59, 0.26);
     }
 
     *, *::before, *::after {
@@ -114,7 +88,7 @@
       height: 100%;
       overflow: hidden;
       background-color: var(--theme-bg);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: var(--text-main);
       transition: background-color 0.2s ease, color 0.2s ease;
     }
@@ -130,7 +104,7 @@
       justify-content: space-between;
       padding: max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom));
       background-color: var(--theme-bg);
-      background-image: radial-gradient(circle at 50% 16%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.1) 52%, transparent 82%);
+      background-image: radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.16) 0%, rgba(11, 61, 32, 0.12) 50%, transparent 80%);
       overflow: hidden;
     }
 
@@ -140,15 +114,15 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--hud-border);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
     }
 
     /* ========================================================================
-       2. TOP BROADCAST HUD, PLAYER CARDS & ROUND BANNER
+       2. TOP HUD BAR, SCOREBOARD & PLAYER CARDS
        ======================================================================== */
     .top-bar {
       width: 100%;
-      max-width: 720px;
+      max-width: 780px;
       z-index: 20;
       display: flex;
       align-items: center;
@@ -163,13 +137,13 @@
     }
 
     .icon-circle-btn {
-      width: 33px;
-      height: 33px;
-      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      border-radius: 9999px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 900;
       background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
       color: #ffffff;
@@ -191,19 +165,19 @@
       transform: scale(0.92);
     }
 
-    .brand-center-hud {
+    .scoreboard-center {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 3px 9px;
+      padding: 4px 10px;
       border-radius: 13px;
       flex: 1;
-      max-width: 390px;
+      max-width: 410px;
       border-color: rgba(251, 191, 36, 0.55);
       min-width: 0;
     }
 
-    .brand-main-row {
+    .score-main-row {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -217,9 +191,9 @@
     }
 
     .hud-logo-badge {
-      width: 21px;
-      height: 21px;
-      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      border-radius: 9999px;
       background: linear-gradient(145deg, #0a7d3b, #0B3D20);
       border: 1.5px solid var(--ttt-amber);
       display: inline-flex;
@@ -233,13 +207,13 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 50%;
+      border-radius: 9999px;
       display: block;
     }
 
     .hud-logo-fallback {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
       display: none;
     }
 
@@ -256,12 +230,12 @@
       border-radius: 7px;
       background: rgba(16, 185, 129, 0.22);
       border: 1px solid rgba(16, 185, 129, 0.55);
-      color: var(--ttt-gold);
-      font-size: 11px;
+      color: var(--ttt-amber);
+      font-size: 10.5px;
     }
 
-    .brand-sub-row {
-      font-size: 8.6px;
+    .status-sub-row {
+      font-size: 8.5px;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -272,9 +246,9 @@
       max-width: 100%;
     }
 
-    .players-status-row {
+    .players-strip {
       width: 100%;
-      max-width: 720px;
+      max-width: 780px;
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       gap: 6px;
@@ -282,21 +256,21 @@
       z-index: 16;
     }
 
-    .player-panel {
-      padding: 5px 8px;
-      border-radius: 11px;
+    .player-card {
+      padding: 5px 9px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 5px;
+      gap: 6px;
       min-width: 0;
       border-width: 1.5px;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .player-panel.active-turn {
+    .player-card.active-turn {
       border-color: var(--ttt-amber);
-      box-shadow: 0 0 14px rgba(251, 191, 36, 0.32);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.34);
     }
 
     .p-meta {
@@ -336,51 +310,31 @@
       text-overflow: ellipsis;
     }
 
-    .mark-pts-pill {
+    .mark-tag {
       padding: 2px 7px;
-      border-radius: 7px;
-      background: rgba(245, 158, 11, 0.18);
-      border: 1px solid rgba(251, 191, 36, 0.5);
-      color: var(--ttt-gold);
-      font-size: 9.5px;
+      border-radius: 8px;
+      font-size: 11px;
       font-weight: 900;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.55);
+      color: var(--ttt-amber);
       flex-shrink: 0;
-      font-variant-numeric: tabular-nums;
     }
 
-    .round-banner-box {
+    .turn-center-pill {
       padding: 4px 10px;
-      border-radius: 11px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      border-color: rgba(251, 191, 36, 0.52);
-      min-width: 124px;
-    }
-
-    .round-lbl {
-      font-size: 7.5px;
+      border-radius: 12px;
+      font-size: 9px;
       font-weight: 900;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--ttt-gold);
-    }
-
-    .round-val {
-      font-size: 10.5px;
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-    .round-sub {
-      font-size: 8px;
-      font-weight: 800;
-      color: var(--text-sub);
+      color: var(--ttt-amber);
+      border-color: rgba(251, 191, 36, 0.5);
       white-space: nowrap;
     }
 
     /* ========================================================================
-       3. CENTER 3x3 BOARD STAGE & ACTION BUTTONS
+       3. CENTER 3x3 BOARD STAGE & QUICK ROUND CONTROLS
        ======================================================================== */
     .board-stage {
       position: relative;
@@ -389,61 +343,63 @@
       justify-content: center;
       flex: 1;
       width: 100%;
-      max-width: 720px;
+      max-width: 780px;
       min-height: 0;
-      margin: 2px 0;
+      margin: 4px 0;
     }
 
     .board-frame {
       position: relative;
-      padding: 10px;
-      border-radius: 18px;
-      background: var(--arena-surface);
-      border: 2.5px solid var(--arena-border);
-      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .ttt-grid {
-      position: relative;
-      width: 100%;
-      height: 100%;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(3, 1fr);
       gap: 8px;
+      padding: 10px;
+      border-radius: 20px;
+      background: var(--board-bg);
+      border: 2px solid rgba(251, 191, 36, 0.58);
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
+      aspect-ratio: 1 / 1;
+      width: min(82vw, 50dvh, 360px);
+      height: min(82vw, 50dvh, 360px);
     }
 
     .ttt-cell {
       position: relative;
       border-radius: 14px;
-      background: var(--arena-cell);
-      border: 1.5px solid rgba(16, 185, 129, 0.34);
+      background: var(--cell-bg);
+      border: 1.5px solid var(--cell-border);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: transform 0.12s ease, border-color 0.12s ease, background-color 0.14s ease, box-shadow 0.14s ease;
-      overflow: hidden;
+      font-size: clamp(30px, 7.5vw, 48px);
+      font-weight: 900;
+      line-height: 1;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
     }
 
-    .ttt-cell.alt-cell {
-      background: var(--arena-cell-alt);
-    }
-
-    .ttt-cell:hover:not(:disabled) {
+    .ttt-cell:hover:not(.occupied):not(.locked) {
       border-color: var(--ttt-amber);
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+      transform: scale(0.98);
     }
 
-    .ttt-cell:active:not(:disabled) {
-      transform: scale(0.95);
+    .ttt-cell:active:not(.locked) {
+      transform: scale(0.94);
     }
 
-    .ttt-cell.winning-cell {
-      background: linear-gradient(145deg, rgba(16, 185, 129, 0.35), rgba(251, 191, 36, 0.28));
+    .ttt-cell.mark-x {
+      color: var(--ttt-amber);
+      text-shadow: 0 3px 12px rgba(245, 158, 11, 0.35);
+    }
+
+    .ttt-cell.mark-o {
+      color: var(--ttt-emerald);
+      text-shadow: 0 3px 12px rgba(16, 185, 129, 0.35);
+    }
+
+    .ttt-cell.win-cell {
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.32), rgba(251, 191, 36, 0.25));
       border-color: var(--ttt-amber);
       box-shadow: 0 0 18px rgba(251, 191, 36, 0.45);
     }
@@ -452,86 +408,51 @@
       position: absolute;
       top: 5px;
       left: 7px;
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 800;
-      opacity: 0.45;
       color: var(--text-sub);
+      opacity: 0.65;
       pointer-events: none;
     }
 
-    .mark-svg {
-      width: 58%;
-      height: 58%;
-      pointer-events: none;
-    }
-
-    .mark-svg.placed {
-      animation: markPopIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
-
-    .mark-svg.preview {
-      opacity: 0;
-      transition: opacity 0.14s ease;
-    }
-
-    .ttt-cell:hover:not(:disabled):not(.occupied) .mark-svg.preview {
-      opacity: 0.26;
-    }
-
-    @keyframes markPopIn {
-      0% { transform: scale(0.45) rotate(-10deg); opacity: 0.2; }
-      100% { transform: scale(1) rotate(0deg); opacity: 1; }
-    }
-
-    .win-strike-overlay {
-      position: absolute;
-      inset: 10px;
-      pointer-events: none;
-      z-index: 8;
-    }
-
-    .bottom-actions-deck {
+    .bottom-action-row {
       width: 100%;
-      max-width: 720px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
+      max-width: 780px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       z-index: 18;
     }
 
-    .deck-btn {
-      padding: 8px 8px;
-      border-radius: 11px;
+    .action-pill-btn {
+      padding: 9px 15px;
+      border-radius: 12px;
       background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
-      border: 1.5px solid rgba(251, 191, 36, 0.58);
-      box-shadow: 0 5px 14px rgba(4, 20, 11, 0.35);
+      border: 1.5px solid rgba(251, 191, 36, 0.65);
+      box-shadow: 0 5px 14px rgba(4, 20, 11, 0.36);
       color: #ffffff;
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 900;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       cursor: pointer;
       transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
     }
 
-    .deck-btn:hover:not(:disabled) {
+    .action-pill-btn:hover {
       background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
       border-color: var(--ttt-amber);
-      box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
     }
 
-    .deck-btn:active:not(:disabled) {
+    .action-pill-btn:active {
       background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
       transform: scale(0.96);
     }
 
-    .deck-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
     /* ========================================================================
-       4. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
+       4. ANIMATED INTRO SPLASH SCREEN
        ======================================================================== */
     #tttIntroScreen {
       position: absolute;
@@ -543,7 +464,7 @@
       justify-content: center;
       padding: 24px;
       background-color: var(--theme-bg);
-      background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.14) 55%, transparent 82%);
+      background-image: radial-gradient(circle at 50% 34%, rgba(16, 185, 129, 0.24) 0%, rgba(11, 61, 32, 0.15) 55%, transparent 82%);
       overflow: hidden;
       transition: opacity 0.35s ease, visibility 0.35s ease;
     }
@@ -566,12 +487,12 @@
 
     .ray-left {
       left: 10%;
-      animation: raySwingL 2.6s ease-in-out infinite alternate;
+      animation: raySwingL 2.7s ease-in-out infinite alternate;
     }
 
     .ray-right {
       right: 10%;
-      animation: raySwingR 2.6s ease-in-out infinite alternate;
+      animation: raySwingR 2.7s ease-in-out infinite alternate;
     }
 
     @keyframes raySwingL {
@@ -591,14 +512,14 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
-      max-width: 360px;
+      max-width: 370px;
       width: 100%;
     }
 
     .ttt-crest-badge {
       width: 112px;
       height: 112px;
-      border-radius: 50%;
+      border-radius: 9999px;
       background: linear-gradient(145deg, #0a7d3b, #0B3D20);
       border: 3px solid var(--ttt-amber);
       box-shadow: 0 0 36px rgba(251, 191, 36, 0.45);
@@ -614,7 +535,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 50%;
+      border-radius: 9999px;
       display: block;
     }
 
@@ -638,7 +559,7 @@
     }
 
     .intro-title {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 900;
       line-height: 1.15;
       color: var(--text-main);
@@ -648,7 +569,7 @@
       width: 100%;
       max-width: 240px;
       height: 6px;
-      border-radius: 999px;
+      border-radius: 9999px;
       background: rgba(16, 185, 129, 0.18);
       overflow: hidden;
       margin: 20px 0 18px;
@@ -657,12 +578,12 @@
     .intro-progress-fill {
       width: 0%;
       height: 100%;
-      border-radius: 999px;
+      border-radius: 9999px;
       background: linear-gradient(90deg, #10b981, #fbbf24);
     }
 
     /* ========================================================================
-       5. MODALS (SETUP, STATS, SCREENSHOT, PAUSE & MATCH SUMMARY)
+       5. MODALS (SETUP, SCREENSHOT, PAUSE & STATS SUMMARY)
        ======================================================================== */
     .modal-backdrop {
       position: absolute;
@@ -684,7 +605,7 @@
 
     .modal-card {
       width: 100%;
-      max-width: 485px;
+      max-width: 475px;
       max-height: 93dvh;
       overflow-y: auto;
       border-radius: 22px;
@@ -769,7 +690,7 @@
     }
 
     .star-chip {
-      padding: 3.5px 6.5px;
+      padding: 4px 7px;
       border-radius: 8px;
       background: linear-gradient(145deg, #0a7d3b 0%, #0B3D20 100%);
       border: 1px solid rgba(16, 185, 129, 0.58);
@@ -786,20 +707,8 @@
     }
 
     .star-chip:active {
-      background: linear-gradient(145deg, #0B3D20 0%, #062614 100%);
+      background: linear-gradient(145deg, #0B3D20 0%, #051f10 100%);
       transform: scale(0.95);
-    }
-
-    .pills-2 {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 5px;
-    }
-
-    .pills-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 5px;
     }
 
     .pills-4 {
@@ -809,7 +718,7 @@
     }
 
     .choice-btn {
-      padding: 6.5px 5px;
+      padding: 7px 6px;
       border-radius: 10px;
       background: #0B3D20;
       border: 1.5px solid rgba(16, 185, 129, 0.45);
@@ -834,7 +743,7 @@
       background: linear-gradient(135deg, #0a7d3b 0%, #062815 100%);
       border-color: var(--ttt-amber);
       color: #ffffff;
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.34);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.32);
     }
 
     .btn-primary {
@@ -859,7 +768,7 @@
     }
 
     .btn-primary:hover {
-      background: linear-gradient(135deg, #0d9446 0%, #0B3D20 100%);
+      background: linear-gradient(145deg, #0d9446 0%, #0B3D20 100%);
       box-shadow: 0 0 15px rgba(251, 191, 36, 0.42);
     }
 
@@ -929,18 +838,18 @@
       object-fit: contain;
       border-radius: 14px;
       border: 1.5px solid var(--ttt-amber);
-      background: var(--arena-surface);
+      background: var(--board-bg);
       margin: 8px 0;
     }
 
     .toast-banner {
       position: absolute;
-      top: 52px;
+      top: 50px;
       left: 50%;
       transform: translateX(-50%) translateY(-8px);
       z-index: 45;
       padding: 5px 13px;
-      border-radius: 999px;
+      border-radius: 9999px;
       font-size: 10px;
       font-weight: 900;
       letter-spacing: 0.05em;
@@ -978,26 +887,25 @@
     <div id="shutterFlash" class="shutter-flash"></div>
     <div id="toastBanner" class="toast-banner">TIC TAC TOE</div>
 
-    <!-- TOP BROADCAST HUD BAR WITH DIRECT LINK TO tic-tac-toe.html -->
+    <!-- TOP HUD BAR WITH GAME-START RESET BUTTON '←' -->
     <header class="top-bar">
       <div class="btn-group">
-        <a id="backToTicTacToeLink" href="tic-tac-toe.html" class="icon-circle-btn glass-hud" title="Back to tic-tac-toe.html" aria-label="Back to tic-tac-toe.html">&larr;</a>
+        <button id="backToGameStartBtn" type="button" class="icon-circle-btn glass-hud" title="Return to Game Start (tic-tac-toe.html)" aria-label="Return to Game Start">&larr;</button>
       </div>
 
-      <div class="brand-center-hud glass-hud">
-        <div class="brand-main-row">
+      <div class="scoreboard-center glass-hud">
+        <div class="score-main-row">
           <span class="hud-logo-badge js-ttt-logo-badge" aria-hidden="true">
             <img src="autrobook-tic-tac-toe.png" alt="Tic Tac Toe Logo" class="hud-logo-img js-ttt-logo-img" />
             <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
-              <path d="M8 8L11.2 11.2M11.2 8L8 11.2" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
-              <circle cx="15" cy="14.5" r="2.1" stroke="#34d399" stroke-width="1.8"/>
+              <path d="M8.5 8.5L12 12M12 12L15.5 15.5M15.5 8.5L8.5 15.5" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
           </span>
           <span>Tic Tac Toe</span>
-          <span id="topScoreBadge" class="score-pill">0 - 0</span>
+          <span id="seriesScoreBadge" class="score-pill">0 &ndash; 0</span>
         </div>
-        <div id="statusSubRow" class="brand-sub-row">ROUND 1 &bull; BEST OF 3 &bull; TACTICAL AI</div>
+        <div id="statusBannerText" class="status-sub-row">BEST OF 3 &bull; TACTICAL AI &bull; ROUND 1</div>
       </div>
 
       <div class="btn-group">
@@ -1008,54 +916,56 @@
       </div>
     </header>
 
-    <!-- PLAYER CARDS & LIVE ROUND / TURN BANNER -->
-    <section class="players-status-row">
-      <div id="p1Card" class="player-panel glass-hud active-turn">
+    <!-- PLAYER 1 (X) & PLAYER 2 (O) CARDS -->
+    <section class="players-strip">
+      <div id="p1Card" class="player-card glass-hud active-turn">
         <div class="p-meta">
           <div class="p-name-line">
             <span id="p1BadgeNum" class="badge-num" style="background:#0a7d3b;">#01</span>
-            <span id="p1DisplayName">ARIF HASAN</span>
+            <span id="p1DisplayName">RASHID KHAN</span>
           </div>
-          <span id="p1SubLine" class="p-sub-line">BAN &bull; MARK X</span>
+          <span id="p1SubLine" class="p-sub-line">BAN &bull; 0 WINS</span>
         </div>
-        <span id="p1ScoreTag" class="mark-pts-pill">0 PTS</span>
+        <span class="mark-tag">X</span>
       </div>
 
-      <div class="round-banner-box glass-hud">
-        <span class="round-lbl">ROUND / TURN</span>
-        <span id="roundTurnTitle" class="round-val">R1 &bull; X TURN</span>
-        <span id="roundTurnSub" class="round-sub">ARIF HASAN TO PLAY</span>
-      </div>
+      <div id="turnCenterPill" class="turn-center-pill glass-hud">X TURN</div>
 
-      <div id="p2Card" class="player-panel glass-hud">
+      <div id="p2Card" class="player-card glass-hud">
         <div class="p-meta">
           <div class="p-name-line">
-            <span id="p2BadgeNum" class="badge-num" style="background:#1d4ed8;">#07</span>
-            <span id="p2DisplayName">SOO-BIN PARK</span>
+            <span id="p2BadgeNum" class="badge-num" style="background:#dc2626;">#07</span>
+            <span id="p2DisplayName">HARUTO SATO</span>
           </div>
-          <span id="p2SubLine" class="p-sub-line">KOR &bull; MARK O</span>
+          <span id="p2SubLine" class="p-sub-line">JPN &bull; 0 WINS</span>
         </div>
-        <span id="p2ScoreTag" class="mark-pts-pill">0 PTS</span>
+        <span class="mark-tag">O</span>
       </div>
     </section>
 
-    <!-- CENTER 3x3 INTERACTIVE BOARD STAGE -->
+    <!-- CENTER 3x3 INTERACTIVE BOARD -->
     <main id="boardStage" class="board-stage">
-      <div id="boardFrame" class="board-frame">
-        <div id="tttGrid" class="ttt-grid" role="grid" aria-label="3 by 3 Tic Tac Toe Board"></div>
-        <svg id="winStrikeOverlay" class="win-strike-overlay" viewBox="0 0 300 300" aria-hidden="true"></svg>
+      <div id="boardFrame" class="board-frame" role="grid" aria-label="Tic Tac Toe 3x3 Board">
+        <button type="button" class="ttt-cell" data-idx="0" aria-label="Cell 1"><span class="cell-key-hint">1</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="1" aria-label="Cell 2"><span class="cell-key-hint">2</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="2" aria-label="Cell 3"><span class="cell-key-hint">3</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="3" aria-label="Cell 4"><span class="cell-key-hint">4</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="4" aria-label="Cell 5"><span class="cell-key-hint">5</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="5" aria-label="Cell 6"><span class="cell-key-hint">6</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="6" aria-label="Cell 7"><span class="cell-key-hint">7</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="7" aria-label="Cell 8"><span class="cell-key-hint">8</span><span class="cell-glyph"></span></button>
+        <button type="button" class="ttt-cell" data-idx="8" aria-label="Cell 9"><span class="cell-key-hint">9</span><span class="cell-glyph"></span></button>
       </div>
     </main>
 
-    <!-- ACTION BUTTONS DECK -->
-    <div class="bottom-actions-deck">
-      <button id="nextRoundBtn" type="button" class="deck-btn" disabled>Next Round</button>
-      <button id="newMatchBtn" type="button" class="deck-btn">New Match</button>
-      <button id="setupBtn" type="button" class="deck-btn">Setup</button>
+    <!-- QUICK ROUND & SETUP BAR -->
+    <div class="bottom-action-row">
+      <button id="nextRoundBarBtn" type="button" class="action-pill-btn">Next Round (R)</button>
+      <button id="quickSetupBarBtn" type="button" class="action-pill-btn">Match Setup</button>
     </div>
 
     <!-- ======================================================================
-         1. ANIMATED INTRO SCREEN WITH SWEEPING SPOTLIGHT RAYS
+         1. ANIMATED INTRO SPLASH SCREEN
          ====================================================================== -->
     <section id="tttIntroScreen">
       <div class="spot-ray ray-left"></div>
@@ -1071,12 +981,16 @@
           />
           <svg id="tttIntroFallbackSvg" class="ttt-crest-fallback-svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
             <path d="M32 5L53 14V31C53 45 44 55.8 32 59.5C20 55.8 11 45 11 31V14L32 5Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="3"/>
-            <path d="M20 20L30 30M30 20L20 30" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
-            <circle cx="39.5" cy="39.5" r="6.5" stroke="#10b981" stroke-width="4"/>
+            <line x1="20" y1="20" x2="30" y2="30" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="30" y1="20" x2="20" y2="30" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="39" cy="25" r="5.5" stroke="#10b981" stroke-width="3.2"/>
+            <circle cx="25" cy="40" r="5.5" stroke="#10b981" stroke-width="3.2"/>
+            <line x1="34" y1="35" x2="44" y2="45" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="44" y1="35" x2="34" y2="45" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
           </svg>
         </div>
 
-        <h1 class="intro-title">TIC TAC TOE</h1>
+        <h1 class="intro-title">Tic Tac Toe</h1>
 
         <div class="intro-progress-track">
           <div id="introBarFill" class="intro-progress-fill"></div>
@@ -1089,7 +1003,7 @@
     </section>
 
     <!-- ======================================================================
-         2. MATCH SETUP MODAL (10 NATIONS, ROSTERS, MARKS, FORMATS & ARENAS)
+         2. MATCH SETUP MODAL (10 NATIONS, STAR PRESETS, AI & FORMATS)
          ====================================================================== -->
     <div id="setupModal" class="modal-backdrop">
       <div class="modal-card">
@@ -1099,16 +1013,16 @@
               <img src="autrobook-tic-tac-toe.png" alt="Tic Tac Toe Logo" class="hud-logo-img js-ttt-logo-img" />
               <svg class="hud-logo-fallback" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L20 5.5V12C20 17.5 16.5 21.4 12 22.8C7.5 21.4 4 17.5 4 12V5.5L12 2Z" fill="#0B3D20" stroke="#fbbf24" stroke-width="2"/>
-                <circle cx="12" cy="12" r="3.5" stroke="#fbbf24" stroke-width="1.8"/>
+                <circle cx="12" cy="12" r="4" stroke="#fbbf24" stroke-width="2"/>
               </svg>
             </span>
             <h2 class="modal-h2">Tic Tac Toe Setup</h2>
           </div>
-          <p class="modal-sub">10 Nations &bull; Star Presets &bull; Match Formats &bull; Arena Themes</p>
+          <p class="modal-sub">10 Nations &bull; Star Presets &bull; Minimax AI &bull; Match Format</p>
         </div>
 
         <div class="setup-box">
-          <div class="setup-label">Mode &amp; AI Difficulty</div>
+          <div class="setup-label">Match Mode &amp; AI Intelligence</div>
           <div id="modeGroup" class="pills-4">
             <button type="button" class="choice-btn" data-mode="AI_CASUAL">1P vs AI (Casual)</button>
             <button type="button" class="choice-btn selected" data-mode="AI_TACTICAL">1P vs AI (Tactical)</button>
@@ -1117,22 +1031,20 @@
           </div>
         </div>
 
-        <!-- Player 1 Roster -->
         <div class="setup-box">
-          <div class="setup-label">Player 1 Roster</div>
+          <div class="setup-label">Player 1 (X) Roster</div>
           <div class="grid-3-row">
-            <input id="p1NameInp" type="text" maxlength="14" value="ARIF HASAN" class="text-inp" />
+            <input id="p1NameInp" type="text" maxlength="14" value="RASHID KHAN" class="text-inp" />
             <select id="p1NationSel" class="sel-inp"></select>
             <input id="p1BadgeInp" type="number" min="1" max="99" value="1" class="text-inp" />
           </div>
           <div id="p1StarRow" class="star-chips"></div>
         </div>
 
-        <!-- Player 2 / AI Roster -->
         <div class="setup-box">
-          <div class="setup-label">Player 2 / AI Roster</div>
+          <div class="setup-label">Player 2 / Rival (O) Roster</div>
           <div class="grid-3-row">
-            <input id="p2NameInp" type="text" maxlength="14" value="SOO-BIN PARK" class="text-inp" />
+            <input id="p2NameInp" type="text" maxlength="14" value="HARUTO SATO" class="text-inp" />
             <select id="p2NationSel" class="sel-inp"></select>
             <input id="p2BadgeInp" type="number" min="1" max="99" value="7" class="text-inp" />
           </div>
@@ -1140,62 +1052,40 @@
         </div>
 
         <div class="setup-box">
-          <div class="setup-label">Player 1 Mark Preference</div>
-          <div id="markGroup" class="pills-2">
-            <button type="button" class="choice-btn selected" data-mark="X">Play as X (First)</button>
-            <button type="button" class="choice-btn" data-mark="O">Play as O (Second)</button>
-          </div>
-        </div>
-
-        <div class="setup-box">
-          <div class="setup-label">Match Format</div>
+          <div class="setup-label">Series Format</div>
           <div id="formatGroup" class="pills-4">
-            <button type="button" class="choice-btn selected" data-fmt="BEST_3">Best of 3</button>
-            <button type="button" class="choice-btn" data-fmt="BEST_5">Best of 5</button>
-            <button type="button" class="choice-btn" data-fmt="FIRST_5">First to 5</button>
-            <button type="button" class="choice-btn" data-fmt="SINGLE">Single Match</button>
-          </div>
-        </div>
-
-        <div class="setup-box">
-          <div class="setup-label">Board &amp; Arena Theme</div>
-          <div id="arenaGroup" class="pills-3">
-            <button type="button" class="choice-btn selected" data-arena="PITCH">Emerald Pitch</button>
-            <button type="button" class="choice-btn" data-arena="TURF">Championship Turf</button>
-            <button type="button" class="choice-btn" data-arena="MIDNIGHT">Midnight Arena</button>
+            <button type="button" class="choice-btn" data-fmt="SINGLE">Single Round</button>
+            <button type="button" class="choice-btn selected" data-fmt="BO3">Best of 3</button>
+            <button type="button" class="choice-btn" data-fmt="BO5">Best of 5</button>
+            <button type="button" class="choice-btn" data-fmt="ENDLESS">Endless Series</button>
           </div>
         </div>
 
         <button id="startMatchBtn" type="button" class="btn-primary">
-          START MATCH
+          Start Match
         </button>
-
-        <div class="btn-stack" style="margin-top:6px;">
-          <button id="viewStatsFromSetupBtn" type="button" class="btn-secondary">VIEW STATS</button>
-        </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL
+         3. SCREENSHOT PREVIEW & PNG DOWNLOAD MODAL (WITH BACK BUTTON)
          ====================================================================== -->
     <div id="screenshotModal" class="modal-backdrop">
       <div class="modal-card" style="max-width:365px;text-align:center;">
         <div class="modal-head">
-          <h2 class="modal-h2">Board Screenshot</h2>
+          <h2 class="modal-h2">Board Snapshot</h2>
           <p class="modal-sub">Tic Tac Toe</p>
         </div>
         <img id="screenshotImg" class="shot-preview-img" alt="Tic Tac Toe Screenshot" />
         <div class="btn-stack">
           <a id="downloadShotBtn" download="Tic-Tac-Toe.png" class="btn-primary">Download PNG</a>
-          <button id="closeShotBtn" type="button" class="btn-secondary">Resume</button>
-          <a href="tic-tac-toe.html" class="btn-secondary">&larr; Back to tic-tac-toe.html</a>
+          <button id="closeShotBtn" type="button" class="btn-secondary">Close</button>
         </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         4. PAUSE MODAL
+         4. PAUSE MODAL (KEEPS PRIMARY RESUME CONTROL & TOP-LEFT <- RESET)
          ====================================================================== -->
     <div id="pauseModal" class="modal-backdrop">
       <div class="modal-card" style="max-width:335px;text-align:center;">
@@ -1208,79 +1098,41 @@
           <button id="restartRoundFromPauseBtn" type="button" class="btn-secondary">Restart Round</button>
           <button id="setupFromPauseBtn" type="button" class="btn-secondary">Match Setup</button>
           <button id="statsFromPauseBtn" type="button" class="btn-secondary">View Stats</button>
-          <a href="tic-tac-toe.html" class="btn-secondary">&larr; Back to tic-tac-toe.html</a>
         </div>
       </div>
     </div>
 
     <!-- ======================================================================
-         5. STATISTICS MODAL (WITH RESET STATS OPTION)
-         ====================================================================== -->
-    <div id="statsModal" class="modal-backdrop">
-      <div class="modal-card" style="max-width:360px;text-align:center;">
-        <div class="modal-head">
-          <h2 class="modal-h2">Career Statistics</h2>
-          <p class="modal-sub">Tic Tac Toe</p>
-        </div>
-
-        <div class="stats-box">
-          <div class="stats-row">
-            <span>Matches Played</span>
-            <span id="stPlayedVal" style="font-weight:900;color:var(--ttt-gold);">0</span>
-          </div>
-          <div class="stats-row">
-            <span>Wins / Losses / Draws</span>
-            <span id="stWldVal" style="font-weight:900;color:var(--ttt-emerald);">0 / 0 / 0</span>
-          </div>
-          <div class="stats-row">
-            <span>Current Win Streak</span>
-            <span id="stStreakVal" style="font-weight:900;">0</span>
-          </div>
-          <div class="stats-row">
-            <span>Best Win Streak</span>
-            <span id="stBestStreakVal" style="font-weight:900;color:var(--ttt-gold);">0</span>
-          </div>
-        </div>
-
-        <div class="btn-stack">
-          <button id="resetStatsBtn" type="button" class="btn-secondary">Reset Stats</button>
-          <button id="closeStatsBtn" type="button" class="btn-primary">Close</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ======================================================================
-         6. MATCH SUMMARY MODAL
+         5. CAREER STATS & SERIES SUMMARY MODAL
          ====================================================================== -->
     <div id="summaryModal" class="modal-backdrop">
-      <div class="modal-card" style="max-width:365px;text-align:center;">
+      <div class="modal-card" style="max-width:360px;text-align:center;">
         <div style="font-size:40px;margin-bottom:4px;">&#127942;</div>
-        <h2 id="summaryTitle" class="modal-h2">MATCH COMPLETE!</h2>
+        <h2 id="summaryTitle" class="modal-h2">SERIES COMPLETE</h2>
         <p id="summarySub" class="modal-sub">Tic Tac Toe</p>
 
         <div class="stats-box">
           <div class="stats-row">
-            <span>Final Match Score</span>
-            <span id="sumScoreVal" style="font-weight:900;color:var(--ttt-gold);">0 - 0</span>
+            <span>Series Score (X &ndash; O)</span>
+            <span id="statSeriesScore" style="font-weight:900;color:var(--ttt-amber);">0 &ndash; 0</span>
           </div>
           <div class="stats-row">
-            <span>Rounds Played &bull; Draws</span>
-            <span id="sumRoundsDrawsVal" style="font-weight:900;color:var(--ttt-emerald);">0 &bull; 0</span>
+            <span>Matches Played</span>
+            <span id="statMatchesPlayed" style="font-weight:900;color:var(--ttt-emerald);">0</span>
           </div>
           <div class="stats-row">
-            <span>Win Streak &bull; Best Streak</span>
-            <span id="sumStreaksVal" style="font-weight:900;">0 &bull; 0</span>
+            <span>Wins &bull; Draws</span>
+            <span id="statWinsDraws" style="font-weight:900;">0 &bull; 0</span>
           </div>
           <div class="stats-row">
-            <span>Total Matches Won</span>
-            <span id="sumCareerWinsVal" style="font-weight:900;color:var(--ttt-gold);">0</span>
+            <span>Best Win Streak</span>
+            <span id="statStreak" style="font-weight:900;color:var(--ttt-amber);">0</span>
           </div>
         </div>
 
         <div class="btn-stack">
-          <button id="rematchFromSummaryBtn" type="button" class="btn-primary">Quick Rematch</button>
+          <button id="summaryPrimaryBtn" type="button" class="btn-primary">New Series</button>
           <button id="setupFromSummaryBtn" type="button" class="btn-secondary">Match Setup</button>
-          <a href="tic-tac-toe.html" class="btn-secondary">&larr; Back to tic-tac-toe.html</a>
         </div>
       </div>
     </div>
@@ -1288,34 +1140,34 @@
 
   <script>
     /* ========================================================================
-       10 NATIONS ROSTER, STAR PRESETS, WIN LINES & STORAGE SCHEMA
+       10 NATIONS ROSTER, STAR PRESETS & PERSISTENT STATS SCHEMA
        ======================================================================== */
     const TTT_NATIONS_10 = [
-      { code: 'BAN', name: 'Bangladesh', kit: '#0a7d3b' },
-      { code: 'KOR', name: 'South Korea', kit: '#1d4ed8' },
-      { code: 'USA', name: 'United States', kit: '#b91c1c' },
-      { code: 'JPN', name: 'Japan', kit: '#dc2626' },
-      { code: 'IND', name: 'India', kit: '#ea580c' },
-      { code: 'ITA', name: 'Italy', kit: '#059669' },
-      { code: 'TUR', name: 'Turkey', kit: '#e11d48' },
-      { code: 'GER', name: 'Germany', kit: '#0f172a' },
-      { code: 'TPE', name: 'Chinese Taipei', kit: '#2563eb' },
-      { code: 'GBR', name: 'Great Britain', kit: '#1e3a8a' }
+      { code: 'BAN', name: 'Bangladesh', primary: '#10b981', kit: '#0a7d3b' },
+      { code: 'JPN', name: 'Japan', primary: '#ef4444', kit: '#dc2626' },
+      { code: 'GER', name: 'Germany', primary: '#f59e0b', kit: '#0f172a' },
+      { code: 'ITA', name: 'Italy', primary: '#22c55e', kit: '#15803d' },
+      { code: 'GBR', name: 'Great Britain', primary: '#3b82f6', kit: '#1d4ed8' },
+      { code: 'USA', name: 'USA', primary: '#60a5fa', kit: '#1d4ed8' },
+      { code: 'BRA', name: 'Brazil', primary: '#facc15', kit: '#15803d' },
+      { code: 'FRA', name: 'France', primary: '#38bdf8', kit: '#2563eb' },
+      { code: 'KOR', name: 'South Korea', primary: '#f43f5e', kit: '#1d4ed8' },
+      { code: 'IND', name: 'India', primary: '#fb923c', kit: '#ea580c' }
     ];
 
     const TTT_STAR_PRESETS = [
-      { name: 'ARIF HASAN', nation: 'BAN', badge: 1 },
-      { name: 'SOO-BIN PARK', nation: 'KOR', badge: 7 },
-      { name: 'ALEX MORGAN', nation: 'USA', badge: 13 },
-      { name: 'REN TAKAHASHI', nation: 'JPN', badge: 10 },
-      { name: 'VIKRAM PATEL', nation: 'IND', badge: 9 },
-      { name: 'ELENA ROSSI', nation: 'ITA', badge: 11 }
+      { name: 'RASHID KHAN', nation: 'BAN', badge: 1 },
+      { name: 'HARUTO SATO', nation: 'JPN', badge: 7 },
+      { name: 'LUKAS WEBER', nation: 'GER', badge: 11 },
+      { name: 'MARCO ROSSI', nation: 'ITA', badge: 16 },
+      { name: 'LIAM VANCE', nation: 'GBR', badge: 44 },
+      { name: 'GABRIEL SILVA', nation: 'BRA', badge: 10 }
     ];
 
-    const WIN_PATTERNS = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-      [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-      [0, 4, 8], [2, 4, 6]             // Diagonals
+    const WIN_LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
     ];
 
     const TTT_STATS_KEY = 'autrobook_tic_tac_toe_stats_v1';
@@ -1346,41 +1198,56 @@
         return this.muted;
       }
 
-      playTap(isX = true) {
+      playClick() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playMove(isX) {
         if (this.muted || !this.ctx) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         osc.type = isX ? 'triangle' : 'sine';
-        osc.frequency.setValueAtTime(isX ? 540 : 440, now);
-        osc.frequency.exponentialRampToValueAtTime(isX ? 740 : 620, now + 0.075);
+        osc.frequency.setValueAtTime(isX ? 520 : 410, now);
+        osc.frequency.exponentialRampToValueAtTime(isX ? 740 : 580, now + 0.08);
         g.gain.setValueAtTime(0.12, now);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
         osc.connect(g);
         g.connect(this.ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.085);
+        osc.stop(now + 0.095);
       }
 
-      playWinChime() {
+      playWin() {
         if (this.muted || !this.ctx) return;
         const now = this.ctx.currentTime;
-        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
           const osc = this.ctx.createOscillator();
           const g = this.ctx.createGain();
           osc.type = 'triangle';
           const t0 = now + idx * 0.08;
           osc.frequency.setValueAtTime(freq, t0);
           g.gain.setValueAtTime(0.14, t0);
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
           osc.connect(g);
           g.connect(this.ctx.destination);
           osc.start(t0);
-          osc.stop(t0 + 0.24);
+          osc.stop(t0 + 0.25);
         });
       }
 
-      playDrawTone() {
+      playDraw() {
         if (this.muted || !this.ctx) return;
         const now = this.ctx.currentTime;
         [392.0, 349.23].forEach((freq, idx) => {
@@ -1397,74 +1264,35 @@
           osc.stop(t0 + 0.19);
         });
       }
-
-      playMatchFanfare() {
-        if (this.muted || !this.ctx) return;
-        const now = this.ctx.currentTime;
-        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
-          const osc = this.ctx.createOscillator();
-          const g = this.ctx.createGain();
-          osc.type = 'triangle';
-          const t0 = now + idx * 0.11;
-          osc.frequency.setValueAtTime(freq, t0);
-          g.gain.setValueAtTime(0.16, t0);
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
-          osc.connect(g);
-          g.connect(this.ctx.destination);
-          osc.start(t0);
-          osc.stop(t0 + 0.32);
-        });
-      }
     }
 
     /* ========================================================================
-       TIC TAC TOE GAME ENGINE (MINIMAX AI, ROSTERS, FORMATS & STATS)
+       TIC TAC TOE GAME ENGINE (MINIMAX AI, SERIES FORMATS, SCREENSHOT & STATS)
        ======================================================================== */
-    class TicTacToeGame {
+    class TicTacToeEngine {
       constructor() {
         this.audio = new TTTAudioSynth();
-        this.gridEl = document.getElementById('tttGrid');
-        this.strikeSvg = document.getElementById('winStrikeOverlay');
 
         this.mode = 'AI_TACTICAL'; // AI_CASUAL, AI_TACTICAL, AI_UNBEATABLE, LOCAL_2P
-        this.p1Mark = 'X'; // 'X' or 'O'
-        this.formatKey = 'BEST_3'; // BEST_3, BEST_5, FIRST_5, SINGLE
-        this.arenaTheme = 'PITCH'; // PITCH, TURF, MIDNIGHT
+        this.formatKey = 'BO3'; // SINGLE, BO3, BO5, ENDLESS
 
         const saved = this.loadStats();
         this.stats = {
           played: saved.played || 0,
           wins: saved.wins || 0,
-          losses: saved.losses || 0,
           draws: saved.draws || 0,
-          streak: saved.streak || 0,
-          bestStreak: saved.bestStreak || 0
+          streak: saved.streak || 0
         };
-        this.countedMatchResult = false;
+        this.currentStreak = 0;
 
-        this.p1 = {
-          name: 'ARIF HASAN',
-          nation: TTT_NATIONS_10[0],
-          badge: 1,
-          score: 0
-        };
-
-        this.p2 = {
-          name: 'SOO-BIN PARK',
-          nation: TTT_NATIONS_10[1],
-          badge: 7,
-          score: 0
-        };
+        this.p1Meta = { name: 'RASHID KHAN', nation: TTT_NATIONS_10[0], badge: 1, score: 0 };
+        this.p2Meta = { name: 'HARUTO SATO', nation: TTT_NATIONS_10[1], badge: 7, score: 0 };
 
         this.board = Array(9).fill(null);
-        this.currentTurn = 'X';
-        this.roundNumber = 1;
-        this.roundStarter = 'X';
-        this.roundsPlayed = 0;
-        this.drawsInMatch = 0;
-        this.winningLine = null;
+        this.currentMark = 'X';
+        this.roundNum = 1;
         this.roundOver = false;
-        this.matchOver = false;
+        this.winLine = null;
         this.aiTimer = null;
 
         this.introActive = true;
@@ -1476,8 +1304,8 @@
         this.syncThemeIcon();
         this.populateSetupUI();
         this.bindEvents();
-        this.resizeBoard();
-        this.startNewMatch(false);
+        this.resetBoardOnly('X');
+        this.refreshHUD();
         this.startIntro();
       }
 
@@ -1501,13 +1329,6 @@
             showFallback();
           }
         });
-      }
-
-      clearAITimer() {
-        if (this.aiTimer) {
-          clearTimeout(this.aiTimer);
-          this.aiTimer = null;
-        }
       }
 
       loadStats() {
@@ -1544,6 +1365,17 @@
         el.classList.add('show');
         clearTimeout(this.toastTimer);
         this.toastTimer = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+
+      getNation(code) {
+        return TTT_NATIONS_10.find((n) => n.code === code) || TTT_NATIONS_10[0];
+      }
+
+      getWinsNeeded() {
+        if (this.formatKey === 'SINGLE') return 1;
+        if (this.formatKey === 'BO3') return 2;
+        if (this.formatKey === 'BO5') return 3;
+        return 9999;
       }
 
       populateSetupUI() {
@@ -1584,7 +1416,8 @@
                 document.getElementById('p2NationSel').value = st.nation;
                 document.getElementById('p2BadgeInp').value = String(st.badge);
               }
-              this.audio.playTap(true);
+              this.audio.unlock();
+              this.audio.playClick();
             });
             wrap.appendChild(btn);
           });
@@ -1594,430 +1427,243 @@
         buildStarRow('p2StarRow', false);
       }
 
-      getNation(code) {
-        return TTT_NATIONS_10.find((n) => n.code === code) || TTT_NATIONS_10[0];
+      resetSeries(starterMark = 'X') {
+        clearTimeout(this.aiTimer);
+        this.p1Meta.score = 0;
+        this.p2Meta.score = 0;
+        this.roundNum = 1;
+        this.currentStreak = 0;
+        this.resetBoardOnly(starterMark);
+        this.refreshHUD();
       }
 
-      resizeBoard() {
-        const stage = document.getElementById('boardStage').getBoundingClientRect();
-        const availW = Math.max(210, stage.width - 28);
-        const availH = Math.max(210, stage.height - 28);
-        const side = Math.floor(Math.min(availW, availH, 360));
-        const frame = document.getElementById('boardFrame');
-        frame.style.width = `${side + 20}px`;
-        frame.style.height = `${side + 20}px`;
-        this.gridEl.style.width = `${side}px`;
-        this.gridEl.style.height = `${side}px`;
+      resetBoardOnly(starterMark = null) {
+        clearTimeout(this.aiTimer);
+        this.board = Array(9).fill(null);
+        this.roundOver = false;
+        this.winLine = null;
+        this.currentMark = starterMark || (this.roundNum % 2 === 1 ? 'X' : 'O');
+        this.renderBoard();
+        this.refreshHUD();
+        this.scheduleAIMoveIfNeeded();
       }
 
-      getP2Mark() {
-        return this.p1Mark === 'X' ? 'O' : 'X';
+      returnToGameStart() {
+        this.audio.unlock();
+        this.audio.playClick();
+        clearTimeout(this.aiTimer);
+
+        document.getElementById('pauseModal').classList.remove('open');
+        document.getElementById('summaryModal').classList.remove('open');
+        document.getElementById('screenshotModal').classList.remove('open');
+
+        this.setupOpen = false;
+        this.shotModalOpen = false;
+        this.paused = true;
+        this.resetSeries('X');
+
+        this.introActive = true;
+        document.getElementById('tttIntroScreen').classList.remove('hidden');
+        this.startIntro();
       }
 
-      getOwnerByMark(mark) {
-        return mark === this.p1Mark ? 0 : 1;
-      }
-
-      isAITurn() {
-        if (this.mode === 'LOCAL_2P') return false;
-        if (this.paused || this.roundOver || this.matchOver || this.setupOpen || this.introActive) return false;
-        return this.currentTurn === this.getP2Mark();
-      }
-
-      evaluateBoard(bd) {
-        for (const line of WIN_PATTERNS) {
-          const [a, b, c] = line;
-          if (bd[a] && bd[a] === bd[b] && bd[a] === bd[c]) {
-            return { winner: bd[a], line };
+      checkWinner(b) {
+        for (const line of WIN_LINES) {
+          const [a, c1, c2] = line;
+          if (b[a] && b[a] === b[c1] && b[a] === b[c2]) {
+            return { winner: b[a], line };
           }
         }
-        if (bd.every((cell) => cell !== null)) {
+        if (b.every((v) => v !== null)) {
           return { winner: 'DRAW', line: null };
         }
         return null;
       }
 
-      getPointsToWinMatch() {
-        if (this.formatKey === 'BEST_3') return 2;
-        if (this.formatKey === 'BEST_5') return 3;
-        if (this.formatKey === 'FIRST_5') return 5;
-        return 1;
+      chooseAIMove() {
+        const empty = [];
+        for (let i = 0; i < 9; i++) {
+          if (!this.board[i]) empty.push(i);
+        }
+        if (!empty.length) return -1;
+
+        if (this.mode === 'AI_CASUAL') {
+          return empty[Math.floor(Math.random() * empty.length)];
+        }
+
+        if (this.mode === 'AI_TACTICAL' && Math.random() < 0.35) {
+          return empty[Math.floor(Math.random() * empty.length)];
+        }
+
+        let bestScore = -Infinity;
+        let bestMove = empty[0];
+        for (const idx of empty) {
+          this.board[idx] = 'O';
+          const score = this.minimax(this.board, 0, false);
+          this.board[idx] = null;
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = idx;
+          }
+        }
+        return bestMove;
       }
 
-      startNewMatch(triggerAI = true) {
-        this.clearAITimer();
-        this.p1.score = 0;
-        this.p2.score = 0;
-        this.roundNumber = 1;
-        this.roundStarter = 'X';
-        this.roundsPlayed = 0;
-        this.drawsInMatch = 0;
-        this.matchOver = false;
-        this.countedMatchResult = false;
-        this.setupRoundBoard('X');
-        if (triggerAI) this.scheduleAIMoveIfNeeded();
+      minimax(b, depth, isMaximizing) {
+        const res = this.checkWinner(b);
+        if (res) {
+          if (res.winner === 'O') return 10 - depth;
+          if (res.winner === 'X') return depth - 10;
+          return 0;
+        }
+
+        if (isMaximizing) {
+          let best = -Infinity;
+          for (let i = 0; i < 9; i++) {
+            if (!b[i]) {
+              b[i] = 'O';
+              best = Math.max(best, this.minimax(b, depth + 1, false));
+              b[i] = null;
+            }
+          }
+          return best;
+        } else {
+          let best = Infinity;
+          for (let i = 0; i < 9; i++) {
+            if (!b[i]) {
+              b[i] = 'X';
+              best = Math.min(best, this.minimax(b, depth + 1, true));
+              b[i] = null;
+            }
+          }
+          return best;
+        }
       }
 
-      setupRoundBoard(starterMark) {
-        this.clearAITimer();
-        this.board = Array(9).fill(null);
-        this.currentTurn = starterMark;
-        this.winningLine = null;
-        this.roundOver = false;
-        this.strikeSvg.innerHTML = '';
+      scheduleAIMoveIfNeeded() {
+        clearTimeout(this.aiTimer);
+        if (this.paused || this.roundOver || this.introActive || this.setupOpen || this.shotModalOpen) return;
+        const isAISpot = this.mode !== 'LOCAL_2P' && this.currentMark === 'O';
+        if (!isAISpot) return;
+
+        this.aiTimer = setTimeout(() => {
+          if (this.paused || this.roundOver || this.currentMark !== 'O') return;
+          const moveIdx = this.chooseAIMove();
+          if (moveIdx !== -1) {
+            this.playMarkAt(moveIdx);
+          }
+        }, 320);
+      }
+
+      playMarkAt(idx) {
+        if (this.paused || this.roundOver || this.board[idx] !== null) return false;
+        this.audio.unlock();
+        const mark = this.currentMark;
+        this.board[idx] = mark;
+        this.audio.playMove(mark === 'X');
+
+        const outcome = this.checkWinner(this.board);
         this.renderBoard();
-        this.refreshHUD();
-      }
 
-      startNextRound() {
-        if (this.matchOver || !this.roundOver) return;
-        this.roundNumber++;
-        this.roundStarter = this.roundStarter === 'X' ? 'O' : 'X';
-        this.setupRoundBoard(this.roundStarter);
-        this.showToast(`ROUND ${this.roundNumber} STARTED`);
-        this.scheduleAIMoveIfNeeded();
-      }
-
-      makeMove(index) {
-        if (this.paused || this.roundOver || this.matchOver) return false;
-        if (index < 0 || index > 8 || this.board[index] !== null) return false;
-
-        const mark = this.currentTurn;
-        this.board[index] = mark;
-        this.audio.playTap(mark === 'X');
-
-        const outcome = this.evaluateBoard(this.board);
         if (outcome) {
           this.handleRoundOutcome(outcome);
           return true;
         }
 
-        this.currentTurn = mark === 'X' ? 'O' : 'X';
-        this.renderBoard();
+        this.currentMark = mark === 'X' ? 'O' : 'X';
         this.refreshHUD();
         this.scheduleAIMoveIfNeeded();
         return true;
       }
 
       handleRoundOutcome(outcome) {
-        this.clearAITimer();
         this.roundOver = true;
-        this.roundsPlayed++;
+        this.stats.played++;
 
         if (outcome.winner === 'DRAW') {
-          this.drawsInMatch++;
-          this.audio.playDrawTone();
-          this.showToast(`ROUND ${this.roundNumber} DRAW`);
-        } else {
-          this.winningLine = outcome.line;
-          const winnerOwner = this.getOwnerByMark(outcome.winner);
-          if (winnerOwner === 0) {
-            this.p1.score++;
-            this.showToast(`${this.p1.name} WINS ROUND!`);
-          } else {
-            this.p2.score++;
-            this.showToast(`${this.p2.name} WINS ROUND!`);
-          }
-          this.audio.playWinChime();
+          this.stats.draws++;
+          this.currentStreak = 0;
+          this.saveStats();
+          this.audio.playDraw();
+          this.showToast('ROUND DRAW');
+          this.refreshHUD();
+          return;
         }
 
+        this.winLine = outcome.line;
         this.renderBoard();
-        this.checkMatchConclusion();
+        this.audio.playWin();
+
+        if (outcome.winner === 'X') {
+          this.p1Meta.score++;
+          this.stats.wins++;
+          this.currentStreak++;
+          if (this.currentStreak > this.stats.streak) {
+            this.stats.streak = this.currentStreak;
+          }
+          this.showToast(`${this.p1Meta.name} WINS ROUND`);
+        } else {
+          this.p2Meta.score++;
+          this.currentStreak = 0;
+          this.showToast(`${this.p2Meta.name} WINS ROUND`);
+        }
+
+        this.saveStats();
         this.refreshHUD();
+
+        const winsNeeded = this.getWinsNeeded();
+        if (this.p1Meta.score >= winsNeeded || this.p2Meta.score >= winsNeeded) {
+          const champion = this.p1Meta.score >= winsNeeded ? this.p1Meta.name : this.p2Meta.name;
+          setTimeout(() => {
+            this.openSummaryModal(`${champion} WINS SERIES!`, 'Match Complete', true);
+          }, 550);
+        }
       }
 
-      checkMatchConclusion() {
-        const ptsNeeded = this.getPointsToWinMatch();
-        const maxRounds = this.formatKey === 'BEST_3' ? 3 : this.formatKey === 'BEST_5' ? 5 : this.formatKey === 'SINGLE' ? 1 : 99;
-
-        let decided = false;
-        if (this.p1.score >= ptsNeeded || this.p2.score >= ptsNeeded) {
-          decided = true;
-        } else if (this.roundsPlayed >= maxRounds) {
-          decided = true;
-        }
-
-        if (!decided) return;
-
-        this.matchOver = true;
-        this.audio.playMatchFanfare();
-
-        let titleText = 'MATCH DRAWN!';
-        let subText = 'Evenly contested series';
-
-        if (!this.countedMatchResult) {
-          this.countedMatchResult = true;
-          this.stats.played++;
-          if (this.p1.score > this.p2.score) {
-            this.stats.wins++;
-            this.stats.streak++;
-            if (this.stats.streak > this.stats.bestStreak) {
-              this.stats.bestStreak = this.stats.streak;
-            }
-            titleText = `${this.p1.name} WINS!`;
-            subText = `${this.p1.nation.code} Championship Victory`;
-          } else if (this.p2.score > this.p1.score) {
-            this.stats.losses++;
-            this.stats.streak = 0;
-            titleText = `${this.p2.name} WINS!`;
-            subText = `${this.p2.nation.code} Championship Victory`;
-          } else {
-            this.stats.draws++;
-            this.stats.streak = 0;
-          }
-          this.saveStats();
-        }
-
-        document.getElementById('summaryTitle').textContent = titleText;
-        document.getElementById('summarySub').textContent = subText;
-        document.getElementById('sumScoreVal').textContent = `${this.p1.score} - ${this.p2.score}`;
-        document.getElementById('sumRoundsDrawsVal').textContent = `${this.roundsPlayed} • ${this.drawsInMatch}`;
-        document.getElementById('sumStreaksVal').textContent = `${this.stats.streak} • ${this.stats.bestStreak}`;
-        document.getElementById('sumCareerWinsVal').textContent = String(this.stats.wins);
+      openSummaryModal(title, sub, isSeriesEnd) {
+        document.getElementById('summaryTitle').textContent = title;
+        document.getElementById('summarySub').textContent = sub;
+        document.getElementById('statSeriesScore').textContent = `${this.p1Meta.score} – ${this.p2Meta.score}`;
+        document.getElementById('statMatchesPlayed').textContent = String(this.stats.played);
+        document.getElementById('statWinsDraws').textContent = `${this.stats.wins} • ${this.stats.draws}`;
+        document.getElementById('statStreak').textContent = String(this.stats.streak);
+        document.getElementById('summaryPrimaryBtn').textContent = isSeriesEnd ? 'New Series' : 'Next Round';
         document.getElementById('summaryModal').classList.add('open');
       }
 
       /* ======================================================================
-         AI ENGINE (CASUAL, TACTICAL & UNBEATABLE MINIMAX WITH ALPHA-BETA)
+         BOARD RENDER, HUD REFRESH, SCREENSHOT & INPUT EVENTS
          ====================================================================== */
-      scheduleAIMoveIfNeeded() {
-        this.clearAITimer();
-        if (!this.isAITurn()) return;
-
-        const delay = this.mode === 'AI_UNBEATABLE' ? 240 : this.mode === 'AI_TACTICAL' ? 320 : 380;
-        this.aiTimer = setTimeout(() => {
-          this.aiTimer = null;
-          if (!this.isAITurn()) return;
-          const chosenIdx = this.computeAIMove();
-          if (chosenIdx !== null && chosenIdx !== undefined) {
-            this.makeMove(chosenIdx);
-          }
-        }, delay);
-      }
-
-      computeAIMove() {
-        const aiMark = this.getP2Mark();
-        const humanMark = this.p1Mark;
-        const available = [];
-        for (let i = 0; i < 9; i++) {
-          if (this.board[i] === null) available.push(i);
-        }
-        if (!available.length) return null;
-
-        if (this.mode === 'AI_CASUAL') {
-          if (Math.random() < 0.45) {
-            return available[Math.floor(Math.random() * available.length)];
-          }
-          const winMove = this.findImmediateLineMove(this.board, aiMark);
-          if (winMove !== null) return winMove;
-          const blockMove = this.findImmediateLineMove(this.board, humanMark);
-          if (blockMove !== null && Math.random() < 0.65) return blockMove;
-          return available[Math.floor(Math.random() * available.length)];
-        }
-
-        if (this.mode === 'AI_TACTICAL') {
-          const winMove = this.findImmediateLineMove(this.board, aiMark);
-          if (winMove !== null) return winMove;
-          const blockMove = this.findImmediateLineMove(this.board, humanMark);
-          if (blockMove !== null) return blockMove;
-          if (Math.random() < 0.28) {
-            return available[Math.floor(Math.random() * available.length)];
-          }
-          return this.minimaxBestMove(this.board, aiMark, humanMark);
-        }
-
-        // AI_UNBEATABLE: Full minimax with depth preference for fast wins & delayed losses
-        return this.minimaxBestMove(this.board, aiMark, humanMark);
-      }
-
-      findImmediateLineMove(bd, mark) {
-        for (const [a, b, c] of WIN_PATTERNS) {
-          const vals = [bd[a], bd[b], bd[c]];
-          const countMark = vals.filter((v) => v === mark).length;
-          const countEmpty = vals.filter((v) => v === null).length;
-          if (countMark === 2 && countEmpty === 1) {
-            if (bd[a] === null) return a;
-            if (bd[b] === null) return b;
-            if (bd[c] === null) return c;
-          }
-        }
-        return null;
-      }
-
-      minimaxBestMove(bd, aiMark, humanMark) {
-        let bestScore = -Infinity;
-        let bestMoves = [];
-
-        for (let i = 0; i < 9; i++) {
-          if (bd[i] === null) {
-            bd[i] = aiMark;
-            const score = this.minimax(bd, 0, false, -Infinity, Infinity, aiMark, humanMark);
-            bd[i] = null;
-            if (score > bestScore) {
-              bestScore = score;
-              bestMoves = [i];
-            } else if (score === bestScore) {
-              bestMoves.push(i);
-            }
-          }
-        }
-
-        if (!bestMoves.length) return null;
-        return bestMoves[Math.floor(Math.random() * bestMoves.length)];
-      }
-
-      minimax(bd, depth, isMaximizing, alpha, beta, aiMark, humanMark) {
-        const res = this.evaluateBoard(bd);
-        if (res) {
-          if (res.winner === aiMark) return 100 - depth;
-          if (res.winner === humanMark) return depth - 100;
-          return 0;
-        }
-
-        if (isMaximizing) {
-          let maxEval = -Infinity;
-          for (let i = 0; i < 9; i++) {
-            if (bd[i] === null) {
-              bd[i] = aiMark;
-              const ev = this.minimax(bd, depth + 1, false, alpha, beta, aiMark, humanMark);
-              bd[i] = null;
-              if (ev > maxEval) maxEval = ev;
-              if (ev > alpha) alpha = ev;
-              if (beta <= alpha) break;
-            }
-          }
-          return maxEval;
-        } else {
-          let minEval = Infinity;
-          for (let i = 0; i < 9; i++) {
-            if (bd[i] === null) {
-              bd[i] = humanMark;
-              const ev = this.minimax(bd, depth + 1, true, alpha, beta, aiMark, humanMark);
-              bd[i] = null;
-              if (ev < minEval) minEval = ev;
-              if (ev < beta) beta = ev;
-              if (beta <= alpha) break;
-            }
-          }
-          return minEval;
-        }
-      }
-
-      /* ======================================================================
-         RENDERING BOARD, WIN LINE, HUD & STATS
-         ====================================================================== */
-      createMarkSvg(mark, extraClass = '') {
-        const svgNS = 'http://www.w3.org/2000/svg';
-        const svg = document.createElementNS(svgNS, 'svg');
-        svg.setAttribute('viewBox', '0 0 64 64');
-        svg.setAttribute('class', `mark-svg ${extraClass}`.trim());
-
-        if (mark === 'X') {
-          const l1 = document.createElementNS(svgNS, 'line');
-          l1.setAttribute('x1', '14');
-          l1.setAttribute('y1', '14');
-          l1.setAttribute('x2', '50');
-          l1.setAttribute('y2', '50');
-          l1.setAttribute('stroke', 'var(--x-color)');
-          l1.setAttribute('stroke-width', '8');
-          l1.setAttribute('stroke-linecap', 'round');
-
-          const l2 = document.createElementNS(svgNS, 'line');
-          l2.setAttribute('x1', '50');
-          l2.setAttribute('y1', '14');
-          l2.setAttribute('x2', '14');
-          l2.setAttribute('y2', '50');
-          l2.setAttribute('stroke', 'var(--x-color)');
-          l2.setAttribute('stroke-width', '8');
-          l2.setAttribute('stroke-linecap', 'round');
-
-          svg.appendChild(l1);
-          svg.appendChild(l2);
-        } else {
-          const circ = document.createElementNS(svgNS, 'circle');
-          circ.setAttribute('cx', '32');
-          circ.setAttribute('cy', '32');
-          circ.setAttribute('r', '19');
-          circ.setAttribute('fill', 'none');
-          circ.setAttribute('stroke', 'var(--o-color)');
-          circ.setAttribute('stroke-width', '8');
-          svg.appendChild(circ);
-        }
-
-        return svg;
-      }
-
       renderBoard() {
-        this.gridEl.innerHTML = '';
-        const winSet = new Set(this.winningLine || []);
-        const canInteract = !this.paused && !this.roundOver && !this.matchOver && !this.isAITurn();
+        const cells = document.querySelectorAll('#boardFrame .ttt-cell');
+        cells.forEach((cellEl, idx) => {
+          const val = this.board[idx];
+          const glyphEl = cellEl.querySelector('.cell-glyph');
+          glyphEl.textContent = val || '';
 
-        for (let i = 0; i < 9; i++) {
-          const cell = document.createElement('button');
-          cell.type = 'button';
-          const occupied = this.board[i] !== null;
-          cell.className = 'ttt-cell' +
-            (i % 2 === 1 ? ' alt-cell' : '') +
-            (occupied ? ' occupied' : '') +
-            (winSet.has(i) ? ' winning-cell' : '');
-          cell.disabled = occupied || !canInteract;
-          cell.setAttribute('aria-label', `Cell ${i + 1}`);
-
-          const keyHint = document.createElement('span');
-          keyHint.className = 'cell-key-hint';
-          keyHint.textContent = String(i + 1);
-          cell.appendChild(keyHint);
-
-          if (this.board[i]) {
-            cell.appendChild(this.createMarkSvg(this.board[i], 'placed'));
-          } else if (canInteract) {
-            cell.appendChild(this.createMarkSvg(this.currentTurn, 'preview'));
+          cellEl.classList.remove('mark-x', 'mark-o', 'occupied', 'win-cell', 'locked');
+          if (val === 'X') {
+            cellEl.classList.add('mark-x', 'occupied');
+          } else if (val === 'O') {
+            cellEl.classList.add('mark-o', 'occupied');
           }
-
-          cell.addEventListener('click', () => {
-            this.audio.unlock();
-            this.makeMove(i);
-          });
-
-          this.gridEl.appendChild(cell);
-        }
-
-        this.renderWinStrikeLine();
-      }
-
-      renderWinStrikeLine() {
-        this.strikeSvg.innerHTML = '';
-        if (!this.winningLine || this.winningLine.length !== 3) return;
-
-        const centers = [
-          [50, 50], [150, 50], [250, 50],
-          [50, 150], [150, 150], [250, 150],
-          [50, 250], [150, 250], [250, 250]
-        ];
-        const [startIdx, , endIdx] = this.winningLine;
-        const [x1, y1] = centers[startIdx];
-        const [x2, y2] = centers[endIdx];
-
-        const svgNS = 'http://www.w3.org/2000/svg';
-        const line = document.createElementNS(svgNS, 'line');
-        line.setAttribute('x1', String(x1));
-        line.setAttribute('y1', String(y1));
-        line.setAttribute('x2', String(x2));
-        line.setAttribute('y2', String(y2));
-        line.setAttribute('stroke', '#fbbf24');
-        line.setAttribute('stroke-width', '10');
-        line.setAttribute('stroke-linecap', 'round');
-        this.strikeSvg.appendChild(line);
+          if (this.roundOver || this.paused) {
+            cellEl.classList.add('locked');
+          }
+          if (this.winLine && this.winLine.includes(idx)) {
+            cellEl.classList.add('win-cell');
+          }
+        });
       }
 
       refreshHUD() {
-        document.getElementById('topScoreBadge').textContent = `${this.p1.score} - ${this.p2.score}`;
+        document.getElementById('seriesScoreBadge').textContent = `${this.p1Meta.score} – ${this.p2Meta.score}`;
 
         const fmtMap = {
-          BEST_3: 'BEST OF 3',
-          BEST_5: 'BEST OF 5',
-          FIRST_5: 'FIRST TO 5',
-          SINGLE: 'SINGLE MATCH'
+          SINGLE: 'SINGLE ROUND',
+          BO3: 'BEST OF 3',
+          BO5: 'BEST OF 5',
+          ENDLESS: 'ENDLESS SERIES'
         };
         const modeMap = {
           AI_CASUAL: 'CASUAL AI',
@@ -2025,123 +1671,92 @@
           AI_UNBEATABLE: 'UNBEATABLE AI',
           LOCAL_2P: '2P LOCAL'
         };
-        document.getElementById('statusSubRow').textContent =
-          `ROUND ${this.roundNumber} • ${fmtMap[this.formatKey]} • ${modeMap[this.mode]}`;
+        document.getElementById('statusBannerText').textContent =
+          `${fmtMap[this.formatKey]} • ${modeMap[this.mode]} • ROUND ${this.roundNum}`;
 
-        document.getElementById('p1DisplayName').textContent = this.p1.name;
+        document.getElementById('p1DisplayName').textContent = this.p1Meta.name;
         const b1 = document.getElementById('p1BadgeNum');
-        b1.textContent = `#${String(this.p1.badge).padStart(2, '0')}`;
-        b1.style.background = this.p1.nation.kit;
-        document.getElementById('p1SubLine').textContent = `${this.p1.nation.code} • MARK ${this.p1Mark}`;
-        document.getElementById('p1ScoreTag').textContent = `${this.p1.score} PTS`;
+        b1.textContent = `#${String(this.p1Meta.badge).padStart(2, '0')}`;
+        b1.style.background = this.p1Meta.nation.kit;
+        document.getElementById('p1SubLine').textContent = `${this.p1Meta.nation.code} • ${this.p1Meta.score} PTS`;
 
-        const p2Mark = this.getP2Mark();
-        document.getElementById('p2DisplayName').textContent = this.p2.name;
+        document.getElementById('p2DisplayName').textContent = this.p2Meta.name;
         const b2 = document.getElementById('p2BadgeNum');
-        b2.textContent = `#${String(this.p2.badge).padStart(2, '0')}`;
-        b2.style.background = this.p2.nation.kit;
-        document.getElementById('p2SubLine').textContent = `${this.p2.nation.code} • MARK ${p2Mark}`;
-        document.getElementById('p2ScoreTag').textContent = `${this.p2.score} PTS`;
+        b2.textContent = `#${String(this.p2Meta.badge).padStart(2, '0')}`;
+        b2.style.background = this.p2Meta.nation.kit;
+        document.getElementById('p2SubLine').textContent = `${this.p2Meta.nation.code} • ${this.p2Meta.score} PTS`;
 
-        const p1Active = !this.roundOver && !this.matchOver && this.currentTurn === this.p1Mark;
-        const p2Active = !this.roundOver && !this.matchOver && this.currentTurn === p2Mark;
-        document.getElementById('p1Card').classList.toggle('active-turn', p1Active);
-        document.getElementById('p2Card').classList.toggle('active-turn', p2Active);
+        const activeName = this.currentMark === 'X' ? this.p1Meta.name : this.p2Meta.name;
+        document.getElementById('turnCenterPill').textContent =
+          this.roundOver ? 'ROUND OVER' : `${this.currentMark} • ${activeName.split(' ')[0]}`;
 
-        if (this.matchOver) {
-          document.getElementById('roundTurnTitle').textContent = `R${this.roundNumber} • FINAL`;
-          document.getElementById('roundTurnSub').textContent = 'SERIES COMPLETE';
-        } else if (this.roundOver) {
-          document.getElementById('roundTurnTitle').textContent = `R${this.roundNumber} • OVER`;
-          document.getElementById('roundTurnSub').textContent = 'READY FOR NEXT ROUND';
-        } else {
-          const activeName = this.currentTurn === this.p1Mark ? this.p1.name : this.p2.name;
-          document.getElementById('roundTurnTitle').textContent = `R${this.roundNumber} • ${this.currentTurn} TURN`;
-          document.getElementById('roundTurnSub').textContent = `${activeName} TO PLAY`;
+        document.getElementById('p1Card').classList.toggle('active-turn', this.currentMark === 'X' && !this.roundOver);
+        document.getElementById('p2Card').classList.toggle('active-turn', this.currentMark === 'O' && !this.roundOver);
+      }
+
+      buildBoardSnapshotDataURL() {
+        const size = 420;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+
+        const isLight = document.body.dataset.theme === 'light' ||
+          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+
+        ctx.fillStyle = isLight ? '#e7f7ee' : '#082616';
+        ctx.fillRect(0, 0, size, size);
+
+        const pad = 24;
+        const gap = 10;
+        const cellSize = (size - pad * 2 - gap * 2) / 3;
+
+        for (let r = 0; r < 3; r++) {
+          for (let col = 0; col < 3; col++) {
+            const idx = r * 3 + col;
+            const x = pad + col * (cellSize + gap);
+            const y = pad + r * (cellSize + gap);
+
+            ctx.fillStyle = isLight ? '#ffffff' : '#0c361f';
+            ctx.strokeStyle = this.winLine && this.winLine.includes(idx) ? '#fbbf24' : '#10b981';
+            ctx.lineWidth = this.winLine && this.winLine.includes(idx) ? 3.5 : 1.8;
+            ctx.beginPath();
+            ctx.roundRect(x, y, cellSize, cellSize, 14);
+            ctx.fill();
+            ctx.stroke();
+
+            const mark = this.board[idx];
+            if (mark) {
+              ctx.fillStyle = mark === 'X' ? '#fbbf24' : '#10b981';
+              ctx.font = '900 54px Inter, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(mark, x + cellSize * 0.5, y + cellSize * 0.52);
+            }
+          }
         }
-
-        document.getElementById('nextRoundBtn').disabled = !this.roundOver || this.matchOver;
+        return c.toDataURL('image/png');
       }
 
-      openStatsModal() {
-        document.getElementById('stPlayedVal').textContent = String(this.stats.played);
-        document.getElementById('stWldVal').textContent =
-          `${this.stats.wins} / ${this.stats.losses} / ${this.stats.draws}`;
-        document.getElementById('stStreakVal').textContent = String(this.stats.streak);
-        document.getElementById('stBestStreakVal').textContent = String(this.stats.bestStreak);
-        document.getElementById('statsModal').classList.add('open');
-      }
-
-      /* ======================================================================
-         SCREENSHOT CAPTURE, INTRO & EVENT LISTENERS
-         ====================================================================== */
       captureScreenshot() {
         this.audio.unlock();
-        this.audio.playTap(true);
+        this.audio.playClick();
 
         const flash = document.getElementById('shutterFlash');
         flash.classList.add('active');
         setTimeout(() => flash.classList.remove('active'), 160);
 
-        const arenaEl = document.getElementById('tttArena');
-        const rect = arenaEl.getBoundingClientRect();
-        const w = Math.max(320, Math.floor(rect.width));
-        const h = Math.max(480, Math.floor(rect.height));
-        const snapCanvas = document.createElement('canvas');
-        snapCanvas.width = w;
-        snapCanvas.height = h;
-        const sctx = snapCanvas.getContext('2d');
-
-        const isLight = document.body.dataset.theme === 'light' ||
-          (!document.body.dataset.theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
-        sctx.fillStyle = isLight ? '#FFFFFF' : '#202124';
-        sctx.fillRect(0, 0, w, h);
-
-        sctx.fillStyle = '#0B3D20';
-        sctx.fillRect(12, 12, w - 24, 46);
-        sctx.fillStyle = '#fbbf24';
-        sctx.font = '900 13px Inter, sans-serif';
-        sctx.fillText(`TIC TAC TOE • R${this.roundNumber} • ${this.p1.score} - ${this.p2.score}`, 22, 40);
-
-        const gridRect = this.gridEl.getBoundingClientRect();
-        const gx = gridRect.left - rect.left;
-        const gy = gridRect.top - rect.top;
-        const gs = gridRect.width;
-        const step = gs / 3;
-
-        for (let i = 0; i < 9; i++) {
-          const r = Math.floor(i / 3);
-          const c = i % 3;
-          const cx = gx + c * step + 4;
-          const cy = gy + r * step + 4;
-          const cs = step - 8;
-
-          sctx.fillStyle = '#0f4a28';
-          sctx.fillRect(cx, cy, cs, cs);
-          sctx.strokeStyle = '#fbbf24';
-          sctx.lineWidth = 1.5;
-          sctx.strokeRect(cx, cy, cs, cs);
-
-          if (this.board[i]) {
-            sctx.fillStyle = this.board[i] === 'X' ? '#fbbf24' : '#34d399';
-            sctx.font = `900 ${Math.round(cs * 0.56)}px Inter, sans-serif`;
-            sctx.textAlign = 'center';
-            sctx.textBaseline = 'middle';
-            sctx.fillText(this.board[i], cx + cs * 0.5, cy + cs * 0.54);
-          }
-        }
-
         try {
-          const url = snapCanvas.toDataURL('image/png');
+          const url = this.buildBoardSnapshotDataURL();
+          clearTimeout(this.aiTimer);
           this.paused = true;
           this.shotModalOpen = true;
-          this.clearAITimer();
           document.getElementById('screenshotImg').src = url;
           const link = document.getElementById('downloadShotBtn');
           link.href = url;
           link.download = `Tic-Tac-Toe-${Date.now()}.png`;
           document.getElementById('screenshotModal').classList.add('open');
-          this.showToast('SCREENSHOT CAPTURED');
+          this.showToast('SNAPSHOT CAPTURED');
         } catch (_e) {}
       }
 
@@ -2169,22 +1784,13 @@
       }
 
       bindEvents() {
-        window.addEventListener('resize', () => this.resizeBoard());
-
-        const backLink = document.getElementById('backToTicTacToeLink');
-        if (backLink) {
-          backLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.clearAITimer();
-            window.location.href = 'tic-tac-toe.html';
-          });
-        }
+        document.getElementById('backToGameStartBtn').addEventListener('click', () => {
+          this.returnToGameStart();
+        });
 
         if (window.matchMedia) {
           window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-            if (!document.body.dataset.theme) {
-              this.syncThemeIcon();
-            }
+            if (!document.body.dataset.theme) this.syncThemeIcon();
           });
         }
 
@@ -2205,13 +1811,6 @@
           });
         });
 
-        document.querySelectorAll('#markGroup .choice-btn').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            this.p1Mark = btn.dataset.mark;
-            document.querySelectorAll('#markGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
-          });
-        });
-
         document.querySelectorAll('#formatGroup .choice-btn').forEach((btn) => {
           btn.addEventListener('click', () => {
             this.formatKey = btn.dataset.fmt;
@@ -2219,51 +1818,47 @@
           });
         });
 
-        document.querySelectorAll('#arenaGroup .choice-btn').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            this.arenaTheme = btn.dataset.arena;
-            document.body.dataset.arenaTheme = this.arenaTheme;
-            document.querySelectorAll('#arenaGroup .choice-btn').forEach((b) => b.classList.toggle('selected', b === btn));
-          });
-        });
-
         document.getElementById('startMatchBtn').addEventListener('click', () => {
           this.audio.unlock();
           const n1 = (document.getElementById('p1NameInp').value || '').trim().toUpperCase();
           const n2 = (document.getElementById('p2NameInp').value || '').trim().toUpperCase();
-          this.p1.name = (n1 || 'ARIF HASAN').slice(0, 14);
-          this.p2.name = (n2 || 'SOO-BIN PARK').slice(0, 14);
-          this.p1.nation = this.getNation(document.getElementById('p1NationSel').value);
-          this.p2.nation = this.getNation(document.getElementById('p2NationSel').value);
-          this.p1.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p1BadgeInp').value, 10) || 1));
-          this.p2.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p2BadgeInp').value, 10) || 7));
+          this.p1Meta.name = (n1 || 'RASHID KHAN').slice(0, 14);
+          this.p2Meta.name = (n2 || 'HARUTO SATO').slice(0, 14);
+          this.p1Meta.nation = this.getNation(document.getElementById('p1NationSel').value);
+          this.p2Meta.nation = this.getNation(document.getElementById('p2NationSel').value);
+          this.p1Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p1BadgeInp').value, 10) || 1));
+          this.p2Meta.badge = Math.max(1, Math.min(99, parseInt(document.getElementById('p2BadgeInp').value, 10) || 7));
 
           document.getElementById('setupModal').classList.remove('open');
           this.setupOpen = false;
           this.paused = false;
-          this.startNewMatch(true);
+          this.resetSeries('X');
         });
 
-        document.getElementById('viewStatsFromSetupBtn').addEventListener('click', () => {
-          this.audio.unlock();
-          this.openStatsModal();
+        document.querySelectorAll('#boardFrame .ttt-cell').forEach((cellEl) => {
+          cellEl.addEventListener('click', () => {
+            const idx = parseInt(cellEl.dataset.idx, 10);
+            if (this.mode !== 'LOCAL_2P' && this.currentMark === 'O') return;
+            this.playMarkAt(idx);
+          });
         });
 
-        document.getElementById('nextRoundBtn').addEventListener('click', () => {
+        document.getElementById('nextRoundBarBtn').addEventListener('click', () => {
           this.audio.unlock();
-          this.startNextRound();
+          this.audio.playClick();
+          const winsNeeded = this.getWinsNeeded();
+          if (this.p1Meta.score >= winsNeeded || this.p2Meta.score >= winsNeeded) {
+            this.resetSeries('X');
+          } else {
+            this.roundNum++;
+            this.resetBoardOnly();
+          }
         });
 
-        document.getElementById('newMatchBtn').addEventListener('click', () => {
+        document.getElementById('quickSetupBarBtn').addEventListener('click', () => {
           this.audio.unlock();
-          this.startNewMatch(true);
-          this.showToast('NEW MATCH STARTED');
-        });
-
-        document.getElementById('setupBtn').addEventListener('click', () => {
-          if (this.introActive) return;
-          this.audio.unlock();
-          this.clearAITimer();
+          this.audio.playClick();
+          clearTimeout(this.aiTimer);
           this.setupOpen = true;
           this.paused = true;
           document.getElementById('setupModal').classList.add('open');
@@ -2272,6 +1867,8 @@
         document.getElementById('screenshotBtn').addEventListener('click', () => this.captureScreenshot());
 
         document.getElementById('closeShotBtn').addEventListener('click', () => {
+          this.audio.unlock();
+          this.audio.playClick();
           document.getElementById('screenshotModal').classList.remove('open');
           this.shotModalOpen = false;
           this.paused = false;
@@ -2286,9 +1883,11 @@
         });
 
         document.getElementById('pauseBtn').addEventListener('click', () => {
-          if (this.introActive || this.setupOpen || this.shotModalOpen || this.matchOver) return;
+          if (this.introActive || this.setupOpen || this.shotModalOpen) return;
+          this.audio.unlock();
+          this.audio.playClick();
+          clearTimeout(this.aiTimer);
           this.paused = true;
-          this.clearAITimer();
           this.renderBoard();
           document.getElementById('pauseModal').classList.add('open');
         });
@@ -2303,8 +1902,7 @@
         document.getElementById('restartRoundFromPauseBtn').addEventListener('click', () => {
           document.getElementById('pauseModal').classList.remove('open');
           this.paused = false;
-          this.setupRoundBoard(this.roundStarter);
-          this.scheduleAIMoveIfNeeded();
+          this.resetBoardOnly();
         });
 
         document.getElementById('setupFromPauseBtn').addEventListener('click', () => {
@@ -2316,30 +1914,20 @@
 
         document.getElementById('statsFromPauseBtn').addEventListener('click', () => {
           document.getElementById('pauseModal').classList.remove('open');
-          this.openStatsModal();
+          this.paused = true;
+          this.openSummaryModal('CAREER TELEMETRY', 'Tic Tac Toe', false);
         });
 
-        document.getElementById('statsFromPauseBtn');
-        document.getElementById('resetStatsBtn').addEventListener('click', () => {
-          this.stats = { played: 0, wins: 0, losses: 0, draws: 0, streak: 0, bestStreak: 0 };
-          this.saveStats();
-          this.openStatsModal();
-          this.showToast('STATS RESET');
-        });
-
-        document.getElementById('closeStatsBtn').addEventListener('click', () => {
-          document.getElementById('statsModal').classList.remove('open');
-          if (!this.setupOpen && !this.introActive && !this.matchOver) {
-            this.paused = false;
-            this.renderBoard();
-            this.scheduleAIMoveIfNeeded();
-          }
-        });
-
-        document.getElementById('rematchFromSummaryBtn').addEventListener('click', () => {
+        document.getElementById('summaryPrimaryBtn').addEventListener('click', () => {
           document.getElementById('summaryModal').classList.remove('open');
           this.paused = false;
-          this.startNewMatch(true);
+          const winsNeeded = this.getWinsNeeded();
+          if (this.p1Meta.score >= winsNeeded || this.p2Meta.score >= winsNeeded) {
+            this.resetSeries('X');
+          } else {
+            this.roundNum++;
+            this.resetBoardOnly();
+          }
         });
 
         document.getElementById('setupFromSummaryBtn').addEventListener('click', () => {
@@ -2353,39 +1941,41 @@
           if (this.introActive || this.setupOpen || this.shotModalOpen) return;
 
           if (e.code === 'KeyP' || e.code === 'Escape') {
-            if (!this.matchOver) {
-              this.paused = !this.paused;
-              if (this.paused) this.clearAITimer();
-              document.getElementById('pauseModal').classList.toggle('open', this.paused);
-              this.renderBoard();
-              if (!this.paused) this.scheduleAIMoveIfNeeded();
-            }
+            this.paused = !this.paused;
+            if (this.paused) clearTimeout(this.aiTimer);
+            document.getElementById('pauseModal').classList.toggle('open', this.paused);
+            this.renderBoard();
+            if (!this.paused) this.scheduleAIMoveIfNeeded();
             return;
           }
 
           if (e.code === 'KeyR') {
             e.preventDefault();
             this.audio.unlock();
+            document.getElementById('pauseModal').classList.remove('open');
+            document.getElementById('summaryModal').classList.remove('open');
             this.paused = false;
-            this.setupRoundBoard(this.roundStarter);
-            this.scheduleAIMoveIfNeeded();
-            this.showToast(`ROUND ${this.roundNumber} RESET`);
+            const winsNeeded = this.getWinsNeeded();
+            if (this.p1Meta.score >= winsNeeded || this.p2Meta.score >= winsNeeded) {
+              this.resetSeries('X');
+            } else {
+              this.roundNum++;
+              this.resetBoardOnly();
+            }
+            this.showToast('ROUND RESTARTED');
             return;
           }
 
-          if (this.paused || this.roundOver || this.matchOver || this.isAITurn()) return;
-
-          if (/^[1-9]$/.test(e.key)) {
-            const idx = parseInt(e.key, 10) - 1;
-            this.audio.unlock();
-            this.makeMove(idx);
+          if (e.key >= '1' && e.key <= '9') {
+            if (this.mode !== 'LOCAL_2P' && this.currentMark === 'O') return;
+            this.playMarkAt(parseInt(e.key, 10) - 1);
           }
         });
       }
     }
 
     window.addEventListener('load', () => {
-      new TicTacToeGame();
+      new TicTacToeEngine();
     });
   </script>
 </body>
